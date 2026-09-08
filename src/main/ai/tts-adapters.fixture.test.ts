@@ -3,7 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { ProviderError } from '../../shared/ai/ai-provider-contracts'
 import type { AdapterContext } from '../../shared/ai/ai-provider-contracts'
 import { classifyHttpStatus, extractErrorMessage } from './provider-http-client'
-import { elevenLabsTtsAdapter } from './elevenlabs-tts-adapter'
+import { clearElevenLabsModelCache, elevenLabsTtsAdapter } from './elevenlabs-tts-adapter'
 import { openAiTtsAdapter } from './openai-tts-adapter'
 
 /**
@@ -218,26 +218,145 @@ describe('ElevenLabs adapter (fixture)', () => {
     expect(Buffer.from(result.audio).toString()).toBe('DU-LIEU-AUDIO-GIA')
   })
 
-  it('chặn văn bản vượt giới hạn ký tự TRƯỚC khi gọi mạng', async () => {
+  it('đọc model từ /v1/models và lấy ngôn ngữ, giới hạn ký tự từ đó', async () => {
     captured = []
-    respond = (_request, response) => sendJson(response, 200, {})
+    clearElevenLabsModelCache()
+    // Hình dạng đúng như API thật trả về: MỘT MẢNG THUẦN, không bọc trong { models }.
+    respond = (_request, response) =>
+      sendJson(response, 200, [
+        {
+          model_id: 'eleven_flash_v2_5',
+          name: 'Flash v2.5',
+          can_do_text_to_speech: true,
+          can_use_style: false,
+          can_use_speaker_boost: true,
+          maximum_text_length_per_request: 40_000,
+          languages: [{ language_id: 'vi', name: 'Vietnamese' }, { language_id: 'en' }]
+        },
+        {
+          model_id: 'eleven_multilingual_v2',
+          name: 'Multilingual v2',
+          can_do_text_to_speech: true,
+          can_use_style: true,
+          can_use_speaker_boost: true,
+          maximum_text_length_per_request: 10_000,
+          languages: [{ language_id: 'en' }]
+        },
+        // Model không sinh giọng đọc phải bị loại khỏi danh sách.
+        { model_id: 'eleven_stt', can_do_text_to_speech: false }
+      ])
 
     const restore = redirectFetchToStub([ELEVENLABS_ORIGIN])
+    const models = await elevenLabsTtsAdapter.listModels(context())
+    restore()
+
+    expect(captured[0].path).toBe('/v1/models')
+    expect(models.map((model) => model.id)).toEqual(['eleven_flash_v2_5', 'eleven_multilingual_v2'])
+    expect(models[0].languages).toContain('vi')
+    // Đây chính là chỗ bảng viết tay từng sai: multilingual_v2 KHÔNG có tiếng Việt.
+    expect(models[1].languages).not.toContain('vi')
+  })
+
+  it('chỉ bày tham số mà chính model nói là nhận', async () => {
+    clearElevenLabsModelCache()
+    respond = (_request, response) =>
+      sendJson(response, 200, [
+        {
+          model_id: 'co-style',
+          can_do_text_to_speech: true,
+          can_use_style: true,
+          can_use_speaker_boost: true,
+          maximum_text_length_per_request: 5_000
+        },
+        {
+          model_id: 'khong-style',
+          can_do_text_to_speech: true,
+          can_use_style: false,
+          can_use_speaker_boost: false,
+          maximum_text_length_per_request: 5_000
+        }
+      ])
+
+    const restore = redirectFetchToStub([ELEVENLABS_ORIGIN])
+    await elevenLabsTtsAdapter.listModels(context())
+    restore()
+
+    const withStyle = elevenLabsTtsAdapter.capabilities('co-style').parameters.map((p) => p.key)
+    const withoutStyle = elevenLabsTtsAdapter
+      .capabilities('khong-style')
+      .parameters.map((p) => p.key)
+
+    expect(withStyle).toContain('style')
+    expect(withStyle).toContain('use_speaker_boost')
+    // Cờ của model tắt thì ô điều khiển phải biến mất hẳn.
+    expect(withoutStyle).not.toContain('style')
+    expect(withoutStyle).not.toContain('use_speaker_boost')
+    // Hai tham số cơ bản luôn có.
+    expect(withoutStyle).toContain('stability')
+  })
+
+  it('chặn văn bản vượt giới hạn ký tự TRƯỚC khi gọi mạng', async () => {
+    clearElevenLabsModelCache()
+    respond = (_request, response) =>
+      sendJson(response, 200, [
+        {
+          model_id: 'eleven_v3',
+          can_do_text_to_speech: true,
+          maximum_text_length_per_request: 5_000
+        }
+      ])
+
+    let restore = redirectFetchToStub([ELEVENLABS_ORIGIN])
+    await elevenLabsTtsAdapter.listModels(context())
+    restore()
+
+    captured = []
+    restore = redirectFetchToStub([ELEVENLABS_ORIGIN])
     const attempt = elevenLabsTtsAdapter.synthesize(context(), {
       model: 'eleven_v3',
       voiceId: 'v-001',
-      // Model v3 giới hạn 3.000 ký tự.
-      text: 'a'.repeat(3_500),
+      // Giới hạn 5.000 lấy từ API, không phải con số viết tay.
+      text: 'a'.repeat(6_000),
       parameters: {},
       outputFormat: 'mp3_44100_128'
     })
 
     await expect(attempt).rejects.toThrow(ProviderError)
-    await expect(attempt).rejects.toThrow(/vượt giới hạn 3000/)
+    await expect(attempt).rejects.toThrow(/vượt giới hạn 5000/)
     restore()
 
     // Không được tốn một lần gọi mạng cho yêu cầu chắc chắn bị từ chối.
     expect(captured).toHaveLength(0)
+  })
+
+  it('phân biệt "thiếu quyền" với "khoá sai"', async () => {
+    captured = []
+    // Hình dạng lỗi đúng như ElevenLabs trả về khi khoá thiếu quyền.
+    respond = (_request, response) =>
+      sendJson(response, 401, {
+        detail: {
+          type: 'authentication_error',
+          code: 'unauthorized',
+          message:
+            'The API key you used is missing the permission voices_read to execute this operation.',
+          status: 'missing_permissions'
+        }
+      })
+
+    const restore = redirectFetchToStub([ELEVENLABS_ORIGIN])
+    let caught: ProviderError | null = null
+    try {
+      await elevenLabsTtsAdapter.listVoices(context())
+    } catch (error) {
+      caught = error as ProviderError
+    }
+    restore()
+
+    expect(caught).toBeInstanceOf(ProviderError)
+    // Khoá vẫn dùng được cho việc khác — báo "khoá bị từ chối" sẽ khiến người
+    // dùng đi thay khoá một cách vô ích.
+    expect(caught?.kind).toBe('insufficient-permission')
+    expect(caught?.message).toContain('thiếu quyền')
   })
 
   it('phân loại khoá sai thành lỗi không đáng thử lại', async () => {
@@ -255,16 +374,29 @@ describe('ElevenLabs adapter (fixture)', () => {
     expect(result.message).toContain('Khoá API bị từ chối')
   })
 
-  it('báo kết nối thành công kèm số giọng khả dụng', async () => {
+  it('thử kết nối bằng /v1/models, không bằng danh sách giọng', async () => {
     captured = []
-    respond = (_request, response) => sendJson(response, 200, { voices: [], total_count: 42 })
+    clearElevenLabsModelCache()
+    respond = (_request, response) =>
+      sendJson(response, 200, [
+        {
+          model_id: 'a',
+          can_do_text_to_speech: true,
+          languages: [{ language_id: 'vi' }]
+        },
+        { model_id: 'b', can_do_text_to_speech: true, languages: [{ language_id: 'en' }] }
+      ])
 
     const restore = redirectFetchToStub([ELEVENLABS_ORIGIN])
     const result = await elevenLabsTtsAdapter.testConnection(context())
     restore()
 
+    // Endpoint nhẹ hơn và chỉ cần quyền models_read: một khoá chỉ có quyền
+    // text_to_speech vẫn phải qua được phép thử này.
+    expect(captured[0].path).toBe('/v1/models')
     expect(result.ok).toBe(true)
-    expect(result.details).toContain('42')
+    expect(result.details).toContain('2 model')
+    expect(result.details).toContain('1 model hỗ trợ tiếng Việt')
   })
 })
 

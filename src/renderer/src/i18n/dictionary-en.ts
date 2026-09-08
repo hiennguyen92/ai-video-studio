@@ -220,6 +220,12 @@ export const dictionaryEn: Dictionary = {
     presets: 'Saved presets',
     applyPreset: 'Apply',
     deletePreset: 'Delete preset',
+    voiceCategoryPremade: 'built-in',
+    voiceCategoryProfessional: 'library',
+    voiceCategoryNote:
+      'Library voices may need a paid plan; a free plan is refused at generation time.',
+    languageFilterNote:
+      "Filters by the voice's verified languages. Multilingual models still read other languages, so clear the filter to see every voice.",
     emptyScript: 'Enter a script to start generating speech.'
   },
   music: {

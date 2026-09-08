@@ -18,14 +18,14 @@ Mốc được chia theo `DESCRIPTION.md` §9. Mỗi mốc phải **chạy đư�
 | Xuất MP4 | ✅ | e2e: soi lại file bằng ffprobe |
 | Giao diện tiếng Việt + tiếng Anh | ✅ | e2e: đổi ngôn ngữ |
 
-## Mốc 2 — Giọng đọc và nhạc nền ✅ HOÀN TẤT (trừ lời gọi provider thật)
+## Mốc 2 — Giọng đọc và nhạc nền ✅ HOÀN TẤT
 
 | Hạng mục | Trạng thái | Kiểm chứng bằng |
 |---|---|---|
 | Cấu hình AI: provider, khoá qua `safeStorage`, kiểm tra kết nối | ✅ | e2e trên keychain thật |
 | Interface riêng cho từng nhóm tác vụ (TTS/STT/dịch/nhạc) | ✅ | `shared/ai/ai-provider-contracts.ts` |
-| Adapter ElevenLabs (danh sách giọng từ provider) | ⚠️ | fixture — **chưa gọi API thật** |
-| Adapter OpenAI (danh mục giọng cố định) | ⚠️ | fixture — **chưa gọi API thật** |
+| Adapter ElevenLabs (danh sách giọng từ provider) | ✅ | **gọi API thật**: model, giọng, sinh audio tiếng Việt 7,20s |
+| Adapter OpenAI (danh mục giọng cố định) | ⚠️ | fixture — chưa có khoá OpenAI để gọi thật |
 | Chỉ hiện tham số provider thật sự hỗ trợ | ✅ | e2e: đổi model thì ô tham số biến mất |
 | Chia kịch bản thành đoạn tạo lại riêng | ✅ | 9 unit + e2e |
 | Chèn tại playhead / track mới / thay clip đang chọn | ✅ | `use-audio-insertion.ts` |
@@ -34,8 +34,10 @@ Mốc được chia theo `DESCRIPTION.md` §9. Mỗi mốc phải **chạy đư�
 | Thiếu khoá chỉ vô hiệu hoá tính năng phụ thuộc | ✅ | e2e |
 | Khoá sai báo lỗi rõ ràng | ✅ | e2e (chạm mạng thật, nhận 401) |
 
-**Còn nợ của Mốc 2:** một lần chạy thật với khoá API hợp lệ để xác nhận phản hồi provider khớp
-tài liệu và nghe thử chất lượng giọng tiếng Việt.
+**Đã trả xong nợ Mốc 2** bằng một lần chạy thật với khoá ElevenLabs. Lần chạy đó sửa năm chỗ sai
+mà fixture không phát hiện được (xem README, mục "Đã kiểm chứng bằng API thật").
+
+**Còn lại:** OpenAI TTS vẫn chưa gọi thật lần nào — cần một khoá OpenAI.
 
 ## Mốc 3 — Phiên âm, dịch, phụ đề
 
@@ -76,8 +78,7 @@ ghi vào backlog rõ ràng."
 
 ## Câu hỏi còn mở
 
-1. **Khoá API để nghiệm thu Mốc 2.** Adapter đã viết xong cho ElevenLabs và OpenAI. Cần một khoá
-   hợp lệ của một trong hai bên để chạy thật một lần và xác nhận phản hồi khớp tài liệu.
+1. **Khoá OpenAI** để gọi thật adapter OpenAI TTS một lần. ElevenLabs đã xác nhận xong.
 2. **Phiên âm chạy local hay trên cloud?** Whisper chạy local thì miễn phí và giữ dữ liệu trong máy,
    đổi lại nặng vài trăm MB model và chậm hơn. Ảnh hưởng tới kích thước bản cài.
 3. **Ngưỡng tăng tốc khi lồng tiếng.** Hiện đặt mặc định 1.3×; con số này nên do người dùng chỉnh hay

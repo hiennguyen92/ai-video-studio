@@ -10,6 +10,7 @@ import type {
   ConnectionTestResult,
   ProviderDescriptor,
   ProviderModel,
+  ProviderParameter,
   TtsCapabilities
 } from '../../shared/ai/ai-capability-types'
 import { requestBinary, requestJson } from './provider-http-client'
@@ -17,14 +18,15 @@ import { requestBinary, requestJson } from './provider-http-client'
 /**
  * Adapter ElevenLabs cho tác vụ sinh giọng đọc.
  *
- * Mọi endpoint, tên header và tên trường ở đây đều lấy từ tài liệu chính thức
- * (xem plans/research/researcher-04-tts-provider-api-verification.md), không viết
- * theo trí nhớ — DESCRIPTION §6 yêu cầu đúng điều này.
+ * Siêu dữ liệu model được ĐỌC TỪ `/v1/models`, không viết cứng trong mã. Quyết
+ * định này đến từ việc chạy thật với khoá thật: bảng viết tay ban đầu — dựng
+ * theo tài liệu — sai ở ba chỗ cùng lúc. `eleven_multilingual_v2` thực tế KHÔNG
+ * có tiếng Việt trong danh sách ngôn ngữ, giới hạn ký tự của `eleven_v3` là
+ * 5.000 chứ không phải 3.000, và mỗi model có cờ riêng cho biết có nhận `style`
+ * hay `speaker_boost` hay không.
  *
- * Lưu ý về danh sách tham số: chỉ khai báo những tham số mà tài liệu ghi rõ
- * KHOẢNG GIÁ TRỊ. `style` và `speed` có tồn tại trong voice_settings nhưng khoảng
- * hợp lệ chưa xác minh được, nên tạm thời không đưa ra giao diện — bày một thanh
- * trượt không biết biên là mời người dùng gửi giá trị bị từ chối.
+ * Endpoint `/v1/models` chỉ cần quyền `models_read`, nhẹ hơn quyền đọc danh sách
+ * giọng, nên nó cũng là phép thử kết nối tốt nhất.
  */
 
 const BASE_URL = 'https://api.elevenlabs.io'
@@ -36,49 +38,31 @@ export const elevenLabsDescriptor: ProviderDescriptor = {
   tasks: ['tts'],
   credentialLabel: 'API key',
   credentialHelpUrl: 'https://elevenlabs.io/app/settings/api-keys',
-  noteVi: 'Có endpoint liệt kê giọng nên danh sách giọng luôn lấy trực tiếp từ tài khoản của bạn.',
-  noteEn: 'Exposes a voice-list endpoint, so voices are always read live from your account.'
+  noteVi:
+    'Khoá cần quyền text_to_speech để tạo giọng, models_read để đọc model, và voices_read để liệt kê giọng.',
+  noteEn:
+    'The key needs text_to_speech to generate, models_read to read models, and voices_read to list voices.'
 }
 
-/**
- * Giới hạn ký tự mỗi lần gọi, theo tài liệu ElevenLabs.
- * Tách khỏi danh sách model để `listModels` trả đúng hình dạng `ProviderModel`
- * mà không phải bỏ bớt trường.
- */
-const MAX_CHARACTERS_BY_MODEL: Record<string, number> = {
-  eleven_multilingual_v2: 10_000,
-  eleven_flash_v2_5: 40_000,
-  eleven_turbo_v2_5: 40_000,
-  eleven_v3: 3_000
+/* ── Hình dạng phản hồi thật của ElevenLabs ────────────────────── */
+
+interface ElevenLabsLanguage {
+  language_id?: string
+  name?: string
 }
 
-/** Model TTS theo tài liệu ElevenLabs. */
-const MODELS: ProviderModel[] = [
-  {
-    id: 'eleven_multilingual_v2',
-    label: 'Multilingual v2',
-    languages: [],
-    description: 'Chất lượng cao, đa ngôn ngữ'
-  },
-  {
-    id: 'eleven_flash_v2_5',
-    label: 'Flash v2.5',
-    languages: [],
-    description: 'Nhanh, độ trễ thấp'
-  },
-  {
-    id: 'eleven_turbo_v2_5',
-    label: 'Turbo v2.5',
-    languages: [],
-    description: 'Cân bằng tốc độ và chất lượng'
-  },
-  {
-    id: 'eleven_v3',
-    label: 'v3',
-    languages: [],
-    description: 'Biểu cảm nhất, giới hạn ký tự thấp'
-  }
-]
+interface ElevenLabsModel {
+  model_id: string
+  name?: string
+  description?: string
+  can_do_text_to_speech?: boolean
+  can_use_style?: boolean
+  can_use_speaker_boost?: boolean
+  languages?: ElevenLabsLanguage[]
+  maximum_text_length_per_request?: number
+  max_characters_request_subscribed_user?: number
+  max_characters_request_free_user?: number
+}
 
 interface ElevenLabsVoice {
   voice_id: string
@@ -97,54 +81,94 @@ interface ElevenLabsVoicesResponse {
   total_count?: number
 }
 
+/**
+ * Nhớ siêu dữ liệu model giữa các lời gọi.
+ *
+ * `capabilities()` là hàm đồng bộ theo hợp đồng adapter, nhưng dữ liệu thật lại
+ * đến từ mạng. Bộ nhớ đệm này do `listModels()` đổ đầy; nơi gọi luôn lấy danh
+ * sách model trước khi hỏi năng lực.
+ */
+const modelCache = new Map<string, ElevenLabsModel>()
+
+/** Dùng khi chưa kịp nạp model — cố tình dè dặt để không hứa quá. */
+const CONSERVATIVE_CHARACTER_LIMIT = 5_000
+
 function authHeaders(context: AdapterContext): Record<string, string> {
   return { 'xi-api-key': context.apiKey }
+}
+
+function characterLimitOf(model: ElevenLabsModel | undefined): number | undefined {
+  if (!model) return undefined
+  return (
+    model.maximum_text_length_per_request ??
+    model.max_characters_request_subscribed_user ??
+    model.max_characters_request_free_user
+  )
 }
 
 export const elevenLabsTtsAdapter: TtsAdapter = {
   descriptor: elevenLabsDescriptor,
 
   capabilities(model: string): TtsCapabilities {
+    const cached = modelCache.get(model)
+
+    const parameters: ProviderParameter[] = [
+      {
+        key: 'stability',
+        control: 'range',
+        labelVi: 'Độ ổn định',
+        labelEn: 'Stability',
+        hintVi: 'Thấp thì giọng biểu cảm hơn nhưng dễ thay đổi giữa các lần tạo.',
+        hintEn: 'Lower is more expressive but varies more between takes.',
+        min: 0,
+        max: 1,
+        step: 0.05,
+        defaultValue: 0.5
+      },
+      {
+        key: 'similarity_boost',
+        control: 'range',
+        labelVi: 'Độ giống giọng gốc',
+        labelEn: 'Similarity boost',
+        min: 0,
+        max: 1,
+        step: 0.05,
+        defaultValue: 0.75
+      }
+    ]
+
+    // Hai tham số dưới đây chỉ hiện khi CHÍNH MODEL nói là nhận chúng. Chưa nạp
+    // được model thì không đoán bừa — thà thiếu còn hơn bày ô không có tác dụng.
+    if (cached?.can_use_style) {
+      parameters.push({
+        key: 'style',
+        control: 'range',
+        labelVi: 'Cường độ phong cách',
+        labelEn: 'Style exaggeration',
+        min: 0,
+        max: 1,
+        step: 0.05,
+        defaultValue: 0
+      })
+    }
+    if (cached?.can_use_speaker_boost) {
+      parameters.push({
+        key: 'use_speaker_boost',
+        control: 'toggle',
+        labelVi: 'Tăng cường giọng',
+        labelEn: 'Speaker boost',
+        defaultValue: true
+      })
+    }
 
     return {
       voiceCatalog: 'remote',
       supportsLanguageFilter: true,
       supportsVoicePreviewSample: true,
-      // Có endpoint kèm timestamp nhưng đường dẫn chính xác chưa xác minh được,
-      // nên chưa khai báo là hỗ trợ.
+      // Có endpoint kèm timestamp nhưng đường dẫn chính xác chưa xác minh được.
       supportsTimestamps: false,
-      maxCharactersPerRequest: MAX_CHARACTERS_BY_MODEL[model],
-      parameters: [
-        {
-          key: 'stability',
-          control: 'range',
-          labelVi: 'Độ ổn định',
-          labelEn: 'Stability',
-          hintVi: 'Thấp thì giọng biểu cảm hơn nhưng dễ thay đổi giữa các lần tạo.',
-          hintEn: 'Lower is more expressive but varies more between takes.',
-          min: 0,
-          max: 1,
-          step: 0.05,
-          defaultValue: 0.5
-        },
-        {
-          key: 'similarity_boost',
-          control: 'range',
-          labelVi: 'Độ giống giọng gốc',
-          labelEn: 'Similarity boost',
-          min: 0,
-          max: 1,
-          step: 0.05,
-          defaultValue: 0.75
-        },
-        {
-          key: 'use_speaker_boost',
-          control: 'toggle',
-          labelVi: 'Tăng cường giọng',
-          labelEn: 'Speaker boost',
-          defaultValue: true
-        }
-      ],
+      maxCharactersPerRequest: characterLimitOf(cached) ?? CONSERVATIVE_CHARACTER_LIMIT,
+      parameters,
       outputFormats: [
         {
           value: 'mp3_44100_128',
@@ -158,10 +182,35 @@ export const elevenLabsTtsAdapter: TtsAdapter = {
     }
   },
 
-  async listModels(): Promise<ProviderModel[]> {
-    // Danh sách model là hằng số trong tài liệu, không có endpoint liệt kê nên
-    // không tốn một lần gọi mạng chỉ để lấy thứ đã biết.
-    return MODELS
+  async listModels(context: AdapterContext): Promise<ProviderModel[]> {
+    // Phản hồi là một MẢNG thuần, không bọc trong { models: [...] }.
+    const response = await requestJson<ElevenLabsModel[]>({
+      url: `${BASE_URL}/v1/models`,
+      method: 'GET',
+      headers: authHeaders(context),
+      signal: context.signal,
+      providerId: PROVIDER_ID,
+      timeoutMs: 20_000
+    })
+
+    const ttsModels = (response ?? []).filter((model) => model.can_do_text_to_speech)
+    modelCache.clear()
+    for (const model of ttsModels) modelCache.set(model.model_id, model)
+
+    return ttsModels.map((model) => {
+      const languages = (model.languages ?? [])
+        .map((language) => language.language_id)
+        .filter((value): value is string => Boolean(value))
+
+      return {
+        id: model.model_id,
+        label: model.name ?? model.model_id,
+        // Danh sách ngôn ngữ do provider công bố — nguồn duy nhất đáng tin để
+        // biết model nào thật sự đọc được tiếng Việt.
+        languages,
+        description: model.description
+      }
+    })
   },
 
   async listVoices(context: AdapterContext, options): Promise<Voice[]> {
@@ -183,14 +232,22 @@ export const elevenLabsTtsAdapter: TtsAdapter = {
       })
 
       for (const voice of response.voices ?? []) {
-        const languages = (voice.verified_languages ?? [])
-          .map((entry) => entry.language ?? entry.locale)
-          .filter((value): value is string => Boolean(value))
+        // `verified_languages` trả về THEO TỪNG BẢN GHI xác thực, nên cùng một mã
+        // ngôn ngữ lặp lại nhiều lần (quan sát thật: "en" xuất hiện 9 lần cho một
+        // giọng). Không khử trùng lặp thì ô chọn giọng hiện ra "(en, en, en, …)".
+        const languages = [
+          ...new Set(
+            (voice.verified_languages ?? [])
+              .map((entry) => entry.language ?? entry.locale)
+              .filter((value): value is string => Boolean(value))
+          )
+        ]
 
         collected.push({
           id: voice.voice_id,
           name: voice.name,
           languages,
+          category: voice.category,
           previewUrl: voice.preview_url,
           description: voice.description,
           labels: voice.labels
@@ -202,9 +259,8 @@ export const elevenLabsTtsAdapter: TtsAdapter = {
 
     if (!options?.language) return collected
 
-    // Lọc phía ứng dụng: provider có công bố ngôn ngữ đã xác thực cho từng giọng,
-    // nhưng giọng KHÔNG công bố gì thì vẫn giữ lại — loại bỏ chúng sẽ giấu mất
-    // những giọng vẫn dùng được.
+    // Giọng KHÔNG công bố ngôn ngữ nào thì vẫn giữ lại — loại bỏ chúng sẽ giấu
+    // mất những giọng vẫn dùng được.
     const wanted = options.language.toLowerCase()
     return collected.filter(
       (voice) =>
@@ -266,24 +322,19 @@ export const elevenLabsTtsAdapter: TtsAdapter = {
 
   async testConnection(context: AdapterContext): Promise<ConnectionTestResult> {
     try {
-      // Liệt kê giọng là phép thử rẻ nhất: không sinh audio nên không tốn hạn mức.
-      const url = new URL('/v2/voices', BASE_URL)
-      url.searchParams.set('page_size', '1')
+      // Dùng /v1/models chứ không dùng danh sách giọng: nó chỉ cần quyền
+      // models_read. Quan sát thực tế cho thấy một khoá chỉ có quyền
+      // text_to_speech vẫn tạo giọng đọc bình thường nhưng không liệt kê được
+      // giọng — thử kết nối bằng endpoint giọng sẽ báo hỏng nhầm cho khoá đó.
+      const models = await this.listModels(context)
+      const vietnamese = models.filter((model) =>
+        model.languages.some((language) => language.toLowerCase().startsWith('vi'))
+      )
 
-      const response = await requestJson<ElevenLabsVoicesResponse>({
-        url: url.toString(),
-        method: 'GET',
-        headers: authHeaders(context),
-        signal: context.signal,
-        providerId: PROVIDER_ID,
-        timeoutMs: 15_000
-      })
-
-      const total = response.total_count ?? response.voices?.length ?? 0
       return {
         ok: true,
         message: 'Kết nối thành công',
-        details: `Tài khoản có ${total} giọng đọc khả dụng`
+        details: `${models.length} model sinh giọng đọc, ${vietnamese.length} model hỗ trợ tiếng Việt`
       }
     } catch (error) {
       return {
@@ -292,4 +343,9 @@ export const elevenLabsTtsAdapter: TtsAdapter = {
       }
     }
   }
+}
+
+/** Chỉ dùng trong kiểm thử: xoá bộ nhớ đệm model giữa các phép thử. */
+export function clearElevenLabsModelCache(): void {
+  modelCache.clear()
 }

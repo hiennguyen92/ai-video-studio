@@ -93,9 +93,12 @@ export function registerAiIpcHandlers(): void {
     guard(async () => {
       const adapter = getTtsAdapter(providerId)
       if (!adapter) throw new Error(`Không có adapter cho provider "${providerId}"`)
-      // Danh sách model của cả hai provider là hằng số trong tài liệu, nên không
-      // đòi khoá API ở đây — người dùng xem được model trước khi nhập khoá.
-      return adapter.listModels({ apiKey: '', signal: new AbortController().signal })
+
+      // Một số provider đọc danh sách model qua API (ElevenLabs), số khác có
+      // danh mục cố định (OpenAI). Có khoá thì gửi kèm; không có thì vẫn thử,
+      // và provider cần khoá sẽ tự báo lỗi thiếu quyền cho đúng.
+      const apiKey = (await getCredential(providerId)) ?? ''
+      return adapter.listModels({ apiKey, signal: new AbortController().signal })
     })
   )
 
@@ -121,6 +124,20 @@ export function registerAiIpcHandlers(): void {
     guard(async () => {
       const adapter = getTtsAdapter(providerId)
       if (!adapter) throw new Error(`Không có adapter cho provider "${providerId}"`)
+
+      // Nạp model trước: năng lực của ElevenLabs được suy ra từ siêu dữ liệu
+      // model lấy qua API (cờ can_use_style, giới hạn ký tự…). Bỏ bước này thì
+      // giao diện sẽ dựng theo giá trị dè dặt mặc định thay vì giá trị thật.
+      const apiKey = await getCredential(providerId)
+      if (apiKey) {
+        try {
+          await adapter.listModels({ apiKey, signal: new AbortController().signal })
+        } catch {
+          // Không nạp được thì vẫn trả năng lực mặc định — người dùng vẫn dùng
+          // được panel, chỉ là không có tham số phụ thuộc model.
+        }
+      }
+
       return adapter.capabilities(model)
     })
   )

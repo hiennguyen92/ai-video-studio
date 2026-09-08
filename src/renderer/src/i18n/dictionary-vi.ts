@@ -223,6 +223,12 @@ export const dictionaryVi = {
     presets: 'Preset đã lưu',
     applyPreset: 'Áp dụng',
     deletePreset: 'Xoá preset',
+    voiceCategoryPremade: 'có sẵn',
+    voiceCategoryProfessional: 'thư viện',
+    voiceCategoryNote:
+      'Giọng "thư viện" có thể cần gói trả phí; gói miễn phí sẽ bị từ chối khi tạo.',
+    languageFilterNote:
+      'Lọc theo ngôn ngữ đã xác thực của giọng. Model đa ngôn ngữ vẫn đọc được ngôn ngữ khác, nên có thể bỏ lọc để thấy đủ giọng.',
     emptyScript: 'Nhập kịch bản để bắt đầu tạo giọng đọc.'
   },
   music: {

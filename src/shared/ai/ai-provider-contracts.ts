@@ -33,8 +33,23 @@ export interface AdapterContext {
 export interface Voice {
   id: string
   name: string
-  /** Mã ngôn ngữ provider công bố cho giọng này. Rỗng = provider không nói. */
+  /**
+   * Mã ngôn ngữ provider công bố ĐÃ XÁC THỰC cho giọng này, đã khử trùng lặp.
+   * Rỗng = provider không công bố gì.
+   *
+   * Lưu ý: đây KHÔNG phải giới hạn cứng. Model đa ngôn ngữ vẫn đọc được ngôn ngữ
+   * không nằm trong danh sách này; trường này chỉ nói giọng đã được xác thực với
+   * những ngôn ngữ nào.
+   */
   languages: string[]
+  /**
+   * Phân loại của provider, ví dụ "premade" hay "professional".
+   *
+   * Có ý nghĩa thực tế: quan sát trên tài khoản thật cho thấy gói miễn phí bị
+   * chặn dùng giọng thư viện (HTTP 402), nên giao diện cần cho người dùng biết
+   * trước thay vì để họ bấm tạo rồi mới gặp lỗi.
+   */
+  category?: string
   /** URL mẫu giọng sẵn có, nghe thử mà không tốn lượt sinh audio. */
   previewUrl?: string
   description?: string
@@ -158,6 +173,14 @@ export interface MusicAdapter {
 export type ProviderErrorKind =
   | 'missing-credential'
   | 'invalid-credential'
+  /**
+   * Khoá HỢP LỆ nhưng không đủ quyền cho thao tác này.
+   *
+   * Tách khỏi 'invalid-credential' vì cách xử lý hoàn toàn khác: khoá sai thì
+   * phải thay khoá, còn thiếu quyền thì chỉ cần bật thêm quyền cho đúng khoá đó.
+   * Gộp chung sẽ khiến người dùng dán lại khoá cũ mãi mà không hiểu vì sao hỏng.
+   */
+  | 'insufficient-permission'
   | 'rate-limited'
   | 'quota-exceeded'
   | 'timeout'

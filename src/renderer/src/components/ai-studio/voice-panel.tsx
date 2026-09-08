@@ -32,6 +32,15 @@ const LANGUAGE_OPTIONS = [
 
 export function VoicePanel({ onOpenSettings }: { onOpenSettings(): void }): JSX.Element {
   const t = useT()
+
+  /** Nhãn ngắn cho phân loại giọng của provider. */
+  const categoryLabel = (category: string): string =>
+    category === 'premade'
+      ? t.voice.voiceCategoryPremade
+      : category === 'professional'
+        ? t.voice.voiceCategoryProfessional
+        : category
+
   const document = useEditorStore(selectDocument)
   const { insertAudio, canReplaceSelection } = useAudioInsertion()
   const { states, generate, cancel } = useSpeechGeneration()
@@ -294,6 +303,7 @@ export function VoicePanel({ onOpenSettings }: { onOpenSettings(): void }): JSX.
             {voices.map((voice) => (
               <option key={voice.id} value={voice.id}>
                 {voice.name}
+                {voice.category ? ` · ${categoryLabel(voice.category)}` : ''}
                 {voice.languages.length > 0 ? ` (${voice.languages.join(', ')})` : ''}
               </option>
             ))}
@@ -314,6 +324,16 @@ export function VoicePanel({ onOpenSettings }: { onOpenSettings(): void }): JSX.
           ? t.voice.voiceCatalogRemote
           : t.voice.voiceCatalogStatic}
       </p>
+
+      {/* Giọng thư viện bị gói miễn phí từ chối lúc tạo — nói trước để người
+          dùng không bấm tạo rồi mới gặp lỗi thanh toán. */}
+      {voices.some((voice) => voice.category === 'professional') && (
+        <p className="voice-panel__catalog-note">{t.voice.voiceCategoryNote}</p>
+      )}
+
+      {capabilities?.supportsLanguageFilter && (
+        <p className="voice-panel__catalog-note">{t.voice.languageFilterNote}</p>
+      )}
 
       {selectedVoice?.previewUrl && (
         <audio

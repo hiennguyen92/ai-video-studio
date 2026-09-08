@@ -6,10 +6,8 @@ timeline** thay vì một video đã đóng băng.
 
 > **Trạng thái: Mốc 1 và Mốc 2 đã hoàn tất.**
 > Nhập media, dựng timeline, xem trước, lưu/mở lại và xuất MP4 đều chạy thật.
-> Hạ tầng AI đã xong: quản lý khoá bằng keychain, adapter giọng đọc, hàng đợi tác vụ,
-> panel Giọng đọc và Nhạc nền.
-> **Chưa có khoá API nên các lời gọi provider thật chưa được kiểm chứng** — xem
-> [Phạm vi hiện tại](#phạm-vi-hiện-tại).
+> Giọng đọc đã **gọi ElevenLabs thật thành công**: sinh audio tiếng Việt, đo thời lượng bằng
+> ffprobe, đưa vào timeline. Xem [Phạm vi hiện tại](#phạm-vi-hiện-tại).
 
 ---
 
@@ -120,18 +118,32 @@ Các tab này **có mặt trong giao diện và nói rõ là chưa có** — kh�
 - Auto-ducking (Mốc 4)
 - Tạo nhạc bằng mô tả — chưa có nhà cung cấp nào có API công khai ổn định
 
+### Đã kiểm chứng bằng API thật (ElevenLabs)
+
+Chạy với khoá thật đã xác nhận: đọc model, liệt kê giọng, **sinh audio tiếng Việt** (110 ký tự →
+7,20 giây, mp3 44,1 kHz), ffprobe đọc được file. Việc chạy thật này sửa **năm** chỗ sai mà kiểm thử
+bằng fixture không thể phát hiện:
+
+| Sai ở đâu | Bảng viết tay theo tài liệu | Sự thật từ API |
+|---|---|---|
+| Model cho tiếng Việt | `eleven_multilingual_v2` | Model đó **không** có `vi`; phải dùng `flash_v2_5`, `turbo_v2_5` hoặc `v3` |
+| Giới hạn `eleven_v3` | 3.000 ký tự | 5.000 |
+| `style` / `speaker_boost` | bật cho mọi model | có cờ `can_use_style` / `can_use_speaker_boost` **theo từng model** |
+| Mã ngôn ngữ của giọng | dùng nguyên | **trùng lặp** (một giọng có `en` chín lần) — phải khử trùng |
+| Thiếu quyền khoá | gộp vào "khoá sai" | 401 kèm `missing_permissions` là ca **khác hẳn**: khoá đúng, chỉ thiếu quyền |
+
+Vì vậy siêu dữ liệu model giờ **đọc từ `/v1/models`**, không viết cứng trong mã.
+
 ### Giới hạn đã biết
 
-- **⚠️ Lời gọi provider thật chưa được kiểm chứng.** Adapter ElevenLabs và OpenAI được viết theo
-  tài liệu chính thức và kiểm thử bằng máy chủ giả trả về phản hồi đúng hình dạng tài liệu mô tả.
-  Dự án chưa có khoá API nên chưa lần nào gọi API thật thành công. Cụ thể chưa kiểm chứng được:
-  phản hồi thật có khớp tài liệu không, chất lượng giọng tiếng Việt, và hành vi khi bị giới hạn
-  tần suất. Đường đi khi **thiếu khoá hoặc khoá sai** thì đã kiểm thử và báo lỗi đúng.
-- **Hỗ trợ tiếng Việt của provider chưa được xác nhận từ nguồn gốc.** Tài liệu ElevenLabs không
-  nói rõ trong trang mà nghiên cứu truy cập được; OpenAI không công bố hỗ trợ theo từng giọng.
-  Giao diện nói đúng điều đó thay vì hứa hẹn.
-- Tham số `style` và `speed` của ElevenLabs **không được đưa ra giao diện** vì khoảng giá trị hợp
-  lệ chưa xác minh được từ tài liệu.
+- **OpenAI TTS chưa gọi thật lần nào.** Adapter viết theo tài liệu và kiểm thử bằng fixture; chưa
+  có khoá OpenAI để xác nhận.
+- **Giọng "thư viện" cần gói trả phí.** Tài khoản gói miễn phí bị từ chối bằng HTTP 402 khi dùng
+  giọng `professional`. Giao diện đánh dấu phân loại giọng và cảnh báo trước.
+- **Lọc giọng theo ngôn ngữ chỉ là gợi ý.** Nó lọc theo "ngôn ngữ đã xác thực" của giọng, nhưng
+  model đa ngôn ngữ vẫn đọc được ngôn ngữ khác — giao diện nói rõ điều này.
+- Tham số `speed` của ElevenLabs **không được đưa ra giao diện** vì khoảng giá trị hợp lệ chưa xác
+  minh được. Việc co giãn thời lượng cho lồng tiếng sẽ dùng `atempo` của ffmpeg, không phụ thuộc provider.
 - **Chỉ kiểm thử trên macOS Apple Silicon.** Windows/Linux chưa chạy thử lần nào.
 - **Chưa đóng gói cài đặt.** `electron-builder` đã có cấu hình nhưng chưa dựng bản cài.
   Bản ffmpeg đi kèm hiện tại được build với `--enable-nonfree`, **không phát hành lại được** —
@@ -190,12 +202,16 @@ Xem [`docs/system-architecture.md`](docs/system-architecture.md) để biết ch
 |---|---|---|
 | Unit | 46 | Quy đổi thời gian, biến đổi timeline, giao dịch lệnh, kiểm tra payload, vòng đời job, chia đoạn kịch bản |
 | Integration | 24 | **Chạy ffmpeg thật**: probe, waveform, thumbnail, dựng lệnh xuất, render MP4, nung phụ đề, huỷ job |
-| Adapter (fixture) | 15 | Máy chủ giả trả phản hồi đúng hình dạng tài liệu: dựng đúng đường dẫn/header/body, đọc phân trang, phân loại lỗi. **Không phải lời gọi provider thật** |
+| Adapter (fixture) | 18 | Máy chủ giả trả phản hồi đúng hình dạng thật: dựng đúng đường dẫn/header/body, đọc phân trang, tham số theo model, phân loại lỗi |
+| Provider thật | 7 | **Gọi ElevenLabs thật.** Chỉ chạy khi có `ELEVENLABS_API_KEY`; không có thì tự bỏ qua |
 | Đầu-cuối | 20 | **Chạy Electron thật đã build**: nhập media, dựng timeline, cắt, hoàn tác, đổi ngôn ngữ, lưu/mở lại, xuất MP4 rồi soi bằng ffprobe, lưu khoá qua keychain thật, tham số đổi theo model, nhạc nền chạy khi không có khoá |
 
 ```bash
-npm test          # 85 phép thử
+npm test          # 88 phép thử (7 phép thử gọi API thật tự bỏ qua khi thiếu khoá)
 npm run test:e2e  # 20 phép thử
+
+# Kiểm chứng với provider thật — khoá KHÔNG bao giờ ghi vào repo:
+ELEVENLABS_API_KEY=... npx vitest run src/main/ai/elevenlabs-live
 ```
 
 Kiểm thử cố tình **không giả lập ffmpeg**: giá trị nằm ở chỗ tham số dòng lệnh có đúng không, mà đó

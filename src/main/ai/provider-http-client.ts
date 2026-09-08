@@ -24,6 +24,23 @@ export interface HttpRequestOptions {
 
 const DEFAULT_TIMEOUT_MS = 120_000
 
+/**
+ * Phát hiện lỗi "khoá đúng nhưng thiếu quyền".
+ *
+ * ElevenLabs trả 401 kèm `status: "missing_permissions"` cho trường hợp này, y
+ * như khi khoá sai. Phân biệt được hai ca này rất quan trọng: quan sát thực tế
+ * cho thấy một khoá chỉ có quyền text_to_speech vẫn sinh giọng đọc bình thường
+ * nhưng không liệt kê được giọng — báo "khoá bị từ chối" ở đó là sai và khiến
+ * người dùng đi thay khoá một cách vô ích.
+ */
+export function looksLikeMissingPermission(bodyText: string): boolean {
+  return (
+    bodyText.includes('missing_permissions') ||
+    /missing the permission/i.test(bodyText) ||
+    /insufficient_permissions/i.test(bodyText)
+  )
+}
+
 /** Ánh xạ mã trạng thái HTTP sang phân loại lỗi mà giao diện hiểu được. */
 export function classifyHttpStatus(status: number): ProviderErrorKind {
   if (status === 401 || status === 403) return 'invalid-credential'
@@ -125,15 +142,21 @@ async function throwIfNotOk(response: Response, providerId: string): Promise<voi
   if (response.ok) return
 
   const bodyText = await response.text().catch(() => '')
-  const kind = classifyHttpStatus(response.status)
+  const statusKind = classifyHttpStatus(response.status)
+  const kind: ProviderErrorKind =
+    statusKind === 'invalid-credential' && looksLikeMissingPermission(bodyText)
+      ? 'insufficient-permission'
+      : statusKind
   const detail = extractErrorMessage(bodyText)
 
   const message =
-    kind === 'invalid-credential'
-      ? `Khoá API bị từ chối (HTTP ${response.status}). ${detail}`
-      : kind === 'rate-limited'
-        ? `Provider đang giới hạn tần suất (HTTP 429). ${detail}`
-        : `Provider trả lỗi HTTP ${response.status}. ${detail}`
+    kind === 'insufficient-permission'
+      ? `Khoá API hợp lệ nhưng thiếu quyền cho thao tác này. ${detail}`
+      : kind === 'invalid-credential'
+        ? `Khoá API bị từ chối (HTTP ${response.status}). ${detail}`
+        : kind === 'rate-limited'
+          ? `Provider đang giới hạn tần suất (HTTP 429). ${detail}`
+          : `Provider trả lỗi HTTP ${response.status}. ${detail}`
 
   throw new ProviderError({ kind, providerId, message, status: response.status })
 }
