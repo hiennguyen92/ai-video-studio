@@ -233,6 +233,19 @@ export function applyEditorCommand(doc: ProjectDocument, command: EditorCommand)
       return OK
     }
 
+    case 'clip/set-motion': {
+      const found = locateClip(doc, command.clipId)
+      if (!found) return fail(`Không tìm thấy clip ${command.clipId}`)
+      const track = doc.tracks[found.trackIndex]
+      if (track.locked) return fail(`Track "${track.name}" đang bị khoá`)
+      // Chuyển động là hiệu ứng hình, đặt lên track tiếng không có nghĩa gì.
+      if (track.kind !== 'video') return fail('Chỉ đặt được chuyển động cho clip hình')
+
+      const clip = track.clips[found.clipIndex]
+      clip.motion = command.motion ? { ...command.motion } : undefined
+      return OK
+    }
+
     case 'timeline/ripple-delete': {
       if (command.toUs <= command.fromUs) return fail('Khoảng cần xoá phải lớn hơn 0')
 

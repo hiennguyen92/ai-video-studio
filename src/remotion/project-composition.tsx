@@ -14,6 +14,7 @@ import type {
   RenderPlanTextOverlay,
   RenderPlanVideoClip
 } from '../shared/domain/remotion-render-plan'
+import { motionTransformAt, motionTransformCss } from '../shared/domain/clip-motion-types'
 import { wrapSubtitleText } from '../shared/domain/subtitle-types'
 
 /**
@@ -114,9 +115,14 @@ function useTransitionStyle(transition: RenderPlanVideoClip['transition']): {
 }
 
 function VideoClip({ clip, url }: { clip: RenderPlanVideoClip; url: string }): JSX.Element {
+  const frame = useCurrentFrame()
   const fade = useFadeGain(clip.durationInFrames, clip.fadeInFrames, clip.fadeOutFrames)
   const enter = useTransitionStyle(clip.transition)
   const { transform } = clip
+
+  // Chuyển động trong clip đi SAU biến đổi tĩnh: nó là chuyển động của khung hình
+  // đã đặt đúng chỗ, không phải một cách đặt chỗ khác.
+  const motion = motionTransformCss(motionTransformAt(clip.motion, frame, clip.durationInFrames))
 
   return (
     <AbsoluteFill
@@ -125,7 +131,7 @@ function VideoClip({ clip, url }: { clip: RenderPlanVideoClip; url: string }): J
       style={{
         opacity: transform.opacity * fade * enter.opacity,
         clipPath: enter.clipPath,
-        transform: `${enter.transform ?? ''} translate(${transform.x}px, ${transform.y}px) scale(${transform.scale}) rotate(${transform.rotationDeg}deg)`
+        transform: `${enter.transform ?? ''} translate(${transform.x}px, ${transform.y}px) scale(${transform.scale}) rotate(${transform.rotationDeg}deg) ${motion}`
       }}
     >
       <OffthreadVideo

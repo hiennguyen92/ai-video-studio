@@ -418,3 +418,64 @@ describe('nền hộp cho chữ overlay', () => {
     expect(plan.failures).toHaveLength(1)
   })
 })
+
+describe('công cụ chuyển động trong clip', () => {
+  it('đặt được chuyển động kèm cường độ', () => {
+    const { document, clipId } = withClip()
+    const plan = planChatToolCalls(context(document), [
+      { name: 'set_clip_motion', arguments: { clipId, kind: 'zoom-in', intensity: 0.8 } }
+    ])
+
+    for (const command of plan.steps.flatMap((step) => step.commands)) {
+      expect(applyEditorCommand(document, command).ok).toBe(true)
+    }
+
+    expect(document.tracks[0].clips[0].motion).toEqual({ kind: 'zoom-in', intensity: 0.8 })
+  })
+
+  it('không nêu cường độ thì dùng mức mặc định, không phải 0', () => {
+    const { document, clipId } = withClip()
+    const plan = planChatToolCalls(context(document), [
+      { name: 'set_clip_motion', arguments: { clipId, kind: 'pan-left' } }
+    ])
+    for (const command of plan.steps.flatMap((step) => step.commands)) {
+      expect(applyEditorCommand(document, command).ok).toBe(true)
+    }
+
+    // Cường độ 0 nghĩa là không có chuyển động nào cả — bỏ trống mà ra 0 thì công
+    // cụ báo đã đặt trong khi màn hình không đổi gì.
+    expect(document.tracks[0].clips[0].motion?.intensity).toBeGreaterThan(0)
+  })
+
+  it('"none" gỡ chuyển động đã đặt', () => {
+    const { document, clipId } = withClip()
+    for (const call of [
+      { name: 'set_clip_motion', arguments: { clipId, kind: 'shake' } },
+      { name: 'set_clip_motion', arguments: { clipId, kind: 'none' } }
+    ]) {
+      const plan = planChatToolCalls(context(document), [call])
+      expect(plan.failures).toEqual([])
+      for (const command of plan.steps.flatMap((step) => step.commands)) {
+        expect(applyEditorCommand(document, command).ok).toBe(true)
+      }
+    }
+
+    expect(document.tracks[0].clips[0].motion).toBeUndefined()
+  })
+
+  it('từ chối kiểu chuyển động mô hình bịa ra và cường độ ngoài khoảng', () => {
+    const { document, clipId } = withClip()
+
+    expect(
+      planChatToolCalls(context(document), [
+        { name: 'set_clip_motion', arguments: { clipId, kind: 'barrel-roll' } }
+      ]).failures
+    ).toHaveLength(1)
+
+    expect(
+      planChatToolCalls(context(document), [
+        { name: 'set_clip_motion', arguments: { clipId, kind: 'zoom-in', intensity: 5 } }
+      ]).failures
+    ).toHaveLength(1)
+  })
+})

@@ -3,7 +3,7 @@ import { applyEditorCommand } from '../commands/editor-command-reducer'
 import { createEmptyProject } from './project-document-factory'
 import type { ProjectDocument } from './project-document-types'
 import { DEFAULT_SUBTITLE_STYLE } from './subtitle-types'
-import { buildRenderPlan } from './remotion-render-plan'
+import { buildRenderPlan, requiresRemotionRenderer } from './remotion-render-plan'
 
 /**
  * Quy đổi micro giây sang khung hình cho Remotion.
@@ -223,5 +223,31 @@ describe('thiết lập dự án', () => {
     const plan = buildRenderPlan(document)
     expect([plan.width, plan.height]).toEqual([1080, 1920])
     expect(plan.backgroundColor).toBe('#123456')
+  })
+})
+
+describe('chuyển động trong clip buộc phải dựng bằng Remotion', () => {
+  it('dự án có chuyển động thì đường ffmpeg không vẽ nổi', () => {
+    const document = createEmptyProject({ name: 'Chuyển động' })
+    const track = document.tracks.find((item) => item.kind === 'video')!
+
+    expect(requiresRemotionRenderer(document)).toBe(false)
+
+    track.clips.push({
+      id: 'clip_1',
+      assetId: 'asset_1',
+      startUs: 0,
+      durationUs: 3_000_000,
+      sourceInUs: 0,
+      speed: 1,
+      volume: 1,
+      fadeInUs: 0,
+      fadeOutUs: 0,
+      motion: { kind: 'zoom-in', intensity: 0.5 }
+    })
+
+    // Bỏ sót chỗ này thì xuất bằng ffmpeg cho ra file THIẾU chuyển động mà không
+    // báo gì — người dùng chỉ phát hiện sau khi đã đăng video.
+    expect(requiresRemotionRenderer(document)).toBe(true)
   })
 })

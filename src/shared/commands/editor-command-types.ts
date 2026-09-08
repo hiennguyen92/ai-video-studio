@@ -196,6 +196,33 @@ const setClipTransition = z.object({
     .optional()
 })
 
+/**
+ * Đặt hoặc gỡ chuyển động chạy suốt clip.
+ *
+ * Tách khỏi `clip/update` cùng lý do như chuyển cảnh: `transform` trong đó là một
+ * giá trị tĩnh cho cả clip, còn cái này đổi theo từng khung hình.
+ */
+const setClipMotion = z.object({
+  type: z.literal('clip/set-motion'),
+  clipId: z.string(),
+  /** Bỏ trống nghĩa là gỡ chuyển động. */
+  motion: z
+    .object({
+      kind: z.enum([
+        'zoom-in',
+        'zoom-out',
+        'pan-left',
+        'pan-right',
+        'pan-up',
+        'pan-down',
+        'punch-in',
+        'shake'
+      ]),
+      intensity: z.number().min(0).max(1)
+    })
+    .optional()
+})
+
 const updateClip = z.object({
   type: z.literal('clip/update'),
   clipId: z.string(),
@@ -528,6 +555,7 @@ export const editorCommandSchema = z.discriminatedUnion('type', [
   duplicateClip,
   updateClip,
   setClipTransition,
+  setClipMotion,
   addTranscript,
   removeTranscript,
   updateTranscriptSegment,

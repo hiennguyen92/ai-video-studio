@@ -12,6 +12,7 @@ import { selectDocument, useEditorStore } from '../../state/editor-store'
 import { useT } from '../../i18n/use-translation'
 import { EmptyState } from '../ui/empty-state'
 import { ToolButton } from '../ui/tool-button'
+import { ClipMotionControls } from './clip-motion-controls'
 import { ClipTransitionControls } from './clip-transition-controls'
 import { AiChatPanel } from '../chat/ai-chat-panel'
 import './inspector-panel.css'
@@ -146,6 +147,18 @@ export function InspectorPanel(): JSX.Element {
                   run(
                     [{ type: 'clip/set-transition', clipId: found.clip.id, transition }],
                     'Đổi chuyển cảnh'
+                  )
+                }
+              />
+            )}
+
+            {found.track.kind === 'video' && (
+              <ClipMotionControls
+                clip={found.clip}
+                onChange={(motion) =>
+                  run(
+                    [{ type: 'clip/set-motion', clipId: found.clip.id, motion }],
+                    'Đổi chuyển động'
                   )
                 }
               />

@@ -1,6 +1,7 @@
 import type { EditorCommand } from '../commands/editor-command-types'
 import type { ProjectDocument } from '../domain/project-document-types'
 import { findClip } from '../domain/project-document-types'
+import { DEFAULT_MOTION_INTENSITY } from '../domain/clip-motion-types'
 import { clipEndUs, type Clip } from '../domain/timeline-track-types'
 import { buildSubtitleCues } from '../domain/subtitle-cue-builder'
 import { DEFAULT_SUBTITLE_STYLE, type SubtitleTrack } from '../domain/subtitle-types'
@@ -575,6 +576,31 @@ function planOne(context: ChatEditContext, tool: ChatToolName, args: unknown): P
             type: 'clip/set-transition',
             clipId,
             transition: { kind: input.kind, durationUs }
+          }
+        ]
+      }
+    }
+
+    case 'set_clip_motion': {
+      const input = chatToolSchemas.set_clip_motion.parse(args)
+      const clipId = resolveClipId(context, input.clipId)
+
+      if (input.kind === 'none') {
+        return {
+          tool,
+          description: 'Gỡ chuyển động của clip',
+          commands: [{ type: 'clip/set-motion', clipId }]
+        }
+      }
+
+      return {
+        tool,
+        description: `Đặt chuyển động ${input.kind} cho clip`,
+        commands: [
+          {
+            type: 'clip/set-motion',
+            clipId,
+            motion: { kind: input.kind, intensity: input.intensity ?? DEFAULT_MOTION_INTENSITY }
           }
         ]
       }

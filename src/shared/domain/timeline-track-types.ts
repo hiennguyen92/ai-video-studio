@@ -1,3 +1,4 @@
+import type { ClipMotion } from './clip-motion-types'
 import type { Micros } from './time-units'
 
 /**
@@ -80,6 +81,13 @@ export interface Clip {
   fadeInUs: Micros
   fadeOutUs: Micros
   transform?: ClipTransform
+  /**
+   * Chuyển động chạy suốt clip (đẩy chậm, lia, giật phóng, rung).
+   *
+   * Tách khỏi `transform` vì `transform` là một giá trị TĨNH cho cả clip, còn
+   * cái này đổi theo từng khung hình.
+   */
+  motion?: ClipMotion
   /**
    * Hiệu ứng khi clip này xuất hiện.
    *

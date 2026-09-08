@@ -7,6 +7,7 @@ import {
   type ClipTransform,
   type TransitionKind
 } from './timeline-track-types'
+import type { ClipMotion } from './clip-motion-types'
 import type { SubtitleStyle } from './subtitle-types'
 import type { TextAnimation } from './text-overlay-types'
 import { frameOfMicros, type FrameRate } from './time-units'
@@ -37,6 +38,8 @@ export interface RenderPlanVideoClip {
   /** Track càng dưới trong danh sách càng vẽ sau, tức là nằm trên. */
   layerIndex: number
   transform: ClipTransform
+  /** Chuyển động trong clip; lớp vẽ tự tính theo khung hình hiện tại. */
+  motion?: ClipMotion
   muted: boolean
   /**
    * Hiệu ứng xuất hiện, tính bằng khung.
@@ -131,7 +134,7 @@ export function resolveTransitionFrames(clip: Clip, fps: FrameRate): number {
 export function requiresRemotionRenderer(document: ProjectDocument): boolean {
   if (document.textOverlays.length > 0) return true
   return document.tracks.some((track) =>
-    track.clips.some((clip) => clip.transitionIn !== undefined)
+    track.clips.some((clip) => clip.transitionIn !== undefined || clip.motion !== undefined)
   )
 }
 
@@ -186,6 +189,7 @@ export function buildRenderPlan(document: ProjectDocument): RenderPlan {
           fadeOutFrames: frameOfMicros(clip.fadeOutUs, fps),
           layerIndex,
           transform: clip.transform ?? DEFAULT_CLIP_TRANSFORM,
+          motion: clip.motion,
           // Track hình bị tắt tiếng vẫn phải hiện hình, chỉ câm.
           muted: !audioTrackAudible(track, anySolo)
         })

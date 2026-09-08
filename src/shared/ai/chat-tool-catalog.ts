@@ -190,6 +190,29 @@ export const chatToolSchemas = {
     durationSeconds: z.number().positive().max(5).optional()
   }),
 
+  /**
+   * Chuyển động chạy suốt clip.
+   *
+   * Đây là hiệu ứng có tác động lớn nhất trên footage gần như tĩnh: một cú đẩy
+   * chậm làm khung hình thôi bị coi là ảnh chết. `none` để gỡ.
+   */
+  set_clip_motion: z.object({
+    clipId: z.string().min(1).max(120).optional(),
+    kind: z.enum([
+      'none',
+      'zoom-in',
+      'zoom-out',
+      'pan-left',
+      'pan-right',
+      'pan-up',
+      'pan-down',
+      'punch-in',
+      'shake'
+    ]),
+    /** 0–1. Bỏ trống thì 0,5. */
+    intensity: z.number().min(0).max(1).optional()
+  }),
+
   auto_duck_music: z.object({
     duckVolume: gain.optional(),
     baseVolume: gain.optional(),
@@ -238,7 +261,9 @@ export const chatToolDescriptions: Record<ChatToolName, string> = {
   set_canvas:
     'Set the project canvas shape. Use 9:16 for TikTok, Reels and Shorts, 16:9 for YouTube, 1:1 for square. Do this before laying out text, because it changes where text sits in frame.',
   set_clip_transition:
-    'Put a transition on the start of a clip, so it blends out of the clip before it. Use "none" to remove one. A transition eats into the clip, so it needs footage before the cut to play over.'
+    'Put a transition on the start of a clip, so it blends out of the clip before it. Use "none" to remove one. A transition eats into the clip, so it needs footage before the cut to play over.',
+  set_clip_motion:
+    'Move the frame over the whole length of a clip: a slow push in or out, a slow pan, a punch in at the cut, or a shake. Use this on footage that barely moves — a still product shot with a slow push reads as edited, the same shot held still reads as a frozen photo. Use "none" to remove it.'
 }
 
 /** Mô tả tham số cho mô hình — dựng thủ công để không phải kéo thêm thư viện. */
@@ -269,7 +294,9 @@ export const chatToolParameterHints: Record<ChatToolName, string> = {
   remove_text_overlay: '{ overlayId: string }',
   set_canvas: "{ aspect: '16:9' | '9:16' | '1:1', longEdgePx?: number }",
   set_clip_transition:
-    "{ clipId?: string, kind: 'none' | 'fade' | 'slide-left' | 'slide-right' | 'slide-up' | 'slide-down' | 'wipe-left' | 'wipe-right' | 'zoom', durationSeconds?: number }"
+    "{ clipId?: string, kind: 'none' | 'fade' | 'slide-left' | 'slide-right' | 'slide-up' | 'slide-down' | 'wipe-left' | 'wipe-right' | 'zoom', durationSeconds?: number }",
+  set_clip_motion:
+    "{ clipId?: string, kind: 'none' | 'zoom-in' | 'zoom-out' | 'pan-left' | 'pan-right' | 'pan-up' | 'pan-down' | 'punch-in' | 'shake', intensity?: number }"
 }
 
 /**
