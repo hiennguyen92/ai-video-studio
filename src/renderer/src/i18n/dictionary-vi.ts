@@ -384,6 +384,19 @@ export const dictionaryVi = {
     unverified:
       'Lưu ý: đường gọi tới ElevenLabs Music chưa được kiểm chứng bằng khoá thật — mới kiểm bằng máy chủ giả lập đúng giao thức.'
   },
+  ducking: {
+    section: 'Giảm nhạc khi có lời nói',
+    hint: 'Cắt nhạc tại ranh giới lời nói rồi hạ âm lượng những đoạn trùng. Chạy được ngay, không cần khoá AI nào.',
+    duckVolume: 'Âm lượng khi có lời (%)',
+    baseVolume: 'Âm lượng bình thường (%)',
+    padding: 'Nới hai đầu (giây)',
+    apply: 'Áp dụng',
+    needsBoth: 'Cần có cả clip nhạc và clip lời nói trên timeline.',
+    applied: 'Đã hạ âm lượng {count} đoạn nhạc',
+    nothing: 'Không có đoạn nhạc nào trùng với lời nói',
+    stepNote:
+      'Mức âm lượng đổi theo bậc, chưa có dốc mượt — mô hình clip hiện chỉ có âm lượng cho cả clip.'
+  },
   transcribe: {
     title: 'Phiên âm',
     modelSection: 'Model nhận dạng',
@@ -431,11 +444,7 @@ export const dictionaryVi = {
     fadeOut: 'Fade out',
     loopToFill: 'Lặp cho đủ độ dài',
     trimToSelection: 'Cắt theo vùng chọn',
-    ducking: 'Tự giảm nhạc khi có lời nói',
-    duckingComingSoon: 'Auto-ducking sẽ có ở mốc sau.',
-    selectClipFirst: 'Chọn một clip nhạc trên timeline để chỉnh âm lượng và fade.',
-    generateComingSoon:
-      'Tạo nhạc bằng mô tả chưa khả dụng — chưa có nhà cung cấp nào có API công khai ổn định.'
+    selectClipFirst: 'Chọn một clip nhạc trên timeline để chỉnh âm lượng và fade.'
   },
   jobs: {
     title: 'Tác vụ',

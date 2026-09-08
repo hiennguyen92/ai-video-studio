@@ -202,6 +202,28 @@ test('nhạc đã chèn nằm đúng trên track nhạc nền và sửa được
   await expect(inspector.getByLabel('Fade in')).toBeVisible()
 })
 
+test('phần giảm nhạc dùng được mà không cần khoá AI, và nói rõ khi chưa đủ dữ liệu', async () => {
+  await studio().getByRole('tab', { name: 'Nhạc nền' }).click()
+
+  // Có mặt và không đòi khoá nào — đây là thao tác thuần cục bộ, không đi qua
+  // AI Chat (vốn cần một máy chủ LLM).
+  await expect(page.getByText('Giảm nhạc khi có lời nói')).toBeVisible()
+  await expect(page.getByLabel('Âm lượng khi có lời (%)')).toHaveValue('25')
+
+  // Dự án mới chỉ có clip nhạc, chưa có lời nói: phải nói rõ lý do và khoá nút,
+  // thay vì để bấm rồi im lặng không làm gì.
+  await expect(page.getByText('Cần có cả clip nhạc và clip lời nói')).toBeVisible()
+  await expect(
+    page
+      .locator('.music-generation')
+      .filter({ hasText: 'Giảm nhạc' })
+      .getByRole('button', { name: 'Áp dụng' })
+  ).toBeDisabled()
+
+  // Giới hạn của cách làm phải được nói ra, không giấu.
+  await expect(page.getByText(/Mức âm lượng đổi theo bậc/)).toBeVisible()
+})
+
 test('xoá khoá đưa provider về trạng thái chưa cấu hình', async () => {
   await studio().getByRole('tab', { name: 'Cấu hình AI' }).click()
   await page.getByRole('button', { name: 'Xoá khoá' }).nth(1).click()

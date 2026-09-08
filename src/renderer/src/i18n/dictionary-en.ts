@@ -383,6 +383,19 @@ export const dictionaryEn: Dictionary = {
     unverified:
       'Note: the ElevenLabs Music call has not been verified with a real key — only against a server that follows the documented protocol.'
   },
+  ducking: {
+    section: 'Lower music under speech',
+    hint: 'Cuts the music at speech boundaries and lowers the overlapping pieces. Works right away, no AI key needed.',
+    duckVolume: 'Volume under speech (%)',
+    baseVolume: 'Normal volume (%)',
+    padding: 'Padding each side (seconds)',
+    apply: 'Apply',
+    needsBoth: 'Needs both music and speech clips on the timeline.',
+    applied: 'Lowered {count} music sections',
+    nothing: 'No music overlaps any speech',
+    stepNote:
+      'The level changes in a step rather than a ramp — clips currently carry a single volume each.'
+  },
   transcribe: {
     title: 'Transcribe',
     modelSection: 'Recognition model',
@@ -430,11 +443,7 @@ export const dictionaryEn: Dictionary = {
     fadeOut: 'Fade out',
     loopToFill: 'Loop to fill',
     trimToSelection: 'Trim to selection',
-    ducking: 'Duck music under speech',
-    duckingComingSoon: 'Auto-ducking arrives in a later milestone.',
-    selectClipFirst: 'Select a music clip on the timeline to adjust volume and fades.',
-    generateComingSoon:
-      'Prompt-based music generation is unavailable — no provider has a stable public API.'
+    selectClipFirst: 'Select a music clip on the timeline to adjust volume and fades.'
   },
   jobs: {
     title: 'Tasks',

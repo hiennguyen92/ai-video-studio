@@ -9,6 +9,7 @@ import { interpolate, useT } from '../../i18n/use-translation'
 import { ToolButton } from '../ui/tool-button'
 import { EmptyState } from '../ui/empty-state'
 import { IconImport, IconWaveform } from '../ui/icons'
+import { AutoDuckingSection } from './auto-ducking-section'
 import { MusicGenerationSection } from './music-generation-section'
 import './music-panel.css'
 
@@ -140,10 +141,8 @@ export function MusicPanel({
         {hasMusicClipSelected ? t.inspector.noSelectionHint : t.music.selectClipFirst}
       </p>
 
-      {/* Nói thẳng những gì chưa có, thay vì bày nút bấm không chạy. */}
-      <p className="field-group__title">{t.music.ducking}</p>
-      <p className="music-panel__hint">{t.music.duckingComingSoon}</p>
-      <p className="music-panel__hint">{t.music.generateComingSoon}</p>
+      <AutoDuckingSection />
+
       <MusicGenerationSection
         onOpenSettings={onOpenSettings}
         credentialsVersion={credentialsVersion}

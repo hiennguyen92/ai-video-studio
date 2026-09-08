@@ -138,6 +138,49 @@ khoảng gốc, `dubbing-overflow-planner.ts` chỉ đưa ra ba lối thoát —
 ngưỡng nghe được, rút ngắn lời, hoặc kéo dài timeline. Không có nhánh nào cắt bớt
 audio. Chưa chọn hướng thì đoạn giữ nguyên độ dài thật và bị đánh dấu còn tràn.
 
+## AI Chat: vì sao mô hình không chạm được vào project
+
+Yêu cầu cứng của đề bài là "không tự sửa project JSON bằng đầu ra văn bản không
+xác thực". Cách thực hiện: mô hình **không có** đường ghi nào. Nó chỉ phát ra lời
+gọi công cụ, và lời gọi đó phải qua ba cửa trước khi thành thay đổi:
+
+1. tên công cụ phải nằm trong danh mục cố định (`chat-tool-catalog.ts`);
+2. tham số phải qua schema của chính công cụ đó;
+3. bộ dựng (`chat-tool-planner.ts`) đổi nó thành `EditorCommand` — đúng tập lệnh
+   mà thao tác tay dùng, nên được kiểm tra và hoàn tác y hệt.
+
+Bị chặn ở đây gồm: tên công cụ bịa, id clip/track không tồn tại, sai kiểu, `NaN`,
+`Infinity`, âm lượng ngoài khoảng, điểm cắt nằm ngoài clip. Một bước hỏng không
+làm đổ những bước còn lại; lý do từ chối được hiện ra chứ không nuốt đi.
+
+Công cụ nhận **giây**, không phải micro giây: mô hình xử lý số nhỏ quen thuộc
+đáng tin hơn hẳn, và việc quy đổi về đơn vị chuẩn nằm gọn một chỗ.
+
+Thay đổi không bao giờ tự áp dụng. Chúng thành một **bản đề xuất** đọc được, người
+dùng bấm mới chạy, và chạy thành đúng một bước hoàn tác. Bản đề xuất ghi lại
+`revision` lúc dựng; nếu dự án đã đổi kể từ đó thì nó bị từ chối, vì các id bên
+trong có thể đã trỏ vào clip không còn tồn tại.
+
+Lịch sử hội thoại nằm ở `chat.json` cạnh `project.json`, không nằm trong tài liệu
+project: hội thoại không phải nội dung biên tập nên không được vào lịch sử hoàn
+tác, và nó chỉ dài thêm chứ không co lại.
+
+## Giảm nhạc khi có lời nói
+
+Mô hình clip chỉ có **một mức âm lượng cho cả clip**, không có đường automation.
+Nên cách làm là cắt clip nhạc tại ranh giới lời nói rồi hạ âm lượng những mảnh
+trùng. Hệ quả: mức đổi theo **bậc thang**, không mượt.
+
+Không thể lấy fadeIn/fadeOut làm dốc, vì chúng luôn ramp từ/về IM LẶNG — nhạc sẽ
+tụt xuống 0 rồi mới lên lại, nghe tệ hơn hẳn một bậc nhảy. Muốn dốc thật thì phải
+thêm automation âm lượng vào mô hình clip.
+
+Âm lượng được đặt **tuyệt đối** cho cả mảnh bị giảm lẫn mảnh không, nên chạy lại
+lần hai cho ra đúng kết quả lần một; nhân dồn sẽ làm nhạc nhỏ dần sau mỗi lần chạy.
+
+Tính năng này gọi được từ AI Chat, nhưng cũng có nút riêng trong tab Nhạc nền:
+chat cần một máy chủ LLM, còn đây là thao tác thuần cục bộ.
+
 ## Lưu trữ
 
 Project là một file JSON, ghi theo kiểu **nguyên tử**: ghi ra file tạm rồi đổi tên đè lên file thật.
