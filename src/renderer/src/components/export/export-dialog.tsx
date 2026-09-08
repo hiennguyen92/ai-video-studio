@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState, type JSX } from 'react'
 import type { ExportCapabilities, ExportProgressEvent } from '../../../../shared/ipc/ipc-contract'
 import { FRAME_RATE_PRESETS, formatClockTime } from '../../../../shared/domain/time-units'
 import { selectDocument, selectDurationUs, useEditorStore } from '../../state/editor-store'
+import { requiresRemotionRenderer } from '../../../../shared/domain/remotion-render-plan'
 import { interpolate, useT } from '../../i18n/use-translation'
 import { ToolButton } from '../ui/tool-button'
 import { EmptyState } from '../ui/empty-state'
@@ -52,13 +53,16 @@ export function ExportDialog({ onClose }: { onClose(): void }): JSX.Element {
   )
   const [useHardware, setUseHardware] = useState(false)
   /**
-   * Mặc định vẫn là ffmpeg.
+   * Bộ dựng được chọn THEO NỘI DUNG dự án, không phải theo một mặc định cố định.
    *
-   * Remotion chậm hơn ~6,7 lần mà hiện chưa đổi lại được gì: chuyển cảnh và chữ
-   * động chưa có trong mô hình dữ liệu. Đổi mặc định lúc này là làm chậm đi mà
-   * không thêm tính năng nào — sẽ đổi khi hai thứ kia có.
+   * ffmpeg nhanh hơn ~6,7 lần nên vẫn là lựa chọn khi dùng được. Nhưng nó không
+   * vẽ được chuyển cảnh và chữ overlay, và xuất bằng nó trong trường hợp đó sẽ
+   * cho ra file THIẾU hiệu ứng mà không báo gì — người dùng chỉ phát hiện khi đã
+   * đăng video lên. Nên khi dự án có hai thứ đó, mặc định chuyển sang Remotion.
    */
+  const needsRemotion = document ? requiresRemotionRenderer(document) : false
   const [engine, setEngine] = useState<'ffmpeg' | 'remotion'>('ffmpeg')
+  const effectiveEngine = needsRemotion && engine === 'ffmpeg' ? 'remotion' : engine
   const [capabilities, setCapabilities] = useState<ExportCapabilities | null>(null)
   const [burnSubtitleTrackId, setBurnSubtitleTrackId] = useState<string>('')
   const [exportSrt, setExportSrt] = useState(false)
@@ -113,7 +117,7 @@ export function ExportDialog({ onClose }: { onClose(): void }): JSX.Element {
       height: targetSize.height,
       frameRate: FRAME_RATE_PRESETS[frameRateKey],
       useHardwareEncoder: useHardware,
-      engine,
+      engine: effectiveEngine,
       burnSubtitleTrackId: burnSubtitleTrackId || undefined,
       exportSrtTrackId: exportSrt
         ? burnSubtitleTrackId || document.subtitleTracks[0]?.id
@@ -128,7 +132,7 @@ export function ExportDialog({ onClose }: { onClose(): void }): JSX.Element {
     targetSize,
     frameRateKey,
     useHardware,
-    engine,
+    effectiveEngine,
     burnSubtitleTrackId,
     exportSrt
   ])
@@ -232,16 +236,20 @@ export function ExportDialog({ onClose }: { onClose(): void }): JSX.Element {
             <div className="field-row">
               <span className="field-row__label">{t.export.engine}</span>
               <select
-                value={engine}
+                value={effectiveEngine}
                 onChange={(event) => setEngine(event.target.value as 'ffmpeg' | 'remotion')}
-                disabled={running}
+                disabled={running || needsRemotion}
                 aria-label={t.export.engine}
               >
                 <option value="ffmpeg">{t.export.engineFfmpeg}</option>
                 <option value="remotion">{t.export.engineRemotion}</option>
               </select>
             </div>
-            <p className="export-dialog__hint">{t.export.engineHint}</p>
+            {/* Nói rõ vì sao không đổi được, thay vì để một ô xám không giải thích. */}
+            {needsRemotion && <div className="notice">{t.export.engineForced}</div>}
+            <p className="export-dialog__hint">
+              {needsRemotion ? t.export.engineWarning : t.export.engineHint}
+            </p>
 
             <div className="field-row">
               <span className="field-row__label">{t.export.burnSubtitles}</span>

@@ -159,6 +159,9 @@ export const dictionaryVi = {
     engine: 'Bộ dựng hình',
     engineFfmpeg: 'ffmpeg (nhanh)',
     engineRemotion: 'Remotion (khớp preview)',
+    engineForced: 'Dự án có chuyển cảnh hoặc chữ overlay nên phải dùng Remotion.',
+    engineWarning:
+      'ffmpeg KHÔNG vẽ được chuyển cảnh và chữ overlay. Xuất bằng nó sẽ ra file thiếu những hiệu ứng đó.',
     engineHint:
       'ffmpeg nhanh hơn khoảng 6,7 lần. Remotion dùng chung bản dựng với preview nên bản xuất không lệch bản xem trước, và là đường duy nhất làm được chuyển cảnh cùng chữ động về sau.',
     burnSubtitles: 'Nung phụ đề vào hình',

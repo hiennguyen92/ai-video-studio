@@ -156,8 +156,12 @@ test('chữ đi tới file xuất ra, không chỉ sống trong preview', async 
   await page.getByRole('button', { name: 'Xuất video' }).click()
   const dialog = page.getByRole('dialog', { name: 'Xuất video' })
 
-  // Chỉ đường Remotion vẽ được chữ overlay; filter graph ffmpeg không biết tới nó.
-  await dialog.getByLabel('Bộ dựng hình').selectOption('remotion')
+  // Dự án có chữ overlay nên app phải TỰ chọn Remotion và khoá lựa chọn lại:
+  // xuất bằng ffmpeg sẽ ra file thiếu chữ mà không báo gì.
+  const engine = dialog.getByLabel('Bộ dựng hình')
+  await expect(engine).toHaveValue('remotion')
+  await expect(engine).toBeDisabled()
+  await expect(dialog.getByText(/phải dùng Remotion/)).toBeVisible()
   await dialog.getByRole('button', { name: 'Chọn nơi lưu…' }).click()
   await dialog.getByRole('button', { name: 'Bắt đầu xuất' }).click()
   await expect(dialog.getByText('Xuất xong')).toBeVisible({ timeout: 600_000 })

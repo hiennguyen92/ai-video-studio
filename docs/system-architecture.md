@@ -233,9 +233,12 @@ dùng chọn trong hộp thoại Xuất.
 **chung một composition với preview**, nên bản xuất không thể lệch bản xem trước.
 Đường ffmpeg phải giữ hai hiện thực khớp nhau bằng tay.
 
-**Mặc định vẫn là ffmpeg.** Remotion chậm hơn mà hiện chưa đổi lại được gì: chuyển
-cảnh và chữ động chưa có trong mô hình dữ liệu. Đổi mặc định lúc này là làm chậm đi
-mà không thêm tính năng nào. Sẽ đổi khi hai thứ đó có.
+**Bộ dựng được chọn theo NỘI DUNG dự án, không theo một mặc định cố định.** ffmpeg
+vẫn được dùng khi dùng được, vì nó nhanh hơn hẳn. Nhưng dự án có chuyển cảnh hoặc
+chữ overlay thì app tự chuyển sang Remotion và khoá lựa chọn lại — xuất bằng ffmpeg
+lúc đó cho ra file **thiếu hiệu ứng mà không báo gì**, kiểu hỏng tệ nhất vì người
+dùng chỉ phát hiện khi đã đăng video lên. `requiresRemotionRenderer()` là chỗ quyết
+định, và giao diện nói rõ vì sao không đổi được.
 
 ### Ba lớp
 

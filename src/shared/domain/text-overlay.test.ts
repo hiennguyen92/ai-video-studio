@@ -4,7 +4,7 @@ import { planChatToolCalls } from '../ai/chat-tool-planner'
 import { createEmptyProject } from './project-document-factory'
 import { migrateProjectDocument } from './project-document-migrations'
 import { projectDurationUs, type ProjectDocument } from './project-document-types'
-import { buildRenderPlan } from './remotion-render-plan'
+import { buildRenderPlan, requiresRemotionRenderer } from './remotion-render-plan'
 import { createDefaultTextOverlayStyle, type TextOverlay } from './text-overlay-types'
 
 /**
@@ -186,5 +186,54 @@ describe('công cụ AI', () => {
       { name: 'remove_text_overlay', arguments: { overlayId: 'khong_co' } }
     ])
     expect(plan.failures[0].reason).toContain('Không tìm thấy')
+  })
+})
+
+describe('chọn bộ dựng theo nội dung dự án', () => {
+  it('dự án trơn thì ffmpeg dùng được', () => {
+    expect(requiresRemotionRenderer(project())).toBe(false)
+  })
+
+  it('có chữ overlay thì bắt buộc Remotion', () => {
+    const document = project()
+    applyEditorCommand(document, { type: 'text/add', overlay: overlay() })
+
+    // ffmpeg không vẽ được chữ overlay; xuất bằng nó sẽ ra file thiếu chữ mà
+    // không báo gì — người dùng chỉ phát hiện khi đã đăng video.
+    expect(requiresRemotionRenderer(document)).toBe(true)
+  })
+
+  it('có chuyển cảnh thì bắt buộc Remotion', () => {
+    const document = project()
+    document.assets.push({
+      id: 'asset_1',
+      kind: 'video',
+      name: 'a.mp4',
+      source: { path: '/tmp/a.mp4', contentHash: 'h', sizeBytes: 1, mtimeMs: 0 },
+      probe: { durationUs: 60_000_000, hasVideo: true, hasAudio: true },
+      derived: {},
+      origin: 'import',
+      tags: [],
+      createdAt: '2026-01-01T00:00:00.000Z',
+      missing: false
+    })
+    const trackId = document.tracks.find((track) => track.kind === 'video')!.id
+    applyEditorCommand(document, {
+      type: 'clip/insert',
+      clipId: 'clip_1',
+      trackId,
+      assetId: 'asset_1',
+      startUs: 2_000_000,
+      durationUs: 2_000_000,
+      sourceInUs: 2_000_000
+    })
+    expect(requiresRemotionRenderer(document)).toBe(false)
+
+    applyEditorCommand(document, {
+      type: 'clip/set-transition',
+      clipId: 'clip_1',
+      transition: { kind: 'fade', durationUs: 500_000 }
+    })
+    expect(requiresRemotionRenderer(document)).toBe(true)
   })
 })

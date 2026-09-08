@@ -118,6 +118,23 @@ export function resolveTransitionFrames(clip: Clip, fps: FrameRate): number {
   return Math.max(0, Math.min(wanted, handleFrames, startFrame, clipFrames))
 }
 
+/**
+ * Dự án có dùng thứ mà đường ffmpeg KHÔNG vẽ được không.
+ *
+ * Filter graph ffmpeg không biết tới chuyển cảnh lẫn chữ overlay. Xuất bằng nó
+ * khi dự án có hai thứ đó sẽ cho ra file THIẾU hiệu ứng mà không báo gì — kiểu
+ * hỏng tệ nhất, vì người dùng chỉ phát hiện khi đã đăng video lên.
+ *
+ * Dùng hàm này để chọn bộ dựng thay cho người dùng, và để cảnh báo nếu họ vẫn cố
+ * chọn ffmpeg.
+ */
+export function requiresRemotionRenderer(document: ProjectDocument): boolean {
+  if (document.textOverlays.length > 0) return true
+  return document.tracks.some((track) =>
+    track.clips.some((clip) => clip.transitionIn !== undefined)
+  )
+}
+
 /** Track có phát ra tiếng không, xét cả solo lẫn mute (giống lớp preview hiện có). */
 function audioTrackAudible(track: ProjectDocument['tracks'][number], anySolo: boolean): boolean {
   if (track.muted) return false

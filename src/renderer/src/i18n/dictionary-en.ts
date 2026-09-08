@@ -156,6 +156,9 @@ export const dictionaryEn: Dictionary = {
     engine: 'Render engine',
     engineFfmpeg: 'ffmpeg (fast)',
     engineRemotion: 'Remotion (matches preview)',
+    engineForced: 'This project has transitions or text overlays, so Remotion is required.',
+    engineWarning:
+      'ffmpeg cannot draw transitions or text overlays. Exporting with it produces a file missing them.',
     engineHint:
       'ffmpeg is about 6.7x faster. Remotion shares the composition with the preview, so the export cannot drift from what you saw, and it is the only path to transitions and animated text later.',
     burnSubtitles: 'Burn subtitles into the video',
