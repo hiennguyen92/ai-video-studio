@@ -119,6 +119,14 @@ giao diện chỉ lộ ra khi chuyển tab với dữ liệu thật.
 - [x] Nền hộp cho chữ overlay, chỉnh được cả trên giao diện lẫn qua công cụ
 - [x] Chạy thử trọn luồng trên footage thật: 98 giây một cú máy → video dọc 25,9
       giây có chuyển cảnh, chữ và giọng đọc
+- [x] Chuyển động trong clip: đẩy vào/ra chậm, lia bốn hướng, giật phóng, rung —
+      thứ nâng cảm giác có hậu kỳ rõ nhất trên footage gần như tĩnh
+- [x] Thêm sáu kiểu chuyển cảnh: lia vụt hai hướng, nhoè, nhiễu hình, xoay, loé
+- [x] Chỉnh màu clip: sáng, tương phản, bão hoà, nhiệt độ, tối góc.
+      **Không có LUT** — bộ lọc CSS không áp được bảng tra ba chiều, làm đúng phải
+      đẩy từng khung qua shader, tức thêm một đường vẽ và một cái giá về tốc độ
+      render chưa đo.
+- [x] Hiệu ứng ra và viền phát sáng cho chữ overlay
 - [ ] Đổi mặc định xuất sang Remotion khi các tính năng trên đủ chín — hiện mặc
       định vẫn là ffmpeg, chỉ tự chuyển sang Remotion khi dự án có chuyển cảnh
       hoặc chữ overlay
@@ -129,7 +137,9 @@ Theo `DESCRIPTION.md` §9: "Tính năng chưa có như tạo video AI, hiệu �
 ghi vào backlog rõ ràng."
 
 - Sinh video bằng AI
-- Hiệu ứng nâng cao, chuyển cảnh, keyframe, LUT
+- LUT (.cube) — cần một đường vẽ WebGL riêng; xem mục chỉnh màu ở Mốc 5
+- Keyframe cho mọi thông số (hiện chuyển động và màu là một giá trị cho cả clip)
+- Hiệu ứng nâng cao khác
 - Bám đối tượng và tự cắt khung theo chủ thể
 - Đa camera
 - Đóng gói bản cài cho macOS / Windows / Linux (cần thay ffmpeg bằng bản build hợp lệ về giấy phép)
