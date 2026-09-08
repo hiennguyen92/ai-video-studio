@@ -141,6 +141,16 @@ export const dictionaryVi = {
     scale: 'Phóng to',
     positionX: 'Vị trí X',
     positionY: 'Vị trí Y',
+    textOverlay: 'Chữ trên hình',
+    subtitleCue: 'Câu phụ đề',
+    textContent: 'Nội dung',
+    secondaryLine: 'Dòng thứ hai',
+    end: 'Kết thúc',
+    edited: 'Đã sửa tay',
+    trackStyleNote:
+      'Kiểu chữ dưới đây thuộc về CẢ track phụ đề, không riêng câu này — sửa ở đây là mọi câu trong track đổi theo.',
+    missingTextBlock: 'Khối chữ đang chọn không còn nữa.',
+    missingTextBlockHint: 'Có lẽ nó vừa bị xoá. Chọn một khối khác trên timeline.',
     resetTransform: 'Đặt lại biến đổi'
   },
   timeline: {

@@ -188,6 +188,72 @@ test('bấm vào khối chữ thì tua đầu phát tới đúng chữ đó', as
   await expect.poll(overlayOpacity).toBeGreaterThan(0.5)
 })
 
+test('bấm vào khối chữ thì panel thuộc tính hiện đúng khối đó', async () => {
+  const inspector = page.getByRole('region', { name: 'Thuộc tính' })
+
+  // Chọn clip trước, để lần bấm sau chứng minh được panel thật sự ĐỔI sang chữ
+  // chứ không phải vốn đã hiện sẵn.
+  await page.locator('.timeline-clip').first().click()
+  await expect(inspector.getByText('Điểm vào nguồn')).toBeVisible()
+
+  await page
+    .locator('.timeline__scroll')
+    .evaluate((element) => element.scrollTo({ top: element.scrollHeight }))
+  const block = page.locator('.timeline-text-block--overlay').first()
+  await block.click()
+
+  // Panel nói về chữ, và những hàng của clip biến mất — hai thứ không được cùng
+  // hiện, nếu không người dùng không biết mình đang sửa cái nào.
+  await expect(inspector.getByText('Chữ trên hình').first()).toBeVisible()
+  await expect(inspector.getByText('Điểm vào nguồn')).toHaveCount(0)
+  await expect(inspector.getByLabel('Nội dung', { exact: true })).toHaveValue(
+    'Bạn đang bỏ lỡ thứ này'
+  )
+
+  // Khối cũng phải TRÔNG như đang được chọn.
+  await expect(block).toHaveClass(/timeline-text-block--selected/)
+
+  // Bấm lại vào clip thì panel quay về clip, và khối chữ hết được chọn.
+  await page.locator('.timeline-clip').first().click()
+  await expect(inspector.getByText('Điểm vào nguồn')).toBeVisible()
+  await expect(block).not.toHaveClass(/timeline-text-block--selected/)
+})
+
+test('sửa chữ ngay trong panel thuộc tính thì preview đổi theo', async () => {
+  const inspector = page.getByRole('region', { name: 'Thuộc tính' })
+  await page.locator('.timeline-text-block--overlay').first().click()
+
+  await inspector.getByLabel('Nội dung', { exact: true }).fill('Đổi từ panel')
+  await expect(page.locator('.text-overlay')).toContainText('Đổi từ panel')
+
+  // Ô trong tab Phụ đề phải thấy cùng một giá trị: hai chỗ sửa cùng MỘT dữ liệu,
+  // không phải hai bản sao trôi khỏi nhau.
+  await expect(studio().getByLabel('Nội dung 1')).toHaveValue('Đổi từ panel')
+
+  await inspector.getByLabel('Nội dung', { exact: true }).fill('Bạn đang bỏ lỡ thứ này')
+})
+
+test('xoay chữ từ panel thuộc tính làm nghiêng chữ trên preview', async () => {
+  const inspector = page.getByRole('region', { name: 'Thuộc tính' })
+  await page.locator('.timeline-text-block--overlay').first().click()
+
+  const rotationOf = async (): Promise<string> =>
+    page
+      .locator('.text-overlay > div')
+      .first()
+      .evaluate((node) => getComputedStyle(node).transform)
+
+  const before = await rotationOf()
+  await inspector.getByLabel('Góc xoay').fill('20')
+
+  // Ma trận biến đổi phải ĐỔI. Chỉ đọc thuộc tính style trên DOM thì một góc bị
+  // ghi vào chỗ không có tác dụng vẫn cho ra chuỗi "đúng".
+  await expect.poll(rotationOf).not.toBe(before)
+  expect(await rotationOf()).not.toBe('none')
+
+  await inspector.getByLabel('Góc xoay').fill('0')
+})
+
 /** Đọc giờ của chữ đầu tiên từ chính file dự án đã lưu. */
 async function savedOverlayRange(): Promise<{ startUs: number; endUs: number }> {
   const { readFile, readdir } = await import('node:fs/promises')

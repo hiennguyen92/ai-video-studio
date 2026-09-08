@@ -10,6 +10,7 @@ import {
 } from 'react'
 import type { Track } from '../../../../shared/domain/timeline-track-types'
 import { previewSeekUs } from '../../../../shared/domain/preview-seek'
+import type { TextBlockRef } from '../../../../shared/domain/text-block-drag'
 import { microsToSeconds } from '../../../../shared/domain/time-units'
 import type { EditorCommand } from '../../../../shared/commands/editor-command-types'
 import {
@@ -55,6 +56,7 @@ export function TimelinePanel(): JSX.Element {
   const snapEnabled = useEditorStore((state) => state.snapEnabled)
   const toggleSnap = useEditorStore((state) => state.toggleSnap)
   const selection = useEditorStore((state) => state.selection)
+  const selectTextBlock = useEditorStore((state) => state.selectTextBlock)
 
   /** Bấm vào một khối chữ thì dừng phát và tua tới đầu khối đó. */
   const { preview: textDrag, handleTextBlockPointerDown } = useTextBlockDrag({
@@ -71,14 +73,17 @@ export function TimelinePanel(): JSX.Element {
     [textDrag]
   )
 
-  const seekToBlock = useCallback(
-    (item: { startUs: number; endUs: number }) => {
+  const chooseBlock = useCallback(
+    (block: TextBlockRef, item: { startUs: number; endUs: number }) => {
+      // Chọn TRƯỚC rồi mới tua: panel thuộc tính phải hiện đúng khối vừa bấm,
+      // chứ không phải clip đang chọn từ trước.
+      selectTextBlock(block)
       setPlaying(false)
       // Nhích vào trong khối, không dừng ở đúng mốc bắt đầu: khung đầu của hiệu
       // ứng vào có opacity 0, tua tới đó là thấy màn hình trống.
       setPlayhead(previewSeekUs(item.startUs, item.endUs))
     },
-    [setPlaying, setPlayhead]
+    [selectTextBlock, setPlaying, setPlayhead]
   )
   const run = useEditorStore((state) => state.run)
 
@@ -384,6 +389,11 @@ export function TimelinePanel(): JSX.Element {
                       .find((item) => item.id === track.subtitleTrackId)
                       ?.cues.map((cue) => {
                         const shown = shownRange(cue)
+                        const block: TextBlockRef = {
+                          kind: 'subtitle',
+                          subtitleTrackId: track.subtitleTrackId as string,
+                          cueId: cue.id
+                        }
                         return (
                           <TimelineTextBlock
                             key={cue.id}
@@ -391,18 +401,17 @@ export function TimelinePanel(): JSX.Element {
                             variant="subtitle"
                             pixelsPerSecond={pixelsPerSecond}
                             active={playheadUs >= shown.startUs && playheadUs < shown.endUs}
+                            selected={
+                              selection.text?.kind === 'subtitle' && selection.text.cueId === cue.id
+                            }
                             dragging={textDrag?.id === cue.id}
-                            onSelect={seekToBlock}
+                            onSelect={(item) => chooseBlock(block, item)}
                             onPointerDown={(event, _item, mode) =>
                               handleTextBlockPointerDown(
                                 event,
                                 cue.id,
                                 { startUs: cue.startUs, endUs: cue.endUs },
-                                {
-                                  kind: 'subtitle',
-                                  subtitleTrackId: track.subtitleTrackId as string,
-                                  cueId: cue.id
-                                },
+                                block,
                                 mode
                               )
                             }
@@ -461,6 +470,7 @@ export function TimelinePanel(): JSX.Element {
                 <div className="timeline-lane timeline-lane--overlay" style={{ height: 44 }}>
                   {document.textOverlays.map((overlay) => {
                     const shown = shownRange(overlay)
+                    const block: TextBlockRef = { kind: 'overlay', overlayId: overlay.id }
                     return (
                       <TimelineTextBlock
                         key={overlay.id}
@@ -468,14 +478,18 @@ export function TimelinePanel(): JSX.Element {
                         variant="overlay"
                         pixelsPerSecond={pixelsPerSecond}
                         active={playheadUs >= shown.startUs && playheadUs < shown.endUs}
+                        selected={
+                          selection.text?.kind === 'overlay' &&
+                          selection.text.overlayId === overlay.id
+                        }
                         dragging={textDrag?.id === overlay.id}
-                        onSelect={seekToBlock}
+                        onSelect={(item) => chooseBlock(block, item)}
                         onPointerDown={(event, _item, mode) =>
                           handleTextBlockPointerDown(
                             event,
                             overlay.id,
                             { startUs: overlay.startUs, endUs: overlay.endUs },
-                            { kind: 'overlay', overlayId: overlay.id },
+                            block,
                             mode
                           )
                         }

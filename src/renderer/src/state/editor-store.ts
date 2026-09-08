@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import type { ProjectDocument } from '../../../shared/domain/project-document-types'
 import { projectDurationUs } from '../../../shared/domain/project-document-types'
 import type { EditorCommand } from '../../../shared/commands/editor-command-types'
+import type { TextBlockRef } from '../../../shared/domain/text-block-drag'
 import {
   canRedo,
   canUndo,
@@ -30,6 +31,16 @@ export type SaveState = 'idle' | 'dirty' | 'saving' | 'saved' | 'error'
 export interface Selection {
   clipIds: string[]
   trackId?: string
+  /**
+   * Khối chữ đang chọn, nếu người dùng bấm vào một câu phụ đề hay một dòng chữ
+   * đè hình trên timeline.
+   *
+   * Loại trừ nhau với `clipIds`: panel thuộc tính chỉ hiện được MỘT thứ, và hiện
+   * clip trong khi người dùng vừa bấm vào một câu phụ đề là nói dối về việc họ
+   * đang chỉnh cái gì. Mọi hàm đặt vùng chọn ở dưới đều dựng lại object mới nên
+   * trường này rụng đi theo đúng ý đó.
+   */
+  text?: TextBlockRef
 }
 
 interface EditorState {
@@ -52,6 +63,8 @@ interface EditorState {
   setPlayhead(us: number): void
   setPlaying(playing: boolean): void
   setSelection(selection: Selection): void
+  /** Chọn một khối chữ trên timeline; bỏ chọn clip đang có. */
+  selectTextBlock(text: TextBlockRef): void
   toggleClipSelection(clipId: string, trackId: string, additive: boolean): void
   clearSelection(): void
   setPixelsPerSecond(value: number): void
@@ -123,6 +136,8 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
   setPlaying: (playing) => set({ isPlaying: playing }),
 
   setSelection: (selection) => set({ selection }),
+
+  selectTextBlock: (text) => set({ selection: { clipIds: [], text } }),
 
   toggleClipSelection: (clipId, trackId, additive) => {
     const { selection } = get()

@@ -34,6 +34,7 @@ export function TimelineTextBlock({
   variant,
   pixelsPerSecond,
   active,
+  selected,
   dragging,
   onSelect,
   onPointerDown
@@ -43,6 +44,13 @@ export function TimelineTextBlock({
   pixelsPerSecond: number
   /** Đầu phát đang nằm trong khoảng của khối này. */
   active: boolean
+  /**
+   * Đang là khối được chọn, tức panel thuộc tính bên phải đang nói về nó.
+   *
+   * Khác `active`: `active` chỉ nói đầu phát đang đi qua đây. Không phân biệt
+   * hai thứ thì người dùng sửa nhầm khối mà vẫn tưởng đang sửa khối mình bấm.
+   */
+  selected: boolean
   /** Đang được kéo — tắt hiệu ứng chuyển động cho khối bám theo chuột. */
   dragging: boolean
   onSelect(item: TimelineTextBlockItem): void
@@ -65,6 +73,7 @@ export function TimelineTextBlock({
         'timeline-text-block',
         `timeline-text-block--${variant}`,
         active ? 'timeline-text-block--active' : '',
+        selected ? 'timeline-text-block--selected' : '',
         dragging ? 'timeline-text-block--dragging' : '',
         item.edited ? 'timeline-text-block--edited' : ''
       ]
@@ -77,6 +86,7 @@ export function TimelineTextBlock({
       title={item.text}
       role="button"
       tabIndex={0}
+      aria-pressed={selected}
       aria-label={item.text}
       onPointerDown={(event) => {
         // Lấy tiêu điểm về khối. Lớp kéo gọi `preventDefault()` nên trình duyệt

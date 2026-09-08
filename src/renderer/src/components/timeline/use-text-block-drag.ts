@@ -5,7 +5,8 @@ import {
   applyTextBlockDrag,
   textBlockRangeChanged,
   type TextBlockDragMode,
-  type TextBlockRange
+  type TextBlockRange,
+  type TextBlockRef
 } from '../../../../shared/domain/text-block-drag'
 import { useEditorStore } from '../../state/editor-store'
 import { collectSnapTargets, pxToUs, snapTime, type SnapContext } from './timeline-geometry'
@@ -21,10 +22,6 @@ import { collectSnapTargets, pxToUs, snapTime, type SnapContext } from './timeli
  * phụ đề thuộc về một SubtitleTrack, còn chữ overlay nằm ở cấp tài liệu.
  */
 
-export type TextBlockKind =
-  | { kind: 'overlay'; overlayId: string }
-  | { kind: 'subtitle'; subtitleTrackId: string; cueId: string }
-
 export interface TextBlockDragPreview {
   id: string
   startUs: number
@@ -34,7 +31,7 @@ export interface TextBlockDragPreview {
 
 interface DragSession {
   id: string
-  target: TextBlockKind
+  target: TextBlockRef
   original: TextBlockRange
   mode: TextBlockDragMode
   pointerStartX: number
@@ -50,7 +47,7 @@ export function useTextBlockDrag(options: {
     event: ReactPointerEvent<HTMLElement>,
     id: string,
     range: TextBlockRange,
-    target: TextBlockKind,
+    target: TextBlockRef,
     mode: TextBlockDragMode
   ): void
 } {
@@ -88,7 +85,7 @@ export function useTextBlockDrag(options: {
       event: ReactPointerEvent<HTMLElement>,
       id: string,
       range: TextBlockRange,
-      target: TextBlockKind,
+      target: TextBlockRef,
       mode: TextBlockDragMode
     ) => {
       if (!document) return

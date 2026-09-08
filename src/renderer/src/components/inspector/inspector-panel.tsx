@@ -15,6 +15,7 @@ import { ToolButton } from '../ui/tool-button'
 import { ClipColorControls } from './clip-color-controls'
 import { ClipMotionControls } from './clip-motion-controls'
 import { ClipTransitionControls } from './clip-transition-controls'
+import { TextBlockInspector } from './text-block-inspector'
 import { AiChatPanel } from '../chat/ai-chat-panel'
 import './inspector-panel.css'
 
@@ -105,11 +106,17 @@ export function InspectorPanel(): JSX.Element {
           </div>
         )}
 
-        {activeTab === 'inspector' && !found && (
+        {/* Khối chữ được ưu tiên: vùng chọn chỉ giữ MỘT trong hai, và người dùng
+            vừa bấm vào nó thì đó là thứ họ đang hỏi về. */}
+        {activeTab === 'inspector' && selection.text && document && (
+          <TextBlockInspector document={document} block={selection.text} />
+        )}
+
+        {activeTab === 'inspector' && !selection.text && !found && (
           <EmptyState title={t.inspector.noSelection} hint={t.inspector.noSelectionHint} />
         )}
 
-        {activeTab === 'inspector' && found && (
+        {activeTab === 'inspector' && !selection.text && found && (
           <div className="inspector">
             <p className="field-group__title">{t.inspector.clip}</p>
             <div className="field-row">

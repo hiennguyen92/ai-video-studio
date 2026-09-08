@@ -45,3 +45,19 @@
   color: var(--text-muted);
   line-height: 1.5;
 }
+
+/* Hàng có ô nhập nhiều dòng: nhãn nằm TRÊN, ô chiếm trọn bề ngang.
+   `.field-row` là lưới hai cột 96px + 1fr, nên phải đổi lưới chứ không đổi
+   `flex-direction` — đặt thuộc tính của flexbox lên một lưới thì không có gì
+   xảy ra và ô nhập vẫn kẹt trong cột hẹp. */
+.field-row--stacked {
+  grid-template-columns: 1fr;
+  align-items: stretch;
+  gap: var(--space-1);
+}
+
+.inspector__textarea {
+  width: 100%;
+  resize: vertical;
+  font: inherit;
+}

@@ -9,6 +9,19 @@ import type { Micros } from './time-units'
  * không hiểu vì sao. Nên phải kẹp ở đây, trước khi lệnh được phát ra.
  */
 
+/**
+ * Trỏ tới MỘT khối chữ trong tài liệu.
+ *
+ * Hai nhánh chứ không phải một id chung: cue phụ đề chỉ định vị được khi biết cả
+ * track chứa nó, còn chữ overlay nằm ở cấp tài liệu nên chỉ cần id. Gộp làm một
+ * sẽ phải đoán loại từ tiền tố id — đoán sai thì lệnh phát ra sai chỗ.
+ *
+ * Dùng chung cho cả kéo trên timeline lẫn vùng chọn đang hiện ở panel thuộc tính.
+ */
+export type TextBlockRef =
+  | { kind: 'overlay'; overlayId: string }
+  | { kind: 'subtitle'; subtitleTrackId: string; cueId: string }
+
 export type TextBlockDragMode = 'move' | 'trim-start' | 'trim-end'
 
 export interface TextBlockRange {

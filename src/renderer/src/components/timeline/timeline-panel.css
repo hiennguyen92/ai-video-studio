@@ -223,6 +223,13 @@
   background: color-mix(in srgb, var(--track-text-overlay) 55%, transparent);
 }
 
+/* Khối đang được panel thuộc tính nói tới. Dùng đúng viền accent như clip được
+   chọn: hai loại đối tượng cùng một trạng thái thì phải trông giống nhau. */
+.timeline-text-block--selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
 /* Câu đã sửa tay — để dựng lại phụ đề từ bản dịch không xoá nhầm công sức. */
 .timeline-text-block--edited {
   border-left-style: double;

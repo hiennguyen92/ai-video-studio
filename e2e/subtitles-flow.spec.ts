@@ -259,6 +259,29 @@ test('câu đang phát được đánh dấu khác các câu còn lại', async 
   await expect(page.locator('.timeline-text-block--active')).toContainText('Second caption')
 })
 
+test('bấm vào khối phụ đề thì panel thuộc tính hiện đúng câu đó', async () => {
+  // Cue đi qua nhánh khác chữ overlay trong panel thuộc tính — nó phải tìm ra
+  // track chứa nó trước — nên phải kiểm riêng chứ không suy ra từ phép thử kia.
+  const inspector = page.getByRole('region', { name: 'Thuộc tính' })
+
+  await page.locator('.timeline-clip').first().click()
+  await expect(inspector.getByText('Điểm vào nguồn')).toBeVisible()
+
+  await page.locator('.timeline-text-block--subtitle').nth(1).click()
+  await expect(inspector.getByText('Câu phụ đề')).toBeVisible()
+  await expect(inspector.getByText('Điểm vào nguồn')).toHaveCount(0)
+  await expect(inspector.getByLabel('Nội dung', { exact: true })).toHaveValue('Second caption')
+
+  // Sửa từ panel là sửa CHÍNH cue đó, và preview đổi theo ngay.
+  await inspector.getByLabel('Nội dung', { exact: true }).fill('Sửa từ panel')
+  await expect(page.locator('.timeline-text-block--subtitle').nth(1)).toContainText('Sửa từ panel')
+  await inspector.getByLabel('Nội dung', { exact: true }).fill('Second caption')
+
+  // Kiểu chữ là của CẢ track, không riêng câu này — panel phải nói ra điều đó
+  // thay vì để người dùng tưởng mình đang chỉnh một câu.
+  await expect(inspector.getByText('thuộc về CẢ track phụ đề')).toBeVisible()
+})
+
 /** Đọc giờ của cue đầu tiên từ chính file dự án đã lưu. */
 async function savedCueRange(): Promise<{ startUs: number; endUs: number }> {
   const projectsRoot = join(userDataDir, 'projects')
@@ -330,14 +353,19 @@ test('sửa cue đổi luôn chữ trên preview', async () => {
 })
 
 test('đổi kiểu chữ được lưu vào dự án', async () => {
-  await page.getByLabel('Cỡ chữ').fill('72')
+  // Phải khoanh vùng: cùng ô "Cỡ chữ" giờ có ở CẢ tab Phụ đề lẫn panel thuộc
+  // tính, vì bấm vào một câu trên timeline cũng mở được kiểu chữ của track.
+  const fontSize = (): ReturnType<Page['getByLabel']> =>
+    studio().getByRole('spinbutton', { name: 'Cỡ chữ' })
+
+  await fontSize().fill('72')
   await expect(page.locator('.top-bar__status')).toHaveText('Đã lưu', { timeout: 15_000 })
 
   await page.getByRole('button', { name: 'Về danh sách dự án' }).click()
   await page.locator('.project-card__open', { hasText: 'Dự án phụ đề' }).click()
   await studio().getByRole('tab', { name: 'Phụ đề' }).click()
 
-  await expect(page.getByLabel('Cỡ chữ')).toHaveValue('72')
+  await expect(fontSize()).toHaveValue('72')
   await expect(page.locator('.cue-row')).toHaveCount(2)
 })
 

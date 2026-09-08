@@ -139,6 +139,16 @@ export const dictionaryEn: Dictionary = {
     scale: 'Scale',
     positionX: 'Position X',
     positionY: 'Position Y',
+    textOverlay: 'On-screen text',
+    subtitleCue: 'Subtitle cue',
+    textContent: 'Text',
+    secondaryLine: 'Second line',
+    end: 'End',
+    edited: 'Hand-edited',
+    trackStyleNote:
+      'The style below belongs to the WHOLE subtitle track, not just this cue — changing it changes every cue in the track.',
+    missingTextBlock: 'The selected text block no longer exists.',
+    missingTextBlockHint: 'It was probably just deleted. Pick another block on the timeline.',
     resetTransform: 'Reset transform'
   },
   timeline: {
