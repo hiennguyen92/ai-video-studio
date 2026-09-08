@@ -105,6 +105,39 @@ Homebrew trên macOS được build thiếu `libass`, `libfreetype` và `fontcon
 `subtitles` và `drawtext`** — nung phụ đề sẽ hỏng âm thầm. Bản đi kèm bật đủ ba thứ đó; có một phép
 thử tích hợp kiểm tra đúng điều này.
 
+## Chuỗi lời nói: phiên âm → dịch → phụ đề → lồng tiếng
+
+Bốn lớp dữ liệu này nằm TÁCH RIÊNG và nối với nhau bằng id, không lồng vào nhau:
+
+- `Transcript.segments[].id` là mỏ neo. Mốc thời gian chỉ được lưu ở đây.
+- `TranslationSegment.sourceSegmentId` trỏ ngược về đoạn gốc; bản dịch **không**
+  giữ mốc thời gian riêng, nên không bao giờ có hai nguồn thời gian lệch nhau.
+- `SubtitleCue.sourceSegmentId` giữ đường truy ngược về đoạn đã sinh ra nó.
+- `DubbingSegment.sourceSegmentId` cũng vậy, còn khoảng thời gian mục tiêu lấy từ
+  đoạn gốc.
+
+Chỗ dễ sai nhất là **đổi hệ toạ độ**. Transcript đếm giờ theo ASSET (giây thứ mấy
+trong file gốc), còn phụ đề và preview đếm theo TIMELINE. Việc quy đổi nằm gọn
+trong `subtitle-cue-builder.ts` và phải xử lý ba chuyện không hiển nhiên: đoạn nằm
+ngoài phần clip đã cắt thì bỏ hẳn, đoạn chớm mép thì cắt cụt theo phần còn thấy,
+và một asset dùng lại ở nhiều clip thì sinh nhiều cue.
+
+### Vì sao kết quả của mô hình ngôn ngữ luôn bị kiểm lại
+
+Dịch được gửi đi theo lô kèm id và kết quả được ghép lại THEO ID, không theo thứ
+tự. Mô hình rất hay gộp câu, tách câu, bỏ sót đoạn cuối hoặc đánh số lại. Lệch một
+đoạn ở đây sẽ làm sai giờ toàn bộ phụ đề và lồng tiếng dựng lên trên, mà lại không
+gây lỗi nào để lần ra. Vì vậy id thiếu được hỏi lại riêng, id lạ bị bỏ, và đoạn nào
+mô hình không dịch nổi thì giữ nguyên bản gốc — số đoạn ra luôn bằng số đoạn vào.
+
+### Vì sao lồng tiếng không bao giờ bị cắt
+
+Thời lượng audio tạo ra được **đo bằng ffprobe**, không ước lượng theo số ký tự:
+tốc độ đọc khác nhau rất nhiều theo giọng và theo ngôn ngữ. Khi audio dài hơn
+khoảng gốc, `dubbing-overflow-planner.ts` chỉ đưa ra ba lối thoát — tăng tốc trong
+ngưỡng nghe được, rút ngắn lời, hoặc kéo dài timeline. Không có nhánh nào cắt bớt
+audio. Chưa chọn hướng thì đoạn giữ nguyên độ dài thật và bị đánh dấu còn tràn.
+
 ## Lưu trữ
 
 Project là một file JSON, ghi theo kiểu **nguyên tử**: ghi ra file tạm rồi đổi tên đè lên file thật.

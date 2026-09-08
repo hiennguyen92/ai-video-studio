@@ -59,6 +59,13 @@ giao diện chỉ lộ ra khi chuyển tab với dữ liệu thật.
 - [x] Khi tràn giờ: cho chọn tăng tốc trong giới hạn / rút ngắn nội dung / kéo dài trên timeline.
       **Không bao giờ tự cắt mất lời nói.** — kiểm chứng bằng e2e đọc thẳng project.json
 
+**Còn lại của Mốc 3:**
+
+- Phân biệt người nói: whisper.cpp không làm được, chờ provider khác.
+- Chất lượng dịch của một mô hình THẬT chưa được kiểm chứng — chưa có máy chủ LLM
+  nào để gọi. Adapter mới chỉ được kiểm bằng máy chủ HTTP dựng sẵn tái hiện các
+  kiểu trả lời sai.
+
 ## Mốc 4 — AI Chat và hoàn thiện
 
 - [ ] AI Chat dùng chung cấu hình với AI Studio
