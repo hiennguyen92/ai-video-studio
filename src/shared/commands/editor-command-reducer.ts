@@ -449,6 +449,8 @@ export function applyEditorCommand(doc: ProjectDocument, command: EditorCommand)
 
       if (command.text !== undefined) overlay.text = command.text
       if (command.animation !== undefined) overlay.animation = command.animation
+      if (command.exitAnimation !== undefined) overlay.exitAnimation = command.exitAnimation
+      if (command.glow !== undefined) overlay.glow = command.glow
       if (command.animationDurationUs !== undefined) {
         overlay.animationDurationUs = command.animationDurationUs
       }

@@ -10,7 +10,7 @@ import {
 import { isNeutralColorGrade, type ClipColorGrade } from './clip-color-grade'
 import type { ClipMotion } from './clip-motion-types'
 import type { SubtitleStyle } from './subtitle-types'
-import type { TextAnimation } from './text-overlay-types'
+import type { TextAnimation, TextExitAnimation } from './text-overlay-types'
 import { frameOfMicros, type FrameRate } from './time-units'
 
 /**
@@ -82,6 +82,10 @@ export interface RenderPlanTextOverlay {
   animation: TextAnimation
   /** Đã kẹp theo độ dài chính overlay, lớp vẽ cứ dùng thẳng. */
   animationFrames: number
+  exitAnimation: TextExitAnimation
+  /** Số khung của hiệu ứng ra, cũng đã kẹp. */
+  exitFrames: number
+  glow: boolean
 }
 
 export interface RenderPlan {
@@ -272,7 +276,18 @@ export function buildRenderPlan(document: ProjectDocument): RenderPlan {
       style: overlay.style,
       animation: overlay.animation,
       // Hiệu ứng vào dài hơn chính overlay là vô nghĩa; kẹp lại.
-      animationFrames: Math.min(frameOfMicros(overlay.animationDurationUs, fps), durationInFrames)
+      animationFrames: Math.min(frameOfMicros(overlay.animationDurationUs, fps), durationInFrames),
+      exitAnimation: overlay.exitAnimation ?? 'none',
+      // Vào và ra cùng lấy từ một thời lượng, nhưng mỗi bên nhiều nhất NỬA overlay:
+      // để cả hai chiếm trọn thì chữ không bao giờ đứng yên ở trạng thái đọc được.
+      exitFrames:
+        overlay.exitAnimation && overlay.exitAnimation !== 'none'
+          ? Math.min(
+              frameOfMicros(overlay.animationDurationUs, fps),
+              Math.floor(durationInFrames / 2)
+            )
+          : 0,
+      glow: overlay.glow ?? false
     })
   }
 

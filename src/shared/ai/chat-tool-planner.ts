@@ -508,7 +508,9 @@ function planOne(context: ChatEditContext, tool: ChatToolName, args: unknown): P
         endUs,
         style,
         animation: input.animation ?? 'pop',
-        animationDurationUs: DEFAULT_TEXT_ANIMATION_DURATION_US
+        animationDurationUs: DEFAULT_TEXT_ANIMATION_DURATION_US,
+        exitAnimation: input.exit,
+        glow: input.glow
       }
 
       return {

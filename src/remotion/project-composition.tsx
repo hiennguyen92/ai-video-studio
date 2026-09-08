@@ -325,6 +325,17 @@ function TextOverlayLayer({ overlay }: { overlay: RenderPlanTextOverlay }): JSX.
         })
       : 1
 
+  // Tiến độ hiệu ứng RA: 0 khi chưa tới lúc ra, 1 ở khung cuối cùng.
+  const exitProgress =
+    overlay.exitFrames > 0
+      ? interpolate(
+          frame,
+          [overlay.durationInFrames - overlay.exitFrames, overlay.durationInFrames - 1],
+          [0, 1],
+          { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
+        )
+      : 0
+
   let opacity = 1
   let transform: string | undefined
   let visibleText = overlay.text
@@ -344,6 +355,25 @@ function TextOverlayLayer({ overlay }: { overlay: RenderPlanTextOverlay }): JSX.
       break
     case 'typewriter':
       visibleText = overlay.text.slice(0, Math.ceil(progress * overlay.text.length))
+      break
+    case 'none':
+      break
+  }
+
+  // Hiệu ứng ra NHÂN vào kết quả của hiệu ứng vào, không ghi đè: overlay ngắn có
+  // thể đang trong cả hai giai đoạn, và ghi đè sẽ làm chữ nhảy về rõ hẳn rồi mới
+  // biến mất.
+  switch (overlay.exitAnimation) {
+    case 'fade':
+      opacity *= 1 - exitProgress
+      break
+    case 'shrink':
+      opacity *= 1 - exitProgress
+      transform = `${transform ?? ''} scale(${1 - exitProgress * 0.35})`
+      break
+    case 'slide-down':
+      opacity *= 1 - exitProgress
+      transform = `${transform ?? ''} translateY(${exitProgress * 40}px)`
       break
     case 'none':
       break
@@ -396,7 +426,12 @@ function TextOverlayLayer({ overlay }: { overlay: RenderPlanTextOverlay }): JSX.
                 style.outlineWidthPx > 0
                   ? `${style.outlineWidthPx}px ${style.outlineColor}`
                   : undefined,
-              paintOrder: 'stroke fill'
+              paintOrder: 'stroke fill',
+              // Phát sáng chồng ba lớp bóng cùng màu chữ: một lớp duy nhất nhìn
+              // ra vệt mờ chứ không ra quầng sáng.
+              textShadow: overlay.glow
+                ? `0 0 ${style.fontSizePx * 0.12}px ${style.color}, 0 0 ${style.fontSizePx * 0.28}px ${style.color}, 0 0 ${style.fontSizePx * 0.5}px ${style.color}`
+                : undefined
             }}
           >
             {line}

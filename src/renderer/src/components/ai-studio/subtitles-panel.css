@@ -164,3 +164,11 @@
 .text-overlay-item__row select {
   width: 100%;
 }
+
+/* Ô bật viền phát sáng: hộp kiểm và nhãn nằm ngang, canh giữa theo dòng. */
+.text-overlay-item__toggle {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-1);
+}

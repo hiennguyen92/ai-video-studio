@@ -5,6 +5,7 @@ import {
   createDefaultTextOverlayStyle,
   readTextOverlayBox,
   type TextAnimation,
+  type TextExitAnimation,
   type TextOverlay,
   type TextOverlayBox
 } from '../../../../shared/domain/text-overlay-types'
@@ -28,6 +29,13 @@ const ANIMATIONS: Array<{ value: TextAnimation; labelKey: string }> = [
   { value: 'pop', labelKey: 'animationPop' },
   { value: 'slide-up', labelKey: 'animationSlideUp' },
   { value: 'typewriter', labelKey: 'animationTypewriter' }
+]
+
+const EXITS: Array<{ value: TextExitAnimation; labelKey: string }> = [
+  { value: 'none', labelKey: 'exitNone' },
+  { value: 'fade', labelKey: 'exitFade' },
+  { value: 'shrink', labelKey: 'exitShrink' },
+  { value: 'slide-down', labelKey: 'exitSlideDown' }
 ]
 
 const BOXES: Array<{ value: TextOverlayBox; labelKey: string }> = [
@@ -207,6 +215,53 @@ export function TextOverlaySection(): JSX.Element {
                       </option>
                     ))}
                   </select>
+                </label>
+
+                <label>
+                  <span className="field-row__label">{t.textOverlay.exit}</span>
+                  <select
+                    value={overlay.exitAnimation ?? 'none'}
+                    aria-label={`${t.textOverlay.exit} ${index + 1}`}
+                    onChange={(event) =>
+                      run(
+                        [
+                          {
+                            type: 'text/update',
+                            overlayId: overlay.id,
+                            exitAnimation: event.target.value as TextExitAnimation
+                          }
+                        ],
+                        'Đổi hiệu ứng ra'
+                      )
+                    }
+                  >
+                    {EXITS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {t.textOverlay[option.labelKey as keyof typeof t.textOverlay] as string}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="text-overlay-item__toggle">
+                  <input
+                    type="checkbox"
+                    checked={overlay.glow ?? false}
+                    aria-label={`${t.textOverlay.glow} ${index + 1}`}
+                    onChange={(event) =>
+                      run(
+                        [
+                          {
+                            type: 'text/update',
+                            overlayId: overlay.id,
+                            glow: event.target.checked
+                          }
+                        ],
+                        'Đổi viền phát sáng'
+                      )
+                    }
+                  />
+                  <span className="field-row__label">{t.textOverlay.glow}</span>
                 </label>
 
                 <label>

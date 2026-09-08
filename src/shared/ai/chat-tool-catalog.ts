@@ -147,7 +147,11 @@ export const chatToolSchemas = {
     position: z.enum(['bottom', 'middle', 'top']).optional(),
     fontSizePx: z.number().int().min(12).max(300).optional(),
     /** Nền hộp sau chữ. Bỏ trống thì không hộp, chỉ viền chữ. */
-    box: z.enum(['none', 'dark', 'light']).optional()
+    box: z.enum(['none', 'dark', 'light']).optional(),
+    /** Hiệu ứng khi chữ biến mất. Bỏ trống thì tắt phụt. */
+    exit: z.enum(['none', 'fade', 'shrink', 'slide-down']).optional(),
+    /** Viền phát sáng quanh chữ. */
+    glow: z.boolean().optional()
   }),
 
   remove_text_overlay: z.object({
@@ -280,7 +284,7 @@ export const chatToolDescriptions: Record<ChatToolName, string> = {
   build_cut_from_shots:
     'Assemble a cut from detected camera shots, laid end to end in the order given. Use this for footage with no speech, where there is no transcript to work from. Call list_shots first to see each shot and its still frame.',
   add_text_overlay:
-    'Put text on top of the video for a stretch of time — a hook, a price, a call to action. Separate from subtitles, which come from speech. Set box to "dark" or "light" when the footage behind the text is bright or busy — an outline alone is not enough to keep it readable.',
+    'Put text on top of the video for a stretch of time — a hook, a price, a call to action. Separate from subtitles, which come from speech. Set box to "dark" or "light" when the footage behind the text is bright or busy — an outline alone is not enough to keep it readable. Set exit so the text leaves instead of snapping off, and glow to make it carry over busy footage.',
   remove_text_overlay: 'Remove a text overlay.',
   set_canvas:
     'Set the project canvas shape. Use 9:16 for TikTok, Reels and Shorts, 16:9 for YouTube, 1:1 for square. Do this before laying out text, because it changes where text sits in frame.',
@@ -316,7 +320,7 @@ export const chatToolParameterHints: Record<ChatToolName, string> = {
   build_cut_from_shots:
     '{ assetId: string, shotIndexes: number[], trackId?: string, maxShotSeconds?: number }',
   add_text_overlay:
-    "{ text: string, startSeconds: number, endSeconds: number, animation?: 'none' | 'fade' | 'pop' | 'slide-up' | 'typewriter', position?: 'bottom' | 'middle' | 'top', fontSizePx?: number, box?: 'none' | 'dark' | 'light' }",
+    "{ text: string, startSeconds: number, endSeconds: number, animation?: 'none' | 'fade' | 'pop' | 'slide-up' | 'typewriter', position?: 'bottom' | 'middle' | 'top', fontSizePx?: number, box?: 'none' | 'dark' | 'light', exit?: 'none' | 'fade' | 'shrink' | 'slide-down', glow?: boolean }",
   remove_text_overlay: '{ overlayId: string }',
   set_canvas: "{ aspect: '16:9' | '9:16' | '1:1', longEdgePx?: number }",
   set_clip_transition:

@@ -161,6 +161,57 @@ test('bật nền hộp làm đổi hình, ở cùng một thời điểm', asyn
   await page.getByLabel('Nền chữ 1').selectOption('none')
 })
 
+test('hiệu ứng ra làm chữ biến mất dần thay vì tắt phụt', async () => {
+  const stage = page.locator('.preview__stage')
+  await page.getByLabel('Hiệu ứng 1').selectOption('none')
+
+  // Cửa sổ hiệu ứng ra chỉ dài khoảng một phần ba giây, nên click vào thước để
+  // rơi trúng nó là trò may rủi. Cách chắc chắn: tua tới ĐÚNG đầu khoảng chữ rồi
+  // DỜI khoảng chữ lùi lại, để đầu phát nằm sẵn ở cuối khoảng mới.
+  await page.getByLabel('Bắt đầu (giây) 1').fill('3')
+  await page.getByLabel('Kết thúc (giây) 1').fill('4')
+  await page.getByRole('button', { name: 'Tua tới đây' }).click()
+  await page.getByLabel('Bắt đầu (giây) 1').fill('2')
+  await page.getByLabel('Kết thúc (giây) 1').fill('3.05')
+  await page.waitForTimeout(700)
+
+  const overlay = page.locator('.text-overlay')
+  await expect(overlay).toBeVisible()
+
+  const shots = new Map<string, string>()
+  for (const exit of ['none', 'fade', 'shrink', 'slide-down']) {
+    await page.getByLabel('Hiệu ứng ra 1').selectOption(exit)
+    await page.waitForTimeout(700)
+    shots.set(exit, (await stage.screenshot()).toString('base64'))
+  }
+
+  // Bốn trạng thái, cùng một thời điểm, phải cho bốn khung hình khác nhau. Trùng
+  // nhau nghĩa là ô chọn đổi dữ liệu mà lớp vẽ không đọc tới.
+  expect(new Set(shots.values()).size).toBe(shots.size)
+
+  await page.getByLabel('Hiệu ứng ra 1').selectOption('none')
+})
+
+test('viền phát sáng làm đổi hình, ở cùng một thời điểm', async () => {
+  const stage = page.locator('.preview__stage')
+  await page.getByLabel('Hiệu ứng 1').selectOption('none')
+  await page.getByLabel('Hiệu ứng ra 1').selectOption('none')
+  await page.getByLabel('Bắt đầu (giây) 1').fill('1')
+  await page.getByLabel('Kết thúc (giây) 1').fill('4')
+  await page.getByRole('button', { name: 'Tua tới đây' }).click()
+  await page.waitForTimeout(700)
+  const plain = await stage.screenshot()
+
+  await page.getByLabel('Viền phát sáng 1').check()
+  await page.waitForTimeout(700)
+  expect((await stage.screenshot()).equals(plain)).toBe(false)
+
+  // Tắt đi phải trả về ĐÚNG khung cũ; còn khác nghĩa là có phần vẽ thừa nằm lại.
+  await page.getByLabel('Viền phát sáng 1').uncheck()
+  await page.waitForTimeout(700)
+  expect((await stage.screenshot()).equals(plain)).toBe(true)
+})
+
 test('đổi vị trí đưa chữ xuống dưới khung hình', async () => {
   const stage = page.locator('.preview__stage')
   await page.getByLabel('Hiệu ứng 1').selectOption('none')

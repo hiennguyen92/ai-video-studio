@@ -554,7 +554,9 @@ const updateTextOverlay = z.object({
   startUs: nonNegativeMicros.optional(),
   endUs: nonNegativeMicros.optional(),
   animation: textAnimationSchema.optional(),
-  animationDurationUs: nonNegativeMicros.optional()
+  animationDurationUs: nonNegativeMicros.optional(),
+  exitAnimation: z.enum(['none', 'fade', 'shrink', 'slide-down']).optional(),
+  glow: z.boolean().optional()
 })
 
 /** Thay cả bảng style; giao diện luôn sửa theo cụm nên hoàn tác cũng theo cụm. */

@@ -19,6 +19,9 @@ import { DEFAULT_SUBTITLE_STYLE, type SubtitleStyle } from './subtitle-types'
 
 export type TextAnimation = 'none' | 'fade' | 'pop' | 'slide-up' | 'typewriter'
 
+/** Hiệu ứng ra. Không có "gõ chữ" vì gõ ngược lại không giống bất cứ thứ gì. */
+export type TextExitAnimation = 'none' | 'fade' | 'shrink' | 'slide-down'
+
 export interface TextOverlay {
   id: string
   text: string
@@ -28,6 +31,21 @@ export interface TextOverlay {
   animation: TextAnimation
   /** Thời lượng hiệu ứng xuất hiện. Dài hơn chính overlay thì bị kẹp lúc dựng. */
   animationDurationUs: Micros
+  /**
+   * Hiệu ứng RA, chạy ở cuối overlay.
+   *
+   * Tách khỏi `animation` chứ không dùng lại nó theo chiều ngược: chữ hay vào
+   * bằng một kiểu và ra bằng kiểu khác, và "gõ chữ" thì không có chiều ngược nào
+   * hợp lý cả.
+   */
+  exitAnimation?: TextExitAnimation
+  /**
+   * Viền phát sáng quanh chữ.
+   *
+   * Chỉ áp cho chữ overlay, không áp cho phụ đề: bản nung phụ đề đi qua ASS, mà
+   * ASS không có khái niệm phát sáng — bày ra ở đó sẽ là một ô không có tác dụng.
+   */
+  glow?: boolean
 }
 
 /** Hiệu ứng vào mặc định — đủ nhanh để không làm chậm nhịp video ngắn. */
