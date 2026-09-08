@@ -82,6 +82,7 @@ function useTransitionStyle(transition: RenderPlanVideoClip['transition']): {
   opacity: number
   transform?: string
   clipPath?: string
+  filter?: string
 } {
   const frame = useCurrentFrame()
   if (!transition) return { opacity: 1 }
@@ -111,6 +112,46 @@ function useTransitionStyle(transition: RenderPlanVideoClip['transition']): {
       return { opacity: 1, clipPath: `inset(0 ${offset}% 0 0)` }
     case 'zoom':
       return { opacity: progress, transform: `scale(${1 + (1 - progress) * 0.25})` }
+
+    // Lia vụt: trượt nhanh hơn hẳn slide và kèm mờ chuyển động. Không có phần mờ
+    // thì nó chỉ là một cú trượt nhanh, mất hẳn cảm giác "vụt".
+    case 'whip-left':
+      return {
+        opacity: 1,
+        transform: `translateX(${offset * 1.4}%)`,
+        filter: `blur(${(1 - progress) * 14}px)`
+      }
+    case 'whip-right':
+      return {
+        opacity: 1,
+        transform: `translateX(${-offset * 1.4}%)`,
+        filter: `blur(${(1 - progress) * 14}px)`
+      }
+
+    case 'blur':
+      return { opacity: progress, filter: `blur(${(1 - progress) * 26}px)` }
+
+    case 'glitch': {
+      // Giật ngang theo khung hình chứ không theo tiến độ: nhiễu phải rời rạc,
+      // nội suy mượt sẽ thành một cú trượt chứ không phải nhiễu.
+      const jitter = Math.sin(frame * 13.7) * (1 - progress) * 4
+      return {
+        opacity: 1,
+        transform: `translateX(${jitter}%)`,
+        filter: `hue-rotate(${Math.sin(frame * 7.3) * (1 - progress) * 90}deg) saturate(${1 + (1 - progress) * 2})`
+      }
+    }
+
+    case 'spin':
+      return {
+        opacity: progress,
+        transform: `rotate(${(1 - progress) * -14}deg) scale(${1 + (1 - progress) * 0.35})`
+      }
+
+    case 'flash':
+      // Loé rồi tắt nhanh: dùng luỹ thừa để phần sáng chỉ chiếm đoạn đầu, không
+      // kéo trắng suốt cả chuyển cảnh.
+      return { opacity: 1, filter: `brightness(${1 + (1 - progress) ** 2 * 6})` }
   }
 }
 
@@ -131,6 +172,7 @@ function VideoClip({ clip, url }: { clip: RenderPlanVideoClip; url: string }): J
       style={{
         opacity: transform.opacity * fade * enter.opacity,
         clipPath: enter.clipPath,
+        filter: enter.filter,
         transform: `${enter.transform ?? ''} translate(${transform.x}px, ${transform.y}px) scale(${transform.scale}) rotate(${transform.rotationDeg}deg) ${motion}`
       }}
     >

@@ -185,7 +185,13 @@ export const chatToolSchemas = {
       'slide-down',
       'wipe-left',
       'wipe-right',
-      'zoom'
+      'zoom',
+      'whip-left',
+      'whip-right',
+      'blur',
+      'glitch',
+      'spin',
+      'flash'
     ]),
     durationSeconds: z.number().positive().max(5).optional()
   }),
@@ -294,7 +300,7 @@ export const chatToolParameterHints: Record<ChatToolName, string> = {
   remove_text_overlay: '{ overlayId: string }',
   set_canvas: "{ aspect: '16:9' | '9:16' | '1:1', longEdgePx?: number }",
   set_clip_transition:
-    "{ clipId?: string, kind: 'none' | 'fade' | 'slide-left' | 'slide-right' | 'slide-up' | 'slide-down' | 'wipe-left' | 'wipe-right' | 'zoom', durationSeconds?: number }",
+    "{ clipId?: string, kind: 'none' | 'fade' | 'slide-left' | 'slide-right' | 'slide-up' | 'slide-down' | 'wipe-left' | 'wipe-right' | 'zoom' | 'whip-left' | 'whip-right' | 'blur' | 'glitch' | 'spin' | 'flash', durationSeconds?: number }",
   set_clip_motion:
     "{ clipId?: string, kind: 'none' | 'zoom-in' | 'zoom-out' | 'pan-left' | 'pan-right' | 'pan-up' | 'pan-down' | 'punch-in' | 'shake', intensity?: number }"
 }

@@ -25,7 +25,13 @@ const KINDS: Array<{ value: TransitionKind; labelKey: string }> = [
   { value: 'slide-down', labelKey: 'transitionSlideDown' },
   { value: 'wipe-left', labelKey: 'transitionWipeLeft' },
   { value: 'wipe-right', labelKey: 'transitionWipeRight' },
-  { value: 'zoom', labelKey: 'transitionZoom' }
+  { value: 'zoom', labelKey: 'transitionZoom' },
+  { value: 'whip-left', labelKey: 'transitionWhipLeft' },
+  { value: 'whip-right', labelKey: 'transitionWhipRight' },
+  { value: 'blur', labelKey: 'transitionBlur' },
+  { value: 'glitch', labelKey: 'transitionGlitch' },
+  { value: 'spin', labelKey: 'transitionSpin' },
+  { value: 'flash', labelKey: 'transitionFlash' }
 ]
 
 export function ClipTransitionControls({

@@ -187,7 +187,13 @@ const setClipTransition = z.object({
             'slide-down',
             'wipe-left',
             'wipe-right',
-            'zoom'
+            'zoom',
+            'whip-left',
+            'whip-right',
+            'blur',
+            'glitch',
+            'spin',
+            'flash'
           ].includes(value),
         { message: 'kiểu chuyển cảnh không hợp lệ' }
       ),

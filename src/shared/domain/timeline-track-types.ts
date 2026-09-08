@@ -54,6 +54,16 @@ export type TransitionKind =
   | 'wipe-left'
   | 'wipe-right'
   | 'zoom'
+  /** Lia vụt kèm mờ chuyển động — nhịp nhanh, hợp video ngắn. */
+  | 'whip-left'
+  | 'whip-right'
+  /** Nhoè dần rồi rõ. */
+  | 'blur'
+  /** Nhiễu hình vài khung — dùng dè, một lần trong video là đủ. */
+  | 'glitch'
+  | 'spin'
+  /** Loé trắng rồi tắt. */
+  | 'flash'
 
 export interface ClipTransition {
   kind: TransitionKind

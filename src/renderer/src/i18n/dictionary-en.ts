@@ -81,6 +81,12 @@ export const dictionaryEn: Dictionary = {
     transitionWipeLeft: 'Wipe left',
     transitionWipeRight: 'Wipe right',
     transitionZoom: 'Zoom in',
+    transitionWhipLeft: 'Whip pan left',
+    transitionWhipRight: 'Whip pan right',
+    transitionBlur: 'Blur dissolve',
+    transitionGlitch: 'Glitch',
+    transitionSpin: 'Spin in',
+    transitionFlash: 'Flash',
     transitionDuration: 'Duration (seconds)',
     transitionHint:
       'A transition uses source material before the clip in point. When there is not enough it shortens itself, and the first clip on the timeline gets none.',

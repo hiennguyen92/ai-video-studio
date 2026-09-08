@@ -52,9 +52,14 @@ test.beforeAll(async () => {
   secondMediaPath = join(workDir, 'xanh.mp4')
 
   const { default: ffmpegStatic } = await import('ffmpeg-static')
-  // Hai nguồn MÀU KHÁC HẲN nhau. Nếu cắt đôi một clip rồi đặt chuyển cảnh, clip
-  // sau khi bị kéo lùi nguồn sẽ hiện đúng khung hình giống clip trước — trộn hai
-  // ảnh giống nhau thì nhìn không khác gì, và phép thử không chứng minh được gì.
+  // Hai nguồn MÀU KHÁC HẲN nhau, và mỗi nguồn có HOẠ TIẾT. Hai điều kiện, hai lý do:
+  //
+  //   - khác màu: cắt đôi một clip rồi đặt chuyển cảnh thì clip sau bị kéo lùi
+  //     nguồn và hiện đúng khung hình giống clip trước; trộn hai ảnh giống nhau
+  //     nhìn không khác gì
+  //   - có hoạ tiết: trên màu trơn, trượt vào và xén lộ dần cho ra ẢNH Y HỆT —
+  //     cùng một đường biên, cùng hai mảng màu. Đo thật: `wipe-left` và
+  //     `slide-left` trùng khít nhau cho tới khi thêm lưới
   for (const [path, color] of [
     [mediaPath, 'red'],
     [secondMediaPath, 'blue']
@@ -67,6 +72,8 @@ test.beforeAll(async () => {
       'lavfi',
       '-i',
       `color=c=${color}:size=640x360:rate=30:duration=20`,
+      '-vf',
+      'drawgrid=w=48:h=48:t=4:color=white',
       '-c:v',
       'libx264',
       '-pix_fmt',
@@ -206,6 +213,49 @@ test('giữ NGUYÊN vị trí phát, đổi hiệu ứng thì hình đổi theo'
   expect(withFade.equals(withWipe)).toBe(false)
   expect(withFade.equals(withoutTransition)).toBe(false)
   expect(withWipe.equals(withoutTransition)).toBe(false)
+})
+
+test('mỗi kiểu chuyển cảnh cho ra một khung hình riêng, không kiểu nào trùng kiểu nào', async () => {
+  const stage = page.locator('.preview__stage')
+  const ruler = page.locator('.timeline__ruler-row')
+  const box = await ruler.boundingBox()
+
+  await page.locator('.timeline-clip').nth(1).click()
+  const select = inspector().getByLabel('Chuyển cảnh', { exact: true })
+  await select.selectOption('fade')
+  await inspector().getByLabel('Thời lượng (giây)').fill('3')
+  await page.waitForTimeout(400)
+
+  // Đặt đầu phát MỘT LẦN vào giữa vùng chuyển cảnh rồi giữ nguyên.
+  await page.mouse.click(box!.x + 210, box!.y + 12)
+  await page.waitForTimeout(900)
+
+  const shots = new Map<string, string>()
+  for (const kind of [
+    'fade',
+    'slide-left',
+    'wipe-left',
+    'zoom',
+    'whip-left',
+    'whip-right',
+    'blur',
+    'glitch',
+    'spin',
+    'flash'
+  ]) {
+    await select.selectOption(kind)
+    await page.waitForTimeout(900)
+    shots.set(kind, (await stage.screenshot()).toString('base64'))
+  }
+
+  // Hai kiểu cho ra cùng một ảnh nghĩa là một trong hai chưa được vẽ, và ô chọn
+  // đang bày ra một lựa chọn không tồn tại.
+  const seen = new Map<string, string>()
+  for (const [kind, image] of shots) {
+    const twin = seen.get(image)
+    expect(twin, `"${kind}" vẽ ra y hệt "${twin}"`).toBeUndefined()
+    seen.set(image, kind)
+  }
 })
 
 test('báo rõ khi thời lượng bị kẹp vì thiếu phần nguồn phía trước', async () => {

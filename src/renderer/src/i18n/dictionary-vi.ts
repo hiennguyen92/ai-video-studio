@@ -85,6 +85,12 @@ export const dictionaryVi = {
     transitionWipeLeft: 'Gạt sang trái',
     transitionWipeRight: 'Gạt sang phải',
     transitionZoom: 'Phóng vào',
+    transitionWhipLeft: 'Lia vụt sang trái',
+    transitionWhipRight: 'Lia vụt sang phải',
+    transitionBlur: 'Nhoè dần rồi rõ',
+    transitionGlitch: 'Nhiễu hình',
+    transitionSpin: 'Xoay vào',
+    transitionFlash: 'Loé trắng',
     transitionDuration: 'Thời lượng (giây)',
     transitionHint:
       'Chuyển cảnh lấy phần nguồn nằm trước điểm vào của clip. Không đủ thì nó tự ngắn lại, và clip đầu timeline không có chuyển cảnh.',
