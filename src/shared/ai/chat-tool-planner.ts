@@ -618,7 +618,13 @@ function planOne(context: ChatEditContext, tool: ChatToolName, args: unknown): P
         }
       }
 
-      const { clipId: _ignored, reset: _reset, ...grade } = input
+      // Lọc theo DANH SÁCH TRẮNG thay vì bóc `clipId`/`reset` ra: thêm một trường
+      // điều khiển mới sau này mà quên bóc thì nó sẽ lọt thẳng vào bản chỉnh màu.
+      const grade = Object.fromEntries(
+        (['brightness', 'contrast', 'saturation', 'temperature', 'vignette'] as const)
+          .filter((key) => input[key] !== undefined)
+          .map((key) => [key, input[key]])
+      )
       if (Object.keys(grade).length === 0) {
         throw new Error('Chưa nêu thông số màu nào cần chỉnh')
       }
