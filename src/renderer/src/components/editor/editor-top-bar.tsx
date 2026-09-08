@@ -8,6 +8,7 @@ import {
 } from '../../state/editor-store'
 import { AVAILABLE_LOCALES, interpolate, useLocale, useT } from '../../i18n/use-translation'
 import { ToolButton } from '../ui/tool-button'
+import { JobActivityIndicator } from '../jobs/job-activity-indicator'
 import { IconChevronLeft, IconExport, IconImport, IconRedo, IconSave, IconUndo } from '../ui/icons'
 
 /** Thanh công cụ trên cùng: dự án, nhập media, hoàn tác/làm lại, lưu, xuất. */
@@ -109,6 +110,8 @@ export function EditorTopBar({
       />
 
       <div className="top-bar__spacer" />
+
+      <JobActivityIndicator />
 
       <span
         className={`top-bar__status ${saveState === 'error' ? 'top-bar__status--error' : ''}`}

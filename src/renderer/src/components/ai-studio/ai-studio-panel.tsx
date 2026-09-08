@@ -1,8 +1,11 @@
-import { useState, type JSX } from 'react'
+import { useCallback, useState, type JSX } from 'react'
 import type { MediaAsset } from '../../../../shared/domain/media-asset-types'
 import { useT } from '../../i18n/use-translation'
 import { EmptyState } from '../ui/empty-state'
 import { MediaLibraryPanel } from './media-library-panel'
+import { AiSettingsPanel } from './ai-settings-panel'
+import { VoicePanel } from './voice-panel'
+import { MusicPanel } from './music-panel'
 
 /**
  * Panel trái — AI Studio (DESCRIPTION §3).
@@ -26,6 +29,9 @@ export function AiStudioPanel({
 }): JSX.Element {
   const t = useT()
   const [activeTab, setActiveTab] = useState<StudioTabKey>('media')
+
+  // Tab Giọng đọc cần đưa người dùng sang Cấu hình AI khi thiếu khoá.
+  const openSettings = useCallback(() => setActiveTab('settings'), [])
 
   const tabs: Array<{ key: StudioTabKey; label: string }> = [
     { key: 'media', label: t.studio.tabs.media },
@@ -59,13 +65,19 @@ export function AiStudioPanel({
       </div>
 
       <div className="panel__body" role="tabpanel" aria-label={activeLabel}>
-        {activeTab === 'media' ? (
+        {activeTab === 'media' && (
           <MediaLibraryPanel
             importing={importing}
             onImportClick={onImportClick}
             onAddToTimeline={onAddToTimeline}
           />
-        ) : (
+        )}
+
+        {activeTab === 'voice' && <VoicePanel onOpenSettings={openSettings} />}
+        {activeTab === 'music' && <MusicPanel />}
+        {activeTab === 'settings' && <AiSettingsPanel />}
+
+        {(activeTab === 'transcribe' || activeTab === 'translate' || activeTab === 'subtitles') && (
           <EmptyState title={t.studio.comingSoon} hint={t.studio.comingSoonHint} />
         )}
       </div>

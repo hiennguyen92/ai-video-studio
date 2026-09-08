@@ -5,6 +5,7 @@ import {
   type ExportProgressEvent,
   type RendererApi
 } from '../shared/ipc/ipc-contract'
+import type { JobRecord } from '../shared/jobs/job-types'
 
 /**
  * Cầu nối duy nhất giữa renderer và main.
@@ -32,6 +33,28 @@ const api: RendererApi = {
     import: (request) => ipcRenderer.invoke(IPC.mediaImport, request),
     relink: (asset, newPath) => ipcRenderer.invoke(IPC.mediaRelink, asset, newPath),
     readWaveform: (waveformPath) => ipcRenderer.invoke(IPC.mediaReadWaveform, waveformPath)
+  },
+  ai: {
+    settings: () => ipcRenderer.invoke(IPC.aiProviders),
+    setCredential: (providerId, apiKey) =>
+      ipcRenderer.invoke(IPC.aiSetCredential, providerId, apiKey),
+    deleteCredential: (providerId) => ipcRenderer.invoke(IPC.aiDeleteCredential, providerId),
+    testConnection: (providerId) => ipcRenderer.invoke(IPC.aiTestConnection, providerId),
+    listModels: (providerId) => ipcRenderer.invoke(IPC.aiListModels, providerId),
+    listVoices: (request) => ipcRenderer.invoke(IPC.aiListVoices, request),
+    capabilities: (providerId, model) => ipcRenderer.invoke(IPC.aiCapabilities, providerId, model),
+    generateSpeech: (request) => ipcRenderer.invoke(IPC.aiGenerateSpeech, request),
+    attachGeneratedAudio: (request) => ipcRenderer.invoke(IPC.aiAttachGeneratedAudio, request)
+  },
+  jobs: {
+    list: (projectId) => ipcRenderer.invoke(IPC.jobList, projectId),
+    cancel: (jobId) => ipcRenderer.invoke(IPC.jobCancel, jobId),
+    clearFinished: (projectId) => ipcRenderer.invoke(IPC.jobClearFinished, projectId),
+    onChanged: (listener) => {
+      const handler = (_event: unknown, payload: { job: JobRecord }): void => listener(payload.job)
+      ipcRenderer.on(IPC_EVENT.jobChanged, handler)
+      return () => ipcRenderer.removeListener(IPC_EVENT.jobChanged, handler)
+    }
   },
   export: {
     capabilities: () => ipcRenderer.invoke(IPC.exportCapabilities),

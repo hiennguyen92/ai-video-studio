@@ -99,6 +99,30 @@ await page.screenshot({ path: join(OUT, 'ui-04-timeline-va-inspector.png') })
 await page.locator('.top-bar select').selectOption('en')
 await page.waitForTimeout(300)
 await page.screenshot({ path: join(OUT, 'ui-05-english.png') })
+await page.locator('.top-bar select').selectOption('vi')
+
+// Các panel của Mốc 2.
+const studio = page.getByRole('region', { name: 'AI Studio' })
+
+await studio.getByRole('tab', { name: 'Cấu hình AI' }).click()
+await page.waitForTimeout(400)
+await page.screenshot({ path: join(OUT, 'ui-06-cau-hinh-ai.png') })
+
+await studio.getByRole('tab', { name: 'Giọng đọc' }).click()
+await page.getByLabel('Nhà cung cấp').selectOption('openai')
+await page.waitForTimeout(400)
+await page.getByLabel('Kịch bản', { exact: true }).fill(
+  'Xin chào và chào mừng bạn đến với AI Video Studio.\n\n' +
+  'Đây là đoạn thứ hai của kịch bản, dùng để minh hoạ việc chia đoạn.\n\n' +
+  'Mỗi đoạn có thể được tạo lại riêng mà không ảnh hưởng các đoạn khác.'
+)
+await page.getByRole('button', { name: 'Chia thành đoạn' }).click()
+await page.waitForTimeout(400)
+await page.screenshot({ path: join(OUT, 'ui-07-giong-doc.png') })
+
+await studio.getByRole('tab', { name: 'Nhạc nền' }).click()
+await page.waitForTimeout(400)
+await page.screenshot({ path: join(OUT, 'ui-08-nhac-nen.png') })
 
 await app.close()
 await rm(userDataDir, { recursive: true, force: true })

@@ -18,16 +18,24 @@ Mốc được chia theo `DESCRIPTION.md` §9. Mỗi mốc phải **chạy đư�
 | Xuất MP4 | ✅ | e2e: soi lại file bằng ffprobe |
 | Giao diện tiếng Việt + tiếng Anh | ✅ | e2e: đổi ngôn ngữ |
 
-## Mốc 2 — Giọng đọc và nhạc nền
+## Mốc 2 — Giọng đọc và nhạc nền ✅ HOÀN TẤT (trừ lời gọi provider thật)
 
-- [ ] Cấu hình AI: quản lý provider/model theo từng tác vụ, lưu khoá bằng `safeStorage`, nút kiểm tra kết nối
-- [ ] Interface adapter riêng cho từng nhóm tác vụ (sinh văn bản/dịch, STT, TTS, nhạc)
-- [ ] Panel Giọng đọc: lấy danh sách giọng **từ provider**, nghe thử, chia kịch bản theo đoạn, tạo audio
-- [ ] Chỉ hiển thị tham số mà provider **thật sự** hỗ trợ
-- [ ] Chèn tại playhead / track mới / thay thế đoạn đang chọn
-- [ ] Upload nhạc, chèn vào track riêng, chỉnh âm lượng và fade
-- [ ] Vòng đời job đầy đủ: hàng đợi, đang chạy, thành công, thất bại, đã huỷ; chống chèn trùng khi thử lại
-- [ ] Khi thiếu khoá API chỉ vô hiệu hoá đúng tính năng phụ thuộc
+| Hạng mục | Trạng thái | Kiểm chứng bằng |
+|---|---|---|
+| Cấu hình AI: provider, khoá qua `safeStorage`, kiểm tra kết nối | ✅ | e2e trên keychain thật |
+| Interface riêng cho từng nhóm tác vụ (TTS/STT/dịch/nhạc) | ✅ | `shared/ai/ai-provider-contracts.ts` |
+| Adapter ElevenLabs (danh sách giọng từ provider) | ⚠️ | fixture — **chưa gọi API thật** |
+| Adapter OpenAI (danh mục giọng cố định) | ⚠️ | fixture — **chưa gọi API thật** |
+| Chỉ hiện tham số provider thật sự hỗ trợ | ✅ | e2e: đổi model thì ô tham số biến mất |
+| Chia kịch bản thành đoạn tạo lại riêng | ✅ | 9 unit + e2e |
+| Chèn tại playhead / track mới / thay clip đang chọn | ✅ | `use-audio-insertion.ts` |
+| Upload nhạc, chèn vào track riêng, chỉnh âm lượng/fade | ✅ | e2e, chạy khi không có khoá nào |
+| Vòng đời job đầy đủ, huỷ thật, chống chèn trùng khi retry | ✅ | 10 unit |
+| Thiếu khoá chỉ vô hiệu hoá tính năng phụ thuộc | ✅ | e2e |
+| Khoá sai báo lỗi rõ ràng | ✅ | e2e (chạm mạng thật, nhận 401) |
+
+**Còn nợ của Mốc 2:** một lần chạy thật với khoá API hợp lệ để xác nhận phản hồi provider khớp
+tài liệu và nghe thử chất lượng giọng tiếng Việt.
 
 ## Mốc 3 — Phiên âm, dịch, phụ đề
 
@@ -68,8 +76,8 @@ ghi vào backlog rõ ràng."
 
 ## Câu hỏi còn mở
 
-1. **Chọn provider cho Mốc 2.** Báo cáo nghiên cứu đề xuất bộ tối thiểu, nhưng model và giá thay đổi
-   nhanh. Cần chốt cụ thể (và chuẩn bị khoá API) trước khi viết adapter.
+1. **Khoá API để nghiệm thu Mốc 2.** Adapter đã viết xong cho ElevenLabs và OpenAI. Cần một khoá
+   hợp lệ của một trong hai bên để chạy thật một lần và xác nhận phản hồi khớp tài liệu.
 2. **Phiên âm chạy local hay trên cloud?** Whisper chạy local thì miễn phí và giữ dữ liệu trong máy,
    đổi lại nặng vài trăm MB model và chậm hơn. Ảnh hưởng tới kích thước bản cài.
 3. **Ngưỡng tăng tốc khi lồng tiếng.** Hiện đặt mặc định 1.3×; con số này nên do người dùng chỉnh hay

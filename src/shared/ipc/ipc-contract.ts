@@ -1,5 +1,13 @@
 import type { MediaAsset } from '../domain/media-asset-types'
 import type { ProjectDocument } from '../domain/project-document-types'
+import type {
+  ConnectionTestResult,
+  ProviderDescriptor,
+  ProviderModel,
+  TtsCapabilities
+} from '../ai/ai-capability-types'
+import type { Voice } from '../ai/ai-provider-contracts'
+import type { JobRecord } from '../jobs/job-types'
 
 /**
  * Hợp đồng giữa renderer và main.
@@ -23,6 +31,21 @@ export const IPC = {
   mediaRelink: 'media:relink',
   mediaReadWaveform: 'media:read-waveform',
 
+  aiProviders: 'ai:providers',
+  aiCredentialStatus: 'ai:credential-status',
+  aiSetCredential: 'ai:set-credential',
+  aiDeleteCredential: 'ai:delete-credential',
+  aiTestConnection: 'ai:test-connection',
+  aiListModels: 'ai:list-models',
+  aiListVoices: 'ai:list-voices',
+  aiCapabilities: 'ai:capabilities',
+  aiGenerateSpeech: 'ai:generate-speech',
+  aiAttachGeneratedAudio: 'ai:attach-generated-audio',
+
+  jobList: 'job:list',
+  jobCancel: 'job:cancel',
+  jobClearFinished: 'job:clear-finished',
+
   exportPickPath: 'export:pick-path',
   exportStart: 'export:start',
   exportCancel: 'export:cancel',
@@ -33,7 +56,8 @@ export const IPC = {
 
 /** Kênh main -> renderer. Tiến trình xuất được đẩy về chứ không để renderer hỏi liên tục. */
 export const IPC_EVENT = {
-  exportProgress: 'export:progress'
+  exportProgress: 'export:progress',
+  jobChanged: 'job:changed'
 } as const
 
 export type IpcChannel = (typeof IPC)[keyof typeof IPC]
@@ -121,6 +145,53 @@ export interface ExportCapabilities {
   hardwareEncoderName?: string
 }
 
+/* ── AI ───────────────────────────────────────────────────────── */
+
+export interface ProviderStatus {
+  descriptor: ProviderDescriptor
+  /** Đã lưu khoá cho provider này chưa. Không bao giờ trả giá trị khoá. */
+  hasCredential: boolean
+}
+
+export interface AiSettingsSnapshot {
+  providers: ProviderStatus[]
+  /** Kho bí mật của hệ điều hành có dùng được không. */
+  encryption: { available: boolean; backend: string }
+}
+
+export interface ListVoicesRequest {
+  providerId: string
+  language?: string
+}
+
+export interface GenerateSpeechIpcRequest {
+  projectId: string
+  providerId: string
+  model: string
+  voiceId: string
+  text: string
+  language?: string
+  parameters: Record<string, number | string | boolean>
+  outputFormat: string
+  label: string
+  sourceSegmentId?: string
+}
+
+export interface AttachGeneratedAudioRequest {
+  jobId: string
+  existingAssets: MediaAsset[]
+  prompt?: string
+  language?: string
+  voiceId?: string
+  sourceSegmentId?: string
+}
+
+export interface AttachGeneratedAudioResponse {
+  asset: MediaAsset
+  /** Kết quả trùng với asset đã có — nơi gọi nên dùng lại thay vì thêm mới. */
+  alreadyInLibrary: boolean
+}
+
 export interface AppInfo {
   version: string
   platform: string
@@ -145,6 +216,26 @@ export interface RendererApi {
     import(request: ImportMediaRequest): Promise<IpcResult<ImportMediaResponse>>
     relink(asset: MediaAsset, newPath: string): Promise<IpcResult<MediaAsset>>
     readWaveform(waveformPath: string): Promise<IpcResult<WaveformData>>
+  }
+  ai: {
+    settings(): Promise<IpcResult<AiSettingsSnapshot>>
+    setCredential(providerId: string, apiKey: string): Promise<IpcResult<void>>
+    deleteCredential(providerId: string): Promise<IpcResult<void>>
+    testConnection(providerId: string): Promise<IpcResult<ConnectionTestResult>>
+    listModels(providerId: string): Promise<IpcResult<ProviderModel[]>>
+    listVoices(request: ListVoicesRequest): Promise<IpcResult<Voice[]>>
+    capabilities(providerId: string, model: string): Promise<IpcResult<TtsCapabilities>>
+    generateSpeech(request: GenerateSpeechIpcRequest): Promise<IpcResult<JobRecord>>
+    attachGeneratedAudio(
+      request: AttachGeneratedAudioRequest
+    ): Promise<IpcResult<AttachGeneratedAudioResponse>>
+  }
+  jobs: {
+    list(projectId: string): Promise<IpcResult<JobRecord[]>>
+    cancel(jobId: string): Promise<IpcResult<void>>
+    clearFinished(projectId: string): Promise<IpcResult<void>>
+    /** Trả về hàm huỷ đăng ký. */
+    onChanged(listener: (job: JobRecord) => void): () => void
   }
   export: {
     capabilities(): Promise<IpcResult<ExportCapabilities>>

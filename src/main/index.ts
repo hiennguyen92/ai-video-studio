@@ -2,6 +2,8 @@ import { app, BrowserWindow, shell } from 'electron'
 import { electronApp, is, optimizer } from '@electron-toolkit/utils'
 import { join } from 'node:path'
 import { registerIpcHandlers } from './ipc/register-ipc-handlers'
+import { attachJobEventBridge, registerAiIpcHandlers } from './ipc/register-ai-ipc-handlers'
+import { jobQueue } from './jobs/job-queue'
 import {
   registerMediaProtocolHandler,
   registerMediaProtocolScheme
@@ -51,6 +53,11 @@ function createMainWindow(): BrowserWindow {
 
   window.on('ready-to-show', () => window.show())
 
+  // Sự kiện job được đẩy tới đúng cửa sổ đã mở nó; ngắt kết nối khi cửa sổ đóng
+  // để không gửi vào một webContents đã bị huỷ.
+  const detachJobEvents = attachJobEventBridge(window.webContents)
+  window.on('closed', detachJobEvents)
+
   window.webContents.setWindowOpenHandler(({ url }) => {
     // Link ngoài mở bằng trình duyệt hệ thống, không mở cửa sổ Electron mới.
     void shell.openExternal(url)
@@ -71,6 +78,7 @@ void app.whenReady().then(async () => {
 
   registerMediaProtocolHandler()
   registerIpcHandlers()
+  registerAiIpcHandlers()
   await ensureProjectsRoot()
 
   app.on('browser-window-created', (_event, window) => {
@@ -85,8 +93,9 @@ void app.whenReady().then(async () => {
 })
 
 app.on('before-quit', () => {
-  // Không để lại tiến trình ffmpeg mồ côi khi người dùng thoát giữa lúc đang xuất.
+  // Không để lại tiến trình ffmpeg mồ côi hay request đang bay khi người dùng thoát.
   cancelAllExports()
+  jobQueue.cancelAll()
 })
 
 app.on('window-all-closed', () => {

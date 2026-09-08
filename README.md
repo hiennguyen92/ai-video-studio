@@ -4,10 +4,12 @@ Trình chỉnh sửa video desktop chạy local, timeline nhiều track, giao di
 được thiết kế để các công cụ AI — phiên âm, dịch, lồng tiếng, phụ đề — sinh ra **dữ liệu thật trên
 timeline** thay vì một video đã đóng băng.
 
-> **Trạng thái: Mốc 1 đã hoàn tất và kiểm chứng được.**
+> **Trạng thái: Mốc 1 và Mốc 2 đã hoàn tất.**
 > Nhập media, dựng timeline, xem trước, lưu/mở lại và xuất MP4 đều chạy thật.
-> Các tính năng AI (giọng đọc, nhạc, phiên âm, dịch, phụ đề, AI Chat) **chưa được triển khai** —
-> xem [Phạm vi hiện tại](#phạm-vi-hiện-tại) để biết chính xác cái gì có và cái gì chưa.
+> Hạ tầng AI đã xong: quản lý khoá bằng keychain, adapter giọng đọc, hàng đợi tác vụ,
+> panel Giọng đọc và Nhạc nền.
+> **Chưa có khoá API nên các lời gọi provider thật chưa được kiểm chứng** — xem
+> [Phạm vi hiện tại](#phạm-vi-hiện-tại).
 
 ---
 
@@ -99,24 +101,37 @@ Phím tắt **không** kích hoạt khi con trỏ đang ở trong ô nhập li�
 - **Xuất**: MP4 (H.264 + AAC), chọn độ phân giải và fps, tăng tốc phần cứng khi máy hỗ trợ,
   tiến trình thật từ ffmpeg, huỷ giữa chừng, nung phụ đề, xuất SRT riêng
 - **Ngôn ngữ**: tiếng Việt mặc định, chuyển sang tiếng Anh ngay lập tức
+- **Cấu hình AI**: khoá API lưu bằng `safeStorage` (macOS Keychain), kiểm tra kết nối,
+  xoá khoá; thiếu khoá chỉ vô hiệu hoá đúng tính năng phụ thuộc
+- **Giọng đọc**: chọn provider/model/giọng, danh sách giọng lấy từ provider, chia kịch bản
+  thành đoạn tạo lại được riêng, chèn tại playhead / track mới / thay clip đang chọn
+- **Nhạc nền**: tải nhạc, chèn vào track nhạc, chỉnh âm lượng và fade — **không cần khoá AI nào**
+- **Tác vụ nền**: hàng đợi có trạng thái đầy đủ, huỷ thật, tái dùng kết quả cũ khi thử lại
 
 ### Chưa triển khai
 
 Các tab này **có mặt trong giao diện và nói rõ là chưa có** — không tab nào giả vờ hoạt động:
 
-- Giọng đọc / lồng tiếng (Mốc 2)
-- Nhạc nền và auto-ducking (Mốc 2 và 4)
 - Phiên âm (Mốc 3)
 - Dịch và lồng tiếng theo bản dịch (Mốc 3)
 - Phụ đề: mô hình dữ liệu, ghi ASS/SRT và nung vào video **đã xong và đã kiểm thử**, nhưng
   **chưa có giao diện tạo/sửa phụ đề** (Mốc 3)
 - AI Chat (Mốc 4)
-- Cấu hình AI, quản lý khoá API bằng keychain (Mốc 2)
+- Auto-ducking (Mốc 4)
+- Tạo nhạc bằng mô tả — chưa có nhà cung cấp nào có API công khai ổn định
 
 ### Giới hạn đã biết
 
-- **Chưa gọi provider AI thật.** Không có adapter nào được viết, nên chưa có gì để kiểm chứng.
-  Khi làm, model và endpoint sẽ đọc từ cấu hình chứ không hardcode.
+- **⚠️ Lời gọi provider thật chưa được kiểm chứng.** Adapter ElevenLabs và OpenAI được viết theo
+  tài liệu chính thức và kiểm thử bằng máy chủ giả trả về phản hồi đúng hình dạng tài liệu mô tả.
+  Dự án chưa có khoá API nên chưa lần nào gọi API thật thành công. Cụ thể chưa kiểm chứng được:
+  phản hồi thật có khớp tài liệu không, chất lượng giọng tiếng Việt, và hành vi khi bị giới hạn
+  tần suất. Đường đi khi **thiếu khoá hoặc khoá sai** thì đã kiểm thử và báo lỗi đúng.
+- **Hỗ trợ tiếng Việt của provider chưa được xác nhận từ nguồn gốc.** Tài liệu ElevenLabs không
+  nói rõ trong trang mà nghiên cứu truy cập được; OpenAI không công bố hỗ trợ theo từng giọng.
+  Giao diện nói đúng điều đó thay vì hứa hẹn.
+- Tham số `style` và `speed` của ElevenLabs **không được đưa ra giao diện** vì khoảng giá trị hợp
+  lệ chưa xác minh được từ tài liệu.
 - **Chỉ kiểm thử trên macOS Apple Silicon.** Windows/Linux chưa chạy thử lần nào.
 - **Chưa đóng gói cài đặt.** `electron-builder` đã có cấu hình nhưng chưa dựng bản cài.
   Bản ffmpeg đi kèm hiện tại được build với `--enable-nonfree`, **không phát hành lại được** —
@@ -133,11 +148,16 @@ src/
 ├── shared/        dùng chung cho cả hai tiến trình — không phụ thuộc Electron
 │   ├── domain/    schema project, quy ước thời gian, bộ giải composition
 │   ├── commands/  tập lệnh chỉnh sửa, reducer thuần, lịch sử undo theo patch
+│   ├── ai/        khai báo năng lực provider, interface theo nhóm tác vụ
+│   ├── jobs/      vòng đời tác vụ nền
 │   └── ipc/       hợp đồng giữa renderer và main
-├── main/          tiến trình Node: đĩa, tiến trình con, ffmpeg
+├── main/          tiến trình Node: đĩa, tiến trình con, ffmpeg, khoá API
 │   ├── media/     probe, hash, waveform, thumbnail, scheme media
 │   ├── storage/   ghi project nguyên tử, bố cục thư mục
 │   ├── export/    dựng filter graph, chạy job, ghi ASS/SRT
+│   ├── ai/        adapter provider, lớp HTTP phân loại lỗi, sổ đăng ký
+│   ├── jobs/      hàng đợi, cache kết quả theo vân tay yêu cầu
+│   ├── secrets/   lưu khoá bằng safeStorage
 │   └── ipc/       các handler
 ├── preload/       cầu nối contextBridge (CommonJS, chạy trong sandbox)
 └── renderer/      giao diện React
@@ -156,8 +176,11 @@ Bốn quyết định định hình phần còn lại:
    Không có hai nguồn sự thật về timeline, nên bản xem trước không thể lệch khỏi bản xuất ra.
 
 4. **Renderer không chạm vào đĩa hay tiến trình con.** Nó chạy trong sandbox và chỉ nói chuyện qua
-   preload. Nhờ đó khoá API sau này có thể nằm hoàn toàn phía main và không bao giờ lọt vào bundle
-   giao diện, project JSON hay log.
+   preload. Khoá API nằm hoàn toàn phía main: renderer chỉ hỏi được "provider này đã có khoá chưa",
+   không có đường nào lấy lại giá trị khoá.
+
+5. **Giao diện tham số AI được dựng từ khai báo năng lực của provider**, không viết cứng. Model nào
+   không nhận một tham số thì ô đó KHÔNG tồn tại, chứ không phải bị làm mờ.
 
 Xem [`docs/system-architecture.md`](docs/system-architecture.md) để biết chi tiết.
 
@@ -165,13 +188,14 @@ Xem [`docs/system-architecture.md`](docs/system-architecture.md) để biết ch
 
 | Loại | Số lượng | Nội dung |
 |---|---|---|
-| Unit | 27 | Quy đổi thời gian, biến đổi timeline, giao dịch lệnh, kiểm tra payload |
+| Unit | 46 | Quy đổi thời gian, biến đổi timeline, giao dịch lệnh, kiểm tra payload, vòng đời job, chia đoạn kịch bản |
 | Integration | 24 | **Chạy ffmpeg thật**: probe, waveform, thumbnail, dựng lệnh xuất, render MP4, nung phụ đề, huỷ job |
-| Đầu-cuối | 10 | **Chạy Electron thật đã build**: nhập media, dựng timeline, cắt, hoàn tác, đổi ngôn ngữ, lưu/mở lại, xuất MP4 rồi soi lại file bằng ffprobe |
+| Adapter (fixture) | 15 | Máy chủ giả trả phản hồi đúng hình dạng tài liệu: dựng đúng đường dẫn/header/body, đọc phân trang, phân loại lỗi. **Không phải lời gọi provider thật** |
+| Đầu-cuối | 20 | **Chạy Electron thật đã build**: nhập media, dựng timeline, cắt, hoàn tác, đổi ngôn ngữ, lưu/mở lại, xuất MP4 rồi soi bằng ffprobe, lưu khoá qua keychain thật, tham số đổi theo model, nhạc nền chạy khi không có khoá |
 
 ```bash
-npm test          # 51 phép thử
-npm run test:e2e  # 10 phép thử
+npm test          # 85 phép thử
+npm run test:e2e  # 20 phép thử
 ```
 
 Kiểm thử cố tình **không giả lập ffmpeg**: giá trị nằm ở chỗ tham số dòng lệnh có đúng không, mà đó

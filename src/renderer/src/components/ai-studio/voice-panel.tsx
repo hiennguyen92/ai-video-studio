@@ -1,0 +1,510 @@
+import { useCallback, useEffect, useMemo, useState, type JSX } from 'react'
+import type { ProviderModel, TtsCapabilities } from '../../../../shared/ai/ai-capability-types'
+import { defaultParameterValues } from '../../../../shared/ai/ai-capability-types'
+import type { Voice } from '../../../../shared/ai/ai-provider-contracts'
+import type { AiSettingsSnapshot } from '../../../../shared/ipc/ipc-contract'
+import { mediaFileUrl } from '../../../../shared/ipc/ipc-contract'
+import { formatClockTime } from '../../../../shared/domain/time-units'
+import { selectDocument, useEditorStore } from '../../state/editor-store'
+import { useSpeechGeneration } from '../../hooks/use-speech-generation'
+import { useAudioInsertion, type InsertMode } from '../../hooks/use-audio-insertion'
+import { interpolate, useT } from '../../i18n/use-translation'
+import { ToolButton } from '../ui/tool-button'
+import { EmptyState } from '../ui/empty-state'
+import { IconPlay, IconSparkle, IconTrash } from '../ui/icons'
+import { ProviderParameterControls } from './provider-parameter-controls'
+import { splitScriptIntoSegments, type ScriptSegment } from './voice-script-segments'
+import './voice-panel.css'
+
+/**
+ * Tab Giọng đọc (DESCRIPTION §3.B).
+ *
+ * Toàn bộ ô điều khiển tham số được dựng từ khai báo năng lực của provider, nên
+ * đổi provider hoặc đổi model là bộ điều khiển tự đổi theo. Không có tham số nào
+ * được viết cứng trong file này.
+ */
+
+const LANGUAGE_OPTIONS = [
+  { code: 'vi', label: 'Tiếng Việt' },
+  { code: 'en', label: 'English' },
+  { code: '', label: '—' }
+]
+
+export function VoicePanel({ onOpenSettings }: { onOpenSettings(): void }): JSX.Element {
+  const t = useT()
+  const document = useEditorStore(selectDocument)
+  const { insertAudio, canReplaceSelection } = useAudioInsertion()
+  const { states, generate, cancel } = useSpeechGeneration()
+
+  const [settings, setSettings] = useState<AiSettingsSnapshot | null>(null)
+  const [providerId, setProviderId] = useState('')
+  const [models, setModels] = useState<ProviderModel[]>([])
+  const [model, setModel] = useState('')
+  const [capabilities, setCapabilities] = useState<TtsCapabilities | null>(null)
+  const [voices, setVoices] = useState<Voice[]>([])
+  const [voiceId, setVoiceId] = useState('')
+  const [language, setLanguage] = useState('vi')
+  const [parameters, setParameters] = useState<Record<string, number | string | boolean>>({})
+  const [outputFormat, setOutputFormat] = useState('')
+  const [script, setScript] = useState('')
+  const [segments, setSegments] = useState<ScriptSegment[]>([])
+  const [insertMode, setInsertMode] = useState<InsertMode>('playhead')
+  const [loadingVoices, setLoadingVoices] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  /* ── Nạp provider có làm được tác vụ giọng đọc ─────────────── */
+
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      const result = await window.api.ai.settings()
+      if (cancelled) return
+      if (!result.ok) {
+        setError(result.error)
+        return
+      }
+      setSettings(result.data)
+      const ttsProviders = result.data.providers.filter((entry) =>
+        entry.descriptor.tasks.includes('tts')
+      )
+      // Ưu tiên provider đã có khoá — chọn sẵn cái dùng được ngay.
+      const preferred = ttsProviders.find((entry) => entry.hasCredential) ?? ttsProviders[0]
+      if (preferred) setProviderId(preferred.descriptor.id)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!providerId) return
+    let cancelled = false
+    void (async () => {
+      const result = await window.api.ai.listModels(providerId)
+      if (cancelled || !result.ok) return
+      setModels(result.data)
+      setModel((current) =>
+        result.data.some((item) => item.id === current) ? current : (result.data[0]?.id ?? '')
+      )
+      setVoices([])
+      setVoiceId('')
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [providerId])
+
+  useEffect(() => {
+    if (!providerId || !model) return
+    let cancelled = false
+    void (async () => {
+      const result = await window.api.ai.capabilities(providerId, model)
+      if (cancelled || !result.ok) return
+      setCapabilities(result.data)
+      setParameters(defaultParameterValues(result.data.parameters))
+      setOutputFormat(result.data.outputFormats[0]?.value ?? '')
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [providerId, model])
+
+  const providerStatus = settings?.providers.find((entry) => entry.descriptor.id === providerId)
+  const hasCredential = providerStatus?.hasCredential ?? false
+
+  const loadVoices = useCallback(async () => {
+    if (!providerId) return
+    setLoadingVoices(true)
+    setError(null)
+    try {
+      const result = await window.api.ai.listVoices({
+        providerId,
+        language: capabilities?.supportsLanguageFilter && language ? language : undefined
+      })
+      if (!result.ok) {
+        setError(result.error)
+        return
+      }
+      setVoices(result.data)
+      setVoiceId((current) =>
+        result.data.some((voice) => voice.id === current) ? current : (result.data[0]?.id ?? '')
+      )
+    } finally {
+      setLoadingVoices(false)
+    }
+  }, [providerId, language, capabilities?.supportsLanguageFilter])
+
+  // Danh mục cố định không tốn lời gọi mạng nên nạp luôn; danh mục lấy từ tài
+  // khoản thì đợi người dùng bấm, tránh gọi API khi họ chỉ ghé qua tab.
+  // Gọi thẳng ở đây thay vì dùng `loadVoices` để mọi cập nhật state đều nằm sau
+  // một `await`, không phải trong thân đồng bộ của effect.
+  useEffect(() => {
+    if (capabilities?.voiceCatalog !== 'static' || !providerId) return
+    let cancelled = false
+    void (async () => {
+      const result = await window.api.ai.listVoices({ providerId })
+      if (cancelled || !result.ok) return
+      setVoices(result.data)
+      setVoiceId((current) =>
+        result.data.some((voice) => voice.id === current) ? current : (result.data[0]?.id ?? '')
+      )
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [capabilities?.voiceCatalog, providerId])
+
+  /* ── Kịch bản ──────────────────────────────────────────────── */
+
+  const handleSplit = useCallback(() => {
+    setSegments(
+      splitScriptIntoSegments(script, { maxCharacters: capabilities?.maxCharactersPerRequest })
+    )
+  }, [script, capabilities?.maxCharactersPerRequest])
+
+  const updateSegmentText = useCallback((segmentId: string, text: string) => {
+    setSegments((current) =>
+      current.map((segment) => (segment.id === segmentId ? { ...segment, text } : segment))
+    )
+  }, [])
+
+  const removeSegment = useCallback((segmentId: string) => {
+    setSegments((current) => current.filter((segment) => segment.id !== segmentId))
+  }, [])
+
+  const generateSegment = useCallback(
+    (segment: ScriptSegment) => {
+      if (!providerId || !model || !voiceId || !outputFormat) return
+      void generate({
+        segmentId: segment.id,
+        text: segment.text,
+        providerId,
+        model,
+        voiceId,
+        language: language || undefined,
+        parameters,
+        outputFormat
+      })
+    },
+    [generate, providerId, model, voiceId, outputFormat, language, parameters]
+  )
+
+  const generateAll = useCallback(() => {
+    for (const segment of segments) {
+      if (states[segment.id]?.status === 'succeeded') continue
+      generateSegment(segment)
+    }
+  }, [segments, states, generateSegment])
+
+  const readyAssetIds = useMemo(
+    () =>
+      segments
+        .map((segment) => states[segment.id]?.assetId)
+        .filter((assetId): assetId is string => Boolean(assetId)),
+    [segments, states]
+  )
+
+  const handleInsert = useCallback(() => {
+    const inserted = insertAudio({
+      assetIds: readyAssetIds,
+      mode: insertMode,
+      role: 'voiceover',
+      newTrackName: 'Lồng tiếng'
+    })
+    if (!inserted) setError(t.voice.emptyScript)
+  }, [insertAudio, readyAssetIds, insertMode, t.voice.emptyScript])
+
+  const selectedVoice = voices.find((voice) => voice.id === voiceId)
+  const limit = capabilities?.maxCharactersPerRequest
+
+  if (!document) return <EmptyState title={t.app.loading} hint={t.voice.emptyScript} />
+
+  return (
+    <div className="voice-panel">
+      {!hasCredential && providerStatus && (
+        <div className="notice notice--warning voice-panel__missing-key">
+          <span>{t.voice.missingKey}</span>
+          <ToolButton label={t.voice.openSettings} variant="outline" onClick={onOpenSettings} />
+        </div>
+      )}
+
+      {error && <div className="notice">{interpolate(t.errors.generic, { message: error })}</div>}
+
+      {/* ── Chọn provider, model, giọng ── */}
+      <div className="field-row">
+        <span className="field-row__label">{t.voice.provider}</span>
+        <select
+          value={providerId}
+          onChange={(event) => setProviderId(event.target.value)}
+          aria-label={t.voice.provider}
+        >
+          {settings?.providers
+            .filter((entry) => entry.descriptor.tasks.includes('tts'))
+            .map((entry) => (
+              <option key={entry.descriptor.id} value={entry.descriptor.id}>
+                {entry.descriptor.name}
+                {entry.hasCredential ? '' : ' — chưa có khoá'}
+              </option>
+            ))}
+        </select>
+      </div>
+
+      <div className="field-row">
+        <span className="field-row__label">{t.voice.model}</span>
+        <select
+          value={model}
+          onChange={(event) => setModel(event.target.value)}
+          aria-label={t.voice.model}
+        >
+          {models.map((item) => (
+            <option key={item.id} value={item.id}>
+              {item.label}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {capabilities?.supportsLanguageFilter && (
+        <div className="field-row">
+          <span className="field-row__label">{t.voice.language}</span>
+          <select
+            value={language}
+            onChange={(event) => setLanguage(event.target.value)}
+            aria-label={t.voice.language}
+          >
+            {LANGUAGE_OPTIONS.map((option) => (
+              <option key={option.code} value={option.code}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      <div className="field-row">
+        <span className="field-row__label">{t.voice.voice}</span>
+        <div className="voice-panel__voice-row">
+          <select
+            value={voiceId}
+            onChange={(event) => setVoiceId(event.target.value)}
+            aria-label={t.voice.voice}
+            disabled={voices.length === 0}
+          >
+            {voices.length === 0 && <option value="">{t.voice.noVoices}</option>}
+            {voices.map((voice) => (
+              <option key={voice.id} value={voice.id}>
+                {voice.name}
+                {voice.languages.length > 0 ? ` (${voice.languages.join(', ')})` : ''}
+              </option>
+            ))}
+          </select>
+          {capabilities?.voiceCatalog === 'remote' && (
+            <ToolButton
+              label={loadingVoices ? t.voice.loadingVoices : t.voice.loadVoices}
+              variant="outline"
+              onClick={() => void loadVoices()}
+              disabled={loadingVoices || !hasCredential}
+            />
+          )}
+        </div>
+      </div>
+
+      <p className="voice-panel__catalog-note">
+        {capabilities?.voiceCatalog === 'remote'
+          ? t.voice.voiceCatalogRemote
+          : t.voice.voiceCatalogStatic}
+      </p>
+
+      {selectedVoice?.previewUrl && (
+        <audio
+          className="voice-panel__preview"
+          controls
+          src={selectedVoice.previewUrl}
+          aria-label={t.voice.previewVoice}
+        />
+      )}
+      {capabilities && !capabilities.supportsVoicePreviewSample && (
+        <p className="voice-panel__catalog-note">{t.voice.noPreviewAvailable}</p>
+      )}
+
+      {/* ── Tham số do provider khai báo ── */}
+      {capabilities && (
+        <>
+          <p className="field-group__title">{t.voice.parameters}</p>
+          {capabilities.parameters.length === 0 ? (
+            <p className="voice-panel__catalog-note">{t.voice.noParameters}</p>
+          ) : (
+            <ProviderParameterControls
+              parameters={capabilities.parameters}
+              values={parameters}
+              onChange={(key, value) => setParameters((current) => ({ ...current, [key]: value }))}
+            />
+          )}
+
+          <div className="field-row">
+            <span className="field-row__label">{t.voice.outputFormat}</span>
+            <select
+              value={outputFormat}
+              onChange={(event) => setOutputFormat(event.target.value)}
+              aria-label={t.voice.outputFormat}
+            >
+              {capabilities.outputFormats.map((format) => (
+                <option key={format.value} value={format.value}>
+                  {format.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        </>
+      )}
+
+      {/* ── Kịch bản ── */}
+      <p className="field-group__title">{t.voice.script}</p>
+      <textarea
+        className="voice-panel__script"
+        value={script}
+        onChange={(event) => setScript(event.target.value)}
+        placeholder={t.voice.scriptPlaceholder}
+        aria-label={t.voice.script}
+        rows={6}
+      />
+      <div className="voice-panel__script-actions">
+        <ToolButton
+          label={t.voice.splitIntoSegments}
+          variant="outline"
+          onClick={handleSplit}
+          disabled={!script.trim()}
+        />
+        {segments.length > 0 && (
+          <span className="field-row__value">
+            {interpolate(t.voice.segmentCount, { count: segments.length })}
+          </span>
+        )}
+      </div>
+
+      {segments.length === 0 && (
+        <EmptyState title={t.voice.emptyScript} hint={t.voice.scriptPlaceholder} />
+      )}
+
+      {/* ── Danh sách đoạn ── */}
+      {segments.map((segment, index) => {
+        const state = states[segment.id] ?? { status: 'idle' as const }
+        const asset = state.assetId
+          ? document.assets.find((item) => item.id === state.assetId)
+          : undefined
+        const tooLong = limit !== undefined && segment.text.length > limit
+        const busy = state.status === 'queued' || state.status === 'running'
+
+        return (
+          <article key={segment.id} className="script-segment">
+            <header className="script-segment__header">
+              <span className="script-segment__index">{index + 1}</span>
+              <span className="script-segment__meta">
+                {interpolate(t.voice.characters, { count: segment.text.length })}
+                {tooLong && (
+                  <span className="script-segment__warning">
+                    {' · '}
+                    {interpolate(t.voice.overLimit, { limit: limit ?? 0 })}
+                  </span>
+                )}
+                {state.fromCache && ` · ${t.jobs.fromCache}`}
+              </span>
+              <ToolButton
+                label={t.common.remove}
+                icon={<IconTrash />}
+                iconOnly
+                variant="danger"
+                onClick={() => removeSegment(segment.id)}
+                disabled={busy}
+              />
+            </header>
+
+            <textarea
+              className="script-segment__text"
+              value={segment.text}
+              onChange={(event) => updateSegmentText(segment.id, event.target.value)}
+              aria-label={`${t.voice.script} ${index + 1}`}
+              rows={2}
+            />
+
+            <div className="script-segment__actions">
+              {busy ? (
+                <ToolButton
+                  label={t.jobs.cancel}
+                  variant="danger"
+                  onClick={() => void cancel(segment.id)}
+                />
+              ) : (
+                <ToolButton
+                  label={
+                    state.status === 'succeeded' ? t.voice.regenerate : t.voice.generateSegment
+                  }
+                  icon={<IconSparkle />}
+                  variant={state.status === 'succeeded' ? 'ghost' : 'outline'}
+                  onClick={() => generateSegment(segment)}
+                  disabled={!hasCredential || !voiceId || tooLong}
+                />
+              )}
+
+              {busy && <span className="script-segment__status">{t.voice.generating}</span>}
+
+              {asset && (
+                <>
+                  <audio
+                    className="script-segment__audio"
+                    controls
+                    src={mediaFileUrl(asset.source.path)}
+                    aria-label={t.voice.listen}
+                  />
+                  <span className="field-row__value">
+                    {formatClockTime(asset.probe.durationUs)}
+                  </span>
+                </>
+              )}
+
+              {state.status === 'failed' && (
+                <span className="script-segment__error">
+                  {state.error}
+                  {state.retryable === false ? '' : ` · ${t.jobs.retry}`}
+                </span>
+              )}
+            </div>
+          </article>
+        )
+      })}
+
+      {/* ── Chèn vào timeline ── */}
+      {segments.length > 0 && (
+        <div className="voice-panel__insert">
+          <ToolButton
+            label={t.voice.generate}
+            icon={<IconSparkle />}
+            variant="primary"
+            onClick={generateAll}
+            disabled={!hasCredential || !voiceId || segments.length === 0}
+          />
+
+          <select
+            value={insertMode}
+            onChange={(event) => setInsertMode(event.target.value as InsertMode)}
+            aria-label={t.voice.insertAtPlayhead}
+          >
+            <option value="playhead">{t.voice.insertAtPlayhead}</option>
+            <option value="new-track">{t.voice.insertNewTrack}</option>
+            <option value="replace-selected" disabled={!canReplaceSelection}>
+              {t.voice.replaceSelected}
+            </option>
+          </select>
+
+          <ToolButton
+            label={t.voice.insertAtPlayhead}
+            icon={<IconPlay />}
+            variant="outline"
+            onClick={handleInsert}
+            disabled={readyAssetIds.length === 0}
+          />
+        </div>
+      )}
+    </div>
+  )
+}

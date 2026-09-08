@@ -1,0 +1,153 @@
+.voice-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding-bottom: var(--space-4);
+}
+
+.voice-panel__missing-key {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+.voice-panel__voice-row {
+  display: flex;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.voice-panel__voice-row select {
+  flex: 1;
+  min-width: 0;
+}
+
+.voice-panel__catalog-note {
+  margin: 0;
+  padding: 0 var(--space-3);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.voice-panel__preview {
+  width: calc(100% - var(--space-3) * 2);
+  margin: var(--space-2) var(--space-3);
+  height: 32px;
+}
+
+.parameter-controls__range {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.parameter-controls__range input {
+  flex: 1;
+  min-width: 0;
+}
+
+.parameter-controls__value {
+  flex: 0 0 44px;
+  text-align: right;
+  font-size: var(--text-xs);
+}
+
+.voice-panel__script {
+  margin: 0 var(--space-3);
+  resize: vertical;
+  font-family: inherit;
+  line-height: 1.55;
+}
+
+.voice-panel__script-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+}
+
+/* ── Đoạn kịch bản ─────────────────────────────────────────────── */
+
+.script-segment {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0 var(--space-3) var(--space-2);
+  padding: var(--space-2);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-raised);
+}
+
+.script-segment__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.script-segment__index {
+  flex: 0 0 20px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--surface-active);
+  font-size: 10px;
+  color: var(--text-secondary);
+}
+
+.script-segment__meta {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.script-segment__warning {
+  color: var(--warning);
+}
+
+.script-segment__text {
+  resize: vertical;
+  font-family: inherit;
+  font-size: var(--text-sm);
+  line-height: 1.55;
+}
+
+.script-segment__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.script-segment__status {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.script-segment__error {
+  font-size: var(--text-xs);
+  color: var(--danger);
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+.script-segment__audio {
+  flex: 1;
+  min-width: 140px;
+  height: 30px;
+}
+
+.voice-panel__insert {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  margin: var(--space-2) var(--space-3) 0;
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border-subtle);
+}
