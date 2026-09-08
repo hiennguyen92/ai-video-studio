@@ -5,6 +5,7 @@ import type {
   TranslateAdapter,
   TtsAdapter
 } from '../../shared/ai/ai-provider-contracts'
+import { edgeTtsAdapter } from './edge-tts-adapter'
 import { elevenLabsTtsAdapter } from './elevenlabs-tts-adapter'
 import { openAiTtsAdapter } from './openai-tts-adapter'
 import { selfHostedOpenAiTtsAdapter } from './self-hosted-openai-tts-adapter'
@@ -23,7 +24,10 @@ import { elevenLabsMusicAdapter } from './elevenlabs-music-adapter'
  * chứ không nhân bản theo từng tác vụ.
  */
 
+// Edge TTS đứng đầu vì nó là provider giọng đọc DUY NHẤT không cần khoá: máy mới
+// cài chạy được ngay, và `defaultProviderForTask` lấy phần tử đầu tiên.
 const TTS_ADAPTERS: TtsAdapter[] = [
+  edgeTtsAdapter,
   elevenLabsTtsAdapter,
   openAiTtsAdapter,
   selfHostedOpenAiTtsAdapter

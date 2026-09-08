@@ -228,6 +228,29 @@ Hai công cụ dễ bị bỏ sót nhưng thiếu thì cả nhánh này không r
   đi, nên nó ăn vào phần nguồn nằm TRƯỚC `sourceInUs`. Dựng bằng `insert_clip` với
   điểm vào nằm sâu trong file thì luôn đủ handle; dựng từ đầu file thì không.
 
+### Giọng đọc không cần khoá
+
+Mọi provider giọng đọc khác đều đòi khoá API và tính tiền, nên trước đây một máy
+mới cài KHÔNG chạy hết được luồng aff. `edge-tts` lấp chỗ đó: dùng chính dịch vụ
+đọc văn bản của trình duyệt Edge, không đăng ký, không tính tiền, có 2 giọng
+tiếng Việt (HoaiMy nữ, NamMinh nam). Nó đứng đầu danh sách TTS nên là mặc định.
+
+Đánh đổi phải nói thẳng: đây là endpoint nội bộ của Edge, không tài liệu, không
+cam kết ổn định. Vì vậy mọi hằng số trong `edge-tts-protocol.ts` đều kèm số đo
+thật, và có một nhóm test gọi thật (`AVS_LIVE_EDGE_TTS=1`) làm chuông báo khi
+Microsoft đổi giao thức.
+
+Ba điều đo được mà tài liệu chép tay sẽ không nói:
+
+- thiếu header `User-Agent` → 403 ngay ở bước bắt tay; `Origin` một mình không đủ
+- `X-Timestamp` phải theo kiểu chuỗi Date của JavaScript. Gửi RFC 1123
+  (`toUTCString()`) thì kết nối vẫn mở, vẫn nhận `turn.start`, nhưng KHÔNG có byte
+  audio nào — hỏng im lặng
+- cùng một yêu cầu hợp lệ **thỉnh thoảng trả về rỗng** rồi lần sau lại chạy: 2.500
+  ký tự trượt hai lần liền trong khi 6.000 ký tự chạy tốt. Nên adapter thử lại tới
+  ba lần khi ra rỗng; không thử lại thì người dùng nhận một file audio 0 byte làm
+  giọng đọc và chỉ phát hiện lúc phát video
+
 ### Luồng đầy đủ cho video aff từ footage câm
 
 1. dò cú máy → agent xem ảnh, chọn và xếp cảnh
