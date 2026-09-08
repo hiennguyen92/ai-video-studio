@@ -11,6 +11,7 @@ import type {
   RenderPlan,
   RenderPlanAudioClip,
   RenderPlanSubtitleCue,
+  RenderPlanTextOverlay,
   RenderPlanVideoClip
 } from '../shared/domain/remotion-render-plan'
 import { wrapSubtitleText } from '../shared/domain/subtitle-types'
@@ -224,6 +225,108 @@ function SubtitleCue({ cue, height }: { cue: RenderPlanSubtitleCue; height: numb
   )
 }
 
+/**
+ * Chữ overlay: hook, giá, lời kêu gọi hành động.
+ *
+ * Vẽ TRÊN CÙNG, sau cả phụ đề — hook mà bị phụ đề che thì mất tác dụng.
+ *
+ * Hiệu ứng gõ chữ cắt theo SỐ KÝ TỰ chứ không dùng chiều rộng, để nó chạy giống
+ * nhau ở mọi cỡ chữ và mọi phông.
+ */
+function TextOverlayLayer({ overlay }: { overlay: RenderPlanTextOverlay }): JSX.Element {
+  const frame = useCurrentFrame()
+  const { style } = overlay
+
+  const progress =
+    overlay.animationFrames > 0
+      ? interpolate(frame, [0, overlay.animationFrames], [0, 1], {
+          extrapolateLeft: 'clamp',
+          extrapolateRight: 'clamp'
+        })
+      : 1
+
+  let opacity = 1
+  let transform: string | undefined
+  let visibleText = overlay.text
+
+  switch (overlay.animation) {
+    case 'fade':
+      opacity = progress
+      break
+    case 'pop':
+      // Nảy quá cỡ rồi về đúng cỡ — kiểu chữ hay thấy ở video ngắn.
+      opacity = progress
+      transform = `scale(${interpolate(progress, [0, 0.6, 1], [0.6, 1.12, 1])})`
+      break
+    case 'slide-up':
+      opacity = progress
+      transform = `translateY(${(1 - progress) * 40}px)`
+      break
+    case 'typewriter':
+      visibleText = overlay.text.slice(0, Math.ceil(progress * overlay.text.length))
+      break
+    case 'none':
+      break
+  }
+
+  const lines = wrapSubtitleText(visibleText, style.maxCharsPerLine)
+  const vertical =
+    style.alignment >= 7 ? 'flex-start' : style.alignment >= 4 ? 'center' : 'flex-end'
+  const horizontal =
+    style.alignment % 3 === 1 ? 'flex-start' : style.alignment % 3 === 2 ? 'center' : 'flex-end'
+
+  return (
+    <AbsoluteFill
+      className="text-overlay"
+      style={{
+        justifyContent: vertical,
+        alignItems: horizontal,
+        paddingLeft: style.marginLeftPx,
+        paddingRight: style.marginRightPx,
+        paddingTop: vertical === 'flex-start' ? style.marginVerticalPx : 0,
+        paddingBottom: vertical === 'flex-end' ? style.marginVerticalPx : 0,
+        opacity
+      }}
+    >
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: style.lineSpacingPx,
+          textAlign: 'center',
+          transform,
+          backgroundColor:
+            style.boxOpacity > 0 ? hexToRgba(style.boxColor, style.boxOpacity) : undefined,
+          padding: style.boxOpacity > 0 ? style.fontSizePx * 0.25 : 0,
+          borderRadius: style.boxOpacity > 0 ? style.fontSizePx * 0.12 : 0
+        }}
+      >
+        {lines.map((line, index) => (
+          <span
+            key={index}
+            style={{
+              fontFamily: style.fontFamily,
+              fontSize: style.fontSizePx,
+              fontWeight: style.bold ? 800 : 500,
+              fontStyle: style.italic ? 'italic' : 'normal',
+              color: style.color,
+              lineHeight: 1.15,
+              WebkitTextStroke:
+                style.outlineWidthPx > 0
+                  ? `${style.outlineWidthPx}px ${style.outlineColor}`
+                  : undefined,
+              paintOrder: 'stroke fill'
+            }}
+          >
+            {line}
+          </span>
+        ))}
+      </div>
+    </AbsoluteFill>
+  )
+}
+
 function hexToRgba(hex: string, alpha: number): string {
   const value = hex.replace('#', '')
   const red = parseInt(value.slice(0, 2), 16)
@@ -258,6 +361,17 @@ export function ProjectComposition({ plan, mediaUrls }: ProjectCompositionProps)
       {plan.subtitles.map((cue) => (
         <Sequence key={cue.key} from={cue.fromFrame} durationInFrames={cue.durationInFrames}>
           <SubtitleCue cue={cue} height={plan.height} />
+        </Sequence>
+      ))}
+
+      {/* Sau phụ đề: hook và CTA phải nằm trên cùng mới đọc được. */}
+      {plan.textOverlays.map((overlay) => (
+        <Sequence
+          key={overlay.key}
+          from={overlay.fromFrame}
+          durationInFrames={overlay.durationInFrames}
+        >
+          <TextOverlayLayer overlay={overlay} />
         </Sequence>
       ))}
     </AbsoluteFill>

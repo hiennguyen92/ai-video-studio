@@ -92,6 +92,7 @@ export function createEmptyProject(options: CreateProjectOptions): ProjectDocume
     translations: [],
     dubbingSessions: [],
     subtitleTracks: [],
+    textOverlays: [],
     aiSettings: createDefaultAiSettings()
   }
 }

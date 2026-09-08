@@ -96,6 +96,14 @@ export function buildProjectContext(input: ChatContextInput): string {
     )
   }
 
+  lines.push('', 'Text overlays:')
+  if (document.textOverlays.length === 0) lines.push('- none')
+  for (const overlay of document.textOverlays) {
+    lines.push(
+      `- id=${overlay.id} ${seconds(overlay.startUs)}s–${seconds(overlay.endUs)}s "${overlay.text}"`
+    )
+  }
+
   lines.push('', 'Subtitle tracks:')
   if (document.subtitleTracks.length === 0) lines.push('- none')
   for (const track of document.subtitleTracks) {

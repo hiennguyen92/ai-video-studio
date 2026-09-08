@@ -14,6 +14,7 @@ import { ToolButton } from '../ui/tool-button'
 import { EmptyState } from '../ui/empty-state'
 import { IconSparkle, IconTrash } from '../ui/icons'
 import { SubtitleStyleControls } from './subtitle-style-controls'
+import { TextOverlaySection } from './text-overlay-section'
 import './subtitles-panel.css'
 
 /**
@@ -135,6 +136,8 @@ export function SubtitlesPanel(): JSX.Element {
     return (
       <div className="subtitles-panel">
         <EmptyState title={t.subtitles.noTranscript} hint={t.subtitles.noTranscriptHint} />
+        {/* Chữ overlay tự viết nên không phụ thuộc bản phiên âm; vẫn dùng được. */}
+        <TextOverlaySection />
       </div>
     )
   }
@@ -360,6 +363,7 @@ export function SubtitlesPanel(): JSX.Element {
           </div>
         </>
       )}
+      <TextOverlaySection />
     </div>
   )
 }

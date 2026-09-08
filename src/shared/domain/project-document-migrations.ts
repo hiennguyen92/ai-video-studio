@@ -37,6 +37,7 @@ function fillDefaults(doc: Record<string, unknown>): ProjectDocument {
   filled.translations ??= []
   filled.dubbingSessions ??= []
   filled.subtitleTracks ??= []
+  filled.textOverlays ??= []
   filled.aiSettings ??= createDefaultAiSettings()
   filled.revision ??= 0
   return filled

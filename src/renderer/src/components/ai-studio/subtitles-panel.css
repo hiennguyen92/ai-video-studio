@@ -109,3 +109,58 @@
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
 }
+
+/* ── Chữ đè lên hình ───────────────────────────────────────────── */
+
+.text-overlay-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin-top: var(--space-3);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--border);
+}
+
+.text-overlay-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: 0 var(--space-3);
+}
+
+.text-overlay-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+}
+
+.text-overlay-item__text {
+  width: 100%;
+  resize: vertical;
+  font-size: var(--text-sm);
+  line-height: 1.5;
+}
+
+/* Các ô ngắn xếp ngang cho đỡ tốn chiều cao panel. */
+.text-overlay-item__row {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.text-overlay-item__row label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1 1 90px;
+  min-width: 0;
+}
+
+.text-overlay-item__row input,
+.text-overlay-item__row select {
+  width: 100%;
+}

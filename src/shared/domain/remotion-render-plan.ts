@@ -8,6 +8,7 @@ import {
   type TransitionKind
 } from './timeline-track-types'
 import type { SubtitleStyle } from './subtitle-types'
+import type { TextAnimation } from './text-overlay-types'
 import { frameOfMicros, type FrameRate } from './time-units'
 
 /**
@@ -67,6 +68,17 @@ export interface RenderPlanSubtitleCue {
   style: SubtitleStyle
 }
 
+export interface RenderPlanTextOverlay {
+  key: string
+  fromFrame: number
+  durationInFrames: number
+  text: string
+  style: SubtitleStyle
+  animation: TextAnimation
+  /** Đã kẹp theo độ dài chính overlay, lớp vẽ cứ dùng thẳng. */
+  animationFrames: number
+}
+
 export interface RenderPlan {
   width: number
   height: number
@@ -76,6 +88,7 @@ export interface RenderPlan {
   video: RenderPlanVideoClip[]
   audio: RenderPlanAudioClip[]
   subtitles: RenderPlanSubtitleCue[]
+  textOverlays: RenderPlanTextOverlay[]
 }
 
 /**
@@ -214,6 +227,26 @@ export function buildRenderPlan(document: ProjectDocument): RenderPlan {
   // Lớp dưới vẽ trước; giữ đúng thứ tự track như lớp preview hiện có.
   video.sort((left, right) => left.layerIndex - right.layerIndex)
 
+  // Chữ overlay không thuộc track nào: chúng tự mang mốc thời gian và luôn nằm
+  // trên cùng, vì hook và CTA phải đọc được kể cả khi có phụ đề bên dưới.
+  const textOverlays: RenderPlanTextOverlay[] = []
+  for (const overlay of document.textOverlays) {
+    const fromFrame = frameOfMicros(overlay.startUs, fps)
+    const durationInFrames = frameOfMicros(overlay.endUs, fps) - fromFrame
+    if (durationInFrames <= 0) continue
+
+    textOverlays.push({
+      key: overlay.id,
+      fromFrame,
+      durationInFrames,
+      text: overlay.text,
+      style: overlay.style,
+      animation: overlay.animation,
+      // Hiệu ứng vào dài hơn chính overlay là vô nghĩa; kẹp lại.
+      animationFrames: Math.min(frameOfMicros(overlay.animationDurationUs, fps), durationInFrames)
+    })
+  }
+
   return {
     width: document.settings.width,
     height: document.settings.height,
@@ -223,6 +256,7 @@ export function buildRenderPlan(document: ProjectDocument): RenderPlan {
     backgroundColor: document.settings.backgroundColor,
     video,
     audio,
-    subtitles
+    subtitles,
+    textOverlays
   }
 }

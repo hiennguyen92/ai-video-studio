@@ -4,6 +4,7 @@ import type { Transcript, Translation } from '../domain/transcript-types'
 import type { SubtitleCue, SubtitleStyle, SubtitleTrack } from '../domain/subtitle-types'
 import type { TransitionKind } from '../domain/timeline-track-types'
 import type { DubbingSession } from '../domain/transcript-types'
+import type { TextAnimation, TextOverlay } from '../domain/text-overlay-types'
 
 /**
  * Tập lệnh chỉnh sửa — ĐƯỜNG GHI DUY NHẤT vào project document.
@@ -459,6 +460,58 @@ const setDubbingOverflowStrategy = z.object({
   strategy: z.enum(['speed-up', 'shorten-text', 'extend-timeline']).optional()
 })
 
+/* ── Lệnh chữ overlay ──────────────────────────────────────────── */
+
+const textAnimationSchema = z.custom<TextAnimation>(
+  (value) =>
+    typeof value === 'string' && ['none', 'fade', 'pop', 'slide-up', 'typewriter'].includes(value),
+  { message: 'hiệu ứng chữ không hợp lệ' }
+)
+
+const textOverlayShape = z.custom<TextOverlay>(
+  (value) => {
+    if (!value || typeof value !== 'object') return false
+    const overlay = value as Partial<TextOverlay>
+    return (
+      typeof overlay.id === 'string' &&
+      typeof overlay.text === 'string' &&
+      typeof overlay.startUs === 'number' &&
+      typeof overlay.endUs === 'number' &&
+      typeof overlay.style === 'object'
+    )
+  },
+  { message: 'chữ overlay không hợp lệ' }
+)
+
+const addTextOverlay = z.object({
+  type: z.literal('text/add'),
+  overlay: textOverlayShape
+})
+
+const removeTextOverlay = z.object({
+  type: z.literal('text/remove'),
+  overlayId: z.string()
+})
+
+const updateTextOverlay = z.object({
+  type: z.literal('text/update'),
+  overlayId: z.string(),
+  text: z.string().max(500).optional(),
+  startUs: nonNegativeMicros.optional(),
+  endUs: nonNegativeMicros.optional(),
+  animation: textAnimationSchema.optional(),
+  animationDurationUs: nonNegativeMicros.optional()
+})
+
+/** Thay cả bảng style; giao diện luôn sửa theo cụm nên hoàn tác cũng theo cụm. */
+const setTextOverlayStyle = z.object({
+  type: z.literal('text/set-style'),
+  overlayId: z.string(),
+  style: z.custom<SubtitleStyle>((value) => Boolean(value) && typeof value === 'object', {
+    message: 'style chữ không hợp lệ'
+  })
+})
+
 export const editorCommandSchema = z.discriminatedUnion('type', [
   setProjectSettings,
   renameProject,
@@ -487,6 +540,10 @@ export const editorCommandSchema = z.discriminatedUnion('type', [
   removeDubbingSession,
   updateDubbingSegment,
   setDubbingOverflowStrategy,
+  addTextOverlay,
+  removeTextOverlay,
+  updateTextOverlay,
+  setTextOverlayStyle,
   addSubtitleTrack,
   removeSubtitleTrack,
   renameSubtitleTrack,

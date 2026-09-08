@@ -3,6 +3,7 @@ import type { MediaAsset } from './media-asset-types'
 import type { Track } from './timeline-track-types'
 import type { DubbingSession, Transcript, Translation } from './transcript-types'
 import type { SubtitleTrack } from './subtitle-types'
+import type { TextOverlay } from './text-overlay-types'
 import type { ProjectAiSettings } from './ai-settings-types'
 
 /**
@@ -46,6 +47,8 @@ export interface ProjectDocument {
   translations: Translation[]
   dubbingSessions: DubbingSession[]
   subtitleTracks: SubtitleTrack[]
+  /** Chữ đè lên hình do người dùng tự viết — khác phụ đề sinh từ lời nói. */
+  textOverlays: TextOverlay[]
   aiSettings: ProjectAiSettings
 }
 
@@ -68,6 +71,11 @@ export function projectDurationUs(doc: ProjectDocument): Micros {
     for (const cue of subtitleTrack.cues) {
       if (cue.endUs > end) end = cue.endUs
     }
+  }
+  // Chữ overlay cũng kéo dài video: một CTA đặt sau clip cuối mà không tính vào
+  // đây sẽ bị cắt mất khi xuất.
+  for (const overlay of doc.textOverlays) {
+    if (overlay.endUs > end) end = overlay.endUs
   }
   return end
 }

@@ -390,6 +390,50 @@ export function applyEditorCommand(doc: ProjectDocument, command: EditorCommand)
       return OK
     }
 
+    case 'text/add': {
+      if (doc.textOverlays.some((item) => item.id === command.overlay.id)) {
+        return fail(`Chữ overlay ${command.overlay.id} đã tồn tại`)
+      }
+      if (command.overlay.endUs <= command.overlay.startUs) {
+        return fail('Thời điểm kết thúc phải sau thời điểm bắt đầu')
+      }
+      doc.textOverlays.push(command.overlay)
+      return OK
+    }
+
+    case 'text/remove': {
+      const index = doc.textOverlays.findIndex((item) => item.id === command.overlayId)
+      if (index < 0) return fail(`Không tìm thấy chữ overlay ${command.overlayId}`)
+      doc.textOverlays.splice(index, 1)
+      return OK
+    }
+
+    case 'text/update': {
+      const overlay = doc.textOverlays.find((item) => item.id === command.overlayId)
+      if (!overlay) return fail(`Không tìm thấy chữ overlay ${command.overlayId}`)
+
+      const nextStart = command.startUs ?? overlay.startUs
+      const nextEnd = command.endUs ?? overlay.endUs
+      // Khoảng ngược sẽ khiến chữ biến mất khỏi preview mà không báo gì.
+      if (nextEnd <= nextStart) return fail('Thời điểm kết thúc phải sau thời điểm bắt đầu')
+
+      if (command.text !== undefined) overlay.text = command.text
+      if (command.animation !== undefined) overlay.animation = command.animation
+      if (command.animationDurationUs !== undefined) {
+        overlay.animationDurationUs = command.animationDurationUs
+      }
+      overlay.startUs = nextStart
+      overlay.endUs = nextEnd
+      return OK
+    }
+
+    case 'text/set-style': {
+      const overlay = doc.textOverlays.find((item) => item.id === command.overlayId)
+      if (!overlay) return fail(`Không tìm thấy chữ overlay ${command.overlayId}`)
+      overlay.style = { ...command.style }
+      return OK
+    }
+
     case 'subtitle/add-track': {
       if (doc.subtitleTracks.some((item) => item.id === command.track.id)) {
         return fail(`Track phụ đề ${command.track.id} đã tồn tại`)

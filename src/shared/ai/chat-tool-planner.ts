@@ -4,6 +4,11 @@ import { findClip } from '../domain/project-document-types'
 import { clipEndUs, type Clip } from '../domain/timeline-track-types'
 import { buildSubtitleCues } from '../domain/subtitle-cue-builder'
 import { DEFAULT_SUBTITLE_STYLE, type SubtitleTrack } from '../domain/subtitle-types'
+import {
+  DEFAULT_TEXT_ANIMATION_DURATION_US,
+  createDefaultTextOverlayStyle,
+  type TextOverlay
+} from '../domain/text-overlay-types'
 import { guessDuckingTracks, planAutoDucking } from '../domain/auto-ducking-planner'
 import { roundHalfUp } from '../domain/time-units'
 import { chatToolSchemas, isChatToolName, type ChatToolName } from './chat-tool-catalog'
@@ -400,6 +405,53 @@ function planOne(context: ChatEditContext, tool: ChatToolName, args: unknown): P
             role: input.role
           }
         ]
+      }
+    }
+
+    case 'add_text_overlay': {
+      const input = chatToolSchemas.add_text_overlay.parse(args)
+      const startUs = secondsToMicros(input.startSeconds)
+      const endUs = secondsToMicros(input.endSeconds)
+      if (endUs <= startUs) throw new Error('Thời điểm kết thúc phải sau thời điểm bắt đầu')
+
+      const style = createDefaultTextOverlayStyle()
+      // Vị trí nhận bằng chữ chứ không phải số 1–9 kiểu ASS: mô hình đoán số bàn
+      // phím rất hay sai, còn "top/middle/bottom" thì không nhầm được.
+      if (input.position === 'bottom') {
+        style.alignment = 2
+        style.marginVerticalPx = 160
+      } else if (input.position === 'top') {
+        style.alignment = 8
+        style.marginVerticalPx = 160
+      }
+      if (input.fontSizePx) style.fontSizePx = input.fontSizePx
+
+      const overlay: TextOverlay = {
+        id: context.makeId(),
+        text: input.text,
+        startUs,
+        endUs,
+        style,
+        animation: input.animation ?? 'pop',
+        animationDurationUs: DEFAULT_TEXT_ANIMATION_DURATION_US
+      }
+
+      return {
+        tool,
+        description: `Thêm chữ "${input.text.slice(0, 30)}" từ ${formatSeconds(startUs)} tới ${formatSeconds(endUs)}`,
+        commands: [{ type: 'text/add', overlay }]
+      }
+    }
+
+    case 'remove_text_overlay': {
+      const input = chatToolSchemas.remove_text_overlay.parse(args)
+      const overlay = document.textOverlays.find((item) => item.id === input.overlayId)
+      if (!overlay) throw new Error(`Không tìm thấy chữ overlay "${input.overlayId}"`)
+
+      return {
+        tool,
+        description: `Xoá chữ "${overlay.text.slice(0, 30)}"`,
+        commands: [{ type: 'text/remove', overlayId: input.overlayId }]
       }
     }
 

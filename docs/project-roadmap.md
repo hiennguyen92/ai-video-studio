@@ -95,9 +95,14 @@ giao diện chỉ lộ ra khi chuyển tab với dữ liệu thật.
 - [x] `build_cut_from_transcript` — dựng bản cut từ đoạn lời được giữ
 - [x] `timeline/ripple-delete` — cắt bỏ khoảng và dồn phần sau lên
 - [x] Giao diện công bố địa chỉ + khoá + đoạn cấu hình cho Claude Code
-- [ ] Lớp render Remotion (chuyển cảnh, chữ động) — **chưa làm**, cần đo tốc độ render trước
-- [ ] Chữ overlay / title như một đối tượng riêng
+- [x] Đo tốc độ render Remotion trước khi quyết (`docs/remotion-render-benchmark.md`)
+- [x] Lớp render Remotion: một composition dùng chung cho preview và xuất file
+- [x] Preview chạy bằng `@remotion/player`
+- [x] Chuyển cảnh: mờ chồng, trượt, gạt ngang, phóng vào — không làm co timeline
+- [x] Chữ overlay như một đối tượng riêng, có hiệu ứng vào, AI tạo được
+- [ ] Phụ đề nảy chữ theo từng từ (dữ liệu mốc-từ đã có sẵn từ whisper)
 - [ ] Phát hiện chuyển cảnh trong footage thô
+- [ ] Đổi mặc định xuất sang Remotion khi các tính năng trên đủ chín
 
 ## Backlog (chưa xếp lịch)
 

@@ -22,7 +22,8 @@ const EMPTY_PROPS: ProjectCompositionProps = {
     backgroundColor: '#000000',
     video: [],
     audio: [],
-    subtitles: []
+    subtitles: [],
+    textOverlays: []
   },
   mediaUrls: {}
 }

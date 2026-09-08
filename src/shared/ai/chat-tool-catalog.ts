@@ -116,6 +116,26 @@ export const chatToolSchemas = {
     role: z.enum(['dialogue', 'voiceover', 'music', 'sfx']).optional()
   }),
 
+  /**
+   * Thêm chữ đè lên hình — hook, giá, lời kêu gọi hành động.
+   *
+   * Đây là thứ mô hình ngôn ngữ làm tốt nhất trong cả bộ công cụ: viết câu, chứ
+   * không phải cộng trừ micro giây.
+   */
+  add_text_overlay: z.object({
+    text: z.string().min(1).max(300),
+    startSeconds: seconds,
+    endSeconds: seconds,
+    animation: z.enum(['none', 'fade', 'pop', 'slide-up', 'typewriter']).optional(),
+    /** 2 = dưới, 5 = giữa, 8 = trên. Bỏ trống thì đặt giữa khung hình. */
+    position: z.enum(['bottom', 'middle', 'top']).optional(),
+    fontSizePx: z.number().int().min(12).max(300).optional()
+  }),
+
+  remove_text_overlay: z.object({
+    overlayId: z.string().min(1).max(120)
+  }),
+
   auto_duck_music: z.object({
     duckVolume: gain.optional(),
     baseVolume: gain.optional(),
@@ -155,7 +175,10 @@ export const chatToolDescriptions: Record<ChatToolName, string> = {
     'Cut a time range out of the timeline and pull everything after it back to close the gap. Applies to every track so picture and sound stay in sync.',
   build_cut_from_transcript:
     'Assemble a cut from a transcript: keep only the listed segments, laid end to end in transcript order on one track. Replaces whatever is already on that track. This is the main tool for editing by what was said.',
-  add_track: 'Add a new track to the timeline.'
+  add_track: 'Add a new track to the timeline.',
+  add_text_overlay:
+    'Put text on top of the video for a stretch of time — a hook, a price, a call to action. Separate from subtitles, which come from speech.',
+  remove_text_overlay: 'Remove a text overlay.'
 }
 
 /** Mô tả tham số cho mô hình — dựng thủ công để không phải kéo thêm thư viện. */
@@ -178,7 +201,10 @@ export const chatToolParameterHints: Record<ChatToolName, string> = {
   build_cut_from_transcript:
     '{ transcriptId?: string, keepSegmentIds: string[], trackId?: string }',
   add_track:
-    "{ kind: 'video' | 'audio' | 'subtitle', name: string, role?: 'dialogue' | 'voiceover' | 'music' | 'sfx' }"
+    "{ kind: 'video' | 'audio' | 'subtitle', name: string, role?: 'dialogue' | 'voiceover' | 'music' | 'sfx' }",
+  add_text_overlay:
+    "{ text: string, startSeconds: number, endSeconds: number, animation?: 'none' | 'fade' | 'pop' | 'slide-up' | 'typewriter', position?: 'bottom' | 'middle' | 'top', fontSizePx?: number }",
+  remove_text_overlay: '{ overlayId: string }'
 }
 
 /**

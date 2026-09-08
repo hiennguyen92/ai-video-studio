@@ -294,6 +294,27 @@ không hiểu vì sao.
 Hệ quả: **clip đầu timeline không bao giờ có chuyển cảnh** — không có gì phía trước
 để lấy, và cũng không có gì để phủ lên.
 
+### Chữ đè lên hình
+
+`TextOverlay` là dữ liệu RIÊNG, không phải phụ đề — dù nhìn qua đều là chữ trên
+hình. Phụ đề sinh ra TỪ lời nói và bám mốc thời gian của transcript; chữ overlay do
+người dùng hoặc AI tự viết, tự đặt giờ. Gộp chúng làm một thì "dựng lại phụ đề từ
+bản dịch" sẽ xoá mất dòng CTA người dùng gõ tay.
+
+Kiểu chữ dùng lại `SubtitleStyle` thay vì mô hình song song: cùng cần cỡ chữ, màu,
+viền, nền hộp, vị trí kiểu bàn phím số và lề. Mặc định khác phụ đề có chủ ý — chữ
+TO hơn và nằm GIỮA khung hình, vì hook và CTA phải đập vào mắt.
+
+Overlay vẽ **sau cùng**, trên cả phụ đề: hook mà bị phụ đề che thì mất tác dụng.
+Nó cũng tính vào `projectDurationUs`, nếu không một CTA đặt sau clip cuối sẽ bị cắt
+mất khi xuất.
+
+Công cụ AI nhận vị trí bằng chữ (`top`/`middle`/`bottom`) chứ không bắt mô hình
+đoán số bàn phím 1–9 của ASS — đó là loại giá trị mô hình rất hay điền sai.
+
+Trường mới này thêm qua `fillDefaults` chứ không tăng `schemaVersion`: nó không phá
+tương thích, dự án cũ mở lên chỉ cần một mảng rỗng.
+
 ### Máy chủ media cục bộ
 
 Remotion **không đọc được đường dẫn file tuỳ ý** — asset phải nằm dưới `publicDir`
