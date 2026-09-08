@@ -16,6 +16,8 @@ export default defineConfig(
       // Công cụ trợ lý và kết quả kiểm thử, không phải mã sản phẩm.
       '.claude/**',
       'test-results/**',
+      // Spike đo đạc, không phải mã sản phẩm.
+      'spikes/**',
       'playwright-report/**'
     ]
   },
