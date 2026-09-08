@@ -1,7 +1,7 @@
+import { existsSync } from 'node:fs'
 import { availableParallelism, totalmem } from 'node:os'
 import { app } from 'electron'
 import { join } from 'node:path'
-import { bundle } from '@remotion/bundler'
 import { makeCancelSignal, renderMedia, selectComposition } from '@remotion/renderer'
 import type { ProjectDocument } from '../../shared/domain/project-document-types'
 import { buildRenderPlan } from '../../shared/domain/remotion-render-plan'
@@ -61,15 +61,43 @@ export interface RemotionExportHandle {
 /** Bundle chỉ phụ thuộc mã nguồn nên dựng một lần rồi dùng lại cho mọi lần xuất. */
 let cachedBundle: Promise<string> | null = null
 
-function entryPoint(): string {
-  // Trong bản đóng gói, mã Remotion nằm cạnh mã main đã build.
-  return app.isPackaged
-    ? join(process.resourcesPath, 'remotion', 'root.tsx')
-    : join(app.getAppPath(), 'src', 'remotion', 'root.tsx')
+/**
+ * Thư mục bundle dựng sẵn lúc build, chỉ có trong bản đóng gói.
+ *
+ * Bản đóng gói KHÔNG dựng lúc chạy được: mã nguồn `src/` bị loại khỏi gói, và các
+ * gói phụ thuộc nằm trong `app.asar` mà bộ đóng gói của Remotion không đọc được
+ * file bên trong asar. `scripts/bundle-remotion.mjs` dựng sẵn, electron-builder
+ * chép vào Resources.
+ */
+function prebuiltBundleDir(): string | null {
+  return app.isPackaged ? join(process.resourcesPath, 'remotion-bundle') : null
 }
 
 async function ensureBundle(): Promise<string> {
-  cachedBundle ??= bundle({ entryPoint: entryPoint(), onProgress: () => undefined })
+  const prebuilt = prebuiltBundleDir()
+  if (prebuilt) {
+    if (!existsSync(join(prebuilt, 'index.html'))) {
+      // Báo ngay và nói rõ, thay vì để Remotion ngã với một lỗi mạng khó hiểu khi
+      // nó cố mở một thư mục trống.
+      throw new Error(
+        `Bản cài thiếu bundle Remotion tại "${prebuilt}". Bản build này đóng gói sai; hãy build lại.`
+      )
+    }
+    return prebuilt
+  }
+
+  // Nạp bộ đóng gói bằng import ĐỘNG, chỉ ở nhánh dev.
+  //
+  // Nạp tĩnh thì bản đóng gói cũng nạp theo, và chuỗi phụ thuộc của nó kéo tới
+  // `react` — thứ chỉ là devDependency nên không có trong gói. Hậu quả đo được:
+  // app đóng gói tắt ngay khi mở với "Cannot find module 'react'", không kịp mở
+  // nổi một cửa sổ nào.
+  cachedBundle ??= import('@remotion/bundler').then(({ bundle }) =>
+    bundle({
+      entryPoint: join(app.getAppPath(), 'src', 'remotion', 'root.tsx'),
+      onProgress: () => undefined
+    })
+  )
   return cachedBundle
 }
 
@@ -116,7 +144,17 @@ export function startRemotionExport(
       concurrency: resolveRenderConcurrency(),
       offthreadVideoThreads: resolveOffthreadVideoThreads(),
       chromiumOptions: { gl: process.platform === 'linux' ? 'angle-egl' : 'angle' },
-      hardwareAcceleration: settings.useHardwareEncoder ? 'required' : 'disable',
+      // 'if-possible' chứ KHÔNG phải 'required'.
+      //
+      // Remotion dựng hình bằng FFmpeg riêng của nó, không phải bản ffmpeg-static
+      // đi kèm ứng dụng — mà phần dò năng lực lại hỏi bản đi kèm. Trên macOS bản
+      // đi kèm CÓ h264_videotoolbox còn bản của Remotion thì KHÔNG, nên ô "tăng
+      // tốc phần cứng" tự bật rồi cả lần xuất chết với "Hardware encoder is not
+      // available in your FFmpeg build".
+      //
+      // 'if-possible' biến một tối ưu không có sẵn thành lùi về mã hoá phần mềm,
+      // thay vì giết cả bản dựng.
+      hardwareAcceleration: settings.useHardwareEncoder ? 'if-possible' : 'disable',
       ...(settings.useHardwareEncoder ? { videoBitrate: '10M' } : { crf: 21 }),
       cancelSignal,
       onProgress: ({ progress }) => onProgress({ ratio: progress })

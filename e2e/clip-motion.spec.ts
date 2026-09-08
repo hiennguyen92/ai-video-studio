@@ -232,6 +232,15 @@ test('chuyển động đi tới file xuất ra, không chỉ sống trong previ
   const engine = dialog.getByLabel('Bộ dựng hình')
   await expect(engine).toHaveValue('remotion')
   await expect(engine).toBeDisabled()
+
+  // Bật tăng tốc phần cứng nếu máy này dò ra có.
+  //
+  // Đây chính là chỗ từng giết cả lần xuất: phần dò hỏi ffmpeg ĐI KÈM, còn
+  // Remotion dựng bằng FFmpeg RIÊNG của nó — trên macOS bản đi kèm có
+  // h264_videotoolbox còn bản của Remotion thì không. Xin 'required' là hỏng
+  // hẳn; phải lùi về mã hoá phần mềm và vẫn ra file.
+  const hardware = dialog.locator('.export-dialog__checkbox input')
+  if (await hardware.isEnabled()) await hardware.check()
   await dialog.getByRole('button', { name: 'Chọn nơi lưu…' }).click()
   await dialog.getByRole('button', { name: 'Bắt đầu xuất' }).click()
   await expect(dialog.getByText('Xuất xong')).toBeVisible({ timeout: 600_000 })

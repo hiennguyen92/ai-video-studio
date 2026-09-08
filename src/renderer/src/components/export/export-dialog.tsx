@@ -229,6 +229,14 @@ export function ExportDialog({ onClose }: { onClose(): void }): JSX.Element {
                   {capabilities?.hardwareEncoderAvailable
                     ? (capabilities.hardwareEncoderName ?? '')
                     : t.export.hardwareUnavailable}
+                  {/*
+                    Năng lực dò được là của ffmpeg đi kèm, còn Remotion dựng bằng
+                    FFmpeg riêng của nó. Không nói ra thì người dùng tưởng đã bật
+                    được phần cứng trong khi thực tế đang mã hoá bằng phần mềm.
+                  */}
+                  {effectiveEngine === 'remotion' && capabilities?.hardwareEncoderAvailable && (
+                    <em className="export-dialog__note"> {t.export.hardwareBestEffort}</em>
+                  )}
                 </span>
               </label>
             </div>

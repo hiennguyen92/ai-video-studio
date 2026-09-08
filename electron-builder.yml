@@ -9,8 +9,21 @@ files:
   - '!{.eslintcache,eslint.config.mjs,.prettierignore,.prettierrc.yaml,dev-app-update.yml,CHANGELOG.md,README.md}'
   - '!{.env,.env.*,.npmrc,pnpm-lock.yaml}'
   - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}'
-asarUnpack:
-  - resources/**
+# Không đóng gói vào asar.
+#
+# Remotion tự `chmod` file nhị phân dựng hình của nó theo đường dẫn nó tự phân
+# giải, và đường đó trỏ vào `app.asar/...`. asar là một kho ảo, không phải thư
+# mục thật, nên thao tác đó ngã với ENOTDIR và cả lần xuất chết — kể cả khi
+# electron-builder đã chép sẵn file ra `app.asar.unpacked`.
+#
+# Bỏ asar là cách chắc chắn nhất: mọi đường dẫn thành file thật. Đánh đổi là ứng
+# dụng khởi động chậm hơn một chút và số file trong thư mục cài nhiều hơn.
+asar: false
+extraResources:
+  # Bundle Remotion dựng sẵn lúc build. Không có nó thì xuất video trong bản cài
+  # ngã ngay: `src/` không nằm trong gói và Remotion không dựng được từ asar.
+  - from: out/remotion-bundle
+    to: remotion-bundle
 win:
   executableName: ai-video-studio
 nsis:
@@ -38,6 +51,13 @@ linux:
 appImage:
   artifactName: ${name}-${version}.${ext}
 npmRebuild: false
-publish:
-  provider: generic
-  url: https://example.com/auto-updates
+
+# Không khai báo `publish`.
+#
+# Cấu hình scaffold để lại một địa chỉ example.com vô nghĩa, và chính nó kéo
+# electron-builder chạy nhánh dựng thông tin cập nhật vi sai. Nhánh đó ngã vì
+# app-builder-lib 26.15.3 gọi `@noble/hashes` bằng require() trong khi gói này
+# chỉ còn ESM — lỗi nằm trong chính electron-builder, và 26.15.3 đã là bản mới
+# nhất nên không có bản vá để nâng lên.
+#
+# Khi nào thật sự làm tự động cập nhật thì mới khai báo lại, kèm một địa chỉ thật.

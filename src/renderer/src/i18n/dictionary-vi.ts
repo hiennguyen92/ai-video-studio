@@ -190,6 +190,7 @@ export const dictionaryVi = {
     resolution: 'Độ phân giải',
     frameRate: 'Tốc độ khung hình',
     hardware: 'Tăng tốc phần cứng',
+    hardwareBestEffort: '(Remotion dùng FFmpeg riêng; không có thì tự lùi về mã hoá phần mềm)',
     hardwareUnavailable: 'Máy này không có bộ mã hoá phần cứng khả dụng',
     engine: 'Bộ dựng hình',
     engineFfmpeg: 'ffmpeg (nhanh)',

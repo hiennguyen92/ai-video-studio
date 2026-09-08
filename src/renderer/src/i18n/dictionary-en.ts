@@ -188,6 +188,7 @@ export const dictionaryEn: Dictionary = {
     resolution: 'Resolution',
     frameRate: 'Frame rate',
     hardware: 'Hardware acceleration',
+    hardwareBestEffort: '(Remotion uses its own FFmpeg; falls back to software when missing)',
     hardwareUnavailable: 'No hardware encoder available on this machine',
     engine: 'Render engine',
     engineFfmpeg: 'ffmpeg (fast)',
