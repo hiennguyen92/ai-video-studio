@@ -1,3 +1,4 @@
+import { storeFontForBurnIn } from '../storage/font-store'
 import { removeProjectGarbage, scanProjectGarbage } from '../storage/project-garbage-service'
 import { app, dialog, ipcMain } from 'electron'
 import { readFile } from 'node:fs/promises'
@@ -97,6 +98,10 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle(IPC.projectDelete, (_event, projectId: string) =>
     guard(() => deleteProject(projectId))
+  )
+
+  ipcMain.handle(IPC.fontStore, (_event, family: string, bytes: Uint8Array) =>
+    guard(() => storeFontForBurnIn(family, bytes))
   )
 
   ipcMain.handle(IPC.projectScanGarbage, (_event, document: ProjectDocument) =>

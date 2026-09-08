@@ -1,4 +1,4 @@
-import { app, BrowserWindow, shell } from 'electron'
+import { BrowserWindow, app, session, shell } from 'electron'
 import { electronApp, is, optimizer } from '@electron-toolkit/utils'
 import { join } from 'node:path'
 import { registerIpcHandlers } from './ipc/register-ipc-handlers'
@@ -82,6 +82,22 @@ function createMainWindow(): BrowserWindow {
 
 void app.whenReady().then(async () => {
   electronApp.setAppUserModelId('com.aivideostudio.app')
+
+  // Chỉ mở đúng quyền ĐỌC DANH SÁCH FONT, từ chối mọi quyền còn lại.
+  //
+  // Cần nó để ô chọn font liệt kê được font đang có trên máy, thay vì bày một
+  // danh sách viết cứng rồi người dùng chọn phải font máy họ không có — lúc đó
+  // chữ lặng lẽ rơi về font mặc định.
+  //
+  // Trả `true` cho mọi quyền là mở luôn camera, micro và vị trí cho bất cứ thứ gì
+  // chạy trong cửa sổ. Ứng dụng không cần chúng.
+  const allowedPermissions = new Set(['local-fonts'])
+  session.defaultSession.setPermissionRequestHandler((_contents, permission, callback) => {
+    callback(allowedPermissions.has(permission))
+  })
+  session.defaultSession.setPermissionCheckHandler((_contents, permission) =>
+    allowedPermissions.has(permission)
+  )
 
   registerMediaProtocolHandler()
   registerIpcHandlers()

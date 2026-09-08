@@ -31,6 +31,9 @@ const api: RendererApi = {
     snapshot: (document) => ipcRenderer.invoke(IPC.projectSnapshot, document),
     checkMedia: (document) => ipcRenderer.invoke(IPC.projectCheckMedia, document)
   },
+  fonts: {
+    store: (family, bytes) => ipcRenderer.invoke(IPC.fontStore, family, bytes)
+  },
   media: {
     pickFiles: () => ipcRenderer.invoke(IPC.mediaPickFiles),
     import: (request) => ipcRenderer.invoke(IPC.mediaImport, request),

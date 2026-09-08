@@ -33,6 +33,14 @@ export interface ExportSettings {
   useHardwareEncoder: boolean
   /** File .ass để nung phụ đề vào hình. */
   burnSubtitlesAssPath?: string
+  /**
+   * Thư mục chứa file font cho libass.
+   *
+   * Không có nó thì libass tra font qua fontconfig, và bản ffmpeg đi kèm có thể
+   * không thấy font hệ thống của máy — lúc đó nó LẶNG LẼ rơi về font mặc định và
+   * bản xuất khác hẳn bản xem trước.
+   */
+  burnSubtitlesFontsDir?: string
 }
 
 export interface BuiltCommand {
@@ -175,8 +183,11 @@ export function buildExportCommand(
 
   // Nung phụ đề SAU khi đã ghép hết lớp hình, để chữ luôn nằm trên cùng.
   if (settings.burnSubtitlesAssPath) {
+    const fontsDir = settings.burnSubtitlesFontsDir
+      ? `:fontsdir='${escapeFilterPath(settings.burnSubtitlesFontsDir)}'`
+      : ''
     filters.push(
-      `[${videoLabel}]subtitles='${escapeFilterPath(settings.burnSubtitlesAssPath)}'[vburn]`
+      `[${videoLabel}]subtitles='${escapeFilterPath(settings.burnSubtitlesAssPath)}'${fontsDir}[vburn]`
     )
     videoLabel = 'vburn'
   }

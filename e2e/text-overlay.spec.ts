@@ -274,6 +274,64 @@ test('kéo mép trái vượt qua mép phải vẫn để lại một khoảng h
   expect(after.endUs).toBe(before.endUs)
 })
 
+test('ô chọn phông liệt kê phông THẬT của máy, không phải danh sách viết cứng', async () => {
+  const select = studio().getByLabel('Phông chữ')
+  await expect(select).toBeVisible()
+
+  // Danh sách viết cứng sẽ chứa phông máy không có, và chọn phải nó thì chữ lặng
+  // lẽ rơi về phông mặc định. Máy nào cũng có vài chục họ phông.
+  const options = await select.locator('option').count()
+  expect(options).toBeGreaterThan(20)
+})
+
+test('đổi phông làm đổi hình trên preview', async () => {
+  await page.getByLabel('Bắt đầu (giây) 1').fill('1')
+  await page.getByLabel('Kết thúc (giây) 1').fill('4')
+  await page.getByLabel('Hiệu ứng 1').selectOption('none')
+  await page.getByLabel('Hiệu ứng ra 1').selectOption('none')
+  await page.getByRole('button', { name: 'Tua tới đây' }).click()
+  await page.waitForTimeout(700)
+
+  const stage = page.locator('.preview__stage')
+  const before = await stage.screenshot()
+
+  // Phông đẳng khoảng khác hẳn phông mặc định, nên khác biệt nhìn rõ.
+  await studio().getByLabel('Phông chữ').selectOption('Courier New')
+  await page.waitForTimeout(900)
+
+  expect((await stage.screenshot()).equals(before)).toBe(false)
+})
+
+test('chọn phông còn LƯU file phông lại, để bản nung không đổi phông ngầm', async () => {
+  const { readFile, readdir, access } = await import('node:fs/promises')
+
+  await expect
+    .poll(
+      async () => {
+        const projectsRoot = join(userDataDir, 'projects')
+        const [projectId] = await readdir(projectsRoot)
+        const document = JSON.parse(
+          await readFile(join(projectsRoot, projectId, 'project.json'), 'utf8')
+        ) as { textOverlays: Array<{ style: { fontFamily: string; fontFilePath?: string } }> }
+        return document.textOverlays[0].style
+      },
+      { timeout: 20_000 }
+    )
+    .toMatchObject({ fontFamily: 'Courier New' })
+
+  const projectsRoot = join(userDataDir, 'projects')
+  const [projectId] = await readdir(projectsRoot)
+  const document = JSON.parse(
+    await readFile(join(projectsRoot, projectId, 'project.json'), 'utf8')
+  ) as { textOverlays: Array<{ style: { fontFilePath?: string } }> }
+  const fontFilePath = document.textOverlays[0].style.fontFilePath
+
+  // libass tra phông qua fontconfig và có thể không thấy phông hệ thống; chép hẳn
+  // file ra rồi chỉ thẳng cho ffmpeg mới chắc bản nung dùng đúng phông.
+  expect(fontFilePath).toBeTruthy()
+  await expect(access(fontFilePath as string)).resolves.toBeUndefined()
+})
+
 test('chữ hiện trên preview trong khoảng đã đặt và biến mất ngoài đó', async () => {
   const overlay = page.locator('.text-overlay')
 

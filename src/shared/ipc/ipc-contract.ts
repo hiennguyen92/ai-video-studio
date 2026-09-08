@@ -22,6 +22,7 @@ export const IPC = {
   projectCreate: 'project:create',
   projectLoad: 'project:load',
   projectSave: 'project:save',
+  fontStore: 'font:store',
   projectScanGarbage: 'project:scan-garbage',
   projectRemoveGarbage: 'project:remove-garbage',
   projectDelete: 'project:delete',
@@ -316,6 +317,11 @@ export interface McpServerStatus {
   error?: string
 }
 
+export interface StoredFontDto {
+  path: string
+  directory: string
+}
+
 export interface GarbageReportDto {
   fileCount: number
   totalBytes: number
@@ -398,6 +404,17 @@ export interface RendererApi {
     removeGarbage(document: ProjectDocument): Promise<IpcResult<GarbageReportDto>>
     snapshot(document: ProjectDocument): Promise<IpcResult<string>>
     checkMedia(document: ProjectDocument): Promise<IpcResult<MissingMediaReport[]>>
+  }
+  fonts: {
+    /**
+     * Lưu byte của một font để dùng lúc NUNG phụ đề.
+     *
+     * Preview chỉ cần tên họ font, nhưng libass của ffmpeg tra font bằng
+     * fontconfig và có thể không thấy font hệ thống — lúc đó nó lặng lẽ rơi về
+     * font mặc định. Chép hẳn file ra rồi chỉ thẳng cho ffmpeg thì không còn chỗ
+     * cho im lặng.
+     */
+    store(family: string, bytes: Uint8Array): Promise<IpcResult<StoredFontDto>>
   }
   media: {
     pickFiles(): Promise<IpcResult<string[]>>

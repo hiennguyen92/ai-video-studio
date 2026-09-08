@@ -1,3 +1,4 @@
+import { fontsDirectory } from '../storage/font-store'
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
 import { dirname, join, parse } from 'node:path'
@@ -106,7 +107,8 @@ export async function runExport(
             crf: 21,
             hardwareBitrate: '10M',
             useHardwareEncoder: request.useHardwareEncoder,
-            burnSubtitlesAssPath: assPath
+            burnSubtitlesAssPath: assPath,
+            burnSubtitlesFontsDir: fontsDirectory()
           },
           (progress) => {
             emit(sender, {

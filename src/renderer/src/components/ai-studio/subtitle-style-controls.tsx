@@ -5,6 +5,7 @@ import {
   type SubtitleStyle
 } from '../../../../shared/domain/subtitle-types'
 import { useT } from '../../i18n/use-translation'
+import { FontFamilySelect } from './font-family-select'
 
 /**
  * Ô điều khiển kiểu chữ phụ đề.
@@ -39,6 +40,8 @@ export function SubtitleStyleControls({
 
   return (
     <div className="subtitle-style">
+      <FontFamilySelect value={style.fontFamily} onChange={(next) => patch(next)} />
+
       <div className="field-row">
         <span className="field-row__label">{t.subtitles.preset}</span>
         <select

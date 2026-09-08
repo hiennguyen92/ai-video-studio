@@ -357,3 +357,27 @@ describe('xuất video thật', () => {
     await expect(handle.done).rejects.toThrow()
   }, 60_000)
 })
+
+describe('phông chữ khi nung phụ đề', () => {
+  it('chỉ thẳng cho ffmpeg thư mục font khi có', async () => {
+    const doc = await buildSampleProject()
+    const settings = {
+      ...exportSettings('/tmp/ra.mp4', '/tmp/phu-de.ass'),
+      burnSubtitlesFontsDir: '/tmp/kho-phong'
+    }
+    const command = buildExportCommand(doc, settings)
+    const graph = command.args.join(' ')
+
+    // Không có `fontsdir`, libass tra font qua fontconfig và bản ffmpeg đi kèm có
+    // thể không thấy phông hệ thống — nó LẶNG LẼ đổi sang phông mặc định, và bản
+    // xuất khác hẳn bản xem trước.
+    expect(graph).toContain("fontsdir='/tmp/kho-phong'")
+  })
+
+  it('không có thư mục font thì không thêm tham số rỗng', async () => {
+    const doc = await buildSampleProject()
+    const command = buildExportCommand(doc, exportSettings('/tmp/ra.mp4', '/tmp/phu-de.ass'))
+
+    expect(command.args.join(' ')).not.toContain('fontsdir')
+  })
+})

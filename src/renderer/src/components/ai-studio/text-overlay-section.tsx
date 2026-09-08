@@ -14,6 +14,7 @@ import { previewSeekUs } from '../../../../shared/domain/preview-seek'
 import { createId } from '../../../../shared/domain/project-document-factory'
 import { selectDocument, useEditorStore } from '../../state/editor-store'
 import { useT } from '../../i18n/use-translation'
+import { FontFamilySelect } from './font-family-select'
 import { ToolButton } from '../ui/tool-button'
 import { IconSparkle, IconTrash } from '../ui/icons'
 
@@ -159,6 +160,22 @@ export function TextOverlaySection(): JSX.Element {
                   />
                 </label>
               </div>
+
+              <FontFamilySelect
+                value={overlay.style.fontFamily}
+                onChange={(next) =>
+                  run(
+                    [
+                      {
+                        type: 'text/set-style',
+                        overlayId: overlay.id,
+                        style: { ...overlay.style, ...next }
+                      }
+                    ],
+                    'Đổi phông chữ'
+                  )
+                }
+              />
 
               <div className="text-overlay-item__row">
                 <label>
