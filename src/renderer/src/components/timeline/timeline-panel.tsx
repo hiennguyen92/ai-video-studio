@@ -23,6 +23,7 @@ import { ToolButton } from '../ui/tool-button'
 import { EmptyState } from '../ui/empty-state'
 import { IconMagnet, IconPlus, IconSplit, IconTrash, IconZoomIn, IconZoomOut } from '../ui/icons'
 import { MEDIA_DRAG_MIME } from '../ai-studio/media-library-panel'
+import { TimelineSubtitleCue } from './timeline-subtitle-cue'
 import { TimelineClip, type ClipDragMode } from './timeline-clip'
 import { TimelineRuler } from './timeline-ruler'
 import { TimelineTrackHead } from './timeline-track-head'
@@ -312,6 +313,27 @@ export function TimelinePanel(): JSX.Element {
                   onDragLeave={() => setDropTargetTrackId(null)}
                   onDrop={(event) => handleDrop(event, track)}
                 >
+                  {/*
+                    Lane phụ đề vẽ CUE chứ không vẽ clip: cue nằm trong
+                    `document.subtitleTracks`, không nằm trong `track.clips`.
+                    Thiếu nhánh này thì lane phụ đề luôn là một hàng trống.
+                  */}
+                  {track.kind === 'subtitle' &&
+                    document.subtitleTracks
+                      .find((item) => item.id === track.subtitleTrackId)
+                      ?.cues.map((cue) => (
+                        <TimelineSubtitleCue
+                          key={cue.id}
+                          cue={cue}
+                          pixelsPerSecond={pixelsPerSecond}
+                          selected={playheadUs >= cue.startUs && playheadUs < cue.endUs}
+                          onSelect={(selectedCue) => {
+                            setPlaying(false)
+                            setPlayhead(selectedCue.startUs)
+                          }}
+                        />
+                      ))}
+
                   {track.clips.map((clip) => {
                     const isDragging = preview?.clipId === clip.id
                     const shown =

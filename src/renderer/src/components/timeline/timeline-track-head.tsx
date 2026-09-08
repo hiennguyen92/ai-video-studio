@@ -26,6 +26,15 @@ type TrackUpdatePatch = Extract<EditorCommand, { type: 'track/update' }>['patch'
 export function TimelineTrackHead({ track }: { track: Track }): JSX.Element {
   const t = useT()
   const run = useEditorStore((state) => state.run)
+  // Số câu phụ đề của lane này. Lane rỗng nhìn giống hệt lane chưa gắn track phụ
+  // đề nào, mà hai chuyện đó cần sửa theo hai cách khác nhau.
+  const cueCount = useEditorStore((state) => {
+    if (track.kind !== 'subtitle') return null
+    const subtitles = state.session?.document.subtitleTracks.find(
+      (item) => item.id === track.subtitleTrackId
+    )
+    return subtitles?.cues.length ?? 0
+  })
 
   const update = (patch: TrackUpdatePatch, label: string): void => {
     run([{ type: 'track/update', trackId: track.id, patch }], label)
@@ -37,10 +46,25 @@ export function TimelineTrackHead({ track }: { track: Track }): JSX.Element {
         <span className="track-head__name" title={track.name}>
           {track.name}
         </span>
+        {cueCount !== null && <span className="track-head__count">{cueCount}</span>}
       </div>
 
       <div className="track-head__controls">
         {track.kind === 'video' && (
+          <ToolButton
+            label={track.hidden ? t.timeline.show : t.timeline.hide}
+            icon={track.hidden ? <IconEyeOff /> : <IconEye />}
+            iconOnly
+            active={track.hidden}
+            onClick={() => update({ hidden: !track.hidden }, t.timeline.hide)}
+          />
+        )}
+
+        {/*
+          Lane phụ đề cũng cần ẩn/hiện: xem lại hình mà không có chữ che là việc
+          làm thường xuyên, và trước đây chỉ track hình mới có nút này.
+        */}
+        {track.kind === 'subtitle' && (
           <ToolButton
             label={track.hidden ? t.timeline.show : t.timeline.hide}
             icon={track.hidden ? <IconEyeOff /> : <IconEye />}

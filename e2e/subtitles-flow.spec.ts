@@ -202,6 +202,66 @@ test('tạo track phụ đề từ bản phiên âm', async () => {
   await expect(page.locator('.track-head__name', { hasText: 'Phụ đề en' })).toBeVisible()
 })
 
+test('mỗi câu phụ đề hiện thành một khối trên lane timeline', async () => {
+  // Cue KHÔNG phải clip: chúng nằm trong `document.subtitleTracks`. Thiếu nhánh
+  // vẽ riêng thì lane phụ đề là một hàng trống, và người dùng không biết câu nào
+  // nằm ở đâu hay chỗ nào bị hở.
+  const cues = page.locator('.timeline-cue')
+  await expect(cues).toHaveCount(2)
+  await expect(cues.first()).toContainText('First caption')
+
+  // Đầu track nói ra số câu: lane rỗng nhìn giống hệt lane chưa gắn track phụ đề.
+  await expect(page.locator('.track-head__count')).toHaveText('2')
+})
+
+test('khối trên timeline đặt đúng chỗ theo mốc thời gian của câu', async () => {
+  const boxes = await page.locator('.timeline-cue').evaluateAll((nodes) =>
+    nodes.map((node) => {
+      const rect = node.getBoundingClientRect()
+      return { left: rect.left, width: rect.width }
+    })
+  )
+
+  // Câu sau phải nằm bên phải câu trước, và không khối nào rộng bằng 0 — vẽ đúng
+  // vị trí mới là toàn bộ giá trị của việc hiện chúng lên timeline.
+  expect(boxes[1].left).toBeGreaterThan(boxes[0].left)
+  for (const box of boxes) expect(box.width).toBeGreaterThan(1)
+})
+
+test('bấm vào khối phụ đề thì tua đầu phát tới câu đó', async () => {
+  const stage = page.locator('.preview__stage')
+
+  await page.locator('.timeline-cue').nth(1).click()
+  await expect(page.locator('.subtitle-cue')).toContainText('Second caption')
+
+  await page.locator('.timeline-cue').first().click()
+  await expect(page.locator('.subtitle-cue')).toContainText('First caption')
+  await expect(stage).toBeVisible()
+})
+
+test('câu đang phát được đánh dấu khác các câu còn lại', async () => {
+  await page.locator('.timeline-cue').first().click()
+  await expect(page.locator('.timeline-cue--selected')).toHaveCount(1)
+  await expect(page.locator('.timeline-cue--selected')).toContainText('First caption')
+
+  await page.locator('.timeline-cue').nth(1).click()
+  await expect(page.locator('.timeline-cue--selected')).toContainText('Second caption')
+})
+
+test('ẩn lane phụ đề thì chữ biến mất khỏi preview, hiện lại thì quay về', async () => {
+  await page.locator('.timeline-cue').first().click()
+  await expect(page.locator('.subtitle-cue')).toContainText('First caption')
+
+  // Nút ẩn phải TÁC ĐỘNG thật. Một nút chỉ đổi dữ liệu mà lớp vẽ không đọc tới
+  // đúng là thứ DESCRIPTION §3.B cấm.
+  const head = page.locator('.track-head').filter({ hasText: 'Phụ đề en' })
+  await head.getByRole('button', { name: 'Ẩn' }).click()
+  await expect(page.locator('.subtitle-cue')).toHaveCount(0)
+
+  await head.getByRole('button', { name: 'Hiện' }).click()
+  await expect(page.locator('.subtitle-cue')).toContainText('First caption')
+})
+
 test('cue hiện lên preview đúng thời điểm và biến mất khi ra ngoài khoảng', async () => {
   // Tua vào giữa cue đầu tiên.
   await page.locator('.cue-row').first().locator('.cue-row__time').click()
