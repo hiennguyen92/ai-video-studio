@@ -1,0 +1,8 @@
+node_modules
+dist
+out
+external
+.claude
+test-results
+playwright-report
+package-lock.json

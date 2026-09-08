@@ -1,0 +1,48 @@
+# ── Dependencies & build output ────────────────────────────────
+node_modules/
+dist/
+out/
+release/
+build/*.blockmap
+coverage/
+.vite/
+*.tsbuildinfo
+.eslintcache
+
+# ── OS / editor ────────────────────────────────────────────────
+.DS_Store
+*.log
+.idea/
+*.swp
+*.tmp
+
+# ── Secrets ────────────────────────────────────────────────────
+# API keys live in the OS keychain via Electron safeStorage, never in files.
+.env
+.env.*
+# Dấu gạch chéo đầu là bắt buộc: không có nó, mẫu phủ định khớp ở MỌI cấp thư mục
+# và vô tình kéo cả .claude/.env.example vào repo.
+!/.env.example
+
+# ── Local runtime data ─────────────────────────────────────────
+# Projects, imported media, caches, generated audio.
+/userdata/
+/exports/
+
+# ── Reference material (study only, not part of this project) ──
+external/
+
+# ── CK tooling ─────────────────────────────────────────────────
+plans/**/*
+!plans/templates/*
+repomix-output.xml
+.serena/cache
+screenshots/*
+docs/screenshots/*
+__pycache__
+prompt.md
+ck.md
+
+# Claude Code runtime layout; repo-level rules stay tracked.
+/.claude/*
+!/.claude/rules/

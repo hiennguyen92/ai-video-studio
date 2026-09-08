@@ -1,0 +1,115 @@
+import { useEffect } from 'react'
+import { frameDurationUs } from '../../../shared/domain/time-units'
+import type { EditorCommand } from '../../../shared/commands/editor-command-types'
+import { useEditorStore } from '../state/editor-store'
+
+/**
+ * Phím tắt của trình soạn thảo.
+ *
+ * Quy tắc bắt buộc (DESCRIPTION §4): KHÔNG kích hoạt khi con trỏ đang ở trong ô
+ * nhập liệu. Không có chốt chặn này thì gõ chữ "s" vào tên dự án sẽ cắt clip, và
+ * dấu cách sẽ phát video giữa lúc đang gõ.
+ */
+
+function isTypingTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false
+  const tag = target.tagName
+  return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target.isContentEditable
+}
+
+export function useKeyboardShortcuts(): void {
+  useEffect(() => {
+    const handler = (event: KeyboardEvent): void => {
+      if (isTypingTarget(event.target)) return
+
+      const store = useEditorStore.getState()
+      const document = store.session?.document
+      if (!document) return
+
+      const modifier = event.metaKey || event.ctrlKey
+      const selectedClipId = store.selection.clipIds[0]
+      const stepUs = frameDurationUs(document.settings.frameRate)
+
+      if (modifier && event.key.toLowerCase() === 'z') {
+        event.preventDefault()
+        if (event.shiftKey) store.redo()
+        else store.undo()
+        return
+      }
+
+      switch (event.key) {
+        case ' ': {
+          event.preventDefault()
+          store.setPlaying(!store.isPlaying)
+          return
+        }
+        case 'ArrowLeft': {
+          event.preventDefault()
+          store.setPlaying(false)
+          // Shift nhảy nhanh hơn: mười frame một nhịp.
+          store.setPlayhead(store.playheadUs - stepUs * (event.shiftKey ? 10 : 1))
+          return
+        }
+        case 'ArrowRight': {
+          event.preventDefault()
+          store.setPlaying(false)
+          store.setPlayhead(store.playheadUs + stepUs * (event.shiftKey ? 10 : 1))
+          return
+        }
+        case 'Home': {
+          event.preventDefault()
+          store.setPlayhead(0)
+          return
+        }
+        case 'Delete':
+        case 'Backspace': {
+          if (store.selection.clipIds.length === 0) return
+          event.preventDefault()
+          store.run(
+            store.selection.clipIds.map(
+              (clipId) => ({ type: 'clip/remove', clipId }) as EditorCommand
+            ),
+            'Xoá clip'
+          )
+          store.clearSelection()
+          return
+        }
+        case 's':
+        case 'S': {
+          if (modifier || !selectedClipId) return
+          event.preventDefault()
+          store.run(
+            [{ type: 'clip/split', clipId: selectedClipId, atUs: store.playheadUs }],
+            'Cắt clip'
+          )
+          return
+        }
+        case 'd':
+        case 'D': {
+          if (!modifier || !selectedClipId) return
+          event.preventDefault()
+          store.run([{ type: 'clip/duplicate', clipId: selectedClipId }], 'Nhân bản clip')
+          return
+        }
+        case '=':
+        case '+': {
+          event.preventDefault()
+          store.setPixelsPerSecond(store.pixelsPerSecond * 1.4)
+          return
+        }
+        case '-':
+        case '_': {
+          event.preventDefault()
+          store.setPixelsPerSecond(store.pixelsPerSecond / 1.4)
+          return
+        }
+        case 'Escape': {
+          store.clearSelection()
+        }
+      }
+    }
+
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [])
+}

@@ -1,0 +1,143 @@
+.export-dialog__backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(4, 6, 10, 0.68);
+  padding: var(--space-4);
+}
+
+.export-dialog {
+  width: min(560px, 100%);
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface-panel);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-panel);
+  overflow: hidden;
+}
+
+.export-dialog__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.export-dialog__header h2 {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: 600;
+}
+
+.export-dialog__body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-3) 0;
+}
+
+.export-dialog__body .field-row {
+  grid-template-columns: 150px 1fr;
+  padding: var(--space-2) var(--space-4);
+}
+
+.export-dialog__path {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.export-dialog__path-value {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--text-sm);
+  font-family: var(--font-mono);
+  color: var(--text-secondary);
+  /* Cắt ở ĐẦU chuỗi: phần đuôi (tên file) mới là thứ cần đọc. */
+  direction: rtl;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.export-dialog__inline {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.export-dialog__checkbox {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.export-dialog__checkbox input {
+  accent-color: var(--accent);
+}
+
+.export-dialog__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.export-progress {
+  padding: var(--space-3) var(--space-4);
+}
+
+.export-progress__bar {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--surface-active);
+  overflow: hidden;
+}
+
+.export-progress__fill {
+  height: 100%;
+  background: var(--accent);
+  transition: width 200ms linear;
+}
+
+/* Sọc chạy khi chưa biết tiến độ thật — không giả vờ là một phần trăm cụ thể. */
+.export-progress__fill--indeterminate {
+  width: 35%;
+  animation: export-progress-slide 1.1s ease-in-out infinite;
+}
+
+@keyframes export-progress-slide {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(320%);
+  }
+}
+
+.export-progress__labels {
+  display: flex;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.export-progress__result {
+  margin: var(--space-2) 0 0;
+  font-size: var(--text-sm);
+  font-family: var(--font-mono);
+  color: var(--success);
+  word-break: break-all;
+}

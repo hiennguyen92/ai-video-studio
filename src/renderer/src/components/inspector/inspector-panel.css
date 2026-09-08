@@ -1,0 +1,32 @@
+.inspector {
+  padding-bottom: var(--space-4);
+}
+
+.inspector__name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.inspector__slider {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.inspector__slider input[type='range'] {
+  flex: 1;
+  min-width: 0;
+}
+
+.inspector__slider-value {
+  /* Bề rộng cố định để con số đổi giá trị không làm thanh trượt nhảy qua lại. */
+  flex: 0 0 68px;
+  text-align: right;
+  font-size: var(--text-xs);
+}
+
+.inspector__actions {
+  padding: var(--space-3);
+}

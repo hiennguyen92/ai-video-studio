@@ -1,0 +1,182 @@
+import { useMemo, useState, type DragEvent, type JSX } from 'react'
+import type { MediaAsset } from '../../../../shared/domain/media-asset-types'
+import { formatClockTime } from '../../../../shared/domain/time-units'
+import { mediaFileUrl } from '../../../../shared/ipc/ipc-contract'
+import { useEditorStore } from '../../state/editor-store'
+import { interpolate, useT } from '../../i18n/use-translation'
+import { ToolButton } from '../ui/tool-button'
+import { EmptyState } from '../ui/empty-state'
+import { IconFilm, IconImage, IconImport, IconSearch, IconSparkle, IconWaveform } from '../ui/icons'
+import './media-library-panel.css'
+
+/**
+ * Tab Media của AI Studio.
+ *
+ * Media do AI tạo nằm CHUNG danh sách với media import, chỉ khác một huy hiệu nhỏ
+ * (DESCRIPTION §3.A "Nội dung AI tạo ra cũng xuất hiện ở thư viện này").
+ */
+
+/** Kiểu dữ liệu kéo-thả, timeline đọc lại đúng khoá này. */
+export const MEDIA_DRAG_MIME = 'application/x-ai-video-studio-asset'
+
+type FilterKind = 'all' | 'video' | 'audio' | 'image' | 'generated'
+
+function assetIcon(asset: MediaAsset): JSX.Element {
+  if (asset.kind === 'video') return <IconFilm />
+  if (asset.kind === 'audio') return <IconWaveform />
+  return <IconImage />
+}
+
+export function MediaLibraryPanel({
+  importing,
+  onImportClick,
+  onAddToTimeline
+}: {
+  importing: boolean
+  onImportClick(): void
+  onAddToTimeline(asset: MediaAsset): void
+}): JSX.Element {
+  const t = useT()
+  const assets = useEditorStore((state) => state.session?.document.assets)
+  const [query, setQuery] = useState('')
+  const [filter, setFilter] = useState<FilterKind>('all')
+
+  const filtered = useMemo(() => {
+    const list = assets ?? []
+    const needle = query.trim().toLowerCase()
+    return list.filter((asset) => {
+      if (needle && !asset.name.toLowerCase().includes(needle)) return false
+      if (filter === 'all') return true
+      if (filter === 'generated') return asset.origin === 'generated'
+      return asset.kind === filter
+    })
+  }, [assets, query, filter])
+
+  const handleDragStart = (event: DragEvent<HTMLElement>, asset: MediaAsset): void => {
+    event.dataTransfer.setData(MEDIA_DRAG_MIME, asset.id)
+    event.dataTransfer.effectAllowed = 'copy'
+  }
+
+  const filters: Array<{ key: FilterKind; label: string }> = [
+    { key: 'all', label: t.media.filterAll },
+    { key: 'video', label: t.media.filterVideo },
+    { key: 'audio', label: t.media.filterAudio },
+    { key: 'image', label: t.media.filterImage },
+    { key: 'generated', label: t.media.filterGenerated }
+  ]
+
+  const hasAssets = (assets?.length ?? 0) > 0
+
+  return (
+    <div className="media-library">
+      <div className="media-library__toolbar">
+        <ToolButton
+          label={t.media.importButton}
+          icon={<IconImport />}
+          variant="outline"
+          onClick={onImportClick}
+          disabled={importing}
+        />
+        <div className="media-library__search">
+          <IconSearch />
+          <input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder={t.media.search}
+            aria-label={t.media.search}
+          />
+        </div>
+      </div>
+
+      <div className="media-library__filters">
+        {filters.map((option) => (
+          <button
+            key={option.key}
+            type="button"
+            className={`media-library__filter ${filter === option.key ? 'media-library__filter--active' : ''}`}
+            onClick={() => setFilter(option.key)}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="media-library__grid">
+        {!hasAssets && (
+          <EmptyState
+            title={t.media.empty}
+            hint={t.media.emptyHint}
+            action={
+              <ToolButton
+                label={t.media.importButton}
+                icon={<IconImport />}
+                variant="primary"
+                onClick={onImportClick}
+                disabled={importing}
+              />
+            }
+          />
+        )}
+
+        {hasAssets && filtered.length === 0 && (
+          <EmptyState title={t.media.noResults} hint={t.media.emptyHint} />
+        )}
+
+        {filtered.map((asset) => (
+          <article
+            key={asset.id}
+            className={`media-card ${asset.missing ? 'media-card--missing' : ''}`}
+            draggable
+            onDragStart={(event) => handleDragStart(event, asset)}
+            onDoubleClick={() => onAddToTimeline(asset)}
+            title={interpolate('{name} · {hint}', { name: asset.name, hint: t.media.dragHint })}
+          >
+            <div className="media-card__thumb">
+              {asset.derived.thumbnailPath ? (
+                <img src={mediaFileUrl(asset.derived.thumbnailPath)} alt="" draggable={false} />
+              ) : (
+                <span className="media-card__thumb-fallback">{assetIcon(asset)}</span>
+              )}
+              {asset.probe.durationUs > 0 && (
+                <span className="media-card__duration">
+                  {formatClockTime(asset.probe.durationUs, false)}
+                </span>
+              )}
+              {asset.origin === 'generated' && (
+                <span className="media-card__badge" title={t.media.generatedBadge}>
+                  <IconSparkle width={11} height={11} />
+                  {t.media.generatedBadge}
+                </span>
+              )}
+            </div>
+
+            <div className="media-card__info">
+              <span className="media-card__name" title={asset.name}>
+                {asset.name}
+              </span>
+              <span className="media-card__meta">
+                {asset.missing ? (
+                  <span className="media-card__missing">{t.media.missing}</span>
+                ) : (
+                  <>
+                    {assetIcon(asset)}
+                    {asset.probe.width ? `${asset.probe.width}×${asset.probe.height}` : asset.kind}
+                  </>
+                )}
+              </span>
+            </div>
+
+            <ToolButton
+              label={t.media.addToTimeline}
+              icon={<IconFilm />}
+              iconOnly
+              className="media-card__add"
+              onClick={() => onAddToTimeline(asset)}
+              disabled={asset.missing}
+            />
+          </article>
+        ))}
+      </div>
+    </div>
+  )
+}

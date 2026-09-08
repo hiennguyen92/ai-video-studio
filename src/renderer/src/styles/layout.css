@@ -1,0 +1,310 @@
+/* Bố cục khung ứng dụng và các thành phần dùng lại nhiều nơi. */
+
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: var(--surface-base);
+}
+
+/* ── Thanh công cụ trên cùng ───────────────────────────────────── */
+
+.top-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: var(--topbar-height);
+  flex: 0 0 var(--topbar-height);
+  padding: 0 var(--space-3);
+  background: var(--surface-panel);
+  border-bottom: 1px solid var(--border-subtle);
+  /* Chừa chỗ cho nút đèn giao thông của macOS khi dùng titleBarStyle hiddenInset. */
+  -webkit-app-region: drag;
+}
+
+.top-bar > * {
+  -webkit-app-region: no-drag;
+}
+
+.top-bar__mac-inset {
+  width: 72px;
+  flex: 0 0 72px;
+}
+
+.top-bar__title {
+  font-weight: 600;
+  font-size: var(--text-base);
+  margin-right: var(--space-2);
+  white-space: nowrap;
+}
+
+.top-bar__group {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.top-bar__divider {
+  width: 1px;
+  height: 20px;
+  background: var(--border-default);
+  margin: 0 var(--space-2);
+}
+
+.top-bar__spacer {
+  flex: 1;
+}
+
+.top-bar__status {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.top-bar__status--error {
+  color: var(--danger);
+}
+
+/* ── Nút ───────────────────────────────────────────────────────── */
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: 28px;
+  padding: 0 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  white-space: nowrap;
+  transition:
+    background var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.button:hover:not(:disabled) {
+  background: var(--surface-hover);
+  color: var(--text-primary);
+}
+
+.button--primary {
+  background: var(--accent);
+  color: #fff;
+  font-weight: 500;
+}
+
+.button--primary:hover:not(:disabled) {
+  background: var(--accent-hover);
+  color: #fff;
+}
+
+.button--outline {
+  border-color: var(--border-default);
+  color: var(--text-primary);
+}
+
+.button--danger:hover:not(:disabled) {
+  background: var(--danger-muted);
+  color: var(--danger);
+}
+
+.button--icon {
+  width: 28px;
+  padding: 0;
+  justify-content: center;
+}
+
+.button--active {
+  background: var(--accent-muted);
+  color: var(--accent);
+  border-color: var(--accent-border);
+}
+
+/* ── Khung panel ───────────────────────────────────────────────── */
+
+.workspace {
+  flex: 1;
+  min-height: 0;
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  background: var(--surface-panel);
+  overflow: hidden;
+}
+
+.panel__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: var(--panel-header-height);
+  flex: 0 0 var(--panel-header-height);
+  padding: 0 var(--space-3);
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--text-secondary);
+  letter-spacing: 0.02em;
+}
+
+.panel__header-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.panel__body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+/* ── Tay kéo giữa các panel ────────────────────────────────────── */
+
+.resize-handle {
+  position: relative;
+  background: var(--border-subtle);
+  transition: background var(--transition-fast);
+}
+
+.resize-handle--vertical {
+  width: 1px;
+  cursor: col-resize;
+}
+
+.resize-handle--horizontal {
+  height: 1px;
+  cursor: row-resize;
+}
+
+.resize-handle:hover,
+.resize-handle[data-resize-handle-active] {
+  background: var(--accent);
+}
+
+/* Vùng bắt chuột rộng hơn đường kẻ để dễ trúng. */
+.resize-handle::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+}
+
+/* ── Tab ───────────────────────────────────────────────────────── */
+
+.tab-bar {
+  display: flex;
+  /* Xuống hàng thay vì cuộn ngang: panel trái thu hẹp được, mà tab bị cắt mất
+     thì người dùng không hề biết là còn tab phía sau. */
+  flex-wrap: wrap;
+  flex: 0 0 auto;
+  gap: 2px;
+  padding: var(--space-2) var(--space-2) 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.tab {
+  padding: 6px 10px;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  white-space: nowrap;
+  border-bottom: 2px solid transparent;
+  transition: color var(--transition-fast);
+}
+
+.tab:hover {
+  color: var(--text-secondary);
+}
+
+.tab--active {
+  color: var(--text-primary);
+  border-bottom-color: var(--accent);
+}
+
+/* ── Trạng thái rỗng và thông báo ──────────────────────────────── */
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  height: 100%;
+  min-height: 120px;
+  padding: var(--space-5);
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.empty-state__title {
+  color: var(--text-secondary);
+  font-size: var(--text-base);
+}
+
+.empty-state__hint {
+  font-size: var(--text-sm);
+  max-width: 34ch;
+  line-height: 1.6;
+}
+
+.notice {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  background: var(--danger-muted);
+  color: var(--danger);
+  border: 1px solid rgba(248, 113, 113, 0.3);
+}
+
+.notice--warning {
+  background: rgba(251, 191, 36, 0.12);
+  color: var(--warning);
+  border-color: rgba(251, 191, 36, 0.3);
+}
+
+/* ── Trường nhập trong Inspector ───────────────────────────────── */
+
+.field-row {
+  display: grid;
+  grid-template-columns: 96px 1fr;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 3px var(--space-3);
+}
+
+.field-row__label {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+
+.field-row__value {
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+  font-family: var(--font-mono);
+  color: var(--text-secondary);
+}
+
+.field-group__title {
+  padding: var(--space-3) var(--space-3) var(--space-1);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
+input[type='range'] {
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: transparent;
+  accent-color: var(--accent);
+}

@@ -1,0 +1,292 @@
+.timeline {
+  background: var(--surface-panel);
+}
+
+.timeline__toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  flex: 0 0 auto;
+  height: var(--panel-header-height);
+  padding: 0 var(--space-2);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.timeline__body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  /* Cuộn dọc chung cho cả cột đầu track và vùng clip. */
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.timeline__heads {
+  flex: 0 0 var(--track-head-width);
+  width: var(--track-head-width);
+  border-right: 1px solid var(--border-default);
+  background: var(--surface-panel);
+  /* Cột tên track dính lại khi cuộn ngang. */
+  position: sticky;
+  left: 0;
+  z-index: 3;
+}
+
+.timeline__heads-spacer {
+  height: var(--timeline-ruler-height);
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--surface-raised);
+}
+
+.timeline__scroll {
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.timeline__content {
+  position: relative;
+  min-height: 100%;
+}
+
+.timeline__ruler-row {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  height: var(--timeline-ruler-height);
+  background: var(--surface-raised);
+  border-bottom: 1px solid var(--border-subtle);
+  cursor: pointer;
+}
+
+.timeline-ruler {
+  position: relative;
+  height: 100%;
+}
+
+.timeline-ruler__tick {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-left: 1px solid var(--border-default);
+  pointer-events: none;
+}
+
+.timeline-ruler__label {
+  position: absolute;
+  left: 4px;
+  top: 4px;
+  font-size: 10px;
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+/* ── Track ─────────────────────────────────────────────────────── */
+
+.track-head {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 2px;
+  padding: var(--space-1) var(--space-2);
+  border-bottom: 1px solid var(--border-subtle);
+  overflow: hidden;
+}
+
+.track-head__title {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.track-head__name {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.track-head__controls {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+}
+
+.track-head__controls .button {
+  height: 22px;
+  width: 22px;
+}
+
+.track-head__controls svg {
+  width: 13px;
+  height: 13px;
+}
+
+.track-head__solo {
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.timeline-lane {
+  position: relative;
+  border-bottom: 1px solid var(--border-subtle);
+  background:
+    repeating-linear-gradient(
+      90deg,
+      transparent,
+      transparent 39px,
+      rgba(255, 255, 255, 0.018) 39px,
+      rgba(255, 255, 255, 0.018) 40px
+    ),
+    var(--surface-base);
+}
+
+.timeline-lane--locked {
+  background-color: #0e1017;
+}
+
+.timeline-lane--drop {
+  box-shadow: inset 0 0 0 1px var(--accent);
+  background-color: rgba(79, 140, 255, 0.07);
+}
+
+.timeline-lane__ghost {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  border-radius: var(--radius-sm);
+  border: 1px dashed var(--accent);
+  background: var(--accent-muted);
+  pointer-events: none;
+}
+
+/* ── Clip ──────────────────────────────────────────────────────── */
+
+.timeline-clip {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-strong);
+  border-left-width: 3px;
+  border-left-style: solid;
+  overflow: hidden;
+  cursor: grab;
+  contain: paint;
+}
+
+.timeline-clip:hover {
+  border-color: var(--text-muted);
+}
+
+.timeline-clip--selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.timeline-clip--locked {
+  cursor: not-allowed;
+  opacity: 0.75;
+}
+
+.timeline-clip__filmstrip {
+  position: absolute;
+  inset: 0;
+  background-repeat: repeat-x;
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.timeline-clip__waveform {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.timeline-clip__label {
+  position: absolute;
+  left: 5px;
+  top: 3px;
+  right: 5px;
+  font-size: 10px;
+  color: var(--text-primary);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}
+
+.timeline-clip__fade {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  pointer-events: none;
+  background: linear-gradient(to right, rgba(0, 0, 0, 0.72), transparent);
+}
+
+.timeline-clip__fade--in {
+  left: 0;
+}
+
+.timeline-clip__fade--out {
+  right: 0;
+  background: linear-gradient(to left, rgba(0, 0, 0, 0.72), transparent);
+}
+
+.timeline-clip__handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 7px;
+  cursor: ew-resize;
+}
+
+.timeline-clip__handle--start {
+  left: 0;
+}
+
+.timeline-clip__handle--end {
+  right: 0;
+}
+
+.timeline-clip:hover .timeline-clip__handle {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+/* ── Playhead và đường bắt dính ────────────────────────────────── */
+
+.timeline__playhead {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--danger);
+  pointer-events: none;
+  z-index: 4;
+}
+
+.timeline__playhead-handle {
+  position: absolute;
+  top: 0;
+  left: -5px;
+  width: 11px;
+  height: 11px;
+  background: var(--danger);
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+}
+
+.timeline__snap-guide {
+  position: absolute;
+  top: var(--timeline-ruler-height);
+  bottom: 0;
+  width: 1px;
+  background: var(--warning);
+  pointer-events: none;
+  z-index: 3;
+}
