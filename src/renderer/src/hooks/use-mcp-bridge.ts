@@ -79,6 +79,77 @@ const shotCache = new Map<string, Array<{ startUs: number; endUs: number; frameP
  * chẳng hạn — sẽ XEM được từng cú mà chọn, thay vì đoán mò theo mốc thời gian.
  * Đây là đường duy nhất dựng được video từ footage không có tiếng.
  */
+/**
+ * Danh sách phông của máy, cho agent đọc.
+ *
+ * Phải đọc thật: agent không có cách nào biết máy này có phông gì, và đoán bừa
+ * một cái tên thì chữ lặng lẽ rơi về phông mặc định ở cả preview lẫn bản xuất.
+ */
+async function listLocalFonts(family?: string): Promise<string> {
+  const query = window.queryLocalFonts
+  if (!query) return 'Máy này không cho đọc danh sách phông.'
+
+  const fonts = await query()
+  const grouped = new Map<string, Array<{ style: string; postScriptName: string }>>()
+  for (const font of fonts) {
+    if (family && font.family !== family) continue
+    const faces = grouped.get(font.family) ?? []
+    faces.push({ style: font.style, postScriptName: font.postscriptName })
+    grouped.set(font.family, faces)
+  }
+
+  if (grouped.size === 0) {
+    return family ? `Máy này không có phông "${family}".` : 'Không đọc được phông nào.'
+  }
+
+  // Không nêu họ thì chỉ liệt kê TÊN HỌ: hơn sáu trăm dòng kiểu chữ sẽ nuốt sạch
+  // ngữ cảnh của agent mà phần lớn không dùng tới.
+  if (!family) {
+    return [`${grouped.size} họ phông trên máy này:`, '', ...[...grouped.keys()].sort()].join('\n')
+  }
+
+  const lines: string[] = []
+  for (const [name, faces] of grouped) {
+    lines.push(`họ "${name}":`)
+    for (const face of faces) lines.push(`- ${face.style} → ${face.postScriptName}`)
+  }
+  return lines.join('\n')
+}
+
+/**
+ * Chép sẵn file phông cho những lời gọi đổi phông.
+ *
+ * Planner là hàm thuần nên không đọc được byte phông; nó chỉ nhận đường dẫn đã
+ * có. Không chép thì bản NUNG phụ đề lặng lẽ dùng phông khác preview.
+ */
+async function resolveFontFiles(
+  calls: Array<{ name: string; arguments: unknown }>
+): Promise<Record<string, string>> {
+  const wanted = new Set<string>()
+  for (const call of calls) {
+    if (call.name !== 'set_text_font') continue
+    const args = call.arguments as { fontFamily?: string; fontPostScriptName?: string }
+    const key = args?.fontPostScriptName ?? args?.fontFamily
+    if (typeof key === 'string' && key) wanted.add(key)
+  }
+  if (wanted.size === 0) return {}
+
+  const query = window.queryLocalFonts
+  if (!query) return {}
+
+  const fonts = await query()
+  const resolved: Record<string, string> = {}
+  for (const key of wanted) {
+    const face =
+      fonts.find((font) => font.postscriptName === key) ?? fonts.find((font) => font.family === key)
+    if (!face) continue
+    const bytes = new Uint8Array(await (await face.blob()).arrayBuffer())
+    const stored = await window.api.fonts.store(key, bytes)
+    if (stored.ok) resolved[key] = stored.data.path
+  }
+  return resolved
+}
+
 function formatShots(
   assetId: string,
   assetName: string,
@@ -146,6 +217,16 @@ export function useMcpBridge(): void {
             respond(true, formatMedia(document))
             return
 
+          case 'fonts': {
+            const payload = request.payload as { family?: string }
+            void listLocalFonts(payload?.family)
+              .then((text) => respond(true, text))
+              .catch((error: unknown) =>
+                respond(false, undefined, error instanceof Error ? error.message : String(error))
+              )
+            return
+          }
+
           case 'shots': {
             const payload = request.payload as { assetId?: string }
             const asset = payload?.assetId
@@ -179,39 +260,46 @@ export function useMcpBridge(): void {
             const payload = request.payload as {
               calls: Array<{ name: string; arguments: unknown }>
             }
-            const plan = planChatToolCalls(
-              {
-                document,
-                selectedClipIds: state.selection.clipIds,
-                playheadUs: state.playheadUs,
-                makeId: (prefix) => createId(prefix ?? 'clip'),
-                shots: Object.fromEntries(shotCache)
-              },
-              payload.calls ?? []
-            )
+            const calls = payload.calls ?? []
 
-            const commands = plan.steps.flatMap((step) => step.commands)
-            const applied =
-              commands.length > 0
-                ? state.run(commands, `MCP: ${plan.steps.map((s) => s.description).join('; ')}`)
-                : false
+            // Chép file phông TRƯỚC khi lập kế hoạch: planner là hàm thuần, chỉ
+            // nhận đường dẫn có sẵn chứ không tự đọc byte phông được.
+            void resolveFontFiles(calls).then((fontFiles) => {
+              const plan = planChatToolCalls(
+                {
+                  document,
+                  selectedClipIds: state.selection.clipIds,
+                  playheadUs: state.playheadUs,
+                  makeId: (prefix) => createId(prefix ?? 'clip'),
+                  shots: Object.fromEntries(shotCache),
+                  fontFiles
+                },
+                calls
+              )
 
-            const result: McpApplyResult = {
-              applied,
-              // Không báo là đã áp dụng khi reducer từ chối — agent sẽ dựng tiếp
-              // trên một trạng thái tưởng tượng.
-              steps: applied ? plan.steps.map((step) => step.description) : [],
-              failures: applied
-                ? plan.failures
-                : [
-                    ...plan.failures,
-                    ...(commands.length > 0
-                      ? [{ tool: 'apply', reason: 'Không áp dụng được lệnh nào' }]
-                      : [])
-                  ],
-              revision: useEditorStore.getState().session?.document.revision ?? document.revision
-            }
-            respond(true, result)
+              const commands = plan.steps.flatMap((step) => step.commands)
+              const applied =
+                commands.length > 0
+                  ? state.run(commands, `MCP: ${plan.steps.map((s) => s.description).join('; ')}`)
+                  : false
+
+              const result: McpApplyResult = {
+                applied,
+                // Không báo là đã áp dụng khi reducer từ chối — agent sẽ dựng tiếp
+                // trên một trạng thái tưởng tượng.
+                steps: applied ? plan.steps.map((step) => step.description) : [],
+                failures: applied
+                  ? plan.failures
+                  : [
+                      ...plan.failures,
+                      ...(commands.length > 0
+                        ? [{ tool: 'apply', reason: 'Không áp dụng được lệnh nào' }]
+                        : [])
+                    ],
+                revision: useEditorStore.getState().session?.document.revision ?? document.revision
+              }
+              respond(true, result)
+            })
             return
           }
 

@@ -15,6 +15,17 @@ export type SubtitleAlignment = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9
 
 export interface SubtitleStyle {
   fontFamily: string
+  /**
+   * Tên PostScript của KIỂU cụ thể trong họ font, ví dụ `AmericanTypewriter-Bold`.
+   *
+   * Cần vì tên họ chỉ chọn được họ, không chọn được kiểu. Đo thật trong Chromium:
+   * đặt `font-family` theo tên đầy đủ ("American Typewriter Bold") cho ra cùng bề
+   * rộng với hai kiểu khác — tức là nó KHÔNG phân biệt được; đặt theo tên
+   * PostScript thì bốn kiểu ra bốn bề rộng khác nhau.
+   *
+   * Bỏ trống nghĩa là dùng kiểu mặc định của họ.
+   */
+  fontPostScriptName?: string
   /** Đường dẫn file font. Bắt buộc khi burn-in để chắc chắn đủ dấu tiếng Việt. */
   fontFilePath?: string
   fontSizePx: number

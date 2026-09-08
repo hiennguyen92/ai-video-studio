@@ -332,6 +332,66 @@ test('chọn phông còn LƯU file phông lại, để bản nung không đổi 
   await expect(access(fontFilePath as string)).resolves.toBeUndefined()
 })
 
+test('chọn được KIỂU trong họ, và đổi kiểu làm đổi hình', async () => {
+  // Tên họ chỉ chọn được họ. Đo thật trong Chromium: đặt font-family theo tên đầy
+  // đủ ("American Typewriter Bold") cho ra cùng bề rộng với hai kiểu khác — tức
+  // là không phân biệt được. Tên PostScript thì phân biệt.
+  await studio().getByLabel('Phông chữ').selectOption('American Typewriter')
+  await page.waitForTimeout(900)
+
+  const styleSelect = studio().getByLabel('Kiểu chữ')
+  await expect(styleSelect).toBeVisible()
+  expect(await styleSelect.locator('option').count()).toBeGreaterThan(1)
+
+  const stage = page.locator('.preview__stage')
+  await page.getByRole('button', { name: 'Tua tới đây' }).click()
+  await page.waitForTimeout(700)
+  const before = await stage.screenshot()
+
+  const values = await styleSelect
+    .locator('option')
+    .evaluateAll((nodes) => nodes.map((node) => (node as HTMLOptionElement).value))
+  const current = await styleSelect.inputValue()
+  await styleSelect.selectOption(values.find((value) => value !== current) as string)
+  await page.waitForTimeout(900)
+
+  expect((await stage.screenshot()).equals(before)).toBe(false)
+})
+
+test('đổi kiểu lưu lại đúng file phông của KIỂU đó', async () => {
+  const { readFile, readdir, access } = await import('node:fs/promises')
+
+  const style = await expect
+    .poll(
+      async () => {
+        const projectsRoot = join(userDataDir, 'projects')
+        const [projectId] = await readdir(projectsRoot)
+        const document = JSON.parse(
+          await readFile(join(projectsRoot, projectId, 'project.json'), 'utf8')
+        ) as {
+          textOverlays: Array<{
+            style: { fontPostScriptName?: string; fontFilePath?: string }
+          }>
+        }
+        return document.textOverlays[0].style
+      },
+      { timeout: 20_000 }
+    )
+    .toMatchObject({ fontPostScriptName: expect.stringContaining('AmericanTypewriter') })
+    .then(async () => {
+      const projectsRoot = join(userDataDir, 'projects')
+      const [projectId] = await readdir(projectsRoot)
+      const document = JSON.parse(
+        await readFile(join(projectsRoot, projectId, 'project.json'), 'utf8')
+      ) as { textOverlays: Array<{ style: { fontFilePath?: string } }> }
+      return document.textOverlays[0].style
+    })
+
+  // Lấy nhầm kiểu khác thì bản nung trông khác preview mà không có gì báo lỗi.
+  expect(style.fontFilePath).toBeTruthy()
+  await expect(access(style.fontFilePath as string)).resolves.toBeUndefined()
+})
+
 test('chữ hiện trên preview trong khoảng đã đặt và biến mất ngoài đó', async () => {
   const overlay = page.locator('.text-overlay')
 

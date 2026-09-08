@@ -592,3 +592,95 @@ describe('công cụ xoá media', () => {
     expect(plan.failures).toHaveLength(1)
   })
 })
+
+describe('công cụ đổi phông chữ', () => {
+  const withOverlays = (): ProjectDocument => {
+    const document = project()
+    for (const [index, text] of ['Hook', 'CTA'].entries()) {
+      const plan = planChatToolCalls(context(document), [
+        {
+          name: 'add_text_overlay',
+          arguments: { text, startSeconds: index * 2, endSeconds: index * 2 + 1.5 }
+        }
+      ])
+      for (const command of plan.steps.flatMap((step) => step.commands)) {
+        expect(applyEditorCommand(document, command).ok).toBe(true)
+      }
+    }
+    return document
+  }
+
+  it('không nêu chữ nào thì áp cho TẤT CẢ chữ overlay', () => {
+    const document = withOverlays()
+    const plan = planChatToolCalls(context(document), [
+      { name: 'set_text_font', arguments: { fontFamily: 'Georgia' } }
+    ])
+
+    expect(plan.failures).toEqual([])
+    for (const command of plan.steps.flatMap((step) => step.commands)) {
+      expect(applyEditorCommand(document, command).ok).toBe(true)
+    }
+    expect(document.textOverlays.map((item) => item.style.fontFamily)).toEqual([
+      'Georgia',
+      'Georgia'
+    ])
+  })
+
+  it('nêu một chữ thì chỉ đổi đúng chữ đó', () => {
+    const document = withOverlays()
+    const target = document.textOverlays[1].id
+    const plan = planChatToolCalls(context(document), [
+      { name: 'set_text_font', arguments: { fontFamily: 'Georgia', overlayId: target } }
+    ])
+    for (const command of plan.steps.flatMap((step) => step.commands)) {
+      expect(applyEditorCommand(document, command).ok).toBe(true)
+    }
+
+    expect(document.textOverlays[0].style.fontFamily).not.toBe('Georgia')
+    expect(document.textOverlays[1].style.fontFamily).toBe('Georgia')
+  })
+
+  it('gắn đường dẫn file phông khi nơi gọi đã chép sẵn', () => {
+    const document = withOverlays()
+    const plan = planChatToolCalls(
+      {
+        ...context(document),
+        fontFiles: { 'Georgia-Bold': '/kho/georgia-bold.ttf' }
+      },
+      [
+        {
+          name: 'set_text_font',
+          arguments: { fontFamily: 'Georgia', fontPostScriptName: 'Georgia-Bold' }
+        }
+      ]
+    )
+    for (const command of plan.steps.flatMap((step) => step.commands)) {
+      expect(applyEditorCommand(document, command).ok).toBe(true)
+    }
+
+    // Thiếu đường dẫn này thì bản NUNG phụ đề lặng lẽ dùng phông khác preview.
+    expect(document.textOverlays[0].style.fontFilePath).toBe('/kho/georgia-bold.ttf')
+    expect(document.textOverlays[0].style.fontPostScriptName).toBe('Georgia-Bold')
+  })
+
+  it('dự án chưa có chữ nào thì báo lỗi, không im lặng thành công', () => {
+    const plan = planChatToolCalls(context(project()), [
+      { name: 'set_text_font', arguments: { fontFamily: 'Georgia' } }
+    ])
+
+    expect(plan.steps).toEqual([])
+    expect(plan.failures).toHaveLength(1)
+  })
+
+  it('track phụ đề không có thật thì báo lỗi', () => {
+    const plan = planChatToolCalls(context(withOverlays()), [
+      {
+        name: 'set_text_font',
+        arguments: { fontFamily: 'Georgia', subtitleTrackId: 'khong-co' }
+      }
+    ])
+
+    expect(plan.steps).toEqual([])
+    expect(plan.failures).toHaveLength(1)
+  })
+})

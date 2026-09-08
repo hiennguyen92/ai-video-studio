@@ -57,14 +57,18 @@ function assStyleLine(name: string, style: SubtitleStyle): string {
   const borderStyle = style.boxOpacity > 0 ? 3 : 1
   return [
     `Style: ${name}`,
-    style.fontFamily,
+    // Tên PostScript trỏ đúng MỘT kiểu; tên họ thì để libass tự chọn kiểu, và nó
+    // hay chọn kiểu thường trong khi preview đang vẽ kiểu khác.
+    style.fontPostScriptName ?? style.fontFamily,
     String(style.fontSizePx),
     toAssColor(style.color),
     toAssColor(style.color),
     toAssColor(style.outlineColor),
     toAssColor(style.boxColor, style.boxOpacity),
-    style.bold ? '-1' : '0',
-    style.italic ? '-1' : '0',
+    // Chọn kiểu bằng tên PostScript rồi thì để libass dùng đúng kiểu đó, đừng bật
+    // thêm cờ đậm/nghiêng — nó sẽ làm đậm giả chồng lên một kiểu vốn đã đậm.
+    style.fontPostScriptName ? '0' : style.bold ? '-1' : '0',
+    style.fontPostScriptName ? '0' : style.italic ? '-1' : '0',
     '0',
     '0',
     '100',

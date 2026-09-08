@@ -253,6 +253,21 @@ export const chatToolSchemas = {
     removeClips: z.boolean().optional()
   }),
 
+  /**
+   * Đổi phông chữ.
+   *
+   * Bỏ trống cả `overlayId` lẫn `subtitleTrackId` nghĩa là áp cho MỌI chữ overlay
+   * — thứ agent hay muốn nhất khi dựng một video ngắn.
+   */
+  set_text_font: z.object({
+    /** Tên họ phông, đúng như `list_fonts` trả về. */
+    fontFamily: z.string().min(1).max(120),
+    /** Tên PostScript của kiểu cụ thể. Bỏ trống thì dùng kiểu mặc định của họ. */
+    fontPostScriptName: z.string().min(1).max(160).optional(),
+    overlayId: z.string().min(1).max(120).optional(),
+    subtitleTrackId: z.string().min(1).max(120).optional()
+  }),
+
   auto_duck_music: z.object({
     duckVolume: gain.optional(),
     baseVolume: gain.optional(),
@@ -307,7 +322,9 @@ export const chatToolDescriptions: Record<ChatToolName, string> = {
   set_clip_color:
     'Grade one clip: brightness, contrast, saturation, warm/cool temperature, and a vignette. Fields are applied on top of what is already set, so changing one does not clear the others. Pass reset to put the clip back to its original colour. There is no LUT support.',
   remove_media:
-    'Remove one asset from the media library. Refuses if any clip on the timeline still uses it; pass removeClips to delete those clips as well. The file on disk is never touched.'
+    'Remove one asset from the media library. Refuses if any clip on the timeline still uses it; pass removeClips to delete those clips as well. The file on disk is never touched.',
+  set_text_font:
+    'Change the font of text overlays or a subtitle track. Call list_fonts first and use a family name from it — a font that is not installed silently falls back to the default. Pass fontPostScriptName to pick a specific weight or width within the family; the family name alone cannot select a face. With no overlayId and no subtitleTrackId it applies to every text overlay.'
 }
 
 /** Mô tả tham số cho mô hình — dựng thủ công để không phải kéo thêm thư viện. */
@@ -343,7 +360,9 @@ export const chatToolParameterHints: Record<ChatToolName, string> = {
     "{ clipId?: string, kind: 'none' | 'zoom-in' | 'zoom-out' | 'pan-left' | 'pan-right' | 'pan-up' | 'pan-down' | 'punch-in' | 'shake', intensity?: number }",
   set_clip_color:
     '{ clipId?: string, brightness?: number, contrast?: number, saturation?: number, temperature?: number, vignette?: number, reset?: boolean }',
-  remove_media: '{ assetId: string, removeClips?: boolean }'
+  remove_media: '{ assetId: string, removeClips?: boolean }',
+  set_text_font:
+    '{ fontFamily: string, fontPostScriptName?: string, overlayId?: string, subtitleTrackId?: string }'
 }
 
 /**

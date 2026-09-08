@@ -45,6 +45,14 @@ export interface ChatEditContext {
    * nơi gọi nạp vào khi cần dựng theo hình.
    */
   shots?: Record<string, Array<{ startUs: number; endUs: number }>>
+  /**
+   * Đường dẫn file phông đã chép ra kho, theo tên PostScript (hoặc tên họ khi
+   * không nêu kiểu).
+   *
+   * Cùng lý do như `shots`: planner là hàm thuần, không đọc được byte phông từ hệ
+   * thống. Nơi gọi chép sẵn rồi đưa vào đây.
+   */
+  fontFiles?: Record<string, string>
 }
 
 export interface PlannedToolCall {
@@ -659,6 +667,59 @@ function planOne(context: ChatEditContext, tool: ChatToolName, args: unknown): P
             ? `Xoá media "${asset.name}" và ${usages} clip đang dùng nó`
             : `Xoá media "${asset.name}"`,
         commands: [{ type: 'asset/remove', assetId: input.assetId, removeUsages: usages > 0 }]
+      }
+    }
+
+    case 'set_text_font': {
+      const input = chatToolSchemas.set_text_font.parse(args)
+      // File phông do nơi gọi chép sẵn ra kho trước khi lập kế hoạch; planner là
+      // hàm thuần nên không tự đọc byte phông được.
+      const fontFilePath = context.fontFiles?.[input.fontPostScriptName ?? input.fontFamily]
+      const patch = {
+        fontFamily: input.fontFamily,
+        fontPostScriptName: input.fontPostScriptName,
+        fontFilePath
+      }
+
+      if (input.subtitleTrackId) {
+        const subtitleTrack = document.subtitleTracks.find(
+          (item) => item.id === input.subtitleTrackId
+        )
+        if (!subtitleTrack) {
+          throw new Error(`Không tìm thấy track phụ đề "${input.subtitleTrackId}"`)
+        }
+        return {
+          tool,
+          description: `Đổi phông phụ đề "${subtitleTrack.name}" sang ${input.fontFamily}`,
+          commands: [
+            {
+              type: 'subtitle/set-style',
+              trackId: subtitleTrack.id,
+              style: { ...subtitleTrack.style, ...patch }
+            }
+          ]
+        }
+      }
+
+      const overlays = input.overlayId
+        ? document.textOverlays.filter((item) => item.id === input.overlayId)
+        : document.textOverlays
+      if (overlays.length === 0) {
+        throw new Error(
+          input.overlayId
+            ? `Không tìm thấy chữ overlay "${input.overlayId}"`
+            : 'Dự án chưa có chữ overlay nào'
+        )
+      }
+
+      return {
+        tool,
+        description: `Đổi phông ${overlays.length} chữ sang ${input.fontFamily}`,
+        commands: overlays.map((overlay) => ({
+          type: 'text/set-style' as const,
+          overlayId: overlay.id,
+          style: { ...overlay.style, ...patch }
+        }))
       }
     }
 

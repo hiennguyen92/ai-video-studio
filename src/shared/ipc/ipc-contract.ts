@@ -290,7 +290,7 @@ export interface GenerateMusicRequest {
 /** Máy chủ MCP hỏi renderer những gì. */
 export interface McpBridgeRequest {
   requestId: string
-  kind: 'project-overview' | 'transcript' | 'media' | 'shots' | 'apply-tools'
+  kind: 'project-overview' | 'transcript' | 'media' | 'shots' | 'fonts' | 'apply-tools'
   payload: unknown
 }
 

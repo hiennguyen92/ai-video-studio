@@ -40,7 +40,11 @@ export function SubtitleStyleControls({
 
   return (
     <div className="subtitle-style">
-      <FontFamilySelect value={style.fontFamily} onChange={(next) => patch(next)} />
+      <FontFamilySelect
+        family={style.fontFamily}
+        postScriptName={style.fontPostScriptName}
+        onChange={(next) => patch(next)}
+      />
 
       <div className="field-row">
         <span className="field-row__label">{t.subtitles.preset}</span>

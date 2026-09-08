@@ -247,10 +247,13 @@ function SubtitleCue({ cue, height }: { cue: RenderPlanSubtitleCue; height: numb
     style.alignment % 3 === 1 ? 'flex-start' : style.alignment % 3 === 2 ? 'center' : 'flex-end'
 
   const textStyle = {
-    fontFamily: style.fontFamily,
+    fontFamily: style.fontPostScriptName ?? style.fontFamily,
     fontSize: style.fontSizePx,
-    fontWeight: style.bold ? 800 : 500,
-    fontStyle: style.italic ? 'italic' : 'normal',
+    // Chọn kiểu bằng tên PostScript rồi thì KHÔNG ép độ đậm nữa: chính kiểu đó
+    // đã mang độ đậm của nó, ép thêm sẽ vẽ mọi kiểu trông như nhau và ô chọn kiểu
+    // thành vô nghĩa.
+    fontWeight: style.fontPostScriptName ? 'normal' : style.bold ? 800 : 500,
+    fontStyle: style.fontPostScriptName ? 'normal' : style.italic ? 'italic' : 'normal',
     color: style.color,
     lineHeight: 1.25,
     // Viền chữ: cách duy nhất khớp được với outline của ASS bằng CSS thuần.
@@ -416,10 +419,10 @@ function TextOverlayLayer({ overlay }: { overlay: RenderPlanTextOverlay }): JSX.
           <span
             key={index}
             style={{
-              fontFamily: style.fontFamily,
+              fontFamily: style.fontPostScriptName ?? style.fontFamily,
               fontSize: style.fontSizePx,
-              fontWeight: style.bold ? 800 : 500,
-              fontStyle: style.italic ? 'italic' : 'normal',
+              fontWeight: style.fontPostScriptName ? 'normal' : style.bold ? 800 : 500,
+              fontStyle: style.fontPostScriptName ? 'normal' : style.italic ? 'italic' : 'normal',
               color: style.color,
               lineHeight: 1.15,
               WebkitTextStroke:

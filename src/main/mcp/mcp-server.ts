@@ -123,6 +123,18 @@ function buildMcpServer(): McpServer {
     })
   )
 
+  server.registerTool(
+    'list_fonts',
+    {
+      description:
+        'List the fonts installed on this machine, with the PostScript name of each face. Only these render correctly: a font that is not installed silently falls back to the default, in the preview and in the exported file alike. Use a name from here with set_text_font.',
+      inputSchema: { family: z.string().optional() }
+    },
+    async ({ family }) => ({
+      content: [{ type: 'text', text: await requestFromRenderer<string>('fonts', { family }) }]
+    })
+  )
+
   // ── Công cụ GHI ──────────────────────────────────────────────
   // Sinh từ chính danh mục của AI Chat, nên hai lối vào không thể lệch nhau.
 

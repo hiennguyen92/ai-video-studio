@@ -360,6 +360,7 @@ export const dictionaryEn: Dictionary = {
     styleSection: 'Text style',
     preset: 'Preset',
     fontFamily: 'Font',
+    fontStyle: 'Style',
     fontLoading: 'Reading installed fonts…',
     fontUnavailable: 'Cannot read this machine\u2019s fonts',
     fontSaving: 'saving font…',

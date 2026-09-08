@@ -16,34 +16,62 @@ import { useT } from '../../i18n/use-translation'
  * có mặt lúc xuất.
  */
 
+export interface FontSelection {
+  fontFamily: string
+  fontPostScriptName?: string
+  /** Chỉ có khi chép được byte font ra kho. */
+  fontFilePath?: string
+}
+
 export function FontFamilySelect({
-  value,
+  family,
+  postScriptName,
   onChange
 }: {
-  value: string
-  /** `fontFilePath` chỉ có khi chép được byte font ra kho. */
-  onChange(next: { fontFamily: string; fontFilePath?: string }): void
+  family: string
+  postScriptName?: string
+  onChange(next: FontSelection): void
 }): JSX.Element {
   const t = useT()
-  const { families, loading, readFontBytes } = useSystemFonts()
+  const { families, loading, facesOf, readFontBytes } = useSystemFonts()
   const [saving, setSaving] = useState(false)
 
-  const handlePick = useCallback(
-    async (family: string) => {
-      // Đổi tên họ TRƯỚC: preview phải phản hồi ngay, không chờ chép file.
-      onChange({ fontFamily: family })
+  const faces = facesOf(family)
+
+  const apply = useCallback(
+    async (nextFamily: string, nextPostScript: string | undefined) => {
+      // Đổi tên TRƯỚC: preview phải phản hồi ngay, không chờ chép file.
+      onChange({ fontFamily: nextFamily, fontPostScriptName: nextPostScript })
+      if (!nextPostScript) return
 
       setSaving(true)
       try {
-        const bytes = await readFontBytes(family)
+        const bytes = await readFontBytes(nextPostScript)
         if (!bytes) return
-        const stored = await window.api.fonts.store(family, bytes)
-        if (stored.ok) onChange({ fontFamily: family, fontFilePath: stored.data.path })
+        const stored = await window.api.fonts.store(nextPostScript, bytes)
+        if (stored.ok) {
+          onChange({
+            fontFamily: nextFamily,
+            fontPostScriptName: nextPostScript,
+            fontFilePath: stored.data.path
+          })
+        }
       } finally {
         setSaving(false)
       }
     },
     [onChange, readFontBytes]
+  )
+
+  const handlePickFamily = useCallback(
+    (nextFamily: string) => {
+      // Đổi họ thì chọn luôn một kiểu của họ đó: giữ kiểu cũ là giữ một tên
+      // PostScript thuộc họ khác, và chữ sẽ không đổi gì cả.
+      const nextFaces = facesOf(nextFamily)
+      const preferred = nextFaces.find((face) => /^regular$/i.test(face.style)) ?? nextFaces[0]
+      void apply(nextFamily, preferred?.postScriptName)
+    },
+    [apply, facesOf]
   )
 
   return (
@@ -56,20 +84,37 @@ export function FontFamilySelect({
           {loading ? t.subtitles.fontLoading : t.subtitles.fontUnavailable}
         </span>
       ) : (
-        <select
-          value={value}
-          aria-label={t.subtitles.fontFamily}
-          onChange={(event) => void handlePick(event.target.value)}
-        >
-          {/* Font đang dùng có thể không nằm trong danh sách của máy này — dự án
-              mở từ máy khác chẳng hạn. Vẫn phải hiện ra, không được nuốt mất. */}
-          {!families.includes(value) && <option value={value}>{value}</option>}
-          {families.map((family) => (
-            <option key={family} value={family}>
-              {family}
-            </option>
-          ))}
-        </select>
+        <>
+          <select
+            value={family}
+            aria-label={t.subtitles.fontFamily}
+            onChange={(event) => handlePickFamily(event.target.value)}
+          >
+            {/* Font đang dùng có thể không nằm trong danh sách của máy này — dự án
+                mở từ máy khác chẳng hạn. Vẫn phải hiện ra, không được nuốt mất. */}
+            {!families.includes(family) && <option value={family}>{family}</option>}
+            {families.map((item) => (
+              <option key={item} value={item}>
+                {item}
+              </option>
+            ))}
+          </select>
+
+          {/* Họ chỉ có một kiểu thì ô chọn kiểu là một ô chỉ có một lựa chọn. */}
+          {faces.length > 1 && (
+            <select
+              value={postScriptName ?? faces[0].postScriptName}
+              aria-label={t.subtitles.fontStyle}
+              onChange={(event) => void apply(family, event.target.value)}
+            >
+              {faces.map((face) => (
+                <option key={face.postScriptName} value={face.postScriptName}>
+                  {face.style}
+                </option>
+              ))}
+            </select>
+          )}
+        </>
       )}
 
       {saving && <span className="field-row__value">{t.subtitles.fontSaving}</span>}

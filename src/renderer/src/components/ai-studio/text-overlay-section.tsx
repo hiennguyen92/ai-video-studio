@@ -162,7 +162,8 @@ export function TextOverlaySection(): JSX.Element {
               </div>
 
               <FontFamilySelect
-                value={overlay.style.fontFamily}
+                family={overlay.style.fontFamily}
+                postScriptName={overlay.style.fontPostScriptName}
                 onChange={(next) =>
                   run(
                     [

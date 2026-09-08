@@ -360,6 +360,7 @@ export const dictionaryVi = {
     styleSection: 'Kiểu chữ',
     preset: 'Mẫu có sẵn',
     fontFamily: 'Phông chữ',
+    fontStyle: 'Kiểu chữ',
     fontLoading: 'Đang đọc danh sách phông…',
     fontUnavailable: 'Không đọc được phông của máy này',
     fontSaving: 'đang lưu phông…',

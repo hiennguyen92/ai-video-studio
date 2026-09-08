@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 
 /**
  * Danh sách font ĐANG CÓ trên máy này.
@@ -16,7 +16,15 @@ interface LocalFontData {
   family: string
   fullName: string
   postscriptName: string
+  style: string
   blob(): Promise<Blob>
+}
+
+export interface FontFace {
+  /** Nhãn hiện cho người dùng, ví dụ "Bold", "Condensed Light". */
+  style: string
+  /** Khoá chọn ĐÚNG kiểu này, dùng cho cả CSS lẫn dòng Style của ASS. */
+  postScriptName: string
 }
 
 declare global {
@@ -29,12 +37,14 @@ export interface SystemFonts {
   /** Tên họ font, đã khử trùng lặp và sắp xếp. `null` nghĩa là không đọc được. */
   families: string[] | null
   loading: boolean
-  /** Lấy byte của một họ font, để lưu lại cho việc nung phụ đề. */
-  readFontBytes(family: string): Promise<Uint8Array | null>
+  /** Các kiểu có trong một họ. Rỗng khi họ đó không đọc được. */
+  facesOf(family: string): FontFace[]
+  /** Lấy byte của ĐÚNG kiểu đã chọn, để lưu lại cho việc nung phụ đề. */
+  readFontBytes(postScriptName: string): Promise<Uint8Array | null>
 }
 
 export function useSystemFonts(): SystemFonts {
-  const [families, setFamilies] = useState<string[] | null>(null)
+  const [byFamily, setByFamily] = useState<Map<string, FontFace[]> | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -44,15 +54,25 @@ export function useSystemFonts(): SystemFonts {
       try {
         const query = window.queryLocalFonts
         if (!query) {
-          if (!cancelled) setFamilies(null)
+          if (!cancelled) setByFamily(null)
           return
         }
         const fonts = await query()
         if (cancelled) return
-        setFamilies([...new Set(fonts.map((font) => font.family))].sort())
+
+        const grouped = new Map<string, FontFace[]>()
+        for (const font of fonts) {
+          const faces = grouped.get(font.family) ?? []
+          faces.push({ style: font.style, postScriptName: font.postscriptName })
+          grouped.set(font.family, faces)
+        }
+        for (const faces of grouped.values()) {
+          faces.sort((left, right) => left.style.localeCompare(right.style))
+        }
+        setByFamily(grouped)
       } catch {
         // Người dùng từ chối quyền, hoặc nền tảng không hỗ trợ.
-        if (!cancelled) setFamilies(null)
+        if (!cancelled) setByFamily(null)
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -63,24 +83,29 @@ export function useSystemFonts(): SystemFonts {
     }
   }, [])
 
-  const readFontBytes = useCallback(async (family: string): Promise<Uint8Array | null> => {
+  const families = useMemo(() => (byFamily ? [...byFamily.keys()].sort() : null), [byFamily])
+
+  const facesOf = useCallback(
+    (family: string): FontFace[] => byFamily?.get(family) ?? [],
+    [byFamily]
+  )
+
+  const readFontBytes = useCallback(async (postScriptName: string): Promise<Uint8Array | null> => {
     try {
       const query = window.queryLocalFonts
       if (!query) return null
 
       const fonts = await query()
-      // Lấy kiểu thường của họ đó. Chọn nhầm bản nghiêng hay đậm thì bản nung
-      // trông khác hẳn preview, vốn dùng kiểu thường rồi tự làm đậm bằng CSS.
-      const candidates = fonts.filter((font) => font.family === family)
-      const regular =
-        candidates.find((font) => /regular|book/i.test(font.fullName)) ?? candidates[0]
-      if (!regular) return null
+      // Lấy ĐÚNG kiểu đã chọn. Lấy nhầm kiểu khác thì bản nung trông khác hẳn
+      // preview, mà cả hai vẫn "chạy" nên chẳng có gì báo lỗi.
+      const face = fonts.find((font) => font.postscriptName === postScriptName)
+      if (!face) return null
 
-      return new Uint8Array(await (await regular.blob()).arrayBuffer())
+      return new Uint8Array(await (await face.blob()).arrayBuffer())
     } catch {
       return null
     }
   }, [])
 
-  return { families, loading, readFontBytes }
+  return { families, loading, facesOf, readFontBytes }
 }
