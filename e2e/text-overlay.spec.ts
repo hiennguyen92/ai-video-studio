@@ -46,7 +46,7 @@ test.beforeAll(async () => {
     '-f',
     'lavfi',
     '-i',
-    'color=c=black:size=640x360:rate=30:duration=8',
+    'color=c=gray:size=640x360:rate=30:duration=8',
     '-c:v',
     'libx264',
     '-pix_fmt',
@@ -138,6 +138,29 @@ test('đổi hiệu ứng làm đổi hình, ở cùng một thời điểm', as
   expect(typewriter.equals(none)).toBe(false)
 })
 
+test('bật nền hộp làm đổi hình, ở cùng một thời điểm', async () => {
+  const stage = page.locator('.preview__stage')
+  await page.getByLabel('Hiệu ứng 1').selectOption('none')
+  await page.getByRole('button', { name: 'Tua tới đây' }).click()
+  await page.waitForTimeout(700)
+  const noBox = await stage.screenshot()
+
+  await page.getByLabel('Nền chữ 1').selectOption('dark')
+  await page.waitForTimeout(700)
+  const darkBox = await stage.screenshot()
+
+  await page.getByLabel('Nền chữ 1').selectOption('light')
+  await page.waitForTimeout(700)
+  const lightBox = await stage.screenshot()
+
+  // Ba trạng thái phải cho ba khung hình KHÁC nhau. Hai cái giống nhau nghĩa là
+  // ô chọn đổi dữ liệu mà lớp vẽ không đọc tới, và người dùng chỉnh vào hư không.
+  expect(noBox.equals(darkBox)).toBe(false)
+  expect(darkBox.equals(lightBox)).toBe(false)
+
+  await page.getByLabel('Nền chữ 1').selectOption('none')
+})
+
 test('đổi vị trí đưa chữ xuống dưới khung hình', async () => {
   const stage = page.locator('.preview__stage')
   await page.getByLabel('Hiệu ứng 1').selectOption('none')
@@ -169,8 +192,9 @@ test('chữ đi tới file xuất ra, không chỉ sống trong preview', async 
   const stats = await stat(outputPath)
   expect(stats.size).toBeGreaterThan(10_000)
 
-  // Nguồn là màn hình ĐEN TUYỀN. Trích một khung trong khoảng có chữ: có chữ thì
-  // khung đó không còn đen, và ảnh nén ra sẽ lớn hơn hẳn khung ngoài khoảng.
+  // Nguồn là màn hình XÁM TRƠN — xám chứ không đen, để hộp tối và hộp sáng đều
+  // nhìn ra được. Trích một khung trong khoảng có chữ: có chữ thì khung đó không
+  // còn trơn, và ảnh nén ra sẽ lớn hơn hẳn khung ngoài khoảng.
   const { default: ffmpegStatic } = await import('ffmpeg-static')
   const sizes: number[] = []
   for (const [name, at] of [

@@ -1,9 +1,12 @@
 import { useCallback, type JSX } from 'react'
 import {
   DEFAULT_TEXT_ANIMATION_DURATION_US,
+  applyTextOverlayBox,
   createDefaultTextOverlayStyle,
+  readTextOverlayBox,
   type TextAnimation,
-  type TextOverlay
+  type TextOverlay,
+  type TextOverlayBox
 } from '../../../../shared/domain/text-overlay-types'
 import type { SubtitleAlignment } from '../../../../shared/domain/subtitle-types'
 import { createId } from '../../../../shared/domain/project-document-factory'
@@ -25,6 +28,12 @@ const ANIMATIONS: Array<{ value: TextAnimation; labelKey: string }> = [
   { value: 'pop', labelKey: 'animationPop' },
   { value: 'slide-up', labelKey: 'animationSlideUp' },
   { value: 'typewriter', labelKey: 'animationTypewriter' }
+]
+
+const BOXES: Array<{ value: TextOverlayBox; labelKey: string }> = [
+  { value: 'none', labelKey: 'boxNone' },
+  { value: 'dark', labelKey: 'boxDark' },
+  { value: 'light', labelKey: 'boxLight' }
 ]
 
 /** Vị trí theo hệ số bàn phím số của ASS, gói lại thành ba lựa chọn dễ hiểu. */
@@ -193,6 +202,35 @@ export function TextOverlaySection(): JSX.Element {
                     }
                   >
                     {POSITIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {t.textOverlay[option.labelKey as keyof typeof t.textOverlay] as string}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label>
+                  <span className="field-row__label">{t.textOverlay.box}</span>
+                  <select
+                    value={readTextOverlayBox(overlay.style)}
+                    aria-label={`${t.textOverlay.box} ${index + 1}`}
+                    onChange={(event) =>
+                      run(
+                        [
+                          {
+                            type: 'text/set-style',
+                            overlayId: overlay.id,
+                            style: applyTextOverlayBox(
+                              overlay.style,
+                              event.target.value as TextOverlayBox
+                            )
+                          }
+                        ],
+                        'Đổi nền chữ'
+                      )
+                    }
+                  >
+                    {BOXES.map((option) => (
                       <option key={option.value} value={option.value}>
                         {t.textOverlay[option.labelKey as keyof typeof t.textOverlay] as string}
                       </option>

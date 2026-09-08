@@ -452,6 +452,10 @@ export const dictionaryEn: Dictionary = {
     positionTop: 'Top',
     positionMiddle: 'Middle',
     positionBottom: 'Bottom',
+    box: 'Text background',
+    boxNone: 'None',
+    boxDark: 'Dark box',
+    boxLight: 'Light box',
     fontSize: 'Font size',
     remove: 'Remove text',
     seek: 'Seek here'

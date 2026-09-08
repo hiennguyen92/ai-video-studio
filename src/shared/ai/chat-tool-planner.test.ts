@@ -373,3 +373,48 @@ describe('id sinh ra mang đúng tiền tố', () => {
     expect(document.tracks.at(-1)?.id).toBe('track_x')
   })
 })
+
+describe('nền hộp cho chữ overlay', () => {
+  const boxOf = (args: Record<string, unknown>): ReturnType<typeof project>['textOverlays'][0] => {
+    const document = project()
+    const plan = planChatToolCalls(context(document), [
+      { name: 'add_text_overlay', arguments: { startSeconds: 0, endSeconds: 2, ...args } }
+    ])
+    expect(plan.failures).toEqual([])
+    for (const command of plan.steps.flatMap((step) => step.commands)) {
+      expect(applyEditorCommand(document, command).ok).toBe(true)
+    }
+    return document.textOverlays[0]
+  }
+
+  it('không nêu thì không có hộp, và chữ vẫn còn viền', () => {
+    const overlay = boxOf({ text: 'Hook' })
+    expect(overlay.style.boxOpacity).toBe(0)
+    expect(overlay.style.outlineWidthPx).toBeGreaterThan(0)
+  })
+
+  it('hộp tối: nền đen mờ, chữ trắng', () => {
+    const overlay = boxOf({ text: 'Hook', box: 'dark' })
+    expect(overlay.style.boxOpacity).toBeGreaterThan(0)
+    expect(overlay.style.boxColor).toBe('#000000')
+    expect(overlay.style.color).toBe('#FFFFFF')
+  })
+
+  it('hộp sáng phải đổi chữ sang màu tối — trắng trên trắng là mất chữ', () => {
+    const overlay = boxOf({ text: 'Hook', box: 'light' })
+    expect(overlay.style.boxColor).toBe('#FFFFFF')
+    expect(overlay.style.color).not.toBe('#FFFFFF')
+  })
+
+  it('từ chối kiểu hộp không có trong danh sách', () => {
+    const document = project()
+    const plan = planChatToolCalls(context(document), [
+      {
+        name: 'add_text_overlay',
+        arguments: { text: 'Hook', startSeconds: 0, endSeconds: 2, box: 'gradient' }
+      }
+    ])
+    expect(plan.steps).toEqual([])
+    expect(plan.failures).toHaveLength(1)
+  })
+})

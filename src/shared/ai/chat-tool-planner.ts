@@ -6,6 +6,7 @@ import { buildSubtitleCues } from '../domain/subtitle-cue-builder'
 import { DEFAULT_SUBTITLE_STYLE, type SubtitleTrack } from '../domain/subtitle-types'
 import {
   DEFAULT_TEXT_ANIMATION_DURATION_US,
+  applyTextOverlayBox,
   createDefaultTextOverlayStyle,
   type TextOverlay
 } from '../domain/text-overlay-types'
@@ -486,7 +487,8 @@ function planOne(context: ChatEditContext, tool: ChatToolName, args: unknown): P
       const endUs = secondsToMicros(input.endSeconds)
       if (endUs <= startUs) throw new Error('Thời điểm kết thúc phải sau thời điểm bắt đầu')
 
-      const style = createDefaultTextOverlayStyle()
+      let style = createDefaultTextOverlayStyle()
+      if (input.box) style = applyTextOverlayBox(style, input.box)
       // Vị trí nhận bằng chữ chứ không phải số 1–9 kiểu ASS: mô hình đoán số bàn
       // phím rất hay sai, còn "top/middle/bottom" thì không nhầm được.
       if (input.position === 'bottom') {

@@ -48,3 +48,36 @@ export function createDefaultTextOverlayStyle(): SubtitleStyle {
     maxCharsPerLine: 22
   }
 }
+
+/**
+ * Nền hộp sau chữ.
+ *
+ * Chỉ viền chữ là không đủ trên footage thật: chữ trắng viền đen đặt lên một nền
+ * sáng và bận (màn hình, tường sáng, tờ giấy) vẫn khó đọc, và đó đúng là chỗ hook
+ * với CTA hay rơi vào.
+ */
+export type TextOverlayBox = 'none' | 'dark' | 'light'
+
+/**
+ * Đặt nền hộp, kèm màu chữ và viền đi cùng.
+ *
+ * Ba thứ này phải đổi CÙNG nhau: hộp trắng mà giữ chữ trắng thì chữ biến mất, còn
+ * giữ viền đen dày trên nền hộp thì chữ trông bẩn. Nên đây là một hàm chứ không
+ * phải ba ô nhập rời để người dùng tự phối.
+ */
+export function applyTextOverlayBox(style: SubtitleStyle, box: TextOverlayBox): SubtitleStyle {
+  if (box === 'dark') {
+    return { ...style, boxColor: '#000000', boxOpacity: 0.6, color: '#FFFFFF', outlineWidthPx: 0 }
+  }
+  if (box === 'light') {
+    return { ...style, boxColor: '#FFFFFF', boxOpacity: 0.9, color: '#111111', outlineWidthPx: 0 }
+  }
+  // Không hộp thì phải trả viền lại, nếu không chữ trắng nằm trần trên nền sáng.
+  return { ...style, boxOpacity: 0, color: '#FFFFFF', outlineColor: '#000000', outlineWidthPx: 3 }
+}
+
+/** Đọc ngược kiểu hộp từ style, để ô chọn trên giao diện hiện đúng giá trị. */
+export function readTextOverlayBox(style: SubtitleStyle): TextOverlayBox {
+  if (style.boxOpacity <= 0) return 'none'
+  return style.boxColor.toUpperCase() === '#FFFFFF' ? 'light' : 'dark'
+}

@@ -452,6 +452,10 @@ export const dictionaryVi = {
     positionTop: 'Trên',
     positionMiddle: 'Giữa',
     positionBottom: 'Dưới',
+    box: 'Nền chữ',
+    boxNone: 'Không',
+    boxDark: 'Hộp tối',
+    boxLight: 'Hộp sáng',
     fontSize: 'Cỡ chữ',
     remove: 'Xoá chữ',
     seek: 'Tua tới đây'
