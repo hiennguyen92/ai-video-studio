@@ -181,6 +181,48 @@ lần hai cho ra đúng kết quả lần một; nhân dồn sẽ làm nhạc nh
 Tính năng này gọi được từ AI Chat, nhưng cũng có nút riêng trong tab Nhạc nền:
 chat cần một máy chủ LLM, còn đây là thao tác thuần cục bộ.
 
+## MCP: agent bên ngoài dựng phim
+
+App mở một máy chủ MCP trên `127.0.0.1` (Streamable HTTP, đường dẫn
+`/api/external-mcp/mcp`), để Claude Code hoặc agent khác đọc và dựng dự án đang mở.
+
+**Một danh mục công cụ, hai lối vào.** Công cụ ghi của MCP sinh THẲNG từ
+`chatToolSchemas` — đúng danh mục mà AI Chat trong app dùng — và đi qua đúng
+`chat-tool-planner` để hoá thành `EditorCommand`. Không có đường ghi riêng nào cho
+agent ngoài, nên hai lối vào không thể lệch nhau về quy tắc kiểm tra.
+
+**Vì sao HTTP chứ không stdio:** app là một cửa sổ GUI đang chạy sẵn. stdio buộc
+client tự khởi động tiến trình server, tức là mở thêm một instance thứ hai của
+trình dựng phim. HTTP cho phép nối vào đúng cửa sổ người dùng đang làm việc.
+
+**Tài liệu vẫn chỉ có một nguồn.** Máy chủ MCP nằm ở main, còn project nằm ở
+renderer cùng lịch sử hoàn tác. Main **không** giữ bản sao — nó hỏi renderer qua
+`mcp-renderer-bridge`. Nhân bản document sang main là tạo nguồn sự thật thứ hai và
+sẽ lệch ngay lần đầu người dùng bấm Ctrl+Z.
+
+**Khác AI Chat một điểm có chủ ý:** agent ngoài **áp dụng ngay, không chờ duyệt
+từng bước**. Một agent dựng phim phát ra hàng chục lời gọi; bắt duyệt từng cái là
+bỏ đi ý nghĩa của việc tự động. Lưới an toàn là hoàn tác — mỗi lời gọi là một bước
+undo, hiện trong lịch sử như mọi thao tác tay.
+
+**Bảo mật:** khoá ngẫu nhiên sinh mới mỗi lần mở app, chỉ nghe loopback, và không
+công cụ nào đọc được credential. Cổng cục bộ sửa được dự án nên vẫn phải có khoá —
+mọi tiến trình trên máy đều gọi được nó.
+
+### Công cụ dựng phim cho agent
+
+Ngoài nhóm sửa vặt sẵn có, agent cần nhóm ĐỌC (`get_project_overview`,
+`get_transcript`, `list_media` — có kèm đường dẫn thumbnail/filmstrip để agent nào
+xem được ảnh thì chọn cảnh bằng hình) và nhóm DỰNG:
+
+- `build_cut_from_transcript` — trục chính của dựng phim theo lời nói. Một lượt
+  gọi ra cả bản dựng, thay vì để mô hình phát hàng chục lệnh cắt/xoá/dời rời rạc.
+  Luôn xếp theo **thứ tự transcript**, không theo thứ tự mô hình liệt kê id.
+- `insert_clip`, `ripple_delete_range`, `add_track`.
+
+`timeline/ripple-delete` là lệnh mới ở tầng reducer: xoá một khoảng rồi kéo phần
+sau lùi lên lấp chỗ trống, và dời cue phụ đề theo để phụ đề không lệch khỏi hình.
+
 ## Lưu trữ
 
 Project là một file JSON, ghi theo kiểu **nguyên tử**: ghi ra file tạm rồi đổi tên đè lên file thật.

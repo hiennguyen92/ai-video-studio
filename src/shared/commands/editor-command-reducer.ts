@@ -9,7 +9,13 @@ import {
   type Clip
 } from '../domain/timeline-track-types'
 import { createId } from '../domain/project-document-factory'
-import { placeClip, sortClips, splitClipAt, trimClipEdgeTo } from './timeline-mutations'
+import {
+  placeClip,
+  rippleDeleteRange,
+  sortClips,
+  splitClipAt,
+  trimClipEdgeTo
+} from './timeline-mutations'
 
 /**
  * Reducer thuần: áp một command lên draft của project document.
@@ -211,6 +217,41 @@ export function applyEditorCommand(doc: ProjectDocument, command: EditorCommand)
       const halves = splitClipAt(clip, command.atUs, command.newClipId ?? createId('clip'))
       if (!halves) return fail('Điểm cắt nằm ngoài clip')
       track.clips.splice(found.clipIndex, 1, ...halves)
+      return OK
+    }
+
+    case 'timeline/ripple-delete': {
+      if (command.toUs <= command.fromUs) return fail('Khoảng cần xoá phải lớn hơn 0')
+
+      const targets = command.trackIds
+        ? doc.tracks.filter((track) => command.trackIds?.includes(track.id))
+        : doc.tracks
+      if (targets.length === 0) return fail('Không tìm thấy track nào để xoá')
+
+      const locked = targets.find((track) => track.locked)
+      if (locked) return fail(`Track "${locked.name}" đang bị khoá`)
+
+      for (const track of targets) {
+        track.clips = rippleDeleteRange(snapshot(track.clips), command.fromUs, command.toUs, {
+          makeId: () => createId('clip')
+        })
+      }
+
+      // Cue phụ đề cũng phải trôi theo, nếu không phụ đề sẽ lệch hẳn khỏi hình.
+      // Chỉ làm khi ripple áp cho toàn bộ track; ripple lệch track là chủ ý của
+      // người dùng, không nên tự ý đụng vào phụ đề.
+      if (!command.trackIds) {
+        const span = command.toUs - command.fromUs
+        for (const subtitleTrack of doc.subtitleTracks) {
+          subtitleTrack.cues = snapshot(subtitleTrack.cues)
+            .filter((cue) => !(cue.startUs >= command.fromUs && cue.endUs <= command.toUs))
+            .map((cue) =>
+              cue.startUs >= command.toUs
+                ? { ...cue, startUs: cue.startUs - span, endUs: cue.endUs - span }
+                : cue
+            )
+        }
+      }
       return OK
     }
 

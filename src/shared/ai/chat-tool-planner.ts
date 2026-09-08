@@ -267,6 +267,142 @@ function planOne(context: ChatEditContext, tool: ChatToolName, args: unknown): P
       return { tool, description: `Tạo track phụ đề với ${cues.length} cue`, commands }
     }
 
+    case 'insert_clip': {
+      const input = chatToolSchemas.insert_clip.parse(args)
+      const asset = document.assets.find((item) => item.id === input.assetId)
+      if (!asset) throw new Error(`Không tìm thấy media "${input.assetId}"`)
+      if (asset.missing) throw new Error(`File của "${asset.name}" hiện không còn trên đĩa`)
+
+      // Không nêu track thì chọn track hợp kiểu media; ảnh cũng nằm trên track hình.
+      const wantedKind = asset.kind === 'audio' ? 'audio' : 'video'
+      const track = input.trackId
+        ? document.tracks.find((item) => item.id === input.trackId)
+        : document.tracks.find((item) => item.kind === wantedKind)
+      if (!track) throw new Error(`Không tìm thấy track phù hợp cho "${asset.name}"`)
+
+      const sourceInUs = secondsToMicros(input.sourceInSeconds ?? 0)
+      const remainingUs = asset.probe.durationUs - sourceInUs
+      if (remainingUs <= 0) {
+        throw new Error(`Điểm vào ${formatSeconds(sourceInUs)} nằm ngoài "${asset.name}"`)
+      }
+
+      // Bỏ trống thời lượng thì lấy hết phần còn lại; nêu quá dài thì kẹp lại
+      // thay vì để reducer tạo clip đọc quá cuối file.
+      const durationUs = Math.min(
+        input.durationSeconds === undefined ? remainingUs : secondsToMicros(input.durationSeconds),
+        remainingUs
+      )
+      if (durationUs <= 0) throw new Error('Thời lượng phải lớn hơn 0')
+
+      return {
+        tool,
+        description: `Chèn "${asset.name}" vào ${track.name} tại ${formatSeconds(secondsToMicros(input.startSeconds))}`,
+        commands: [
+          {
+            type: 'clip/insert',
+            clipId: context.makeId(),
+            trackId: track.id,
+            assetId: asset.id,
+            startUs: secondsToMicros(input.startSeconds),
+            durationUs,
+            sourceInUs
+          }
+        ]
+      }
+    }
+
+    case 'ripple_delete_range': {
+      const input = chatToolSchemas.ripple_delete_range.parse(args)
+      const fromUs = secondsToMicros(input.fromSeconds)
+      const toUs = secondsToMicros(input.toSeconds)
+      if (toUs <= fromUs) throw new Error('Điểm kết thúc phải sau điểm bắt đầu')
+
+      return {
+        tool,
+        description: `Cắt bỏ ${formatSeconds(fromUs)}–${formatSeconds(toUs)} và dồn phần sau lên`,
+        commands: [{ type: 'timeline/ripple-delete', fromUs, toUs }]
+      }
+    }
+
+    case 'build_cut_from_transcript': {
+      const input = chatToolSchemas.build_cut_from_transcript.parse(args)
+      const transcript = input.transcriptId
+        ? document.transcripts.find((item) => item.id === input.transcriptId)
+        : document.transcripts[0]
+      if (!transcript) throw new Error('Dự án chưa có bản phiên âm nào')
+
+      const asset = document.assets.find((item) => item.id === transcript.assetId)
+      if (!asset) throw new Error('Không tìm thấy media của bản phiên âm')
+
+      // Giữ THỨ TỰ CỦA TRANSCRIPT, không theo thứ tự mô hình liệt kê: lời nói phải
+      // chạy đúng mạch, và mô hình rất hay trả về id lộn xộn.
+      // Báo id sai TRƯỚC: nếu mọi id đều sai thì thông báo "không đoạn nào khớp"
+      // đúng nhưng vô dụng — agent cần biết chính xác id nào nó bịa ra.
+      const unknown = input.keepSegmentIds.filter(
+        (id) => !transcript.segments.some((segment) => segment.id === id)
+      )
+      if (unknown.length > 0) {
+        throw new Error(`Không tìm thấy đoạn: ${unknown.slice(0, 3).join(', ')}`)
+      }
+
+      const wanted = new Set(input.keepSegmentIds)
+      const kept = transcript.segments.filter((segment) => wanted.has(segment.id))
+      if (kept.length === 0) throw new Error('Không có đoạn nào khớp id được nêu')
+
+      const wantedKind = asset.kind === 'audio' ? 'audio' : 'video'
+      const track = input.trackId
+        ? document.tracks.find((item) => item.id === input.trackId)
+        : document.tracks.find((item) => item.kind === wantedKind)
+      if (!track) throw new Error('Không tìm thấy track để dựng bản cut')
+      if (track.locked) throw new Error(`Track "${track.name}" đang bị khoá`)
+
+      // Dọn sạch track trước rồi mới xếp lại: chèn đè lên clip cũ sẽ kích hoạt
+      // chính sách ghi đè và cho ra kết quả không đoán trước được.
+      const commands: EditorCommand[] = track.clips.map((clip) => ({
+        type: 'clip/remove' as const,
+        clipId: clip.id
+      }))
+
+      let cursorUs = 0
+      for (const segment of kept) {
+        const durationUs = segment.endUs - segment.startUs
+        if (durationUs <= 0) continue
+        commands.push({
+          type: 'clip/insert',
+          clipId: context.makeId(),
+          trackId: track.id,
+          assetId: asset.id,
+          startUs: cursorUs,
+          durationUs,
+          sourceInUs: segment.startUs
+        })
+        cursorUs += durationUs
+      }
+
+      return {
+        tool,
+        description: `Dựng bản cut ${kept.length} đoạn (${formatSeconds(cursorUs)}) trên ${track.name}`,
+        commands
+      }
+    }
+
+    case 'add_track': {
+      const input = chatToolSchemas.add_track.parse(args)
+      return {
+        tool,
+        description: `Thêm track ${input.kind} "${input.name}"`,
+        commands: [
+          {
+            type: 'track/add',
+            trackId: context.makeId(),
+            kind: input.kind,
+            name: input.name,
+            role: input.role
+          }
+        ]
+      }
+    }
+
     case 'auto_duck_music': {
       const input = chatToolSchemas.auto_duck_music.parse(args)
       const { musicTrackIds, speechTrackIds } = guessDuckingTracks(document)

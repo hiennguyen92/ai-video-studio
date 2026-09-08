@@ -3,6 +3,7 @@ import type { AiSettingsSnapshot } from '../../../../shared/ipc/ipc-contract'
 import type { ConnectionTestResult } from '../../../../shared/ai/ai-capability-types'
 import { interpolate, useT } from '../../i18n/use-translation'
 import { ToolButton } from '../ui/tool-button'
+import { McpConnectionSection } from './mcp-connection-section'
 import './ai-settings-panel.css'
 
 /**
@@ -275,6 +276,8 @@ export function AiSettingsPanel({
           </section>
         )
       })}
+
+      <McpConnectionSection />
     </div>
   )
 }

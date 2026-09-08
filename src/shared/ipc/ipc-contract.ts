@@ -48,6 +48,8 @@ export const IPC = {
   translateRun: 'translate:run',
   translateReadResult: 'translate:read-result',
   musicGenerate: 'music:generate',
+  mcpRespond: 'mcp:respond',
+  mcpStatus: 'mcp:status',
   chatSend: 'chat:send',
   chatReadHistory: 'chat:read-history',
   chatWriteHistory: 'chat:write-history',
@@ -71,6 +73,8 @@ export const IPC = {
 
 /** Kênh main -> renderer. Tiến trình xuất được đẩy về chứ không để renderer hỏi liên tục. */
 export const IPC_EVENT = {
+  /** Máy chủ MCP hỏi renderer vì tài liệu chỉ nằm ở đó. */
+  mcpRequest: 'mcp:request',
   exportProgress: 'export:progress',
   jobChanged: 'job:changed',
   whisperDownloadProgress: 'whisper:download-progress'
@@ -270,6 +274,36 @@ export interface GenerateMusicRequest {
   label: string
 }
 
+/** Máy chủ MCP hỏi renderer những gì. */
+export interface McpBridgeRequest {
+  requestId: string
+  kind: 'project-overview' | 'transcript' | 'media' | 'apply-tools'
+  payload: unknown
+}
+
+export interface McpBridgeResponse {
+  requestId: string
+  ok: boolean
+  data?: unknown
+  error?: string
+}
+
+/** Kết quả áp dụng một loạt lời gọi công cụ từ agent bên ngoài. */
+export interface McpApplyResult {
+  applied: boolean
+  steps: string[]
+  failures: Array<{ tool: string; reason: string }>
+  /** Revision sau khi áp dụng, để agent biết dự án đã đổi. */
+  revision: number
+}
+
+export interface McpServerStatus {
+  running: boolean
+  url?: string
+  token?: string
+  error?: string
+}
+
 export interface ChatMessageRecord {
   id: string
   role: 'user' | 'assistant'
@@ -366,6 +400,12 @@ export interface RendererApi {
   }
   music: {
     generate(request: GenerateMusicRequest): Promise<IpcResult<JobRecord>>
+  }
+  mcp: {
+    /** Renderer trả lời một yêu cầu do máy chủ MCP gửi tới. */
+    respond(response: McpBridgeResponse): void
+    onRequest(listener: (request: McpBridgeRequest) => void): () => void
+    status(): Promise<IpcResult<McpServerStatus>>
   }
   chat: {
     send(request: ChatSendRequest): Promise<IpcResult<ChatSendResponse>>

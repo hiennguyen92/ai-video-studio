@@ -87,6 +87,35 @@ export function carveOutRange(
   return sortClips(result.filter((clip) => clip.durationUs > 0))
 }
 
+/**
+ * Xoá hẳn khoảng [startUs, endUs) rồi KÉO mọi thứ phía sau lùi lên lấp chỗ trống.
+ *
+ * Khác `carveOutRange`: hàm kia để lại một lỗ hổng (dùng khi thả clip đè lên),
+ * còn hàm này đóng lỗ hổng lại — đúng thao tác "cắt bỏ đoạn thừa" khi dựng phim.
+ *
+ * Dùng lại `carveOutRange` cho phần cắt thay vì viết lại logic tách/cắt clip:
+ * đó là chỗ duy nhất giữ bất biến "clip không chồng lấn, luôn sắp xếp tăng dần".
+ */
+export function rippleDeleteRange(
+  clips: Clip[],
+  startUs: Micros,
+  endUs: Micros,
+  options: { makeId: () => string }
+): Clip[] {
+  if (endUs <= startUs) return clips
+
+  const span = endUs - startUs
+  const carved = carveOutRange(clips, startUs, endUs, options)
+
+  return sortClips(
+    carved.map((clip) =>
+      // Chỉ dời phần nằm hoàn toàn sau khoảng bị xoá. Clip bị cắt đuôi thì mép
+      // đầu của nó vẫn ở nguyên chỗ cũ, không được dời.
+      clip.startUs >= endUs ? { ...clip, startUs: clip.startUs - span } : clip
+    )
+  )
+}
+
 /** Đặt clip vào track theo kiểu ghi đè. */
 export function placeClip(track: Track, clip: Clip, makeId: () => string): Clip[] {
   const carved = carveOutRange(track.clips, clip.startUs, clipEndUs(clip), {

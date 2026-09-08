@@ -87,6 +87,18 @@ giao diện chỉ lộ ra khi chuyển tab với dữ liệu thật.
 - Auto-ducking chuyển mức theo bậc thang; muốn dốc mượt phải thêm automation âm
   lượng vào mô hình clip, không phải mẹo với fade.
 
+## Mốc 5 — Agent bên ngoài dựng phim (MCP)
+
+- [x] Máy chủ MCP Streamable HTTP trên loopback, có khoá truy cập
+- [x] Công cụ ghi sinh từ CÙNG danh mục với AI Chat, qua cùng planner
+- [x] Công cụ đọc: tổng quan dự án, transcript đầy đủ, thư viện media kèm đường dẫn ảnh
+- [x] `build_cut_from_transcript` — dựng bản cut từ đoạn lời được giữ
+- [x] `timeline/ripple-delete` — cắt bỏ khoảng và dồn phần sau lên
+- [x] Giao diện công bố địa chỉ + khoá + đoạn cấu hình cho Claude Code
+- [ ] Lớp render Remotion (chuyển cảnh, chữ động) — **chưa làm**, cần đo tốc độ render trước
+- [ ] Chữ overlay / title như một đối tượng riêng
+- [ ] Phát hiện chuyển cảnh trong footage thô
+
 ## Backlog (chưa xếp lịch)
 
 Theo `DESCRIPTION.md` §9: "Tính năng chưa có như tạo video AI, hiệu ứng nâng cao hoặc tracking được

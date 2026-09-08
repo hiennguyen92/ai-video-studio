@@ -135,6 +135,19 @@ const trimClip = z.object({
   toUs: nonNegativeMicros
 })
 
+/**
+ * Cắt bỏ một khoảng thời gian rồi kéo phần sau lùi lên lấp chỗ trống.
+ *
+ * Áp cho MỌI track theo mặc định để giữ đồng bộ hình–tiếng; chỉ định `trackIds`
+ * khi thật sự muốn lệch nhau.
+ */
+const rippleDelete = z.object({
+  type: z.literal('timeline/ripple-delete'),
+  fromUs: nonNegativeMicros,
+  toUs: nonNegativeMicros,
+  trackIds: z.array(z.string()).optional()
+})
+
 const splitClip = z.object({
   type: z.literal('clip/split'),
   clipId: z.string(),
@@ -425,6 +438,7 @@ export const editorCommandSchema = z.discriminatedUnion('type', [
   moveClip,
   trimClip,
   splitClip,
+  rippleDelete,
   duplicateClip,
   updateClip,
   addTranscript,

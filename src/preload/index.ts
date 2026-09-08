@@ -59,6 +59,15 @@ const api: RendererApi = {
   music: {
     generate: (request) => ipcRenderer.invoke(IPC.musicGenerate, request)
   },
+  mcp: {
+    respond: (response) => ipcRenderer.send(IPC.mcpRespond, response),
+    onRequest: (listener) => {
+      const handler = (_event, request): void => listener(request)
+      ipcRenderer.on(IPC_EVENT.mcpRequest, handler)
+      return () => ipcRenderer.removeListener(IPC_EVENT.mcpRequest, handler)
+    },
+    status: () => ipcRenderer.invoke(IPC.mcpStatus)
+  },
   chat: {
     send: (request) => ipcRenderer.invoke(IPC.chatSend, request),
     readHistory: (projectId) => ipcRenderer.invoke(IPC.chatReadHistory, projectId),

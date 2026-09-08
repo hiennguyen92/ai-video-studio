@@ -397,6 +397,20 @@ export const dictionaryVi = {
     stepNote:
       'Mức âm lượng đổi theo bậc, chưa có dốc mượt — mô hình clip hiện chỉ có âm lượng cho cả clip.'
   },
+  mcp: {
+    section: 'Kết nối agent bên ngoài (MCP)',
+    hint: 'Cho Claude Code hoặc agent khác đọc và dựng dự án đang mở. Agent đi qua đúng bộ lệnh đã kiểm tra dữ liệu như AI Chat trong app, và mỗi thao tác là một bước hoàn tác.',
+    running: 'Đang chạy',
+    stopped: 'Chưa chạy',
+    address: 'Địa chỉ',
+    token: 'Khoá truy cập',
+    copyConfig: 'Chép cấu hình',
+    copied: 'Đã chép',
+    configHint: 'Dán vào cấu hình MCP của Claude Code.',
+    security:
+      'Khoá này cho phép sửa dự án đang mở. Chỉ nghe trên máy này (127.0.0.1) và đổi mới mỗi lần mở app.',
+    needsProject: 'Phải mở một dự án thì agent mới sửa được.'
+  },
   transcribe: {
     title: 'Phiên âm',
     modelSection: 'Model nhận dạng',

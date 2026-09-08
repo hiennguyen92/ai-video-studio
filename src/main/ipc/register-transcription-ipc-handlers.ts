@@ -3,6 +3,7 @@ import type {
   ChatMessageRecord,
   ChatSendRequest,
   GenerateMusicRequest,
+  McpBridgeResponse,
   IpcResult,
   TranscribeIpcRequest,
   TranslateIpcRequest,
@@ -15,6 +16,8 @@ import { enqueueTranscription, readTranscriptionResult } from '../ai/transcripti
 import { enqueueTranslation, readTranslationResult } from '../ai/translation-service'
 import { runChatTurn } from '../ai/chat-service'
 import { enqueueMusicGeneration } from '../ai/music-generation-service'
+import { resolveRendererResponse } from '../mcp/mcp-renderer-bridge'
+import { mcpStatus } from '../mcp/mcp-server'
 import { clearChatHistory, readChatHistory, writeChatHistory } from '../storage/chat-history-store'
 import {
   WHISPER_MODELS,
@@ -67,6 +70,13 @@ export function registerTranscriptionIpcHandlers(): void {
   ipcMain.handle(IPC.translateReadResult, (_event, jobId: string) =>
     guard(() => readTranslationResult(jobId))
   )
+
+  // Renderer trả lời máy chủ MCP. Dùng `on` chứ không `handle`: đây là một chiều.
+  ipcMain.on(IPC.mcpRespond, (_event, response: McpBridgeResponse) =>
+    resolveRendererResponse(response)
+  )
+
+  ipcMain.handle(IPC.mcpStatus, () => guard(async () => mcpStatus()))
 
   ipcMain.handle(IPC.musicGenerate, (_event, request: GenerateMusicRequest) =>
     guard(() => enqueueMusicGeneration(request))

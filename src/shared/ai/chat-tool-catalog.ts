@@ -83,6 +83,39 @@ export const chatToolSchemas = {
     bilingual: z.boolean().optional()
   }),
 
+  insert_clip: z.object({
+    assetId: z.string().min(1).max(120),
+    trackId: z.string().min(1).max(120).optional(),
+    startSeconds: seconds,
+    /** Điểm bắt đầu bên trong file nguồn. */
+    sourceInSeconds: seconds.optional(),
+    /** Bỏ trống thì lấy hết phần còn lại của nguồn. */
+    durationSeconds: seconds.optional()
+  }),
+
+  ripple_delete_range: z.object({
+    fromSeconds: seconds,
+    toSeconds: seconds
+  }),
+
+  /**
+   * Dựng bản cut từ những đoạn lời được giữ lại.
+   *
+   * Đây là công cụ trục chính cho dựng phim theo transcript: một lượt gọi ra cả
+   * bản dựng, thay vì để mô hình phát hàng chục lệnh cắt/xoá/dời rời rạc.
+   */
+  build_cut_from_transcript: z.object({
+    transcriptId: z.string().min(1).max(120).optional(),
+    keepSegmentIds: z.array(z.string().min(1).max(120)).min(1).max(500),
+    trackId: z.string().min(1).max(120).optional()
+  }),
+
+  add_track: z.object({
+    kind: z.enum(['video', 'audio', 'subtitle']),
+    name: z.string().min(1).max(120),
+    role: z.enum(['dialogue', 'voiceover', 'music', 'sfx']).optional()
+  }),
+
   auto_duck_music: z.object({
     duckVolume: gain.optional(),
     baseVolume: gain.optional(),
@@ -116,7 +149,13 @@ export const chatToolDescriptions: Record<ChatToolName, string> = {
   create_subtitle_track:
     'Build a subtitle track from an existing transcript, optionally using a translation, optionally bilingual. Requires a transcript to already exist.',
   auto_duck_music:
-    'Lower music volume wherever there is speech, by cutting the music at speech boundaries and setting a lower volume on those pieces.'
+    'Lower music volume wherever there is speech, by cutting the music at speech boundaries and setting a lower volume on those pieces.',
+  insert_clip: 'Place a media asset from the library onto a timeline track.',
+  ripple_delete_range:
+    'Cut a time range out of the timeline and pull everything after it back to close the gap. Applies to every track so picture and sound stay in sync.',
+  build_cut_from_transcript:
+    'Assemble a cut from a transcript: keep only the listed segments, laid end to end in transcript order on one track. Replaces whatever is already on that track. This is the main tool for editing by what was said.',
+  add_track: 'Add a new track to the timeline.'
 }
 
 /** Mô tả tham số cho mô hình — dựng thủ công để không phải kéo thêm thư viện. */
@@ -132,7 +171,14 @@ export const chatToolParameterHints: Record<ChatToolName, string> = {
   set_track_muted: '{ trackId: string, muted: boolean }',
   rename_project: '{ name: string }',
   create_subtitle_track: '{ transcriptId?: string, translationId?: string, bilingual?: boolean }',
-  auto_duck_music: '{ duckVolume?: number, baseVolume?: number, paddingSeconds?: number }'
+  auto_duck_music: '{ duckVolume?: number, baseVolume?: number, paddingSeconds?: number }',
+  insert_clip:
+    '{ assetId: string, trackId?: string, startSeconds: number, sourceInSeconds?: number, durationSeconds?: number }',
+  ripple_delete_range: '{ fromSeconds: number, toSeconds: number }',
+  build_cut_from_transcript:
+    '{ transcriptId?: string, keepSegmentIds: string[], trackId?: string }',
+  add_track:
+    "{ kind: 'video' | 'audio' | 'subtitle', name: string, role?: 'dialogue' | 'voiceover' | 'music' | 'sfx' }"
 }
 
 /**

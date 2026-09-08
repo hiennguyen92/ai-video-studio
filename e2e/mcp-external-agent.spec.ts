@@ -1,0 +1,299 @@
+import { execFile } from 'node:child_process'
+import { promisify } from 'node:util'
+import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import {
+  _electron as electron,
+  expect,
+  test,
+  type ElectronApplication,
+  type Page
+} from '@playwright/test'
+import { Client } from '@modelcontextprotocol/sdk/client/index.js'
+import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js'
+
+/**
+ * Agent bên ngoài dựng phim qua MCP — chạy bằng CLIENT MCP THẬT.
+ *
+ * Đây là phép thử cho toàn bộ lý do MCP tồn tại: một tiến trình khác (ở đây đóng
+ * vai Claude Code) nối vào app đang chạy, ĐỌC dự án và transcript, rồi DỰNG một
+ * bản cut — và bản cut đó phải xuất hiện thật trên timeline.
+ *
+ * Không giả lập gì: client MCP thật, HTTP thật, app Electron thật, và kết quả
+ * được kiểm bằng chính project.json trên đĩa.
+ */
+
+const execFileAsync = promisify(execFile)
+
+let app: ElectronApplication
+let page: Page
+let userDataDir: string
+let workDir: string
+let mediaPath: string
+let mcpUrl: string
+let mcpToken: string
+
+test.describe.configure({ mode: 'serial' })
+
+async function connect(token = mcpToken): Promise<Client> {
+  const client = new Client({ name: 'e2e-agent', version: '1.0.0' })
+  await client.connect(
+    new StreamableHTTPClientTransport(new URL(mcpUrl), {
+      requestInit: { headers: { 'x-avs-token': token } }
+    })
+  )
+  return client
+}
+
+function textOf(result: unknown): string {
+  const content = (result as { content?: Array<{ type: string; text?: string }> }).content ?? []
+  return content.map((item) => item.text ?? '').join('\n')
+}
+
+async function savedDocument(): Promise<{
+  tracks: Array<{
+    kind: string
+    clips: Array<{ startUs: number; durationUs: number; sourceInUs: number }>
+  }>
+  name: string
+}> {
+  const projectsRoot = join(userDataDir, 'projects')
+  const [projectId] = await readdir(projectsRoot)
+  return JSON.parse(
+    await readFile(join(projectsRoot, projectId, 'project.json'), 'utf8')
+  ) as Awaited<ReturnType<typeof savedDocument>>
+}
+
+test.beforeAll(async () => {
+  userDataDir = await mkdtemp(join(tmpdir(), 'avs-mcp-'))
+  workDir = await mkdtemp(join(tmpdir(), 'avs-mcp-work-'))
+  mediaPath = join(workDir, 'canh-quay.mp4')
+
+  const { default: ffmpegStatic } = await import('ffmpeg-static')
+  await execFileAsync(String(ffmpegStatic), [
+    '-v',
+    'error',
+    '-y',
+    '-f',
+    'lavfi',
+    '-i',
+    'testsrc2=size=320x180:rate=25:duration=20',
+    '-f',
+    'lavfi',
+    '-i',
+    'sine=frequency=300:duration=20:sample_rate=48000',
+    '-c:v',
+    'libx264',
+    '-pix_fmt',
+    'yuv420p',
+    '-preset',
+    'ultrafast',
+    '-c:a',
+    'aac',
+    '-shortest',
+    mediaPath
+  ])
+
+  app = await electron.launch({
+    args: ['.'],
+    env: { ...process.env, AVS_USER_DATA_DIR: userDataDir, NODE_ENV: 'production' }
+  })
+  page = await app.firstWindow()
+  await page.waitForLoadState('domcontentloaded')
+
+  await app.evaluate(({ dialog }, path) => {
+    dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [path] })
+  }, mediaPath)
+
+  await page.getByPlaceholder('Ví dụ: Video giới thiệu sản phẩm').fill('Dự án MCP')
+  await page.getByRole('button', { name: 'Tạo dự án mới' }).click()
+  await page.getByRole('region', { name: 'Timeline' }).waitFor()
+})
+
+test.afterAll(async () => {
+  await app?.close()
+  if (userDataDir) await rm(userDataDir, { recursive: true, force: true })
+  if (workDir) await rm(workDir, { recursive: true, force: true })
+})
+
+const studio = (): ReturnType<Page['getByRole']> => page.getByRole('region', { name: 'AI Studio' })
+
+test('app công bố địa chỉ và khoá MCP để cấu hình agent', async () => {
+  await studio().getByRole('tab', { name: 'Cấu hình AI' }).click()
+
+  const address = page.getByLabel('Địa chỉ', { exact: true })
+  await expect(address).toBeVisible()
+  mcpUrl = await address.inputValue()
+  mcpToken = await page.getByLabel('Khoá truy cập').inputValue()
+
+  // Chỉ nghe trên máy này — cổng cục bộ sửa được dự án nên không được mở ra ngoài.
+  expect(mcpUrl).toContain('127.0.0.1')
+  expect(mcpUrl).toContain('/api/external-mcp/mcp')
+  expect(mcpToken.length).toBeGreaterThan(20)
+})
+
+test('từ chối kết nối không có khoá đúng', async () => {
+  const response = await fetch(mcpUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-avs-token': 'khoa-sai' },
+    body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list' })
+  })
+  expect(response.status).toBe(401)
+})
+
+test('agent liệt kê được công cụ dựng phim', async () => {
+  const client = await connect()
+  const { tools } = await client.listTools()
+  const names = tools.map((tool) => tool.name)
+
+  // Nhóm đọc — không có thì agent dựng mù.
+  expect(names).toContain('get_project_overview')
+  expect(names).toContain('get_transcript')
+  expect(names).toContain('list_media')
+  // Nhóm dựng — sinh từ chính danh mục của AI Chat trong app.
+  expect(names).toContain('build_cut_from_transcript')
+  expect(names).toContain('insert_clip')
+  expect(names).toContain('ripple_delete_range')
+
+  await client.close()
+})
+
+test('agent đọc được dự án và thư viện media', async () => {
+  await studio().getByRole('tab', { name: 'Media' }).click()
+  await studio().getByRole('button', { name: 'Nhập media' }).first().click()
+  await page.locator('.media-card').first().waitFor({ timeout: 90_000 })
+
+  const client = await connect()
+
+  const overview = textOf(await client.callTool({ name: 'get_project_overview', arguments: {} }))
+  expect(overview).toContain('Dự án MCP')
+  expect(overview).toContain('Tracks:')
+
+  const media = textOf(await client.callTool({ name: 'list_media', arguments: {} }))
+  expect(media).toContain('canh-quay.mp4')
+  // Đường dẫn ảnh phải lộ ra để agent xem được hình mà chọn cảnh.
+  expect(media).toContain('thumbnail=')
+
+  await client.close()
+})
+
+test('agent DỰNG được bản cut từ transcript, và nó hiện lên timeline thật', async () => {
+  // Nạp transcript qua file dự án — phiên âm thật đã có nhóm test riêng.
+  await expect(page.locator('.top-bar__status')).toHaveText('Đã lưu', { timeout: 15_000 })
+  await page.getByRole('button', { name: 'Về danh sách dự án' }).click()
+
+  const projectsRoot = join(userDataDir, 'projects')
+  const [projectId] = await readdir(projectsRoot)
+  const documentFile = join(projectsRoot, projectId, 'project.json')
+  const document = JSON.parse(await readFile(documentFile, 'utf8')) as {
+    assets: Array<{ id: string }>
+    transcripts: unknown[]
+    revision: number
+  }
+  document.transcripts = [
+    {
+      id: 'tr_mcp',
+      assetId: document.assets[0].id,
+      language: 'vi',
+      languageAutoDetected: false,
+      providerId: 'whisper-cpp',
+      model: 'ggml',
+      createdAt: new Date().toISOString(),
+      segments: [
+        { id: 'g1', startUs: 1_000_000, endUs: 3_000_000, text: 'Mở đầu giật gân', edited: false },
+        { id: 'g2', startUs: 5_000_000, endUs: 6_000_000, text: 'Đoạn thừa', edited: false },
+        { id: 'g3', startUs: 9_000_000, endUs: 12_000_000, text: 'Chốt đơn', edited: false }
+      ]
+    }
+  ]
+  document.revision += 1
+  await writeFile(documentFile, JSON.stringify(document), 'utf8')
+  await page.locator('.project-card__open', { hasText: 'Dự án MCP' }).click()
+  await page.getByRole('region', { name: 'Timeline' }).waitFor()
+
+  const client = await connect()
+
+  // Agent đọc transcript để biết giữ đoạn nào.
+  const transcript = textOf(await client.callTool({ name: 'get_transcript', arguments: {} }))
+  expect(transcript).toContain('Mở đầu giật gân')
+  expect(transcript).toContain('id=g3')
+
+  // Rồi dựng bản cut — bỏ đoạn thừa ở giữa.
+  const built = textOf(
+    await client.callTool({
+      name: 'build_cut_from_transcript',
+      arguments: { keepSegmentIds: ['g1', 'g3'] }
+    })
+  )
+  expect(built).toContain('Đã áp dụng')
+  expect(built).toContain('2 đoạn')
+
+  // Bằng chứng: timeline của app đổi thật.
+  await expect(page.locator('.timeline-clip')).toHaveCount(2)
+  await client.close()
+})
+
+test('bản dựng của agent hoàn tác được như mọi thao tác tay', async () => {
+  await page.keyboard.press('ControlOrMeta+z')
+  await expect(page.locator('.timeline-clip')).toHaveCount(0)
+  await page.keyboard.press('ControlOrMeta+Shift+z')
+  await expect(page.locator('.timeline-clip')).toHaveCount(2)
+})
+
+test('bản dựng được lưu vào dự án với đúng mốc thời gian', async () => {
+  await expect(page.locator('.top-bar__status')).toHaveText('Đã lưu', { timeout: 15_000 })
+  const saved = await savedDocument()
+
+  const clips = saved.tracks.flatMap((track) => track.clips)
+  expect(clips).toHaveLength(2)
+  // Đoạn 1 dài 2s, đoạn 3 dài 3s, nối sát nhau từ 0.
+  expect(clips.map((clip) => [clip.startUs, clip.durationUs, clip.sourceInUs])).toEqual([
+    [0, 2_000_000, 1_000_000],
+    [2_000_000, 3_000_000, 9_000_000]
+  ])
+})
+
+test('agent bị chặn khi bịa id, và dự án không đổi', async () => {
+  const before = await savedDocument()
+  const client = await connect()
+
+  const result = textOf(
+    await client.callTool({
+      name: 'build_cut_from_transcript',
+      arguments: { keepSegmentIds: ['khong_co_that'] }
+    })
+  )
+  expect(result).toContain('Bị từ chối')
+  expect(result).toContain('Không tìm thấy đoạn')
+
+  await expect(page.locator('.timeline-clip')).toHaveCount(2)
+  const after = await savedDocument()
+  expect(after.tracks.flatMap((track) => track.clips)).toHaveLength(
+    before.tracks.flatMap((track) => track.clips).length
+  )
+
+  await client.close()
+})
+
+test('agent cắt bỏ được một khoảng và dồn phần sau lên', async () => {
+  const client = await connect()
+
+  const result = textOf(
+    await client.callTool({
+      name: 'ripple_delete_range',
+      arguments: { fromSeconds: 0, toSeconds: 1 }
+    })
+  )
+  expect(result).toContain('Đã áp dụng')
+
+  await expect(page.locator('.top-bar__status')).toHaveText('Đã lưu', { timeout: 15_000 })
+  const saved = await savedDocument()
+  const clips = saved.tracks.flatMap((track) => track.clips)
+
+  // Cắt 1 giây đầu: clip đầu ngắn lại, clip sau lùi lên lấp chỗ trống.
+  expect(clips[0].durationUs).toBe(1_000_000)
+  expect(clips[1].startUs).toBe(1_000_000)
+
+  await client.close()
+})

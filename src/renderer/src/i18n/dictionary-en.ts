@@ -396,6 +396,20 @@ export const dictionaryEn: Dictionary = {
     stepNote:
       'The level changes in a step rather than a ramp — clips currently carry a single volume each.'
   },
+  mcp: {
+    section: 'External agent connection (MCP)',
+    hint: 'Let Claude Code or another agent read and edit the open project. Agents go through the same validated command set as the in-app AI Chat, and every action is one undo step.',
+    running: 'Running',
+    stopped: 'Not running',
+    address: 'Address',
+    token: 'Access token',
+    copyConfig: 'Copy config',
+    copied: 'Copied',
+    configHint: 'Paste this into the Claude Code MCP configuration.',
+    security:
+      'This token can edit the open project. It listens only on this machine (127.0.0.1) and is regenerated every time the app starts.',
+    needsProject: 'Open a project before an agent can edit anything.'
+  },
   transcribe: {
     title: 'Transcribe',
     modelSection: 'Recognition model',

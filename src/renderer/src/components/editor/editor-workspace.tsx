@@ -7,6 +7,7 @@ import { findFreeSlot } from '../../../../shared/commands/timeline-mutations'
 import { selectDocument, useEditorStore } from '../../state/editor-store'
 import { useMediaImport } from '../../hooks/use-media-import'
 import { useProjectAutosave } from '../../hooks/use-project-autosave'
+import { useMcpBridge } from '../../hooks/use-mcp-bridge'
 import { useKeyboardShortcuts } from '../../hooks/use-keyboard-shortcuts'
 import { interpolate, useT } from '../../i18n/use-translation'
 import { AiStudioPanel } from '../ai-studio/ai-studio-panel'
@@ -47,6 +48,8 @@ export function EditorWorkspace({
 
   const { importing, pickAndImport } = useMediaImport()
   useProjectAutosave()
+  // Cho agent bên ngoài (Claude Code) đọc và sửa dự án đang mở qua MCP.
+  useMcpBridge()
   useKeyboardShortcuts()
 
   useEffect(() => {

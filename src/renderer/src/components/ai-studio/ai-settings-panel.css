@@ -122,3 +122,42 @@
   font-family: var(--font-mono);
   font-size: var(--text-xs);
 }
+
+/* ── Kết nối agent ngoài (MCP) ─────────────────────────────────── */
+
+.mcp-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin-top: var(--space-3);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--border);
+}
+
+.mcp-section__hint {
+  margin: 0;
+  padding: 0 var(--space-3);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  line-height: 1.55;
+}
+
+.mcp-section__actions {
+  display: flex;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-3);
+}
+
+/* Đoạn cấu hình phải chọn-bôi-đen được, và không được kéo giãn cả panel. */
+.mcp-section__config {
+  margin: 0 var(--space-3);
+  padding: var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  line-height: 1.5;
+  overflow-x: auto;
+  user-select: text;
+}
