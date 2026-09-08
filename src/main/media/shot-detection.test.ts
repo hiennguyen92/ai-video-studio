@@ -9,7 +9,8 @@ import {
   buildShots,
   detectSceneChanges,
   extractShotFrames,
-  parseSceneChangeSeconds
+  parseSceneChangeSeconds,
+  splitLongShots
 } from './shot-detection'
 
 /**
@@ -24,6 +25,7 @@ const execFileAsync = promisify(execFile)
 
 let workDir: string
 let clipPath: string
+let onePassPath: string
 
 /** Bốn cú máy màu khác nhau, mỗi cú 2 giây — ranh giới nằm ở giây 2, 4, 6. */
 beforeAll(async () => {
@@ -68,6 +70,28 @@ beforeAll(async () => {
     '-c',
     'copy',
     clipPath
+  ])
+
+  // Một cú máy liên tục 20 giây: hình đổi dần chứ không có chỗ cắt nào. Đây là
+  // hình dạng của footage review sản phẩm quay bằng điện thoại.
+  onePassPath = join(workDir, 'mot-cu-may.mp4')
+  await execFileAsync(ffmpegPath, [
+    '-v',
+    'error',
+    '-y',
+    '-f',
+    'lavfi',
+    '-i',
+    'gradients=size=640x360:rate=30:duration=20:speed=0.05',
+    '-c:v',
+    'libx264',
+    '-pix_fmt',
+    'yuv420p',
+    '-preset',
+    'ultrafast',
+    '-t',
+    '20',
+    onePassPath
   ])
 }, 180_000)
 
@@ -140,6 +164,50 @@ describe('buildShots', () => {
   })
 })
 
+describe('splitLongShots', () => {
+  it('cú ngắn hơn ngưỡng thì để nguyên, không đánh dấu chia đều', () => {
+    const shots = splitLongShots([{ index: 0, startUs: 0, endUs: 5_000_000 }], 6_000_000)
+
+    expect(shots).toEqual([{ index: 0, startUs: 0, endUs: 5_000_000 }])
+  })
+
+  it('chia đều cú dài, lát cuối không phải mảnh vụn', () => {
+    const shots = splitLongShots([{ index: 0, startUs: 0, endUs: 13_000_000 }], 6_000_000)
+
+    // 13 giây chia 6 ra 3 lát ~4,33s. Cắt cứng từng 6 giây sẽ để lại lát cuối 1s.
+    expect(shots).toHaveLength(3)
+    for (const shot of shots) {
+      expect(shot.endUs - shot.startUs).toBeGreaterThan(4_000_000)
+      expect(shot.synthetic).toBe(true)
+    }
+  })
+
+  it('các lát nối liền nhau, phủ kín cú gốc, không chồng lấn', () => {
+    const shots = splitLongShots([{ index: 0, startUs: 1_000_000, endUs: 98_000_000 }], 6_000_000)
+
+    expect(shots[0].startUs).toBe(1_000_000)
+    expect(shots.at(-1)?.endUs).toBe(98_000_000)
+    for (const [index, shot] of shots.entries()) {
+      expect(shot.index).toBe(index)
+      if (index > 0) expect(shot.startUs).toBe(shots[index - 1].endUs)
+    }
+  })
+
+  it('đánh số lại liên tục khi trộn cú giữ nguyên và cú bị chia', () => {
+    const shots = splitLongShots(
+      [
+        { index: 0, startUs: 0, endUs: 2_000_000 },
+        { index: 1, startUs: 2_000_000, endUs: 20_000_000 }
+      ],
+      6_000_000
+    )
+
+    expect(shots.map((shot) => shot.index)).toEqual([0, 1, 2, 3])
+    expect(shots[0].synthetic).toBeUndefined()
+    expect(shots[1].synthetic).toBe(true)
+  })
+})
+
 describe('chạy thật trên video có cú máy dựng sẵn', () => {
   it('tìm đúng ba ranh giới của bốn cú máy', async () => {
     const boundaries = await detectSceneChanges(clipPath)
@@ -192,5 +260,38 @@ describe('chạy thật trên video có cú máy dựng sẵn', () => {
     // Mỗi cú phải ra một ảnh KHÁC nhau. Giống nhau nghĩa là đang trích nhầm cùng
     // một mốc thời gian cho mọi cú, và agent sẽ chọn cảnh bằng bốn ảnh y hệt.
     expect(new Set(contents).size).toBe(4)
+  }, 180_000)
+})
+
+describe('chạy thật trên video một cú máy liên tục', () => {
+  it('ffmpeg không tìm được chỗ chuyển cảnh nào', async () => {
+    // Đây chính là điều xảy ra với footage review sản phẩm thật. Nếu test này
+    // ngã vì tìm ra mốc, nghĩa là clip dựng cho test có chỗ cắt — sửa clip,
+    // đừng nới ngưỡng.
+    expect(await detectSceneChanges(onePassPath)).toEqual([])
+  }, 120_000)
+
+  it('vẫn cho agent một loạt ảnh để xem, thay vì đúng một ảnh cho cả video', async () => {
+    const boundaries = await detectSceneChanges(onePassPath)
+    const shots = buildShots(boundaries, 20_000_000)
+
+    expect(shots.length).toBeGreaterThan(1)
+    expect(shots.every((shot) => shot.synthetic)).toBe(true)
+    expect(shots[0].startUs).toBe(0)
+    expect(shots.at(-1)?.endUs).toBe(20_000_000)
+
+    const withFrames = await extractShotFrames(
+      onePassPath,
+      shots,
+      join(workDir, 'frames-mot-cu-may')
+    )
+
+    const contents = await Promise.all(
+      withFrames.map(async (shot) => (await readFile(shot.framePath as string)).toString('base64'))
+    )
+
+    // Ảnh phải KHÁC nhau. Giống nhau thì agent đang nhìn cùng một khoảnh khắc
+    // lặp lại và việc chia lát chẳng giúp được gì.
+    expect(new Set(contents).size).toBe(withFrames.length)
   }, 180_000)
 })

@@ -50,7 +50,8 @@ export async function detectShotsForAsset(options: {
     index: shot.index,
     startUs: shot.startUs,
     endUs: shot.endUs,
-    framePath: shot.framePath
+    framePath: shot.framePath,
+    synthetic: shot.synthetic
   }))
 
   await writeFile(shotsPath, JSON.stringify(dto), 'utf8')

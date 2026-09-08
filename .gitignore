@@ -46,3 +46,6 @@ ck.md
 # Claude Code runtime layout; repo-level rules stay tracked.
 /.claude/*
 !/.claude/rules/
+
+# Footage người dùng đưa vào để thử, không thuộc mã nguồn
+example-video/

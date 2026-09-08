@@ -319,6 +319,8 @@ export interface DetectedShotDto {
   startUs: number
   endUs: number
   framePath?: string
+  /** Ranh giới do chia đều một cú máy quá dài, không phải chỗ chuyển cảnh thật. */
+  synthetic?: boolean
 }
 
 export interface ChatMessageRecord {

@@ -82,7 +82,13 @@ const shotCache = new Map<string, Array<{ startUs: number; endUs: number; frameP
 function formatShots(
   assetId: string,
   assetName: string,
-  shots: Array<{ index: number; startUs: number; endUs: number; framePath?: string }>
+  shots: Array<{
+    index: number
+    startUs: number
+    endUs: number
+    framePath?: string
+    synthetic?: boolean
+  }>
 ): string {
   if (shots.length === 0) return 'Không dò được cú máy nào.'
 
@@ -91,10 +97,17 @@ function formatShots(
     const from = (shot.startUs / 1_000_000).toFixed(2)
     const to = (shot.endUs / 1_000_000).toFixed(2)
     const duration = ((shot.endUs - shot.startUs) / 1_000_000).toFixed(2)
-    return `- shot ${shot.index}: ${from}s–${to}s (${duration}s)${shot.framePath ? ` frame=${shot.framePath}` : ''}`
+    // Nói rõ lát nào là chia đều: cắt ở đó rơi vào giữa động tác chứ không phải
+    // vào một chỗ chuyển cảnh, và agent cần biết để chừa lề khi chọn đoạn.
+    const kind = shot.synthetic ? ' [chia đều, không phải chuyển cảnh]' : ''
+    return `- shot ${shot.index}: ${from}s–${to}s (${duration}s)${kind}${shot.framePath ? ` frame=${shot.framePath}` : ''}`
   })
 
-  return [header, '', ...lines].join('\n')
+  const note = shots.every((shot) => shot.synthetic)
+    ? '\nLưu ý: video là MỘT cú máy liên tục, ffmpeg không tìm được chỗ chuyển cảnh nào. Mọi mốc dưới đây là chia đều theo thời gian.'
+    : ''
+
+  return [header + note, '', ...lines].join('\n')
 }
 
 export function useMcpBridge(): void {

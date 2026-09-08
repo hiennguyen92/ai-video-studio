@@ -19,6 +19,12 @@ import { resolveFfmpegBinaries } from './ffmpeg-binaries'
  *
  *     frame:0    pts:30720   pts_time:2
  *     lavfi.scene_score=0.400000
+ *
+ * Nhưng dò chuyển cảnh KHÔNG đủ. Footage review sản phẩm quay bằng điện thoại
+ * thường là MỘT cú máy liên tục từ đầu tới cuối — ffmpeg trả về không mốc nào, và
+ * agent nhận đúng một ảnh cho cả video dài hai phút. Nên sau khi dò xong, cú nào
+ * quá dài bị chia đều thành lát cắt để vẫn có ảnh mà xem. Lát cắt được đánh dấu
+ * `synthetic` vì đó là chỗ chia đều, không phải chỗ chuyển cảnh thật.
  */
 
 const execFileAsync = promisify(execFile)
@@ -39,12 +45,27 @@ export const DEFAULT_SCENE_THRESHOLD = 0.3
  */
 export const MIN_SHOT_DURATION_US = 400_000
 
+/**
+ * Cú máy dài hơn mức này bị chia đều thành nhiều lát.
+ *
+ * 6 giây là quãng agent còn nhìn được: dài hơn thì một ảnh đại diện bỏ sót phần
+ * lớn nội dung, ngắn hơn thì một video hai phút sinh ra hàng trăm ảnh.
+ */
+export const MAX_SHOT_DURATION_US = 6_000_000
+
 export interface DetectedShot {
   index: number
   startUs: Micros
   endUs: Micros
   /** Ảnh đại diện lấy ở giữa cú máy, để agent xem được mà chọn cảnh. */
   framePath?: string
+  /**
+   * Ranh giới do chia đều, KHÔNG phải chỗ ffmpeg tìm được chuyển cảnh.
+   *
+   * Phải báo ra ngoài: agent chọn cảnh dựa trên đây, và cắt ở một mốc chia đều
+   * thì rơi vào giữa động tác, khác hẳn cắt ở một chỗ chuyển cảnh thật.
+   */
+  synthetic?: boolean
 }
 
 /** Đọc mốc chuyển cảnh (giây) từ đầu ra của `metadata=print`. */
@@ -70,7 +91,8 @@ export function parseSceneChangeSeconds(output: string): number[] {
 export function buildShots(
   boundarySeconds: number[],
   durationUs: Micros,
-  minShotUs = MIN_SHOT_DURATION_US
+  minShotUs = MIN_SHOT_DURATION_US,
+  maxShotUs = MAX_SHOT_DURATION_US
 ): DetectedShot[] {
   if (durationUs <= 0) return []
 
@@ -98,7 +120,44 @@ export function buildShots(
     shots.pop()
   }
 
-  return shots
+  return splitLongShots(shots, maxShotUs)
+}
+
+/**
+ * Chia cú máy quá dài thành các lát bằng nhau.
+ *
+ * Chia ĐỀU chứ không cắt từng 6 giây rồi để lại phần thừa: cắt kiểu đó sinh ra
+ * một lát cuối dài nửa giây, đúng thứ mà `MIN_SHOT_DURATION_US` đang tránh.
+ */
+export function splitLongShots(
+  shots: DetectedShot[],
+  maxShotUs = MAX_SHOT_DURATION_US
+): DetectedShot[] {
+  if (maxShotUs <= 0) return shots
+
+  const sliced: DetectedShot[] = []
+  for (const shot of shots) {
+    const duration = shot.endUs - shot.startUs
+    if (duration <= maxShotUs) {
+      sliced.push({ ...shot, index: sliced.length })
+      continue
+    }
+
+    const pieces = Math.ceil(duration / maxShotUs)
+    for (let piece = 0; piece < pieces; piece += 1) {
+      sliced.push({
+        index: sliced.length,
+        startUs: shot.startUs + Math.round((duration * piece) / pieces),
+        endUs:
+          piece === pieces - 1
+            ? shot.endUs
+            : shot.startUs + Math.round((duration * (piece + 1)) / pieces),
+        synthetic: true
+      })
+    }
+  }
+
+  return sliced
 }
 
 /** Chạy ffmpeg để lấy mốc chuyển cảnh của một file. */
