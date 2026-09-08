@@ -36,6 +36,7 @@ export const elevenLabsDescriptor: ProviderDescriptor = {
   id: PROVIDER_ID,
   name: 'ElevenLabs',
   tasks: ['tts'],
+  voiceCatalog: 'remote',
   credentialLabel: 'API key',
   credentialHelpUrl: 'https://elevenlabs.io/app/settings/api-keys',
   noteVi:
@@ -259,13 +260,24 @@ export const elevenLabsTtsAdapter: TtsAdapter = {
 
     if (!options?.language) return collected
 
-    // Giọng KHÔNG công bố ngôn ngữ nào thì vẫn giữ lại — loại bỏ chúng sẽ giấu
-    // mất những giọng vẫn dùng được.
+    // ĐÁNH DẤU chứ không lọc bỏ.
+    //
+    // Quan sát trên tài khoản thật: 23 giọng thì chỉ 2 giọng được xác thực tiếng
+    // Việt, và cả hai đều là giọng thư viện mà gói miễn phí bị từ chối (HTTP 402).
+    // Lọc cứng sẽ để người dùng đối diện một danh sách chỉ toàn giọng không dùng
+    // được, trong khi 21 giọng còn lại vẫn đọc tiếng Việt tốt khi đi cùng model
+    // đa ngôn ngữ — đã kiểm chứng bằng audio thật.
     const wanted = options.language.toLowerCase()
-    return collected.filter(
-      (voice) =>
-        voice.languages.length === 0 ||
-        voice.languages.some((language) => language.toLowerCase().startsWith(wanted))
+    const marked = collected.map((voice) => ({
+      ...voice,
+      verifiedForLanguage: voice.languages.some((language) =>
+        language.toLowerCase().startsWith(wanted)
+      )
+    }))
+
+    // Giọng đã xác thực xếp trước để vẫn dễ tìm.
+    return marked.sort(
+      (a, b) => Number(b.verifiedForLanguage ?? false) - Number(a.verifiedForLanguage ?? false)
     )
   },
 

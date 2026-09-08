@@ -167,7 +167,9 @@ test('tab Nhạc nền dùng được đầy đủ khi không có khoá AI nào'
 
   await studio().getByRole('button', { name: 'Tải nhạc lên' }).first().click()
   await expect(page.locator('.music-item')).toHaveCount(1, { timeout: 60_000 })
-  await expect(page.getByText('nhac-nen-thu.mp3')).toBeVisible()
+  // Ràng buộc vào panel nhạc: cùng file cũng hiện ở tab Media (vẫn nằm trong cây
+  // để không mất trạng thái khi chuyển tab), nên tìm theo cả trang sẽ trúng hai chỗ.
+  await expect(page.locator('.music-item__name')).toHaveText('nhac-nen-thu.mp3')
 
   // Chèn vào track nhạc nền — thao tác cục bộ, không cần provider nào.
   await page.getByRole('button', { name: 'Chèn vào track nhạc' }).click()

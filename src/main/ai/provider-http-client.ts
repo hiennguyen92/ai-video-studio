@@ -156,7 +156,9 @@ async function throwIfNotOk(response: Response, providerId: string): Promise<voi
         ? `Khoá API bị từ chối (HTTP ${response.status}). ${detail}`
         : kind === 'rate-limited'
           ? `Provider đang giới hạn tần suất (HTTP 429). ${detail}`
-          : `Provider trả lỗi HTTP ${response.status}. ${detail}`
+          : kind === 'quota-exceeded'
+            ? `Gói tài khoản không cho phép thao tác này. ${detail}`
+            : `Provider trả lỗi HTTP ${response.status}. ${detail}`
 
   throw new ProviderError({ kind, providerId, message, status: response.status })
 }

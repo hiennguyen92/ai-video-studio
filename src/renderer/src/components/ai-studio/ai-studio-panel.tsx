@@ -30,8 +30,33 @@ export function AiStudioPanel({
   const t = useT()
   const [activeTab, setActiveTab] = useState<StudioTabKey>('media')
 
+  /**
+   * Tab đã từng mở thì GIỮ NGUYÊN trong cây React, chỉ ẩn đi khi không hoạt động.
+   *
+   * Tháo hẳn khỏi cây sẽ xoá sạch trạng thái của tab: người dùng gõ kịch bản và
+   * tạo giọng đọc ở tab Giọng đọc, ghé qua tab Media xem asset, quay lại thì
+   * kịch bản trống và audio vừa tạo biến mất. Chỉ dựng tab khi lần đầu mở, nên
+   * tab chưa đụng tới vẫn không tốn công khởi tạo.
+   */
+  const [visitedTabs, setVisitedTabs] = useState<Set<StudioTabKey>>(new Set(['media']))
+
+  /**
+   * Tăng lên mỗi khi khoá API được lưu hoặc xoá.
+   *
+   * Cần thiết vì tab được giữ nguyên trong cây: panel Giọng đọc đọc trạng thái
+   * khoá đúng một lần lúc dựng, nên nếu không có tín hiệu này thì người dùng lưu
+   * khoá ở tab Cấu hình AI xong quay lại vẫn thấy "chưa có khoá" cho tới khi mở
+   * lại ứng dụng.
+   */
+  const [credentialsVersion, setCredentialsVersion] = useState(0)
+
+  const selectTab = useCallback((tab: StudioTabKey) => {
+    setActiveTab(tab)
+    setVisitedTabs((current) => (current.has(tab) ? current : new Set(current).add(tab)))
+  }, [])
+
   // Tab Giọng đọc cần đưa người dùng sang Cấu hình AI khi thiếu khoá.
-  const openSettings = useCallback(() => setActiveTab('settings'), [])
+  const openSettings = useCallback(() => selectTab('settings'), [selectTab])
 
   const tabs: Array<{ key: StudioTabKey; label: string }> = [
     { key: 'media', label: t.studio.tabs.media },
@@ -57,7 +82,7 @@ export function AiStudioPanel({
             role="tab"
             aria-selected={activeTab === tab.key}
             className={`tab ${activeTab === tab.key ? 'tab--active' : ''}`}
-            onClick={() => setActiveTab(tab.key)}
+            onClick={() => selectTab(tab.key)}
           >
             {tab.label}
           </button>
@@ -65,17 +90,35 @@ export function AiStudioPanel({
       </div>
 
       <div className="panel__body" role="tabpanel" aria-label={activeLabel}>
-        {activeTab === 'media' && (
-          <MediaLibraryPanel
-            importing={importing}
-            onImportClick={onImportClick}
-            onAddToTimeline={onAddToTimeline}
-          />
+        {visitedTabs.has('media') && (
+          <div className="studio-tab-panel" hidden={activeTab !== 'media'}>
+            <MediaLibraryPanel
+              importing={importing}
+              onImportClick={onImportClick}
+              onAddToTimeline={onAddToTimeline}
+            />
+          </div>
         )}
 
-        {activeTab === 'voice' && <VoicePanel onOpenSettings={openSettings} />}
-        {activeTab === 'music' && <MusicPanel />}
-        {activeTab === 'settings' && <AiSettingsPanel />}
+        {visitedTabs.has('voice') && (
+          <div className="studio-tab-panel" hidden={activeTab !== 'voice'}>
+            <VoicePanel onOpenSettings={openSettings} credentialsVersion={credentialsVersion} />
+          </div>
+        )}
+
+        {visitedTabs.has('music') && (
+          <div className="studio-tab-panel" hidden={activeTab !== 'music'}>
+            <MusicPanel />
+          </div>
+        )}
+
+        {visitedTabs.has('settings') && (
+          <div className="studio-tab-panel" hidden={activeTab !== 'settings'}>
+            <AiSettingsPanel
+              onCredentialsChanged={() => setCredentialsVersion((current) => current + 1)}
+            />
+          </div>
+        )}
 
         {(activeTab === 'transcribe' || activeTab === 'translate' || activeTab === 'subtitles') && (
           <EmptyState title={t.studio.comingSoon} hint={t.studio.comingSoonHint} />

@@ -50,6 +50,16 @@ export interface Voice {
    * trước thay vì để họ bấm tạo rồi mới gặp lỗi.
    */
   category?: string
+  /**
+   * Giọng này có được xác thực cho ngôn ngữ mà nơi gọi yêu cầu không.
+   *
+   * Chỉ có giá trị khi `listVoices` được gọi kèm ngôn ngữ. Cố tình là CỜ ĐÁNH
+   * DẤU chứ không phải bộ lọc: dữ liệu thật cho thấy một tài khoản có 23 giọng
+   * thì chỉ 2 giọng được xác thực tiếng Việt, và cả hai đều thuộc loại thư viện
+   * mà gói miễn phí không dùng được. Lọc cứng sẽ giấu mất 21 giọng vẫn đọc
+   * tiếng Việt tốt khi đi cùng model đa ngôn ngữ.
+   */
+  verifiedForLanguage?: boolean
   /** URL mẫu giọng sẵn có, nghe thử mà không tốn lượt sinh audio. */
   previewUrl?: string
   description?: string

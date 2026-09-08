@@ -24,7 +24,7 @@ Mốc được chia theo `DESCRIPTION.md` §9. Mỗi mốc phải **chạy đư�
 |---|---|---|
 | Cấu hình AI: provider, khoá qua `safeStorage`, kiểm tra kết nối | ✅ | e2e trên keychain thật |
 | Interface riêng cho từng nhóm tác vụ (TTS/STT/dịch/nhạc) | ✅ | `shared/ai/ai-provider-contracts.ts` |
-| Adapter ElevenLabs (danh sách giọng từ provider) | ✅ | **gọi API thật**: model, giọng, sinh audio tiếng Việt 7,20s |
+| Adapter ElevenLabs (danh sách giọng từ provider) | ✅ | **7 phép thử gọi API thật** + **7 phép thử đầu-cuối trọn luồng qua giao diện** |
 | Adapter OpenAI (danh mục giọng cố định) | ⚠️ | fixture — chưa có khoá OpenAI để gọi thật |
 | Chỉ hiện tham số provider thật sự hỗ trợ | ✅ | e2e: đổi model thì ô tham số biến mất |
 | Chia kịch bản thành đoạn tạo lại riêng | ✅ | 9 unit + e2e |
@@ -34,8 +34,9 @@ Mốc được chia theo `DESCRIPTION.md` §9. Mỗi mốc phải **chạy đư�
 | Thiếu khoá chỉ vô hiệu hoá tính năng phụ thuộc | ✅ | e2e |
 | Khoá sai báo lỗi rõ ràng | ✅ | e2e (chạm mạng thật, nhận 401) |
 
-**Đã trả xong nợ Mốc 2** bằng một lần chạy thật với khoá ElevenLabs. Lần chạy đó sửa năm chỗ sai
-mà fixture không phát hiện được (xem README, mục "Đã kiểm chứng bằng API thật").
+**Đã trả xong nợ Mốc 2.** Trọn luồng chạy thật qua giao diện với khoá ElevenLabs, sửa bảy chỗ sai mà
+fixture không phát hiện được (xem README, mục "Đã kiểm chứng bằng API thật"), trong đó có hai lỗi
+giao diện chỉ lộ ra khi chuyển tab với dữ liệu thật.
 
 **Còn lại:** OpenAI TTS vẫn chưa gọi thật lần nào — cần một khoá OpenAI.
 

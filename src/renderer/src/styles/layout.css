@@ -308,3 +308,13 @@ input[type='range'] {
   background: transparent;
   accent-color: var(--accent);
 }
+
+/* Tab của AI Studio giữ nguyên trong cây React khi không hoạt động, nên phải ẩn
+   hẳn — nếu không nó vẫn chiếm chỗ và bắt được sự kiện chuột. */
+.studio-tab-panel {
+  height: 100%;
+}
+
+.studio-tab-panel[hidden] {
+  display: none;
+}

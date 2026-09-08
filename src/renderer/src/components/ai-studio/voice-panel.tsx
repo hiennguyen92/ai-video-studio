@@ -30,7 +30,14 @@ const LANGUAGE_OPTIONS = [
   { code: '', label: '—' }
 ]
 
-export function VoicePanel({ onOpenSettings }: { onOpenSettings(): void }): JSX.Element {
+export function VoicePanel({
+  onOpenSettings,
+  credentialsVersion = 0
+}: {
+  onOpenSettings(): void
+  /** Đổi giá trị này để panel nạp lại trạng thái khoá API. */
+  credentialsVersion?: number
+}): JSX.Element {
   const t = useT()
 
   /** Nhãn ngắn cho phân loại giọng của provider. */
@@ -78,12 +85,14 @@ export function VoicePanel({ onOpenSettings }: { onOpenSettings(): void }): JSX.
       )
       // Ưu tiên provider đã có khoá — chọn sẵn cái dùng được ngay.
       const preferred = ttsProviders.find((entry) => entry.hasCredential) ?? ttsProviders[0]
-      if (preferred) setProviderId(preferred.descriptor.id)
+      // Chỉ tự chọn provider ở lần nạp đầu; những lần nạp sau là do khoá thay
+      // đổi, không được giật lựa chọn khỏi tay người dùng.
+      setProviderId((current) => current || (preferred?.descriptor.id ?? ''))
     })()
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [credentialsVersion])
 
   useEffect(() => {
     if (!providerId) return
@@ -101,7 +110,11 @@ export function VoicePanel({ onOpenSettings }: { onOpenSettings(): void }): JSX.
     return () => {
       cancelled = true
     }
-  }, [providerId])
+    // Phụ thuộc cả credentialsVersion: với provider đọc model qua API, lần nạp
+    // đầu lúc chưa có khoá sẽ thất bại và danh sách model rỗng. Không nạp lại thì
+    // panel kẹt ở trạng thái không có model, kéo theo không có cả năng lực lẫn
+    // nút tải giọng.
+  }, [providerId, credentialsVersion])
 
   useEffect(() => {
     if (!providerId || !model) return
@@ -302,9 +315,10 @@ export function VoicePanel({ onOpenSettings }: { onOpenSettings(): void }): JSX.
             {voices.length === 0 && <option value="">{t.voice.noVoices}</option>}
             {voices.map((voice) => (
               <option key={voice.id} value={voice.id}>
+                {voice.verifiedForLanguage ? '✓ ' : ''}
                 {voice.name}
                 {voice.category ? ` · ${categoryLabel(voice.category)}` : ''}
-                {voice.languages.length > 0 ? ` (${voice.languages.join(', ')})` : ''}
+                {voice.verifiedForLanguage ? ` · ${t.voice.voiceVerifiedBadge}` : ''}
               </option>
             ))}
           </select>

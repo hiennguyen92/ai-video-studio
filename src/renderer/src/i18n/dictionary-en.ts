@@ -220,6 +220,7 @@ export const dictionaryEn: Dictionary = {
     presets: 'Saved presets',
     applyPreset: 'Apply',
     deletePreset: 'Delete preset',
+    voiceVerifiedBadge: 'verified',
     voiceCategoryPremade: 'built-in',
     voiceCategoryProfessional: 'library',
     voiceCategoryNote:

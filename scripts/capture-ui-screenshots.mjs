@@ -111,11 +111,13 @@ await page.screenshot({ path: join(OUT, 'ui-06-cau-hinh-ai.png') })
 await studio.getByRole('tab', { name: 'Giọng đọc' }).click()
 await page.getByLabel('Nhà cung cấp').selectOption('openai')
 await page.waitForTimeout(400)
-await page.getByLabel('Kịch bản', { exact: true }).fill(
-  'Xin chào và chào mừng bạn đến với AI Video Studio.\n\n' +
-  'Đây là đoạn thứ hai của kịch bản, dùng để minh hoạ việc chia đoạn.\n\n' +
-  'Mỗi đoạn có thể được tạo lại riêng mà không ảnh hưởng các đoạn khác.'
-)
+await page
+  .getByLabel('Kịch bản', { exact: true })
+  .fill(
+    'Xin chào và chào mừng bạn đến với AI Video Studio.\n\n' +
+      'Đây là đoạn thứ hai của kịch bản, dùng để minh hoạ việc chia đoạn.\n\n' +
+      'Mỗi đoạn có thể được tạo lại riêng mà không ảnh hưởng các đoạn khác.'
+  )
 await page.getByRole('button', { name: 'Chia thành đoạn' }).click()
 await page.waitForTimeout(400)
 await page.screenshot({ path: join(OUT, 'ui-07-giong-doc.png') })
@@ -123,6 +125,24 @@ await page.screenshot({ path: join(OUT, 'ui-07-giong-doc.png') })
 await studio.getByRole('tab', { name: 'Nhạc nền' }).click()
 await page.waitForTimeout(400)
 await page.screenshot({ path: join(OUT, 'ui-08-nhac-nen.png') })
+
+// Chỉ chụp phần gọi provider thật khi có khoá; không có thì bỏ qua lặng lẽ.
+if (process.env.ELEVENLABS_API_KEY) {
+  await studio.getByRole('tab', { name: 'Cấu hình AI' }).click()
+  await page.getByLabel('ElevenLabs API key').fill(process.env.ELEVENLABS_API_KEY)
+  await page.getByRole('button', { name: 'Lưu khoá' }).first().click()
+  await page.getByRole('button', { name: 'Kiểm tra kết nối' }).first().click()
+  await page.getByText('Kết nối được').waitFor({ timeout: 45000 })
+  await page.waitForTimeout(300)
+  await page.screenshot({ path: join(OUT, 'ui-09-ket-noi-that.png') })
+
+  await studio.getByRole('tab', { name: 'Giọng đọc' }).click()
+  await page.getByLabel('Nhà cung cấp').selectOption('elevenlabs')
+  await page.getByRole('button', { name: /Tải danh sách giọng|Đang tải giọng/ }).click()
+  await page.getByLabel('Giọng', { exact: true }).waitFor({ state: 'attached', timeout: 45000 })
+  await page.waitForTimeout(1200)
+  await page.screenshot({ path: join(OUT, 'ui-10-giong-that.png') })
+}
 
 await app.close()
 await rm(userDataDir, { recursive: true, force: true })

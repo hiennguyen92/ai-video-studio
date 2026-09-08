@@ -6,8 +6,9 @@ timeline** thay vì một video đã đóng băng.
 
 > **Trạng thái: Mốc 1 và Mốc 2 đã hoàn tất.**
 > Nhập media, dựng timeline, xem trước, lưu/mở lại và xuất MP4 đều chạy thật.
-> Giọng đọc đã **gọi ElevenLabs thật thành công**: sinh audio tiếng Việt, đo thời lượng bằng
-> ffprobe, đưa vào timeline. Xem [Phạm vi hiện tại](#phạm-vi-hiện-tại).
+> Giọng đọc đã **chạy trọn luồng với ElevenLabs thật**: nhập khoá vào Keychain, lấy model và giọng
+> từ tài khoản, sinh audio tiếng Việt, đo thời lượng bằng ffprobe, thành clip cắt/hoàn tác được trên
+> timeline. Xem [Phạm vi hiện tại](#phạm-vi-hiện-tại).
 
 ---
 
@@ -101,8 +102,9 @@ Phím tắt **không** kích hoạt khi con trỏ đang ở trong ô nhập li�
 - **Ngôn ngữ**: tiếng Việt mặc định, chuyển sang tiếng Anh ngay lập tức
 - **Cấu hình AI**: khoá API lưu bằng `safeStorage` (macOS Keychain), kiểm tra kết nối,
   xoá khoá; thiếu khoá chỉ vô hiệu hoá đúng tính năng phụ thuộc
-- **Giọng đọc**: chọn provider/model/giọng, danh sách giọng lấy từ provider, chia kịch bản
-  thành đoạn tạo lại được riêng, chèn tại playhead / track mới / thay clip đang chọn
+- **Giọng đọc**: chọn provider/model/giọng, danh sách giọng và model lấy **trực tiếp từ tài khoản**,
+  chia kịch bản thành đoạn tạo lại được riêng, chèn tại playhead / track mới / thay clip đang chọn.
+  Audio AI tạo ra là asset thật: có waveform, thời lượng đo bằng ffprobe, cắt và hoàn tác được
 - **Nhạc nền**: tải nhạc, chèn vào track nhạc, chỉnh âm lượng và fade — **không cần khoá AI nào**
 - **Tác vụ nền**: hàng đợi có trạng thái đầy đủ, huỷ thật, tái dùng kết quả cũ khi thử lại
 
@@ -120,9 +122,13 @@ Các tab này **có mặt trong giao diện và nói rõ là chưa có** — kh�
 
 ### Đã kiểm chứng bằng API thật (ElevenLabs)
 
-Chạy với khoá thật đã xác nhận: đọc model, liệt kê giọng, **sinh audio tiếng Việt** (110 ký tự →
-7,20 giây, mp3 44,1 kHz), ffprobe đọc được file. Việc chạy thật này sửa **năm** chỗ sai mà kiểm thử
-bằng fixture không thể phát hiện:
+Trọn luồng chạy qua giao diện thật, có 7 phép thử đầu-cuối gọi API thật: nhập khoá vào Keychain →
+kiểm tra kết nối → lấy model và giọng từ tài khoản → **sinh audio tiếng Việt** → asset vào thư viện
+với thời lượng đo bằng ffprobe → chèn thành clip → cắt → hoàn tác → tạo lại thì dùng lại kết quả cũ
+mà không sinh asset trùng.
+
+Việc chạy thật sửa **bảy** chỗ sai mà kiểm thử bằng fixture không thể phát hiện — vì fixture chỉ
+khẳng định lại đúng những giả định đã sai từ đầu:
 
 | Sai ở đâu | Bảng viết tay theo tài liệu | Sự thật từ API |
 |---|---|---|
@@ -131,6 +137,8 @@ bằng fixture không thể phát hiện:
 | `style` / `speaker_boost` | bật cho mọi model | có cờ `can_use_style` / `can_use_speaker_boost` **theo từng model** |
 | Mã ngôn ngữ của giọng | dùng nguyên | **trùng lặp** (một giọng có `en` chín lần) — phải khử trùng |
 | Thiếu quyền khoá | gộp vào "khoá sai" | 401 kèm `missing_permissions` là ca **khác hẳn**: khoá đúng, chỉ thiếu quyền |
+| Lọc giọng theo ngôn ngữ | lọc cứng | 23 giọng chỉ 2 giọng xác thực tiếng Việt, và cả hai gói miễn phí **không dùng được** — lọc cứng giấu mất 21 giọng vẫn đọc tiếng Việt tốt. Giờ chỉ **đánh dấu + xếp trước** |
+| Gói tài khoản | không xét | Giọng "thư viện" bị **HTTP 402** trên gói miễn phí; giao diện cảnh báo trước |
 
 Vì vậy siêu dữ liệu model giờ **đọc từ `/v1/models`**, không viết cứng trong mã.
 
@@ -203,15 +211,17 @@ Xem [`docs/system-architecture.md`](docs/system-architecture.md) để biết ch
 | Unit | 46 | Quy đổi thời gian, biến đổi timeline, giao dịch lệnh, kiểm tra payload, vòng đời job, chia đoạn kịch bản |
 | Integration | 24 | **Chạy ffmpeg thật**: probe, waveform, thumbnail, dựng lệnh xuất, render MP4, nung phụ đề, huỷ job |
 | Adapter (fixture) | 18 | Máy chủ giả trả phản hồi đúng hình dạng thật: dựng đúng đường dẫn/header/body, đọc phân trang, tham số theo model, phân loại lỗi |
-| Provider thật | 7 | **Gọi ElevenLabs thật.** Chỉ chạy khi có `ELEVENLABS_API_KEY`; không có thì tự bỏ qua |
+| Provider thật | 7 | **Gọi ElevenLabs thật** ở tầng adapter. Chỉ chạy khi có `ELEVENLABS_API_KEY` |
+| Đầu-cuối provider thật | 7 | **Trọn luồng qua giao diện với API thật**: khoá → giọng → sinh audio → clip → cắt → hoàn tác |
 | Đầu-cuối | 20 | **Chạy Electron thật đã build**: nhập media, dựng timeline, cắt, hoàn tác, đổi ngôn ngữ, lưu/mở lại, xuất MP4 rồi soi bằng ffprobe, lưu khoá qua keychain thật, tham số đổi theo model, nhạc nền chạy khi không có khoá |
 
 ```bash
-npm test          # 88 phép thử (7 phép thử gọi API thật tự bỏ qua khi thiếu khoá)
-npm run test:e2e  # 20 phép thử
+npm test          # 88 đạt + 7 bỏ qua (nhóm gọi API thật)
+npm run test:e2e  # 20 đạt + 6 bỏ qua (nhóm gọi API thật)
 
-# Kiểm chứng với provider thật — khoá KHÔNG bao giờ ghi vào repo:
-ELEVENLABS_API_KEY=... npx vitest run src/main/ai/elevenlabs-live
+# Chạy đầy đủ kể cả phần gọi provider thật — khoá KHÔNG bao giờ ghi vào repo:
+ELEVENLABS_API_KEY=... npx vitest run          # 95 đạt
+ELEVENLABS_API_KEY=... npx playwright test     # 27 đạt
 ```
 
 Kiểm thử cố tình **không giả lập ffmpeg**: giá trị nằm ở chỗ tham số dòng lệnh có đúng không, mà đó

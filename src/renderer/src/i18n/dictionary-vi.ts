@@ -223,6 +223,7 @@ export const dictionaryVi = {
     presets: 'Preset đã lưu',
     applyPreset: 'Áp dụng',
     deletePreset: 'Xoá preset',
+    voiceVerifiedBadge: 'đã xác thực',
     voiceCategoryPremade: 'có sẵn',
     voiceCategoryProfessional: 'thư viện',
     voiceCategoryNote:

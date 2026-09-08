@@ -36,6 +36,7 @@ export const openAiDescriptor: ProviderDescriptor = {
   id: PROVIDER_ID,
   name: 'OpenAI',
   tasks: ['tts'],
+  voiceCatalog: 'static',
   credentialLabel: 'API key',
   credentialHelpUrl: 'https://platform.openai.com/api-keys',
   noteVi:

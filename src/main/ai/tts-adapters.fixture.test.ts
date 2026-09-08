@@ -158,13 +158,13 @@ describe('ElevenLabs adapter (fixture)', () => {
     expect(voices.map((voice) => voice.id)).toEqual(['v-1', 'v-2'])
   })
 
-  it('giữ lại giọng không công bố ngôn ngữ khi lọc theo tiếng Việt', async () => {
+  it('đánh dấu giọng theo ngôn ngữ chứ không loại bỏ giọng nào', async () => {
     captured = []
     respond = (_request, response) =>
       sendJson(response, 200, {
         voices: [
-          { voice_id: 'co-vi', name: 'Có VI', verified_languages: [{ language: 'vi' }] },
           { voice_id: 'chi-en', name: 'Chỉ EN', verified_languages: [{ language: 'en' }] },
+          { voice_id: 'co-vi', name: 'Có VI', verified_languages: [{ language: 'vi' }] },
           { voice_id: 'khong-ro', name: 'Không rõ' }
         ],
         has_more: false
@@ -174,9 +174,15 @@ describe('ElevenLabs adapter (fixture)', () => {
     const voices = await elevenLabsTtsAdapter.listVoices(context(), { language: 'vi' })
     restore()
 
-    // Giọng khai báo tiếng Anh bị loại; giọng không khai báo gì thì giữ lại vì
-    // loại bỏ chúng sẽ giấu mất những giọng vẫn dùng được.
-    expect(voices.map((voice) => voice.id)).toEqual(['co-vi', 'khong-ro'])
+    // KHÔNG giọng nào bị giấu: dữ liệu thật cho thấy lọc cứng sẽ để lại một danh
+    // sách toàn giọng gói miễn phí không dùng được, trong khi giọng còn lại vẫn
+    // đọc tiếng Việt tốt với model đa ngôn ngữ.
+    expect(voices).toHaveLength(3)
+    // Giọng đã xác thực xếp lên trước.
+    expect(voices[0].id).toBe('co-vi')
+    expect(voices[0].verifiedForLanguage).toBe(true)
+    expect(voices.find((voice) => voice.id === 'chi-en')?.verifiedForLanguage).toBe(false)
+    expect(voices.find((voice) => voice.id === 'khong-ro')?.verifiedForLanguage).toBe(false)
   })
 
   it('dựng đúng thân yêu cầu sinh giọng đọc', async () => {

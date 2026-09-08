@@ -104,17 +104,24 @@ live('ElevenLabs — gọi API thật', () => {
     }
   }, 60_000)
 
-  it('lọc theo tiếng Việt trả về tập con hợp lệ', async () => {
+  it('đánh dấu giọng theo tiếng Việt mà không giấu giọng nào', async () => {
     if (!canListVoices) return
 
-    const vietnamese = await elevenLabsTtsAdapter.listVoices(context(), { language: 'vi' })
-    expect(vietnamese.length).toBeLessThanOrEqual(voices.length)
-    for (const voice of vietnamese) {
-      if (voice.languages.length > 0) {
-        expect(voice.languages.some((language) => language.toLowerCase().startsWith('vi'))).toBe(
-          true
-        )
-      }
+    const marked = await elevenLabsTtsAdapter.listVoices(context(), { language: 'vi' })
+
+    // Không mất giọng nào so với khi không truyền ngôn ngữ.
+    expect(marked.length).toBe(voices.length)
+
+    // Cờ đánh dấu phải khớp đúng dữ liệu ngôn ngữ của từng giọng.
+    for (const voice of marked) {
+      const expected = voice.languages.some((language) => language.toLowerCase().startsWith('vi'))
+      expect(voice.verifiedForLanguage).toBe(expected)
+    }
+
+    // Giọng đã xác thực phải nằm trước giọng chưa xác thực.
+    const firstUnverified = marked.findIndex((voice) => !voice.verifiedForLanguage)
+    if (firstUnverified >= 0) {
+      expect(marked.slice(firstUnverified).every((voice) => !voice.verifiedForLanguage)).toBe(true)
     }
   }, 60_000)
 

@@ -94,6 +94,12 @@ export interface ProviderDescriptor {
   name: string
   /** Tác vụ mà provider này đảm nhiệm được. */
   tasks: AiTaskKind[]
+  /**
+   * Cách lấy danh sách giọng. Đặt ở descriptor chứ không ở `capabilities` vì đây
+   * là tính chất của provider, không phụ thuộc model — và vì nơi gọi cần biết
+   * điều này TRƯỚC khi có khoá API, để quyết định có cần khoá hay không.
+   */
+  voiceCatalog: VoiceCatalogKind
   /** Nhãn của ô nhập khoá, ví dụ "API key". */
   credentialLabel: string
   /** Trang lấy khoá, mở bằng trình duyệt hệ thống. */

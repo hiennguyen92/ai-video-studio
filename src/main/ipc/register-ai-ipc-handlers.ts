@@ -107,12 +107,14 @@ export function registerAiIpcHandlers(): void {
       const adapter = getTtsAdapter(request.providerId)
       if (!adapter) throw new Error(`Không có adapter cho provider "${request.providerId}"`)
 
-      // Danh mục giọng cố định thì không cần khoá; danh mục lấy từ tài khoản thì cần.
-      // Hỏi năng lực theo một model có thật, vì khai báo năng lực phụ thuộc model.
-      const emptyContext = { apiKey: '', signal: new AbortController().signal }
-      const referenceModel = (await adapter.listModels(emptyContext))[0]?.id ?? ''
-      if (adapter.capabilities(referenceModel).voiceCatalog === 'static') {
-        return adapter.listVoices(emptyContext, { language: request.language })
+      // Danh mục cố định thì không cần khoá; danh mục lấy từ tài khoản thì cần.
+      // Đọc từ descriptor: hỏi qua `capabilities` sẽ phải biết trước một model,
+      // mà lấy danh sách model lại cần chính khoá đang muốn tránh dùng.
+      if (adapter.descriptor.voiceCatalog === 'static') {
+        return adapter.listVoices(
+          { apiKey: '', signal: new AbortController().signal },
+          { language: request.language }
+        )
       }
 
       const context = await adapterContextFor(request.providerId)
