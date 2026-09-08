@@ -51,6 +51,14 @@ export function ExportDialog({ onClose }: { onClose(): void }): JSX.Element {
     matchFrameRateKey(document?.settings.frameRate)
   )
   const [useHardware, setUseHardware] = useState(false)
+  /**
+   * Mặc định vẫn là ffmpeg.
+   *
+   * Remotion chậm hơn ~6,7 lần mà hiện chưa đổi lại được gì: chuyển cảnh và chữ
+   * động chưa có trong mô hình dữ liệu. Đổi mặc định lúc này là làm chậm đi mà
+   * không thêm tính năng nào — sẽ đổi khi hai thứ kia có.
+   */
+  const [engine, setEngine] = useState<'ffmpeg' | 'remotion'>('ffmpeg')
   const [capabilities, setCapabilities] = useState<ExportCapabilities | null>(null)
   const [burnSubtitleTrackId, setBurnSubtitleTrackId] = useState<string>('')
   const [exportSrt, setExportSrt] = useState(false)
@@ -105,6 +113,7 @@ export function ExportDialog({ onClose }: { onClose(): void }): JSX.Element {
       height: targetSize.height,
       frameRate: FRAME_RATE_PRESETS[frameRateKey],
       useHardwareEncoder: useHardware,
+      engine,
       burnSubtitleTrackId: burnSubtitleTrackId || undefined,
       exportSrtTrackId: exportSrt
         ? burnSubtitleTrackId || document.subtitleTracks[0]?.id
@@ -113,7 +122,16 @@ export function ExportDialog({ onClose }: { onClose(): void }): JSX.Element {
 
     if (result.ok) setJobId(result.data.jobId)
     else setError(result.error)
-  }, [document, outputPath, targetSize, frameRateKey, useHardware, burnSubtitleTrackId, exportSrt])
+  }, [
+    document,
+    outputPath,
+    targetSize,
+    frameRateKey,
+    useHardware,
+    engine,
+    burnSubtitleTrackId,
+    exportSrt
+  ])
 
   const handleCancel = useCallback(async () => {
     if (jobId) await window.api.export.cancel(jobId)
@@ -210,6 +228,20 @@ export function ExportDialog({ onClose }: { onClose(): void }): JSX.Element {
                 </span>
               </label>
             </div>
+
+            <div className="field-row">
+              <span className="field-row__label">{t.export.engine}</span>
+              <select
+                value={engine}
+                onChange={(event) => setEngine(event.target.value as 'ffmpeg' | 'remotion')}
+                disabled={running}
+                aria-label={t.export.engine}
+              >
+                <option value="ffmpeg">{t.export.engineFfmpeg}</option>
+                <option value="remotion">{t.export.engineRemotion}</option>
+              </select>
+            </div>
+            <p className="export-dialog__hint">{t.export.engineHint}</p>
 
             <div className="field-row">
               <span className="field-row__label">{t.export.burnSubtitles}</span>

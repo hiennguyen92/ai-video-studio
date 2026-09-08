@@ -223,6 +223,56 @@ xem được ảnh thì chọn cảnh bằng hình) và nhóm DỰNG:
 `timeline/ripple-delete` là lệnh mới ở tầng reducer: xoá một khoảng rồi kéo phần
 sau lùi lên lấp chỗ trống, và dời cue phụ đề theo để phụ đề không lệch khỏi hình.
 
+## Lớp render Remotion
+
+Bên cạnh đường xuất ffmpeg sẵn có, dự án có thêm đường xuất bằng Remotion. Người
+dùng chọn trong hộp thoại Xuất.
+
+**Vì sao có hai:** ffmpeg nhanh hơn ~6,7 lần, nhưng filter graph của nó không làm
+được chuyển cảnh và chữ động. Remotion làm được, và quan trọng hơn — nó dùng
+**chung một composition với preview**, nên bản xuất không thể lệch bản xem trước.
+Đường ffmpeg phải giữ hai hiện thực khớp nhau bằng tay.
+
+**Mặc định vẫn là ffmpeg.** Remotion chậm hơn mà hiện chưa đổi lại được gì: chuyển
+cảnh và chữ động chưa có trong mô hình dữ liệu. Đổi mặc định lúc này là làm chậm đi
+mà không thêm tính năng nào. Sẽ đổi khi hai thứ đó có.
+
+### Ba lớp
+
+```
+ProjectDocument (micro giây)
+   │  buildRenderPlan()           ← hàm THUẦN, có test bằng con số cụ thể
+   ▼
+RenderPlan (khung hình)
+   │
+   ├─► ProjectComposition ──► @remotion/player   (preview)
+   └─► ProjectComposition ──► renderMedia        (xuất file)
+```
+
+Quy đổi micro giây → khung hình nằm gọn trong `buildRenderPlan`, không rải trong
+component. Lệch một khung ở đó thì hình và tiếng lệch cả bản dựng mà không có lỗi
+nào báo ra.
+
+### Máy chủ media cục bộ
+
+Remotion **không đọc được đường dẫn file tuỳ ý** — asset phải nằm dưới `publicDir`
+hoặc phục vụ qua `http://`. Scheme `avstudio-media://` không dùng được vì bộ dựng
+khung hình là **tiến trình riêng**, không phải Chromium của Electron.
+
+Nên có `local-media-server.ts`: HTTP trên loopback, hỗ trợ Range (thiếu thì thẻ
+video phải tải trọn file mới phát được). Nó **không nhận đường dẫn từ URL** — chỉ
+phục vụ những asset renderer đã đăng ký, tra theo id. Kèm token vì cổng loopback
+thì mọi tiến trình trên máy đều gọi được.
+
+### Hai cái bẫy đã gặp
+
+- **`interface` không có index signature ngầm, `type` thì có.** `Composition` của
+  Remotion đòi props gán được vào `Record<string, unknown>`, nên props phải khai
+  bằng `type`.
+- **Remotion phải nằm trong `dependencies`, không phải `devDependencies`.**
+  electron-vite chỉ externalize `dependencies`; để ở dev thì `@remotion/renderer`
+  bị nhồi vào bundle main và build hỏng.
+
 ## Lưu trữ
 
 Project là một file JSON, ghi theo kiểu **nguyên tử**: ghi ra file tạm rồi đổi tên đè lên file thật.

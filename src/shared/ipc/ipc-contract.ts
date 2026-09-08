@@ -48,6 +48,7 @@ export const IPC = {
   translateRun: 'translate:run',
   translateReadResult: 'translate:read-result',
   musicGenerate: 'music:generate',
+  mediaRegister: 'media:register',
   mcpRespond: 'mcp:respond',
   mcpStatus: 'mcp:status',
   chatSend: 'chat:send',
@@ -138,6 +139,14 @@ export interface ExportRequest {
   height: number
   frameRate: { num: number; den: number }
   useHardwareEncoder: boolean
+  /**
+   * Bộ dựng hình.
+   *
+   * `ffmpeg` nhanh hơn ~6,7 lần và là mặc định. `remotion` dùng CHUNG composition
+   * với preview nên bản xuất không thể lệch bản xem trước, và là đường duy nhất
+   * làm được chuyển cảnh cùng chữ động về sau.
+   */
+  engine?: 'ffmpeg' | 'remotion'
   /** Nung phụ đề vào hình. */
   burnSubtitleTrackId?: string
   /** Xuất thêm file .srt nằm cạnh video. */
@@ -402,6 +411,8 @@ export interface RendererApi {
     generate(request: GenerateMusicRequest): Promise<IpcResult<JobRecord>>
   }
   mcp: {
+    /** Báo main biết media của dự án đang mở, để phục vụ qua http cho Remotion. */
+    registerMedia(entries: Array<{ id: string; path: string }>): void
     /** Renderer trả lời một yêu cầu do máy chủ MCP gửi tới. */
     respond(response: McpBridgeResponse): void
     onRequest(listener: (request: McpBridgeRequest) => void): () => void

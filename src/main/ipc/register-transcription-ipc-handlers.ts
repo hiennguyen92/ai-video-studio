@@ -18,6 +18,7 @@ import { runChatTurn } from '../ai/chat-service'
 import { enqueueMusicGeneration } from '../ai/music-generation-service'
 import { resolveRendererResponse } from '../mcp/mcp-renderer-bridge'
 import { mcpStatus } from '../mcp/mcp-server'
+import { registerMediaFiles } from '../media/local-media-server'
 import { clearChatHistory, readChatHistory, writeChatHistory } from '../storage/chat-history-store'
 import {
   WHISPER_MODELS,
@@ -77,6 +78,12 @@ export function registerTranscriptionIpcHandlers(): void {
   )
 
   ipcMain.handle(IPC.mcpStatus, () => guard(async () => mcpStatus()))
+
+  // Renderer báo danh sách media của dự án đang mở; máy chủ chỉ phục vụ đúng
+  // những id này, không nhận đường dẫn từ URL.
+  ipcMain.on(IPC.mediaRegister, (_event, entries: Array<{ id: string; path: string }>) =>
+    registerMediaFiles(entries)
+  )
 
   ipcMain.handle(IPC.musicGenerate, (_event, request: GenerateMusicRequest) =>
     guard(() => enqueueMusicGeneration(request))

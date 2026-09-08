@@ -60,6 +60,7 @@ const api: RendererApi = {
     generate: (request) => ipcRenderer.invoke(IPC.musicGenerate, request)
   },
   mcp: {
+    registerMedia: (entries) => ipcRenderer.send(IPC.mediaRegister, entries),
     respond: (response) => ipcRenderer.send(IPC.mcpRespond, response),
     onRequest: (listener) => {
       const handler = (_event, request): void => listener(request)

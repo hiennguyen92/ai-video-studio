@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { registerIpcHandlers } from './ipc/register-ipc-handlers'
 import { startMcpServer, stopMcpServer } from './mcp/mcp-server'
 import { rejectAllPending } from './mcp/mcp-renderer-bridge'
+import { startLocalMediaServer, stopLocalMediaServer } from './media/local-media-server'
 import { attachJobEventBridge, registerAiIpcHandlers } from './ipc/register-ai-ipc-handlers'
 import { jobQueue } from './jobs/job-queue'
 import {
@@ -89,6 +90,10 @@ void app.whenReady().then(async () => {
 
   // Máy chủ MCP cho agent bên ngoài. Hỏng thì app vẫn phải chạy bình thường.
   void startMcpServer().catch(() => undefined)
+
+  // Máy chủ media cho Remotion: bộ dựng khung hình là tiến trình riêng, không
+  // đọc được đường dẫn đĩa nên phải phục vụ qua http.
+  void startLocalMediaServer().catch(() => undefined)
   await ensureProjectsRoot()
 
   app.on('browser-window-created', (_event, window) => {
@@ -110,6 +115,7 @@ app.on('before-quit', () => {
   // Agent bên ngoài đang chờ sẽ treo vĩnh viễn nếu không được từ chối tử tế.
   rejectAllPending('Ứng dụng đang thoát')
   void stopMcpServer()
+  void stopLocalMediaServer()
 })
 
 app.on('window-all-closed', () => {

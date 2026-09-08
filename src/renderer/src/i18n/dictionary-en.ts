@@ -138,6 +138,11 @@ export const dictionaryEn: Dictionary = {
     frameRate: 'Frame rate',
     hardware: 'Hardware acceleration',
     hardwareUnavailable: 'No hardware encoder available on this machine',
+    engine: 'Render engine',
+    engineFfmpeg: 'ffmpeg (fast)',
+    engineRemotion: 'Remotion (matches preview)',
+    engineHint:
+      'ffmpeg is about 6.7x faster. Remotion shares the composition with the preview, so the export cannot drift from what you saw, and it is the only path to transitions and animated text later.',
     burnSubtitles: 'Burn subtitles into the video',
     exportSrt: 'Also export an SRT file',
     noSubtitles: 'This project has no subtitles yet',

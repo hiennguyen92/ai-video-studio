@@ -11,6 +11,7 @@ import { IPC_EVENT } from '../../shared/ipc/ipc-contract'
 import { createId } from '../../shared/domain/project-document-factory'
 import { resolveFfmpegBinaries } from '../media/ffmpeg-binaries'
 import { startExport, type ExportHandle } from './export-job-runner'
+import { startRemotionExport } from './remotion-export-runner'
 import { writeAssFile, writeSrtFile } from './subtitle-file-writers'
 
 /**
@@ -79,29 +80,44 @@ export async function runExport(
     }
   }
 
-  const handle = startExport(
-    document,
-    {
-      outputPath: request.outputPath,
-      width: request.width,
-      height: request.height,
-      frameRate: request.frameRate,
-      sampleRate: document.settings.sampleRate,
-      crf: 21,
-      hardwareBitrate: '10M',
-      useHardwareEncoder: request.useHardwareEncoder,
-      burnSubtitlesAssPath: assPath
-    },
-    (progress) => {
-      emit(sender, {
-        jobId,
-        status: 'running',
-        ratio: progress.ratio,
-        outTimeUs: progress.outTimeUs,
-        speed: progress.speed
-      })
-    }
-  )
+  const handle =
+    request.engine === 'remotion'
+      ? startRemotionExport(
+          document,
+          {
+            outputPath: request.outputPath,
+            width: request.width,
+            height: request.height,
+            frameRate: request.frameRate,
+            useHardwareEncoder: request.useHardwareEncoder
+          },
+          // Remotion báo tỉ lệ chứ không báo mốc thời gian như ffmpeg.
+          (progress) =>
+            emit(sender, { jobId, status: 'running', ratio: progress.ratio, outTimeUs: 0 })
+        )
+      : startExport(
+          document,
+          {
+            outputPath: request.outputPath,
+            width: request.width,
+            height: request.height,
+            frameRate: request.frameRate,
+            sampleRate: document.settings.sampleRate,
+            crf: 21,
+            hardwareBitrate: '10M',
+            useHardwareEncoder: request.useHardwareEncoder,
+            burnSubtitlesAssPath: assPath
+          },
+          (progress) => {
+            emit(sender, {
+              jobId,
+              status: 'running',
+              ratio: progress.ratio,
+              outTimeUs: progress.outTimeUs,
+              speed: progress.speed
+            })
+          }
+        )
 
   activeJobs.set(jobId, handle)
 

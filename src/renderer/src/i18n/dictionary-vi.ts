@@ -142,6 +142,11 @@ export const dictionaryVi = {
     frameRate: 'Tốc độ khung hình',
     hardware: 'Tăng tốc phần cứng',
     hardwareUnavailable: 'Máy này không có bộ mã hoá phần cứng khả dụng',
+    engine: 'Bộ dựng hình',
+    engineFfmpeg: 'ffmpeg (nhanh)',
+    engineRemotion: 'Remotion (khớp preview)',
+    engineHint:
+      'ffmpeg nhanh hơn khoảng 6,7 lần. Remotion dùng chung bản dựng với preview nên bản xuất không lệch bản xem trước, và là đường duy nhất làm được chuyển cảnh cùng chữ động về sau.',
     burnSubtitles: 'Nung phụ đề vào hình',
     exportSrt: 'Xuất thêm file SRT',
     noSubtitles: 'Dự án chưa có phụ đề nào',
