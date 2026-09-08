@@ -405,6 +405,55 @@ export function applyEditorCommand(doc: ProjectDocument, command: EditorCommand)
       return OK
     }
 
+    case 'dubbing/add-session': {
+      if (doc.dubbingSessions.some((item) => item.id === command.session.id)) {
+        return fail(`Phiên lồng tiếng ${command.session.id} đã tồn tại`)
+      }
+      doc.dubbingSessions.push(command.session)
+      return OK
+    }
+
+    case 'dubbing/remove-session': {
+      const index = doc.dubbingSessions.findIndex((item) => item.id === command.sessionId)
+      if (index < 0) return fail(`Không tìm thấy phiên lồng tiếng ${command.sessionId}`)
+      doc.dubbingSessions.splice(index, 1)
+      return OK
+    }
+
+    case 'dubbing/update-segment': {
+      const session = doc.dubbingSessions.find((item) => item.id === command.sessionId)
+      if (!session) return fail(`Không tìm thấy phiên lồng tiếng ${command.sessionId}`)
+      const segment = session.segments.find((item) => item.id === command.segmentId)
+      if (!segment) return fail(`Không tìm thấy đoạn ${command.segmentId}`)
+
+      if (command.assetId !== undefined) segment.assetId = command.assetId
+      if (command.generatedDurationUs !== undefined) {
+        segment.generatedDurationUs = command.generatedDurationUs
+      }
+      if (command.status !== undefined) segment.status = command.status
+      segment.error = command.error
+      return OK
+    }
+
+    case 'dubbing/set-overflow-strategy': {
+      const session = doc.dubbingSessions.find((item) => item.id === command.sessionId)
+      if (!session) return fail(`Không tìm thấy phiên lồng tiếng ${command.sessionId}`)
+      const segment = session.segments.find((item) => item.id === command.segmentId)
+      if (!segment) return fail(`Không tìm thấy đoạn ${command.segmentId}`)
+
+      // Chỉ cho chọn tăng tốc khi nó thật sự đủ và còn trong ngưỡng nghe được.
+      if (command.strategy === 'speed-up') {
+        const span = segment.targetEndUs - segment.targetStartUs
+        const measured = segment.generatedDurationUs
+        if (measured === undefined) return fail('Chưa tạo audio nên chưa tính được tốc độ')
+        if (span <= 0 || measured / span > session.maxSpeedUp) {
+          return fail('Tăng tốc vượt quá giới hạn cho phép; hãy rút ngắn lời hoặc kéo dài timeline')
+        }
+      }
+      segment.overflowStrategy = command.strategy
+      return OK
+    }
+
     case 'asset/add': {
       if (doc.assets.some((asset) => asset.id === command.asset.id)) {
         return fail(`Media ${command.asset.id} đã có trong dự án`)

@@ -55,9 +55,9 @@ giao diện chỉ lộ ra khi chuyển tab với dữ liệu thật.
       để kiểm với mô hình thật.
 - [x] Giao diện tạo và sửa phụ đề (mô hình dữ liệu, ghi ASS/SRT, nung vào video)
 - [x] Phụ đề song ngữ và các preset dễ đọc
-- [ ] Lồng tiếng theo bản dịch: tạo từng segment, **đo thời lượng thật**, phát hiện tràn giờ
-- [ ] Khi tràn giờ: cho chọn tăng tốc trong giới hạn / rút ngắn nội dung / kéo dài trên timeline.
-      **Không bao giờ tự cắt mất lời nói.**
+- [x] Lồng tiếng theo bản dịch: tạo từng segment, **đo thời lượng thật**, phát hiện tràn giờ
+- [x] Khi tràn giờ: cho chọn tăng tốc trong giới hạn / rút ngắn nội dung / kéo dài trên timeline.
+      **Không bao giờ tự cắt mất lời nói.** — kiểm chứng bằng e2e đọc thẳng project.json
 
 ## Mốc 4 — AI Chat và hoàn thiện
 

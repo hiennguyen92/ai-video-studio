@@ -2,6 +2,7 @@ import { z } from 'zod'
 import type { MediaAsset } from '../domain/media-asset-types'
 import type { Transcript, Translation } from '../domain/transcript-types'
 import type { SubtitleCue, SubtitleStyle, SubtitleTrack } from '../domain/subtitle-types'
+import type { DubbingSession } from '../domain/transcript-types'
 
 /**
  * Tập lệnh chỉnh sửa — ĐƯỜNG GHI DUY NHẤT vào project document.
@@ -363,6 +364,55 @@ const replaceSubtitleCues = z.object({
   )
 })
 
+/* ── Lệnh lồng tiếng ───────────────────────────────────────────── */
+
+const dubbingSessionShape = z.custom<DubbingSession>(
+  (value) => {
+    if (!value || typeof value !== 'object') return false
+    const session = value as Partial<DubbingSession>
+    return (
+      typeof session.id === 'string' &&
+      typeof session.sourceId === 'string' &&
+      Array.isArray(session.segments)
+    )
+  },
+  { message: 'phiên lồng tiếng không hợp lệ' }
+)
+
+const addDubbingSession = z.object({
+  type: z.literal('dubbing/add-session'),
+  session: dubbingSessionShape
+})
+
+const removeDubbingSession = z.object({
+  type: z.literal('dubbing/remove-session'),
+  sessionId: z.string()
+})
+
+/**
+ * Ghi kết quả đã tạo cho một đoạn.
+ *
+ * `generatedDurationUs` là thời lượng ĐO ĐƯỢC của file audio, không phải ước
+ * lượng — mọi tính toán tràn giờ đều dựa vào con số này.
+ */
+const updateDubbingSegment = z.object({
+  type: z.literal('dubbing/update-segment'),
+  sessionId: z.string(),
+  segmentId: z.string(),
+  assetId: z.string().optional(),
+  generatedDurationUs: z.number().int().min(0).optional(),
+  status: z.enum(['pending', 'generating', 'ready', 'failed']).optional(),
+  error: z.string().max(1000).optional()
+})
+
+/** Hướng xử lý khi audio dài hơn khoảng gốc. Không có lựa chọn cắt bớt lời. */
+const setDubbingOverflowStrategy = z.object({
+  type: z.literal('dubbing/set-overflow-strategy'),
+  sessionId: z.string(),
+  segmentId: z.string(),
+  strategy: z.enum(['speed-up', 'shorten-text', 'extend-timeline']).optional()
+})
+
 export const editorCommandSchema = z.discriminatedUnion('type', [
   setProjectSettings,
   renameProject,
@@ -385,6 +435,10 @@ export const editorCommandSchema = z.discriminatedUnion('type', [
   removeTranslation,
   updateTranslationSegment,
   setTranslationGlossary,
+  addDubbingSession,
+  removeDubbingSession,
+  updateDubbingSegment,
+  setDubbingOverflowStrategy,
   addSubtitleTrack,
   removeSubtitleTrack,
   renameSubtitleTrack,

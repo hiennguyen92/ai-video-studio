@@ -9,6 +9,7 @@ import { selectDocument, useEditorStore } from '../../state/editor-store'
 import { useSpeechGeneration } from '../../hooks/use-speech-generation'
 import { useAudioInsertion, type InsertMode } from '../../hooks/use-audio-insertion'
 import { interpolate, useT } from '../../i18n/use-translation'
+import { DubbingPanel } from './dubbing-panel'
 import { ToolButton } from '../ui/tool-button'
 import { EmptyState } from '../ui/empty-state'
 import { IconPlay, IconSparkle, IconTrash } from '../ui/icons'
@@ -573,6 +574,18 @@ export function VoicePanel({
           />
         </div>
       )}
+
+      {/*
+        Lồng tiếng dùng CHUNG giọng và tham số đã chọn ở trên, nên nằm ngay đây
+        thay vì thành một tab riêng: tách ra sẽ phải chọn giọng hai lần.
+      */}
+      <DubbingPanel
+        voice={
+          providerId && model && voiceId
+            ? { providerId, model, voiceId, language, parameters, outputFormat }
+            : null
+        }
+      />
     </div>
   )
 }
