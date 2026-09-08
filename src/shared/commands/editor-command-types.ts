@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import type { MediaAsset } from '../domain/media-asset-types'
+import type { Transcript } from '../domain/transcript-types'
 
 /**
  * Tập lệnh chỉnh sửa — ĐƯỜNG GHI DUY NHẤT vào project document.
@@ -205,6 +206,49 @@ const updateAssetTags = z.object({
   tags: z.array(z.string().max(60)).max(30)
 })
 
+/* ── Lệnh transcript ───────────────────────────────────────────── */
+
+/**
+ * Transcript do engine nhận dạng sinh ra nên được kiểm tra hình dạng tối thiểu,
+ * giống cách `asset/add` làm: dữ liệu đã qua adapter và parser rồi mới tới đây.
+ */
+const transcriptShape = z.custom<Transcript>(
+  (value) => {
+    if (!value || typeof value !== 'object') return false
+    const transcript = value as Partial<Transcript>
+    return (
+      typeof transcript.id === 'string' &&
+      typeof transcript.assetId === 'string' &&
+      Array.isArray(transcript.segments)
+    )
+  },
+  { message: 'transcript không hợp lệ' }
+)
+
+const addTranscript = z.object({
+  type: z.literal('transcript/add'),
+  transcript: transcriptShape
+})
+
+const removeTranscript = z.object({
+  type: z.literal('transcript/remove'),
+  transcriptId: z.string()
+})
+
+const updateTranscriptSegment = z.object({
+  type: z.literal('transcript/update-segment'),
+  transcriptId: z.string(),
+  segmentId: z.string(),
+  text: z.string().max(5000)
+})
+
+/** Gộp hai đoạn liền nhau — hay dùng khi engine cắt giữa câu. */
+const mergeTranscriptSegments = z.object({
+  type: z.literal('transcript/merge-segments'),
+  transcriptId: z.string(),
+  segmentId: z.string()
+})
+
 export const editorCommandSchema = z.discriminatedUnion('type', [
   setProjectSettings,
   renameProject,
@@ -219,6 +263,10 @@ export const editorCommandSchema = z.discriminatedUnion('type', [
   splitClip,
   duplicateClip,
   updateClip,
+  addTranscript,
+  removeTranscript,
+  updateTranscriptSegment,
+  mergeTranscriptSegments,
   addAsset,
   relinkAsset,
   removeAsset,

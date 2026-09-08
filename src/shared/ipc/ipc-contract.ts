@@ -43,6 +43,13 @@ export const IPC = {
   aiGenerateSpeech: 'ai:generate-speech',
   aiAttachGeneratedAudio: 'ai:attach-generated-audio',
 
+  sttTranscribe: 'stt:transcribe',
+  sttReadResult: 'stt:read-result',
+  whisperListModels: 'whisper:list-models',
+  whisperDownload: 'whisper:download',
+  whisperCancelDownload: 'whisper:cancel-download',
+  whisperDeleteModel: 'whisper:delete-model',
+
   jobList: 'job:list',
   jobCancel: 'job:cancel',
   jobClearFinished: 'job:clear-finished',
@@ -58,7 +65,8 @@ export const IPC = {
 /** Kênh main -> renderer. Tiến trình xuất được đẩy về chứ không để renderer hỏi liên tục. */
 export const IPC_EVENT = {
   exportProgress: 'export:progress',
-  jobChanged: 'job:changed'
+  jobChanged: 'job:changed',
+  whisperDownloadProgress: 'whisper:download-progress'
 } as const
 
 export type IpcChannel = (typeof IPC)[keyof typeof IPC]
@@ -198,6 +206,55 @@ export interface AttachGeneratedAudioResponse {
   alreadyInLibrary: boolean
 }
 
+/* ── Phiên âm ─────────────────────────────────────────────────── */
+
+export interface TranscribeIpcRequest {
+  projectId: string
+  providerId: string
+  sourcePath: string
+  sourceInUs: number
+  durationUs: number
+  language?: string
+  label: string
+}
+
+export interface TranscriptionSegmentDto {
+  startUs: number
+  endUs: number
+  text: string
+  words?: Array<{ startUs: number; endUs: number; text: string }>
+  speaker?: string
+}
+
+export interface TranscriptionResultDto {
+  language: string
+  languageAutoDetected: boolean
+  segments: TranscriptionSegmentDto[]
+}
+
+export interface WhisperModelDto {
+  id: string
+  fileName: string
+  approximateBytes: number
+  labelVi: string
+  labelEn: string
+  vietnameseQuality: 'kém' | 'khá' | 'tốt'
+  /** Đã tải xong và dùng được. */
+  downloaded: boolean
+  path?: string
+}
+
+export interface WhisperDownloadProgressEvent {
+  modelId: string
+  status: 'running' | 'succeeded' | 'failed' | 'cancelled'
+  receivedBytes: number
+  totalBytes?: number
+  /** Vắng khi máy chủ không báo tổng dung lượng — không đoán. */
+  ratio?: number
+  path?: string
+  error?: string
+}
+
 export interface AppInfo {
   version: string
   platform: string
@@ -236,6 +293,17 @@ export interface RendererApi {
     attachGeneratedAudio(
       request: AttachGeneratedAudioRequest
     ): Promise<IpcResult<AttachGeneratedAudioResponse>>
+  }
+  stt: {
+    transcribe(request: TranscribeIpcRequest): Promise<IpcResult<JobRecord>>
+    readResult(jobId: string): Promise<IpcResult<TranscriptionResultDto>>
+  }
+  whisper: {
+    listModels(): Promise<IpcResult<WhisperModelDto[]>>
+    download(modelId: string): Promise<IpcResult<void>>
+    cancelDownload(modelId: string): Promise<IpcResult<void>>
+    deleteModel(modelId: string): Promise<IpcResult<void>>
+    onDownloadProgress(listener: (event: WhisperDownloadProgressEvent) => void): () => void
   }
   jobs: {
     list(projectId: string): Promise<IpcResult<JobRecord[]>>

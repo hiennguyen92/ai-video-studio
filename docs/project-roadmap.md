@@ -43,9 +43,11 @@ giao diện chỉ lộ ra khi chuyển tab với dữ liệu thật.
 
 ## Mốc 3 — Phiên âm, dịch, phụ đề
 
-- [ ] Phiên âm có timestamp, chọn clip hoặc khoảng thời gian, tự nhận diện ngôn ngữ
-- [ ] Trình soạn transcript, nhấn vào đoạn để tua preview tới đúng vị trí
-- [ ] Phân biệt người nói khi provider hỗ trợ
+- [x] Phiên âm có timestamp, chọn clip hoặc khoảng thời gian, tự nhận diện ngôn ngữ
+      — chạy local bằng whisper.cpp, kiểm chứng bằng giọng nói thật
+- [x] Trình soạn transcript, nhấn vào đoạn để tua preview tới đúng vị trí
+- [ ] Phân biệt người nói khi provider hỗ trợ — whisper.cpp chỉ tách được theo
+      kênh audio, chưa làm; chờ provider có diarization thật
 - [ ] Dịch giữ liên kết theo từng segment, hiển thị song song, sửa được từng đoạn, có glossary
 - [ ] Giao diện tạo và sửa phụ đề (mô hình dữ liệu, ghi ASS/SRT, nung vào video **đã xong**)
 - [ ] Phụ đề song ngữ và các preset dễ đọc

@@ -6,6 +6,7 @@ import { MediaLibraryPanel } from './media-library-panel'
 import { AiSettingsPanel } from './ai-settings-panel'
 import { VoicePanel } from './voice-panel'
 import { MusicPanel } from './music-panel'
+import { TranscribePanel } from './transcribe-panel'
 
 /**
  * Panel trái — AI Studio (DESCRIPTION §3).
@@ -112,6 +113,15 @@ export function AiStudioPanel({
           </div>
         )}
 
+        {visitedTabs.has('transcribe') && (
+          <div className="studio-tab-panel" hidden={activeTab !== 'transcribe'}>
+            <TranscribePanel
+              onOpenSettings={openSettings}
+              credentialsVersion={credentialsVersion}
+            />
+          </div>
+        )}
+
         {visitedTabs.has('settings') && (
           <div className="studio-tab-panel" hidden={activeTab !== 'settings'}>
             <AiSettingsPanel
@@ -120,7 +130,7 @@ export function AiStudioPanel({
           </div>
         )}
 
-        {(activeTab === 'transcribe' || activeTab === 'translate' || activeTab === 'subtitles') && (
+        {(activeTab === 'translate' || activeTab === 'subtitles') && (
           <EmptyState title={t.studio.comingSoon} hint={t.studio.comingSoonHint} />
         )}
       </div>

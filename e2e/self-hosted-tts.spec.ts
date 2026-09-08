@@ -119,30 +119,29 @@ const studio = (): ReturnType<Page['getByRole']> => page.getByRole('region', { n
 test('provider tự host không đòi khoá API', async () => {
   await studio().getByRole('tab', { name: 'Cấu hình AI' }).click()
 
-  await expect(page.getByText('Máy chủ tự host (OpenAI-compatible)')).toBeVisible()
+  // Giới hạn trong thẻ của chính provider này: provider chạy local khác cũng có
+  // huy hiệu y hệt.
+  const card = page.locator('.provider-card', { hasText: 'Máy chủ tự host (OpenAI-compatible)' })
+  await expect(card).toBeVisible()
   // Không bắt buộc khoá thì huy hiệu phải nói vậy, không phải "Chưa có khoá".
-  await expect(page.getByText('Không bắt buộc khoá')).toBeVisible()
+  await expect(card.getByText('Không bắt buộc khoá')).toBeVisible()
   // Ô địa chỉ máy chủ được dựng từ khai báo của provider.
-  await expect(page.getByText('Địa chỉ máy chủ *')).toBeVisible()
+  await expect(card.getByText('Địa chỉ máy chủ *')).toBeVisible()
 })
 
 test('lưu địa chỉ máy chủ và kiểm tra kết nối thành công', async () => {
-  const addressField = page
-    .locator('.provider-card', { hasText: 'Máy chủ tự host' })
-    .locator('input[type="text"]')
-    .first()
-  await addressField.fill(serverBaseUrl)
+  const card = page.locator('.provider-card', { hasText: 'Máy chủ tự host' })
+  await card.locator('input[type="text"]').first().fill(serverBaseUrl)
 
-  await page.getByRole('button', { name: 'Lưu cấu hình' }).click()
+  await card.getByRole('button', { name: 'Lưu cấu hình' }).click()
   await expect(
     page.getByText('Đã lưu cấu hình cho Máy chủ tự host (OpenAI-compatible)')
   ).toBeVisible()
 
-  await page
-    .locator('.provider-card', { hasText: 'Máy chủ tự host' })
-    .getByRole('button', { name: 'Kiểm tra kết nối' })
-    .click()
-  await expect(page.getByText('Kết nối được')).toBeVisible({ timeout: 30_000 })
+  await card.getByRole('button', { name: 'Kiểm tra kết nối' }).click()
+  await expect(card.locator('.provider-card__test')).toContainText('Kết nối được', {
+    timeout: 30_000
+  })
 })
 
 test('tải giọng từ máy chủ tự host mà không cần khoá', async () => {

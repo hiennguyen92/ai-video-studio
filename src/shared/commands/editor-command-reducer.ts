@@ -247,6 +247,56 @@ export function applyEditorCommand(doc: ProjectDocument, command: EditorCommand)
       return OK
     }
 
+    case 'transcript/add': {
+      if (doc.transcripts.some((item) => item.id === command.transcript.id)) {
+        return fail(`Transcript ${command.transcript.id} đã tồn tại`)
+      }
+      doc.transcripts.push(command.transcript)
+      return OK
+    }
+
+    case 'transcript/remove': {
+      const index = doc.transcripts.findIndex((item) => item.id === command.transcriptId)
+      if (index < 0) return fail(`Không tìm thấy transcript ${command.transcriptId}`)
+      doc.transcripts.splice(index, 1)
+      // Bản dịch mất gốc thì không còn ý nghĩa; xoá theo để không tạo dữ liệu mồ côi.
+      doc.translations = doc.translations.filter(
+        (translation) => translation.transcriptId !== command.transcriptId
+      )
+      return OK
+    }
+
+    case 'transcript/update-segment': {
+      const transcript = doc.transcripts.find((item) => item.id === command.transcriptId)
+      if (!transcript) return fail(`Không tìm thấy transcript ${command.transcriptId}`)
+      const segment = transcript.segments.find((item) => item.id === command.segmentId)
+      if (!segment) return fail(`Không tìm thấy đoạn ${command.segmentId}`)
+
+      segment.text = command.text
+      // Đánh dấu đã sửa tay để lần phiên âm lại không ghi đè công sức người dùng.
+      segment.edited = true
+      // Timestamp mức từ không còn khớp với chữ mới; bỏ đi thay vì giữ dữ liệu sai.
+      segment.words = undefined
+      return OK
+    }
+
+    case 'transcript/merge-segments': {
+      const transcript = doc.transcripts.find((item) => item.id === command.transcriptId)
+      if (!transcript) return fail(`Không tìm thấy transcript ${command.transcriptId}`)
+      const index = transcript.segments.findIndex((item) => item.id === command.segmentId)
+      if (index < 0) return fail(`Không tìm thấy đoạn ${command.segmentId}`)
+      if (index + 1 >= transcript.segments.length) return fail('Không có đoạn kế tiếp để gộp')
+
+      const current = transcript.segments[index]
+      const next = transcript.segments[index + 1]
+      current.text = `${current.text} ${next.text}`.trim()
+      current.endUs = next.endUs
+      current.words = current.words && next.words ? [...current.words, ...next.words] : undefined
+      current.edited = true
+      transcript.segments.splice(index + 1, 1)
+      return OK
+    }
+
     case 'asset/add': {
       if (doc.assets.some((asset) => asset.id === command.asset.id)) {
         return fail(`Media ${command.asset.id} đã có trong dự án`)

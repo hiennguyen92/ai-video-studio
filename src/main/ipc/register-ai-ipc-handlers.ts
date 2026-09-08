@@ -21,7 +21,11 @@ import {
   setProviderConfig
 } from '../secrets/provider-config-store'
 import { bridgeJobEvents, jobQueue } from '../jobs/job-queue'
-import { getTtsAdapter, listProviderDescriptors } from '../ai/provider-registry'
+import {
+  getConfigurableAdapter,
+  getTtsAdapter,
+  listProviderDescriptors
+} from '../ai/provider-registry'
 import { attachGeneratedAudioAsset, enqueueSpeechGeneration } from '../ai/tts-generation-service'
 
 /**
@@ -51,7 +55,9 @@ async function adapterContextFor(providerId: string): Promise<{
   config: Record<string, string>
   signal: AbortSignal
 }> {
-  const adapter = getTtsAdapter(providerId)
+  // Tra chung, không riêng TTS: tra thiếu thì provider chạy local (khai báo
+  // credentialRequired: false) vẫn bị đòi khoá API mà nó không hề dùng.
+  const adapter = getConfigurableAdapter(providerId)
   const apiKey = await getCredential(providerId)
 
   // Máy chủ tự host thường chạy trong mạng nội bộ và không cần xác thực, nên
@@ -104,7 +110,8 @@ export function registerAiIpcHandlers(): void {
 
   ipcMain.handle(IPC.aiTestConnection, (_event, providerId: string) =>
     guard(async () => {
-      const adapter = getTtsAdapter(providerId)
+      // Dùng tra cứu chung: provider phiên âm cũng phải kiểm tra được kết nối.
+      const adapter = getConfigurableAdapter(providerId)
       if (!adapter) throw new Error(`Không có adapter cho provider "${providerId}"`)
       const context = await adapterContextFor(providerId)
       return adapter.testConnection(context)
@@ -113,7 +120,7 @@ export function registerAiIpcHandlers(): void {
 
   ipcMain.handle(IPC.aiListModels, (_event, providerId: string) =>
     guard(async () => {
-      const adapter = getTtsAdapter(providerId)
+      const adapter = getConfigurableAdapter(providerId)
       if (!adapter) throw new Error(`Không có adapter cho provider "${providerId}"`)
 
       // Một số provider đọc danh sách model qua API (ElevenLabs), số khác có

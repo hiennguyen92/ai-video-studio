@@ -87,11 +87,18 @@ test('tab Cấu hình AI liệt kê provider và cho biết kho bí mật đang 
   // Khớp chính xác: tên provider tự host cũng chứa chuỗi "OpenAI".
   await expect(page.getByText('OpenAI', { exact: true })).toBeVisible()
   await expect(page.getByText('Máy chủ tự host (OpenAI-compatible)')).toBeVisible()
+  await expect(page.getByText('whisper.cpp (chạy trong máy)')).toBeVisible()
   // safeStorage thật của Electron phải sẵn sàng trên macOS.
   await expect(page.getByText(/Kho bí mật:/)).toBeVisible()
-  // Chưa nhập gì thì cả hai provider đều ở trạng thái chưa có khoá.
+  // Chưa nhập gì thì hai provider dùng dịch vụ đám mây đều ở trạng thái chưa có khoá.
   await expect(page.getByText('Chưa có khoá', { exact: true })).toHaveCount(2)
-  await expect(page.getByText('Không bắt buộc khoá')).toHaveCount(1)
+
+  // Huy hiệu được kiểm theo TỪNG thẻ: đếm tổng sẽ phải sửa lại mỗi lần thêm
+  // provider chạy local, mà con số đó chẳng nói lên điều gì.
+  for (const name of ['Máy chủ tự host (OpenAI-compatible)', 'whisper.cpp (chạy trong máy)']) {
+    const card = page.locator('.provider-card', { hasText: name })
+    await expect(card.getByText('Không bắt buộc khoá')).toBeVisible()
+  }
 })
 
 test('lưu khoá qua safeStorage thật rồi đọc lại đúng trạng thái', async () => {
@@ -195,5 +202,8 @@ test('xoá khoá đưa provider về trạng thái chưa cấu hình', async () 
 
   await expect(page.getByText('Đã xoá khoá của OpenAI')).toBeVisible()
   await expect(page.getByText('Chưa có khoá', { exact: true })).toHaveCount(2)
-  await expect(page.getByText('Không bắt buộc khoá')).toHaveCount(1)
+  const openAiCard = page
+    .locator('.provider-card')
+    .filter({ has: page.getByText('OpenAI', { exact: true }) })
+  await expect(openAiCard.getByText('Chưa có khoá', { exact: true })).toBeVisible()
 })

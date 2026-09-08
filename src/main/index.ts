@@ -5,6 +5,10 @@ import { registerIpcHandlers } from './ipc/register-ipc-handlers'
 import { attachJobEventBridge, registerAiIpcHandlers } from './ipc/register-ai-ipc-handlers'
 import { jobQueue } from './jobs/job-queue'
 import {
+  cancelAllModelDownloads,
+  registerTranscriptionIpcHandlers
+} from './ipc/register-transcription-ipc-handlers'
+import {
   registerMediaProtocolHandler,
   registerMediaProtocolScheme
 } from './media/media-protocol-handler'
@@ -79,6 +83,7 @@ void app.whenReady().then(async () => {
   registerMediaProtocolHandler()
   registerIpcHandlers()
   registerAiIpcHandlers()
+  registerTranscriptionIpcHandlers()
   await ensureProjectsRoot()
 
   app.on('browser-window-created', (_event, window) => {
@@ -95,6 +100,7 @@ void app.whenReady().then(async () => {
 app.on('before-quit', () => {
   // Không để lại tiến trình ffmpeg mồ côi hay request đang bay khi người dùng thoát.
   cancelAllExports()
+  cancelAllModelDownloads()
   jobQueue.cancelAll()
 })
 

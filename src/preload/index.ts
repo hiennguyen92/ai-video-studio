@@ -6,6 +6,7 @@ import {
   type RendererApi
 } from '../shared/ipc/ipc-contract'
 import type { JobRecord } from '../shared/jobs/job-types'
+import type { WhisperDownloadProgressEvent } from '../shared/ipc/ipc-contract'
 
 /**
  * Cầu nối duy nhất giữa renderer và main.
@@ -46,6 +47,22 @@ const api: RendererApi = {
     capabilities: (providerId, model) => ipcRenderer.invoke(IPC.aiCapabilities, providerId, model),
     generateSpeech: (request) => ipcRenderer.invoke(IPC.aiGenerateSpeech, request),
     attachGeneratedAudio: (request) => ipcRenderer.invoke(IPC.aiAttachGeneratedAudio, request)
+  },
+  stt: {
+    transcribe: (request) => ipcRenderer.invoke(IPC.sttTranscribe, request),
+    readResult: (jobId) => ipcRenderer.invoke(IPC.sttReadResult, jobId)
+  },
+  whisper: {
+    listModels: () => ipcRenderer.invoke(IPC.whisperListModels),
+    download: (modelId) => ipcRenderer.invoke(IPC.whisperDownload, modelId),
+    cancelDownload: (modelId) => ipcRenderer.invoke(IPC.whisperCancelDownload, modelId),
+    deleteModel: (modelId) => ipcRenderer.invoke(IPC.whisperDeleteModel, modelId),
+    onDownloadProgress: (listener) => {
+      const handler = (_event: unknown, payload: WhisperDownloadProgressEvent): void =>
+        listener(payload)
+      ipcRenderer.on(IPC_EVENT.whisperDownloadProgress, handler)
+      return () => ipcRenderer.removeListener(IPC_EVENT.whisperDownloadProgress, handler)
+    }
   },
   jobs: {
     list: (projectId) => ipcRenderer.invoke(IPC.jobList, projectId),
