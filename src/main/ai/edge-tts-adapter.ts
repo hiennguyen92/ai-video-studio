@@ -95,12 +95,17 @@ function synthesizeOnce(
   request: TtsRequest,
   ssml: string,
   signal: AbortSignal
-): Promise<{ audio: Buffer; contentType?: string }> {
+): Promise<{ audio: Buffer; contentType?: string; completed: boolean }> {
   return new Promise((resolve, reject) => {
     const socket = new WebSocket(buildSocketUrl(), { headers: EDGE_TTS_HEADERS })
     const chunks: Buffer[] = []
     let contentType: string | undefined
     let settled = false
+    // Máy chủ báo đọc xong bằng `turn.end`. Không thấy nó mà kết nối đã đóng nghĩa
+    // là luồng bị cắt giữa chừng — quan sát thật: ra file MP3 mà ffprobe không
+    // đọc nổi ("Could not seek"). Nhận bừa phần thu được sẽ ghi một câu đọc cụt
+    // vào timeline, và chỉ lộ ra khi phát video.
+    let completed = false
 
     const finish = (error?: Error): void => {
       if (settled) return
@@ -112,7 +117,7 @@ function synthesizeOnce(
         // Kết nối có thể đã đóng sẵn; không có gì để dọn thêm.
       }
       if (error) reject(error)
-      else resolve({ audio: Buffer.concat(chunks), contentType })
+      else resolve({ audio: Buffer.concat(chunks), contentType, completed })
     }
 
     const onAbort = (): void => finish(new Error('Đã huỷ'))
@@ -130,12 +135,14 @@ function synthesizeOnce(
         if (message.path === 'audio') chunks.push(message.payload)
         return
       }
-      if (textMessagePath(data.toString('utf8')) === 'turn.end') finish()
+      if (textMessagePath(data.toString('utf8')) === 'turn.end') {
+        completed = true
+        finish()
+      }
     })
 
     socket.on('error', (error: Error) => finish(error))
-    // Máy chủ đóng kết nối cũng là một cách kết thúc bình thường; phần audio đã
-    // gom được vẫn dùng được, còn rỗng hay không thì nơi gọi tự xét.
+    // Đóng kết nối không phải lúc nào cũng là đọc xong; cờ `completed` phân biệt.
     socket.on('close', () => finish())
   })
 }
@@ -290,16 +297,21 @@ export const edgeTtsAdapter: TtsAdapter = {
       volume: signed(numberParameter(request.parameters, 'volume'), '%')
     })
 
-    // Thử lại khi ra RỖNG, không phải khi lỗi.
+    // Thử lại khi luồng KHÔNG TRỌN VẸN, không phải khi lỗi.
     //
-    // Đo thật: cùng một yêu cầu hợp lệ thỉnh thoảng đóng kết nối mà không trả byte
-    // nào, rồi lần sau lại chạy bình thường. Không thử lại thì người dùng nhận một
-    // file audio 0 byte làm giọng đọc và chỉ phát hiện khi phát video.
+    // Đo thật: cùng một yêu cầu hợp lệ thỉnh thoảng đóng kết nối sớm — có lần
+    // không trả byte nào, có lần trả một phần rồi cắt, ra file MP3 mà ffprobe
+    // không đọc nổi. Cả hai đều là hỏng im lặng: người dùng nhận một câu đọc cụt
+    // hoặc một file rỗng làm giọng đọc, và chỉ phát hiện khi phát video.
     let lastError: Error | undefined
     for (let attempt = 1; attempt <= 3; attempt += 1) {
       try {
-        const { audio, contentType } = await synthesizeOnce(request, ssml, context.signal)
-        if (audio.length > 0) {
+        const { audio, contentType, completed } = await synthesizeOnce(
+          request,
+          ssml,
+          context.signal
+        )
+        if (completed && audio.length > 0) {
           return {
             audio: new Uint8Array(audio),
             contentType: contentType ?? 'audio/mpeg',
@@ -317,7 +329,7 @@ export const edgeTtsAdapter: TtsAdapter = {
       providerId: PROVIDER_ID,
       message: lastError
         ? `Edge TTS không trả về audio: ${lastError.message}`
-        : 'Edge TTS đóng kết nối mà không trả về audio sau 3 lần thử.',
+        : 'Edge TTS đóng kết nối trước khi đọc xong, sau 3 lần thử.',
       retryable: true
     })
   },

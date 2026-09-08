@@ -105,6 +105,39 @@ live('Edge TTS gọi thật', () => {
     expect(durations[1]).toBeLessThan(durations[0] * 0.85)
   }, 180_000)
 
+  it('nhiều lần gọi liên tiếp đều ra file giải mã được, không có file cụt', async () => {
+    // Dịch vụ này thỉnh thoảng cắt luồng giữa chừng. Quan sát thật khi đọc chín
+    // câu liên tiếp: một câu ra file MP3 mà ffprobe không mở nổi. Adapter phải
+    // thấy thiếu `turn.end` rồi đọc lại, nên phép thử là gọi liên tiếp và bắt
+    // buộc MỌI file đều giải mã được.
+    const lines = [
+      'Gấp lại nhỏ như cây bút, bỏ túi quần luôn.',
+      'Kiêm cả sạc dự phòng, cổng USB và Type C.',
+      'Gập chân đế xuống là để bàn, rảnh cả hai tay.',
+      'Giỏ hàng màu cam ngay bên dưới nhé.',
+      'Mở ra hai giây là thành quạt.'
+    ]
+
+    for (const [index, text] of lines.entries()) {
+      const result = await edgeTtsAdapter.synthesize(context(), {
+        model: 'edge-neural',
+        voiceId: 'vi-VN-HoaiMyNeural',
+        text,
+        parameters: { rate: 0, pitch: 0, volume: 0 },
+        outputFormat: MP3_FORMAT
+      })
+
+      const audioPath = join(workDir, `lien-tiep-${index}.mp3`)
+      await writeFile(audioPath, result.audio)
+      const { probe } = await probeMediaFile(audioPath)
+
+      expect(probe.hasAudio).toBe(true)
+      // Câu ngắn nhất trong danh sách cũng phải hơn 1,5 giây; file cụt sẽ ngắn hơn
+      // hẳn hoặc không đọc được thời lượng.
+      expect(probe.durationUs).toBeGreaterThan(1_500_000)
+    }
+  }, 300_000)
+
   it('từ chối định dạng ngoài danh sách đã kiểm chứng, ngay tại chỗ', async () => {
     await expect(
       edgeTtsAdapter.synthesize(context(), {
