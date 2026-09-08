@@ -34,12 +34,18 @@ Mốc được chia theo `DESCRIPTION.md` §9. Mỗi mốc phải **chạy đư�
 | Thiếu khoá chỉ vô hiệu hoá tính năng phụ thuộc | ✅ | e2e |
 | Khoá sai báo lỗi rõ ràng | ✅ | e2e (chạm mạng thật, nhận 401) |
 | Provider TTS tự host (OmniVoice, Piper, XTTS…) | ✅ | 16 unit + 5 e2e trên máy chủ HTTP thật |
+| Adapter Microsoft Edge TTS, không cần khoá | ✅ | 18 unit + **6 phép thử gọi thật**; 2 giọng tiếng Việt |
+| Ước lượng độ dài đọc trước khi sinh, cảnh báo câu quá dài | ✅ | 12 unit + 7 e2e |
 
 **Đã trả xong nợ Mốc 2.** Trọn luồng chạy thật qua giao diện với khoá ElevenLabs, sửa bảy chỗ sai mà
 fixture không phát hiện được (xem README, mục "Đã kiểm chứng bằng API thật"), trong đó có hai lỗi
 giao diện chỉ lộ ra khi chuyển tab với dữ liệu thật.
 
-**Còn lại:** OpenAI TTS vẫn chưa gọi thật lần nào — cần một khoá OpenAI.
+**Còn lại của Mốc 2:**
+
+- OpenAI TTS vẫn chưa gọi thật lần nào — cần một khoá OpenAI.
+- Edge TTS có trả mốc thời gian theo TỪNG TỪ nhưng chưa dùng: hợp đồng `TtsResult`
+  chưa có chỗ nhận. Dùng được thì phụ đề khớp giọng đọc mà không cần chạy whisper.
 
 ## Mốc 3 — Phiên âm, dịch, phụ đề
 
@@ -103,7 +109,19 @@ giao diện chỉ lộ ra khi chuyển tab với dữ liệu thật.
 - ~~Phụ đề nảy chữ theo từng từ~~ — **không làm**, người dùng không cần
 - [x] Phát hiện cú máy trong footage thô + trích ảnh đại diện, để agent chọn cảnh
       bằng HÌNH — đường duy nhất dựng được video không có tiếng
-- [ ] Đổi mặc định xuất sang Remotion khi các tính năng trên đủ chín
+- [x] Chia lát cú máy quá dài — footage review quay điện thoại thường là MỘT cú
+      máy liên tục, ffmpeg không tìm được mốc nào và agent nhận đúng một ảnh cho
+      cả video. Lát chia đều được đánh dấu rõ là không phải chỗ chuyển cảnh.
+- [x] `set_canvas` — không có nó thì footage dọc nằm trong khung 16:9 và không
+      công cụ nào khác sửa được
+- [x] `set_clip_transition` — mô hình dữ liệu đã đỡ từ trước nhưng agent không
+      gọi được
+- [x] Nền hộp cho chữ overlay, chỉnh được cả trên giao diện lẫn qua công cụ
+- [x] Chạy thử trọn luồng trên footage thật: 98 giây một cú máy → video dọc 25,9
+      giây có chuyển cảnh, chữ và giọng đọc
+- [ ] Đổi mặc định xuất sang Remotion khi các tính năng trên đủ chín — hiện mặc
+      định vẫn là ffmpeg, chỉ tự chuyển sang Remotion khi dự án có chuyển cảnh
+      hoặc chữ overlay
 
 ## Backlog (chưa xếp lịch)
 
