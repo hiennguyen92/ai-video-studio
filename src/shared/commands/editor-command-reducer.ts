@@ -336,6 +336,75 @@ export function applyEditorCommand(doc: ProjectDocument, command: EditorCommand)
       return OK
     }
 
+    case 'subtitle/add-track': {
+      if (doc.subtitleTracks.some((item) => item.id === command.track.id)) {
+        return fail(`Track phụ đề ${command.track.id} đã tồn tại`)
+      }
+      doc.subtitleTracks.push(command.track)
+      return OK
+    }
+
+    case 'subtitle/remove-track': {
+      const index = doc.subtitleTracks.findIndex((item) => item.id === command.trackId)
+      if (index < 0) return fail(`Không tìm thấy track phụ đề ${command.trackId}`)
+      doc.subtitleTracks.splice(index, 1)
+      // Lane trên timeline đang trỏ tới track vừa xoá thì phải bỏ tham chiếu,
+      // nếu không preview sẽ đọc vào track không còn tồn tại.
+      for (const track of doc.tracks) {
+        if (track.subtitleTrackId === command.trackId) track.subtitleTrackId = undefined
+      }
+      return OK
+    }
+
+    case 'subtitle/rename-track': {
+      const track = doc.subtitleTracks.find((item) => item.id === command.trackId)
+      if (!track) return fail(`Không tìm thấy track phụ đề ${command.trackId}`)
+      track.name = command.name
+      return OK
+    }
+
+    case 'subtitle/set-style': {
+      const track = doc.subtitleTracks.find((item) => item.id === command.trackId)
+      if (!track) return fail(`Không tìm thấy track phụ đề ${command.trackId}`)
+      track.style = { ...command.style }
+      return OK
+    }
+
+    case 'subtitle/update-cue': {
+      const track = doc.subtitleTracks.find((item) => item.id === command.trackId)
+      if (!track) return fail(`Không tìm thấy track phụ đề ${command.trackId}`)
+      const cue = track.cues.find((item) => item.id === command.cueId)
+      if (!cue) return fail(`Không tìm thấy cue ${command.cueId}`)
+
+      const nextStart = command.startUs ?? cue.startUs
+      const nextEnd = command.endUs ?? cue.endUs
+      // Cue kết thúc trước khi bắt đầu sẽ biến mất khỏi preview mà không báo gì.
+      if (nextEnd <= nextStart) return fail('Thời điểm kết thúc phải sau thời điểm bắt đầu')
+
+      if (command.text !== undefined) cue.text = command.text
+      if (command.textSecondary !== undefined) cue.textSecondary = command.textSecondary
+      cue.startUs = nextStart
+      cue.endUs = nextEnd
+      cue.edited = true
+      return OK
+    }
+
+    case 'subtitle/remove-cue': {
+      const track = doc.subtitleTracks.find((item) => item.id === command.trackId)
+      if (!track) return fail(`Không tìm thấy track phụ đề ${command.trackId}`)
+      const index = track.cues.findIndex((item) => item.id === command.cueId)
+      if (index < 0) return fail(`Không tìm thấy cue ${command.cueId}`)
+      track.cues.splice(index, 1)
+      return OK
+    }
+
+    case 'subtitle/replace-cues': {
+      const track = doc.subtitleTracks.find((item) => item.id === command.trackId)
+      if (!track) return fail(`Không tìm thấy track phụ đề ${command.trackId}`)
+      track.cues = command.cues.map((cue) => ({ ...cue }))
+      return OK
+    }
+
     case 'asset/add': {
       if (doc.assets.some((asset) => asset.id === command.asset.id)) {
         return fail(`Media ${command.asset.id} đã có trong dự án`)

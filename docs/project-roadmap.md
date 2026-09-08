@@ -53,8 +53,8 @@ giao diện chỉ lộ ra khi chuyển tab với dữ liệu thật.
       **Chưa kiểm chứng với mô hình thật**: mới kiểm bằng máy chủ HTTP dựng sẵn.
       Chạy `LLM_BASE_URL=… LLM_MODEL=… npx vitest run src/main/ai/openai-compatible-translate-live`
       để kiểm với mô hình thật.
-- [ ] Giao diện tạo và sửa phụ đề (mô hình dữ liệu, ghi ASS/SRT, nung vào video **đã xong**)
-- [ ] Phụ đề song ngữ và các preset dễ đọc
+- [x] Giao diện tạo và sửa phụ đề (mô hình dữ liệu, ghi ASS/SRT, nung vào video)
+- [x] Phụ đề song ngữ và các preset dễ đọc
 - [ ] Lồng tiếng theo bản dịch: tạo từng segment, **đo thời lượng thật**, phát hiện tràn giờ
 - [ ] Khi tràn giờ: cho chọn tăng tốc trong giới hạn / rút ngắn nội dung / kéo dài trên timeline.
       **Không bao giờ tự cắt mất lời nói.**

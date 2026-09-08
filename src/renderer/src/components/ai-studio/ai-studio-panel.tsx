@@ -1,13 +1,13 @@
 import { useCallback, useState, type JSX } from 'react'
 import type { MediaAsset } from '../../../../shared/domain/media-asset-types'
 import { useT } from '../../i18n/use-translation'
-import { EmptyState } from '../ui/empty-state'
 import { MediaLibraryPanel } from './media-library-panel'
 import { AiSettingsPanel } from './ai-settings-panel'
 import { VoicePanel } from './voice-panel'
 import { MusicPanel } from './music-panel'
 import { TranscribePanel } from './transcribe-panel'
 import { TranslatePanel } from './translate-panel'
+import { SubtitlesPanel } from './subtitles-panel'
 
 /**
  * Panel trái — AI Studio (DESCRIPTION §3).
@@ -137,8 +137,10 @@ export function AiStudioPanel({
           </div>
         )}
 
-        {activeTab === 'subtitles' && (
-          <EmptyState title={t.studio.comingSoon} hint={t.studio.comingSoonHint} />
+        {visitedTabs.has('subtitles') && (
+          <div className="studio-tab-panel" hidden={activeTab !== 'subtitles'}>
+            <SubtitlesPanel />
+          </div>
         )}
       </div>
     </section>

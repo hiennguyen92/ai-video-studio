@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import type { MediaAsset } from '../domain/media-asset-types'
 import type { Transcript, Translation } from '../domain/transcript-types'
+import type { SubtitleCue, SubtitleStyle, SubtitleTrack } from '../domain/subtitle-types'
 
 /**
  * Tập lệnh chỉnh sửa — ĐƯỜNG GHI DUY NHẤT vào project document.
@@ -87,7 +88,9 @@ const updateTrack = z.object({
       locked: z.boolean(),
       volume: gainSchema,
       height: z.number().int().min(28).max(400),
-      role: z.enum(['dialogue', 'voiceover', 'music', 'sfx'])
+      role: z.enum(['dialogue', 'voiceover', 'music', 'sfx']),
+      /** Gắn lane phụ đề vào một SubtitleTrack; lane không trỏ đâu thì không hiện gì. */
+      subtitleTrackId: z.string()
     })
     .partial()
 })
@@ -295,6 +298,71 @@ const setTranslationGlossary = z.object({
   glossary: z.array(z.object({ from: z.string().max(200), to: z.string().max(200) })).max(200)
 })
 
+/* ── Lệnh phụ đề ───────────────────────────────────────────────── */
+
+const subtitleTrackShape = z.custom<SubtitleTrack>(
+  (value) => {
+    if (!value || typeof value !== 'object') return false
+    const track = value as Partial<SubtitleTrack>
+    return (
+      typeof track.id === 'string' && Array.isArray(track.cues) && typeof track.style === 'object'
+    )
+  },
+  { message: 'track phụ đề không hợp lệ' }
+)
+
+const addSubtitleTrack = z.object({
+  type: z.literal('subtitle/add-track'),
+  track: subtitleTrackShape
+})
+
+const removeSubtitleTrack = z.object({
+  type: z.literal('subtitle/remove-track'),
+  trackId: z.string()
+})
+
+const renameSubtitleTrack = z.object({
+  type: z.literal('subtitle/rename-track'),
+  trackId: z.string(),
+  name: z.string().min(1).max(120)
+})
+
+/** Thay cả bảng style; giao diện luôn sửa style theo cụm nên hoàn tác cũng theo cụm. */
+const setSubtitleStyle = z.object({
+  type: z.literal('subtitle/set-style'),
+  trackId: z.string(),
+  style: z.custom<SubtitleStyle>((value) => Boolean(value) && typeof value === 'object', {
+    message: 'style phụ đề không hợp lệ'
+  })
+})
+
+const updateSubtitleCue = z.object({
+  type: z.literal('subtitle/update-cue'),
+  trackId: z.string(),
+  cueId: z.string(),
+  text: z.string().max(5000).optional(),
+  textSecondary: z.string().max(5000).optional(),
+  startUs: z.number().int().min(0).optional(),
+  endUs: z.number().int().min(0).optional()
+})
+
+const removeSubtitleCue = z.object({
+  type: z.literal('subtitle/remove-cue'),
+  trackId: z.string(),
+  cueId: z.string()
+})
+
+/** Dựng lại toàn bộ cue từ transcript/bản dịch — thay hẳn danh sách cũ. */
+const replaceSubtitleCues = z.object({
+  type: z.literal('subtitle/replace-cues'),
+  trackId: z.string(),
+  cues: z.array(
+    z.custom<SubtitleCue>((value) => Boolean(value) && typeof value === 'object', {
+      message: 'cue không hợp lệ'
+    })
+  )
+})
+
 export const editorCommandSchema = z.discriminatedUnion('type', [
   setProjectSettings,
   renameProject,
@@ -317,6 +385,13 @@ export const editorCommandSchema = z.discriminatedUnion('type', [
   removeTranslation,
   updateTranslationSegment,
   setTranslationGlossary,
+  addSubtitleTrack,
+  removeSubtitleTrack,
+  renameSubtitleTrack,
+  setSubtitleStyle,
+  updateSubtitleCue,
+  removeSubtitleCue,
+  replaceSubtitleCues,
   addAsset,
   relinkAsset,
   removeAsset,

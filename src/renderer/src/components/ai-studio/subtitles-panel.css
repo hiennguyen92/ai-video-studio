@@ -1,0 +1,111 @@
+.subtitles-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding-bottom: var(--space-4);
+}
+
+.subtitles-panel__hint {
+  margin: 0;
+  padding: 0 var(--space-3);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  line-height: 1.55;
+}
+
+.subtitles-panel__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  padding: var(--space-2) var(--space-3);
+}
+
+.subtitles-panel__check {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--text);
+}
+
+/* Nói rõ tuỳ chọn đang tắt vì chưa đủ điều kiện, không để nó im lìm. */
+.subtitles-panel__check:has(input:disabled) {
+  color: var(--text-muted);
+}
+
+.subtitle-style {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+/* ── Danh sách cue ─────────────────────────────────────────────── */
+
+.cue-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: 0 var(--space-3);
+}
+
+.cue-row {
+  display: grid;
+  /* Mốc thời gian và nút xoá chiếm đúng chỗ cần, phần chữ lấy hết còn lại. */
+  grid-template-columns: auto 1fr auto;
+  gap: var(--space-2);
+  align-items: start;
+  padding: var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+}
+
+.cue-row__time {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--accent);
+  background: none;
+  border: none;
+  padding: var(--space-1) 0 0;
+  cursor: pointer;
+}
+
+.cue-row__time:hover {
+  text-decoration: underline;
+}
+
+.cue-row__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.cue-row__text {
+  width: 100%;
+  resize: vertical;
+  font-size: var(--text-sm);
+  line-height: 1.5;
+}
+
+/* Dòng phụ nhỏ và mờ hơn, giống cách nó hiện trên video. */
+.cue-row__text--secondary {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.cue-row__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.cue-row__badge {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  padding: 0 var(--space-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
