@@ -7,6 +7,7 @@ import {
   type ClipTransform,
   type TransitionKind
 } from './timeline-track-types'
+import { isNeutralColorGrade, type ClipColorGrade } from './clip-color-grade'
 import type { ClipMotion } from './clip-motion-types'
 import type { SubtitleStyle } from './subtitle-types'
 import type { TextAnimation } from './text-overlay-types'
@@ -40,6 +41,7 @@ export interface RenderPlanVideoClip {
   transform: ClipTransform
   /** Chuyển động trong clip; lớp vẽ tự tính theo khung hình hiện tại. */
   motion?: ClipMotion
+  colorGrade?: ClipColorGrade
   muted: boolean
   /**
    * Hiệu ứng xuất hiện, tính bằng khung.
@@ -134,7 +136,12 @@ export function resolveTransitionFrames(clip: Clip, fps: FrameRate): number {
 export function requiresRemotionRenderer(document: ProjectDocument): boolean {
   if (document.textOverlays.length > 0) return true
   return document.tracks.some((track) =>
-    track.clips.some((clip) => clip.transitionIn !== undefined || clip.motion !== undefined)
+    track.clips.some(
+      (clip) =>
+        clip.transitionIn !== undefined ||
+        clip.motion !== undefined ||
+        !isNeutralColorGrade(clip.colorGrade)
+    )
   )
 }
 
@@ -190,6 +197,7 @@ export function buildRenderPlan(document: ProjectDocument): RenderPlan {
           layerIndex,
           transform: clip.transform ?? DEFAULT_CLIP_TRANSFORM,
           motion: clip.motion,
+          colorGrade: clip.colorGrade,
           // Track hình bị tắt tiếng vẫn phải hiện hình, chỉ câm.
           muted: !audioTrackAudible(track, anySolo)
         })

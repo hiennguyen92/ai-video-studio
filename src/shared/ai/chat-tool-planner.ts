@@ -606,6 +606,30 @@ function planOne(context: ChatEditContext, tool: ChatToolName, args: unknown): P
       }
     }
 
+    case 'set_clip_color': {
+      const input = chatToolSchemas.set_clip_color.parse(args)
+      const clipId = resolveClipId(context, input.clipId)
+
+      if (input.reset) {
+        return {
+          tool,
+          description: 'Trả clip về màu gốc',
+          commands: [{ type: 'clip/set-color-grade', clipId }]
+        }
+      }
+
+      const { clipId: _ignored, reset: _reset, ...grade } = input
+      if (Object.keys(grade).length === 0) {
+        throw new Error('Chưa nêu thông số màu nào cần chỉnh')
+      }
+
+      return {
+        tool,
+        description: `Chỉnh màu clip (${Object.keys(grade).join(', ')})`,
+        commands: [{ type: 'clip/set-color-grade', clipId, grade }]
+      }
+    }
+
     case 'auto_duck_music': {
       const input = chatToolSchemas.auto_duck_music.parse(args)
       const { musicTrackIds, speechTrackIds } = guessDuckingTracks(document)

@@ -170,6 +170,57 @@ test('lia máy nói rõ hình bị cắt bớt', async () => {
   await expect(inspector().getByText(/phóng nền lên/)).toHaveCount(0)
 })
 
+test('chỉnh màu làm đổi hình, và mỗi thông số đổi một kiểu khác nhau', async () => {
+  const stage = page.locator('.preview__stage')
+  await inspector().getByLabel('Chuyển động', { exact: true }).selectOption('')
+  await seekToMiddle()
+
+  const neutral = await stage.screenshot()
+
+  const shots = new Map<string, string>()
+  for (const [label, value] of [
+    ['Độ sáng', '1.4'],
+    ['Tương phản', '1.4'],
+    ['Độ bão hoà', '0'],
+    ['Nhiệt độ màu', '1'],
+    ['Tối góc', '1']
+  ] as const) {
+    await inspector().getByLabel(label).fill(value)
+    await page.waitForTimeout(700)
+    shots.set(label, (await stage.screenshot()).toString('base64'))
+    await inspector().getByRole('button', { name: 'Về màu gốc' }).click()
+    await page.waitForTimeout(500)
+  }
+
+  for (const [label, image] of shots) {
+    expect(image, `"${label}" không làm đổi hình`).not.toBe(neutral.toString('base64'))
+  }
+
+  // Và năm thông số phải đổi hình theo năm cách KHÁC nhau; trùng nhau nghĩa là có
+  // thanh trượt đang nối nhầm vào cùng một chỗ.
+  expect(new Set(shots.values()).size).toBe(shots.size)
+})
+
+test('nút về màu gốc trả đúng khung hình ban đầu', async () => {
+  const stage = page.locator('.preview__stage')
+  await page.waitForTimeout(500)
+  const neutral = await stage.screenshot()
+
+  await inspector().getByLabel('Tương phản').fill('1.45')
+  await page.waitForTimeout(700)
+  expect((await stage.screenshot()).equals(neutral)).toBe(false)
+
+  await inspector().getByRole('button', { name: 'Về màu gốc' }).click()
+  await page.waitForTimeout(700)
+  expect((await stage.screenshot()).equals(neutral)).toBe(true)
+})
+
+test('giao diện nói thẳng là chưa hỗ trợ LUT', async () => {
+  // Bày một ô "LUT" chỉnh gần đúng bằng mấy bộ lọc chắp vá là đúng thứ §3.B cấm;
+  // nói ra giới hạn là cách trung thực duy nhất.
+  await expect(inspector().getByText(/Chưa hỗ trợ LUT/)).toBeVisible()
+})
+
 test('chuyển động đi tới file xuất ra, không chỉ sống trong preview', async () => {
   await inspector().getByLabel('Chuyển động', { exact: true }).selectOption('zoom-in')
   await inspector().getByLabel('Cường độ').fill('1')

@@ -219,6 +219,24 @@ export const chatToolSchemas = {
     intensity: z.number().min(0).max(1).optional()
   }),
 
+  /**
+   * Chỉnh màu clip.
+   *
+   * Nhận từng phần, nên gọi lại để sửa một thông số không xoá mất thông số khác.
+   * Bỏ trống mọi trường nghĩa là trả clip về màu gốc.
+   */
+  set_clip_color: z.object({
+    clipId: z.string().min(1).max(120).optional(),
+    brightness: z.number().min(0.5).max(1.5).optional(),
+    contrast: z.number().min(0.5).max(1.5).optional(),
+    saturation: z.number().min(0).max(2).optional(),
+    /** -1 lạnh, 0 giữ nguyên, 1 ấm. */
+    temperature: z.number().min(-1).max(1).optional(),
+    vignette: z.number().min(0).max(1).optional(),
+    /** Đặt true để trả clip về màu gốc, bỏ qua mọi trường khác. */
+    reset: z.boolean().optional()
+  }),
+
   auto_duck_music: z.object({
     duckVolume: gain.optional(),
     baseVolume: gain.optional(),
@@ -269,7 +287,9 @@ export const chatToolDescriptions: Record<ChatToolName, string> = {
   set_clip_transition:
     'Put a transition on the start of a clip, so it blends out of the clip before it. Use "none" to remove one. A transition eats into the clip, so it needs footage before the cut to play over.',
   set_clip_motion:
-    'Move the frame over the whole length of a clip: a slow push in or out, a slow pan, a punch in at the cut, or a shake. Use this on footage that barely moves — a still product shot with a slow push reads as edited, the same shot held still reads as a frozen photo. Use "none" to remove it.'
+    'Move the frame over the whole length of a clip: a slow push in or out, a slow pan, a punch in at the cut, or a shake. Use this on footage that barely moves — a still product shot with a slow push reads as edited, the same shot held still reads as a frozen photo. Use "none" to remove it.',
+  set_clip_color:
+    'Grade one clip: brightness, contrast, saturation, warm/cool temperature, and a vignette. Fields are applied on top of what is already set, so changing one does not clear the others. Pass reset to put the clip back to its original colour. There is no LUT support.'
 }
 
 /** Mô tả tham số cho mô hình — dựng thủ công để không phải kéo thêm thư viện. */
@@ -302,7 +322,9 @@ export const chatToolParameterHints: Record<ChatToolName, string> = {
   set_clip_transition:
     "{ clipId?: string, kind: 'none' | 'fade' | 'slide-left' | 'slide-right' | 'slide-up' | 'slide-down' | 'wipe-left' | 'wipe-right' | 'zoom' | 'whip-left' | 'whip-right' | 'blur' | 'glitch' | 'spin' | 'flash', durationSeconds?: number }",
   set_clip_motion:
-    "{ clipId?: string, kind: 'none' | 'zoom-in' | 'zoom-out' | 'pan-left' | 'pan-right' | 'pan-up' | 'pan-down' | 'punch-in' | 'shake', intensity?: number }"
+    "{ clipId?: string, kind: 'none' | 'zoom-in' | 'zoom-out' | 'pan-left' | 'pan-right' | 'pan-up' | 'pan-down' | 'punch-in' | 'shake', intensity?: number }",
+  set_clip_color:
+    '{ clipId?: string, brightness?: number, contrast?: number, saturation?: number, temperature?: number, vignette?: number, reset?: boolean }'
 }
 
 /**

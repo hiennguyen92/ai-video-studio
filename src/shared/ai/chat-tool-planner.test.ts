@@ -479,3 +479,64 @@ describe('công cụ chuyển động trong clip', () => {
     ).toHaveLength(1)
   })
 })
+
+describe('công cụ chỉnh màu clip', () => {
+  it('chỉnh một thông số không xoá mất thông số đã đặt trước', () => {
+    const { document, clipId } = withClip()
+
+    for (const args of [
+      { clipId, contrast: 1.3 },
+      { clipId, temperature: 0.6 }
+    ]) {
+      const plan = planChatToolCalls(context(document), [
+        { name: 'set_clip_color', arguments: args }
+      ])
+      expect(plan.failures).toEqual([])
+      for (const command of plan.steps.flatMap((step) => step.commands)) {
+        expect(applyEditorCommand(document, command).ok).toBe(true)
+      }
+    }
+
+    // Gọi lần hai chỉ nêu nhiệt độ; độ tương phản của lần một phải còn nguyên.
+    expect(document.tracks[0].clips[0].colorGrade).toMatchObject({
+      contrast: 1.3,
+      temperature: 0.6
+    })
+  })
+
+  it('reset đưa clip về màu gốc', () => {
+    const { document, clipId } = withClip()
+    for (const args of [
+      { clipId, saturation: 1.8 },
+      { clipId, reset: true }
+    ]) {
+      const plan = planChatToolCalls(context(document), [
+        { name: 'set_clip_color', arguments: args }
+      ])
+      for (const command of plan.steps.flatMap((step) => step.commands)) {
+        expect(applyEditorCommand(document, command).ok).toBe(true)
+      }
+    }
+
+    expect(document.tracks[0].clips[0].colorGrade).toBeUndefined()
+  })
+
+  it('gọi mà không nêu thông số nào thì báo lỗi, không im lặng bỏ qua', () => {
+    const { document, clipId } = withClip()
+    const plan = planChatToolCalls(context(document), [
+      { name: 'set_clip_color', arguments: { clipId } }
+    ])
+
+    expect(plan.steps).toEqual([])
+    expect(plan.failures).toHaveLength(1)
+  })
+
+  it('từ chối giá trị ngoài khoảng thay vì kẹp im lặng', () => {
+    const { document, clipId } = withClip()
+    expect(
+      planChatToolCalls(context(document), [
+        { name: 'set_clip_color', arguments: { clipId, brightness: 9 } }
+      ]).failures
+    ).toHaveLength(1)
+  })
+})

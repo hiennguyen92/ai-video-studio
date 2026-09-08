@@ -14,6 +14,11 @@ import type {
   RenderPlanTextOverlay,
   RenderPlanVideoClip
 } from '../shared/domain/remotion-render-plan'
+import {
+  colorGradeFilterCss,
+  temperatureOverlay,
+  vignetteBackgroundCss
+} from '../shared/domain/clip-color-grade'
 import { motionTransformAt, motionTransformCss } from '../shared/domain/clip-motion-types'
 import { wrapSubtitleText } from '../shared/domain/subtitle-types'
 
@@ -165,6 +170,12 @@ function VideoClip({ clip, url }: { clip: RenderPlanVideoClip; url: string }): J
   // đã đặt đúng chỗ, không phải một cách đặt chỗ khác.
   const motion = motionTransformCss(motionTransformAt(clip.motion, frame, clip.durationInFrames))
 
+  // Ám màu và tối góc nằm TRONG khung bao nên chúng đi theo chuyển động của clip.
+  // Đó là hành vi đúng cho hiệu ứng gắn với clip: chỉnh màu là chỉnh chính hình
+  // đó, không phải chỉnh khung ngắm.
+  const temperature = temperatureOverlay(clip.colorGrade)
+  const vignette = vignetteBackgroundCss(clip.colorGrade)
+
   return (
     <AbsoluteFill
       // Biến đổi của chuyển cảnh đi TRƯỚC biến đổi của clip: hiệu ứng vào phải
@@ -181,8 +192,29 @@ function VideoClip({ clip, url }: { clip: RenderPlanVideoClip; url: string }): J
         startFrom={clip.sourceFromFrame}
         playbackRate={clip.playbackRate}
         volume={clip.muted ? 0 : clip.volume * fade}
-        style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+        // Bộ lọc chỉnh màu đặt lên CHÍNH thẻ video, không đặt lên khung bao:
+        // khung bao đã mang bộ lọc của chuyển cảnh, hai chỗ cùng đặt `filter` thì
+        // cái sau đè mất cái trước.
+        style={{
+          width: '100%',
+          height: '100%',
+          objectFit: 'contain',
+          filter: colorGradeFilterCss(clip.colorGrade)
+        }}
       />
+
+      {temperature && (
+        <AbsoluteFill
+          style={{
+            backgroundColor: temperature.color,
+            opacity: temperature.opacity,
+            mixBlendMode: temperature.blendMode,
+            pointerEvents: 'none'
+          }}
+        />
+      )}
+
+      {vignette && <AbsoluteFill style={{ background: vignette, pointerEvents: 'none' }} />}
     </AbsoluteFill>
   )
 }

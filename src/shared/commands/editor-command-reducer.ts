@@ -1,3 +1,4 @@
+import { NEUTRAL_COLOR_GRADE, clampColorGrade } from '../domain/clip-color-grade'
 import { current, isDraft } from 'immer'
 import type { EditorCommand } from './editor-command-types'
 import type { ProjectDocument } from '../domain/project-document-types'
@@ -243,6 +244,22 @@ export function applyEditorCommand(doc: ProjectDocument, command: EditorCommand)
 
       const clip = track.clips[found.clipIndex]
       clip.motion = command.motion ? { ...command.motion } : undefined
+      return OK
+    }
+
+    case 'clip/set-color-grade': {
+      const found = locateClip(doc, command.clipId)
+      if (!found) return fail(`Không tìm thấy clip ${command.clipId}`)
+      const track = doc.tracks[found.trackIndex]
+      if (track.locked) return fail(`Track "${track.name}" đang bị khoá`)
+      if (track.kind !== 'video') return fail('Chỉ chỉnh màu được cho clip hình')
+
+      const clip = track.clips[found.clipIndex]
+      // Trộn vào giá trị đang có: chỉnh riêng một thông số không được xoá những
+      // thông số đã đặt trước đó.
+      clip.colorGrade = command.grade
+        ? clampColorGrade({ ...(clip.colorGrade ?? NEUTRAL_COLOR_GRADE), ...command.grade })
+        : undefined
       return OK
     }
 

@@ -229,6 +229,27 @@ const setClipMotion = z.object({
     .optional()
 })
 
+/**
+ * Đặt hoặc gỡ chỉnh màu của một clip.
+ *
+ * Nhận từng phần: chỉnh riêng độ tương phản không được xoá mất nhiệt độ đã đặt.
+ * Bỏ trống cả `grade` nghĩa là trả clip về màu gốc.
+ */
+const setClipColorGrade = z.object({
+  type: z.literal('clip/set-color-grade'),
+  clipId: z.string(),
+  grade: z
+    .object({
+      brightness: z.number().min(0.5).max(1.5),
+      contrast: z.number().min(0.5).max(1.5),
+      saturation: z.number().min(0).max(2),
+      temperature: z.number().min(-1).max(1),
+      vignette: z.number().min(0).max(1)
+    })
+    .partial()
+    .optional()
+})
+
 const updateClip = z.object({
   type: z.literal('clip/update'),
   clipId: z.string(),
@@ -562,6 +583,7 @@ export const editorCommandSchema = z.discriminatedUnion('type', [
   updateClip,
   setClipTransition,
   setClipMotion,
+  setClipColorGrade,
   addTranscript,
   removeTranscript,
   updateTranscriptSegment,

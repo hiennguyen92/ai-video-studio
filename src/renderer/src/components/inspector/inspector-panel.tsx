@@ -12,6 +12,7 @@ import { selectDocument, useEditorStore } from '../../state/editor-store'
 import { useT } from '../../i18n/use-translation'
 import { EmptyState } from '../ui/empty-state'
 import { ToolButton } from '../ui/tool-button'
+import { ClipColorControls } from './clip-color-controls'
 import { ClipMotionControls } from './clip-motion-controls'
 import { ClipTransitionControls } from './clip-transition-controls'
 import { AiChatPanel } from '../chat/ai-chat-panel'
@@ -159,6 +160,18 @@ export function InspectorPanel(): JSX.Element {
                   run(
                     [{ type: 'clip/set-motion', clipId: found.clip.id, motion }],
                     'Đổi chuyển động'
+                  )
+                }
+              />
+            )}
+
+            {found.track.kind === 'video' && (
+              <ClipColorControls
+                clip={found.clip}
+                onChange={(grade) =>
+                  run(
+                    [{ type: 'clip/set-color-grade', clipId: found.clip.id, grade }],
+                    'Chỉnh màu clip'
                   )
                 }
               />

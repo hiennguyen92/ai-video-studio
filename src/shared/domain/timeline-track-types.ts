@@ -1,3 +1,4 @@
+import type { ClipColorGrade } from './clip-color-grade'
 import type { ClipMotion } from './clip-motion-types'
 import type { Micros } from './time-units'
 
@@ -98,6 +99,8 @@ export interface Clip {
    * cái này đổi theo từng khung hình.
    */
   motion?: ClipMotion
+  /** Chỉnh màu: sáng, tương phản, bão hoà, nhiệt độ, tối góc. */
+  colorGrade?: ClipColorGrade
   /**
    * Hiệu ứng khi clip này xuất hiện.
    *
