@@ -205,12 +205,12 @@ test('tạo track phụ đề từ bản phiên âm', async () => {
 test('cue hiện lên preview đúng thời điểm và biến mất khi ra ngoài khoảng', async () => {
   // Tua vào giữa cue đầu tiên.
   await page.locator('.cue-row').first().locator('.cue-row__time').click()
-  await expect(page.locator('.subtitle-overlay')).toContainText('First caption')
+  await expect(page.locator('.subtitle-cue')).toContainText('First caption')
 
   // Sang cue thứ hai: cue đầu phải BIẾN MẤT, không dính lại trên màn hình.
   await page.locator('.cue-row').nth(1).locator('.cue-row__time').click()
-  await expect(page.locator('.subtitle-overlay')).toContainText('Second caption')
-  await expect(page.locator('.subtitle-overlay')).not.toContainText('First caption')
+  await expect(page.locator('.subtitle-cue')).toContainText('Second caption')
+  await expect(page.locator('.subtitle-cue')).not.toContainText('First caption')
 })
 
 test('sửa cue đổi luôn chữ trên preview', async () => {
@@ -220,7 +220,7 @@ test('sửa cue đổi luôn chữ trên preview', async () => {
 
   await firstCue.locator('.cue-row__time').click()
   // Cùng một nguồn dữ liệu nên preview đổi theo ngay, không cần dựng lại gì.
-  await expect(page.locator('.subtitle-overlay')).toContainText('Chữ đã sửa')
+  await expect(page.locator('.subtitle-cue')).toContainText('Chữ đã sửa')
 })
 
 test('đổi kiểu chữ được lưu vào dự án', async () => {

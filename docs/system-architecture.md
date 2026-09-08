@@ -245,9 +245,25 @@ ProjectDocument (micro giây)
    ▼
 RenderPlan (khung hình)
    │
-   ├─► ProjectComposition ──► @remotion/player   (preview)
-   └─► ProjectComposition ──► renderMedia        (xuất file)
+   ├─► ProjectComposition ──► @remotion/player   (preview — ĐANG DÙNG)
+   └─► ProjectComposition ──► renderMedia        (xuất file — tuỳ chọn)
 ```
+
+Preview đã chuyển hẳn sang Player: lớp cũ tự xếp thẻ `<video>` và lớp phủ phụ đề
+riêng đã bị gỡ. Nhờ vậy `usePlaybackEngine` — bộ đồng bộ thẻ media viết tay — cũng
+không còn cần, và phụ đề chỉ còn MỘT nơi vẽ.
+
+### Đồng bộ đầu phát hai chiều
+
+Player và store đều giữ vị trí đang phát, và nối thẳng hai chiều sẽ thành vòng lặp
+vô tận:
+
+- Player chạy → `frameupdate` → cập nhật store (timeline, timecode đi theo)
+- store đổi từ chỗ khác (bấm thước, nhấn đoạn transcript) → `seekTo`
+
+Cờ `syncingFromPlayer` đánh dấu chiều đang chạy để chiều kia đứng yên, và chiều
+tua chỉ kích hoạt khi lệch quá một khung — gọi `seekTo` mỗi khung sẽ làm giật hình
+lúc phát.
 
 Quy đổi micro giây → khung hình nằm gọn trong `buildRenderPlan`, không rải trong
 component. Lệch một khung ở đó thì hình và tiếng lệch cả bản dựng mà không có lỗi
@@ -264,7 +280,7 @@ video phải tải trọn file mới phát được). Nó **không nhận đư�
 phục vụ những asset renderer đã đăng ký, tra theo id. Kèm token vì cổng loopback
 thì mọi tiến trình trên máy đều gọi được.
 
-### Hai cái bẫy đã gặp
+### Ba cái bẫy đã gặp
 
 - **`interface` không có index signature ngầm, `type` thì có.** `Composition` của
   Remotion đòi props gán được vào `Record<string, unknown>`, nên props phải khai
@@ -272,6 +288,12 @@ thì mọi tiến trình trên máy đều gọi được.
 - **Remotion phải nằm trong `dependencies`, không phải `devDependencies`.**
   electron-vite chỉ externalize `dependencies`; để ở dev thì `@remotion/renderer`
   bị nhồi vào bundle main và build hỏng.
+- **CSP chặn máy chủ media cục bộ.** `media-src` cũ chỉ cho `'self'` và
+  `avstudio-media:`, nên Player nạp `http://127.0.0.1:*` bị từ chối và video chỉ
+  hiện ô đen — không có lỗi nào nổi lên giao diện, chỉ có một dòng trong console.
+  Đã mở `media-src`/`img-src`/`connect-src` cho **loopback**, không mở cho http
+  nói chung. Remotion còn dùng một đoạn `data:audio` làm chỗ giữ chỗ nên `data:`
+  cũng phải được phép.
 
 ## Lưu trữ
 

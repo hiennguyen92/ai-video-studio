@@ -51,25 +51,6 @@
   transform-origin: center;
 }
 
-.preview__audio-pool {
-  display: none;
-}
-
-.subtitle-overlay {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  pointer-events: none;
-}
-
-.subtitle-overlay__block {
-  display: flex;
-  flex-direction: column;
-  align-items: inherit;
-  gap: 0.15em;
-}
-
 .preview__transport {
   display: flex;
   align-items: center;

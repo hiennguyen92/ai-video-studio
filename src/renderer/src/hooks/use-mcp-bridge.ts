@@ -70,19 +70,6 @@ function formatMedia(document: ProjectDocument): string {
 }
 
 export function useMcpBridge(): void {
-  const assets = useEditorStore((state) => state.session?.document.assets)
-
-  /**
-   * Báo main biết media của dự án đang mở.
-   *
-   * Máy chủ media chỉ phục vụ đúng những id đã đăng ký — không nhận đường dẫn từ
-   * URL — nên thiếu bước này thì Remotion không nạp được gì.
-   */
-  useEffect(() => {
-    if (!assets) return
-    window.api.mcp.registerMedia(assets.map((asset) => ({ id: asset.id, path: asset.source.path })))
-  }, [assets])
-
   useEffect(() => {
     return window.api.mcp.onRequest((request: McpBridgeRequest) => {
       const respond = (ok: boolean, data?: unknown, error?: string): void =>

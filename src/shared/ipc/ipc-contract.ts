@@ -48,7 +48,7 @@ export const IPC = {
   translateRun: 'translate:run',
   translateReadResult: 'translate:read-result',
   musicGenerate: 'music:generate',
-  mediaRegister: 'media:register',
+  mediaRegisterLocal: 'media:register-local',
   mcpRespond: 'mcp:respond',
   mcpStatus: 'mcp:status',
   chatSend: 'chat:send',
@@ -383,6 +383,15 @@ export interface RendererApi {
     pickFiles(): Promise<IpcResult<string[]>>
     import(request: ImportMediaRequest): Promise<IpcResult<ImportMediaResponse>>
     relink(asset: MediaAsset, newPath: string): Promise<IpcResult<MediaAsset>>
+    /**
+     * Đăng ký media của dự án đang mở với máy chủ http cục bộ và nhận lại URL.
+     *
+     * Remotion — cả Player lẫn bộ dựng khi xuất — chỉ nạp được http, không đọc
+     * được đường dẫn đĩa.
+     */
+    registerLocal(
+      entries: Array<{ id: string; path: string }>
+    ): Promise<IpcResult<Record<string, string>>>
     readWaveform(waveformPath: string): Promise<IpcResult<WaveformData>>
   }
   ai: {
@@ -411,8 +420,6 @@ export interface RendererApi {
     generate(request: GenerateMusicRequest): Promise<IpcResult<JobRecord>>
   }
   mcp: {
-    /** Báo main biết media của dự án đang mở, để phục vụ qua http cho Remotion. */
-    registerMedia(entries: Array<{ id: string; path: string }>): void
     /** Renderer trả lời một yêu cầu do máy chủ MCP gửi tới. */
     respond(response: McpBridgeResponse): void
     onRequest(listener: (request: McpBridgeRequest) => void): () => void

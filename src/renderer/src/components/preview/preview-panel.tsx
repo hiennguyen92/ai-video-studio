@@ -1,22 +1,18 @@
-import { useCallback, useMemo, type JSX } from 'react'
-import { resolveCompositionAt } from '../../../../shared/domain/composition-resolver'
+import { useCallback, type JSX } from 'react'
 import { formatTimecode, frameDurationUs } from '../../../../shared/domain/time-units'
-import { mediaFileUrl } from '../../../../shared/ipc/ipc-contract'
 import { selectDocument, selectDurationUs, useEditorStore } from '../../state/editor-store'
-import { usePlaybackEngine } from '../../playback/use-playback-engine'
 import { useT } from '../../i18n/use-translation'
 import { EmptyState } from '../ui/empty-state'
 import { ToolButton } from '../ui/tool-button'
 import { IconPause, IconPlay, IconStepBack, IconStepForward } from '../ui/icons'
-import { SubtitleOverlay } from './subtitle-overlay'
+import { RemotionPreviewStage } from './remotion-preview-stage'
 import './preview-panel.css'
 
 /**
  * Panel giữa — xem trước.
  *
- * Khung hình được ghép bằng các thẻ <video> xếp lớp thay vì vẽ lên canvas: giữ
- * được tăng tốc phần cứng khi giải mã, và đây cũng là cách duy nhất phát mượt
- * nhiều clip cùng lúc mà không tự viết bộ giải mã.
+ * Khung hình do `RemotionPreviewStage` vẽ, bằng ĐÚNG composition mà lúc xuất file
+ * dùng. Panel này chỉ còn lo khung viền, thanh điều khiển và các trạng thái rỗng.
  */
 
 export function PreviewPanel(): JSX.Element {
@@ -27,13 +23,6 @@ export function PreviewPanel(): JSX.Element {
   const setPlaying = useEditorStore((state) => state.setPlaying)
   const setPlayhead = useEditorStore((state) => state.setPlayhead)
   const durationUs = useEditorStore(selectDurationUs)
-
-  const registry = usePlaybackEngine(document)
-
-  const frame = useMemo(
-    () => (document ? resolveCompositionAt(document, playheadUs) : null),
-    [document, playheadUs]
-  )
 
   const frameStepUs = document ? frameDurationUs(document.settings.frameRate) : 33333
 
@@ -79,60 +68,9 @@ export function PreviewPanel(): JSX.Element {
               backgroundColor: settings.backgroundColor
             }}
           >
-            {frame?.video.map((layer) => {
-              const asset = document.assets.find((item) => item.id === layer.assetId)
-              if (!asset || asset.missing) return null
-
-              const { transform } = layer
-              const style = {
-                opacity: layer.opacity,
-                transform: `translate(${transform.x * 100}%, ${transform.y * 100}%) scale(${transform.scale}) rotate(${transform.rotationDeg}deg)`
-              }
-
-              // Ảnh không có dòng thời gian nên dùng <img>; video mới cần <video> để seek.
-              return asset.kind === 'image' ? (
-                <img
-                  key={layer.clip.id}
-                  className="preview__layer"
-                  style={style}
-                  src={mediaFileUrl(asset.source.path)}
-                  alt=""
-                  draggable={false}
-                />
-              ) : (
-                <video
-                  key={layer.clip.id}
-                  className="preview__layer"
-                  style={style}
-                  ref={(element) => registry.set(layer.clip.id, element)}
-                  src={mediaFileUrl(asset.source.path)}
-                  // Tiếng của video đi theo track audio riêng, không phát từ lớp hình.
-                  muted
-                  playsInline
-                  preload="auto"
-                />
-              )
-            })}
-
-            {frame && <SubtitleOverlay entries={frame.subtitles} stageHeight={settings.height} />}
+            <RemotionPreviewStage document={document} />
           </div>
         )}
-
-        {/* Clip audio không hiện hình nhưng vẫn cần một phần tử thật để phát tiếng. */}
-        <div className="preview__audio-pool" aria-hidden="true">
-          {frame?.audio.map((layer) => {
-            const asset = document.assets.find((item) => item.id === layer.assetId)
-            if (!asset || asset.missing) return null
-            return (
-              <audio
-                key={layer.clip.id}
-                ref={(element) => registry.set(layer.clip.id, element)}
-                src={mediaFileUrl(asset.source.path)}
-                preload="auto"
-              />
-            )
-          })}
-        </div>
       </div>
 
       <div className="preview__transport">

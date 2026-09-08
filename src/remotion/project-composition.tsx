@@ -135,6 +135,8 @@ function SubtitleCue({ cue, height }: { cue: RenderPlanSubtitleCue; height: numb
 
   return (
     <AbsoluteFill
+      // Class ổn định để gỡ lỗi và để kiểm thử bám vào; Remotion không tự đặt.
+      className="subtitle-cue"
       style={{
         justifyContent: vertical,
         alignItems: horizontal,
