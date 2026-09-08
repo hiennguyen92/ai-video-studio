@@ -348,6 +348,26 @@ export const dictionaryVi = {
     deleteSession: 'Xoá phiên lồng tiếng',
     segmentText: 'Lời đoạn {index}'
   },
+  chat: {
+    title: 'AI Chat',
+    tabInspector: 'Thuộc tính',
+    tabChat: 'AI Chat',
+    placeholder: 'Ví dụ: cắt clip đang chọn tại giây thứ 5',
+    send: 'Gửi',
+    sending: 'Đang xử lý…',
+    empty: 'Chưa có hội thoại nào.',
+    emptyHint:
+      'Hỏi bằng tiếng Việt. AI đọc được dự án, clip đang chọn và playhead, nhưng chỉ sửa được qua các thao tác đã kiểm tra dữ liệu.',
+    proposalTitle: 'AI đề xuất {count} thay đổi',
+    proposalHint: 'Xem trước rồi mới áp dụng. Áp dụng xong hoàn tác được bằng một bước.',
+    apply: 'Áp dụng',
+    discard: 'Bỏ qua',
+    rejected: 'Bị từ chối: {count}',
+    staleWarning: 'Dự án đã thay đổi kể từ lúc AI đọc. Hãy hỏi lại để AI đọc trạng thái mới nhất.',
+    clearHistory: 'Xoá hội thoại',
+    needsServer: 'Cần cấu hình máy chủ LLM ở tab Cấu hình AI trước khi dùng AI Chat.',
+    noProject: 'Mở một dự án để dùng AI Chat.'
+  },
   transcribe: {
     title: 'Phiên âm',
     modelSection: 'Model nhận dạng',

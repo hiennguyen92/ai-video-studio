@@ -1,0 +1,126 @@
+.ai-chat {
+  display: flex;
+  flex-direction: column;
+  /* Chiếm trọn panel để ô soạn luôn nằm đáy, không trôi theo nội dung. */
+  height: 100%;
+  min-height: 0;
+}
+
+.ai-chat__messages {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+}
+
+.chat-message {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-2);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+}
+
+/* Câu của người dùng lệch phải để đọc lướt thấy ngay ai đang nói. */
+.chat-message--user {
+  align-self: flex-end;
+  max-width: 92%;
+  background: var(--surface-3, var(--surface-2));
+}
+
+.chat-message--assistant {
+  align-self: flex-start;
+  max-width: 96%;
+}
+
+.chat-message__text {
+  margin: 0;
+  font-size: var(--text-sm);
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.chat-message__steps {
+  margin: 0;
+  padding-left: var(--space-4);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+/* ── Bản đề xuất ───────────────────────────────────────────────── */
+
+.chat-proposal {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0 var(--space-3) var(--space-2);
+  padding: var(--space-2);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+}
+
+.chat-proposal__title {
+  margin: 0;
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.chat-proposal__hint {
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.chat-proposal__steps {
+  margin: 0;
+  padding-left: var(--space-4);
+  font-size: var(--text-sm);
+  line-height: 1.6;
+}
+
+.chat-proposal__failures {
+  margin: 0;
+  padding-left: var(--space-4);
+  font-size: var(--text-xs);
+  color: var(--warning, #b7791f);
+  line-height: 1.5;
+}
+
+.chat-proposal__actions {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  padding-top: var(--space-1);
+}
+
+/* ── Ô soạn ────────────────────────────────────────────────────── */
+
+.ai-chat__composer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3) var(--space-3);
+  border-top: 1px solid var(--border);
+}
+
+.ai-chat__composer textarea {
+  width: 100%;
+  resize: vertical;
+  font-size: var(--text-sm);
+  line-height: 1.5;
+}
+
+.ai-chat__composer-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}

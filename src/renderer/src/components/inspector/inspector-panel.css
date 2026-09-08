@@ -30,3 +30,9 @@
 .inspector__actions {
   padding: var(--space-3);
 }
+
+/* Tab chat được giữ trong cây khi ẩn, nên phải chiếm trọn chiều cao lúc hiện. */
+.inspector__tab-panel {
+  height: 100%;
+  min-height: 0;
+}

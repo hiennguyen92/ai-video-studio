@@ -56,6 +56,13 @@ const api: RendererApi = {
     run: (request) => ipcRenderer.invoke(IPC.translateRun, request),
     readResult: (jobId) => ipcRenderer.invoke(IPC.translateReadResult, jobId)
   },
+  chat: {
+    send: (request) => ipcRenderer.invoke(IPC.chatSend, request),
+    readHistory: (projectId) => ipcRenderer.invoke(IPC.chatReadHistory, projectId),
+    writeHistory: (projectId, messages) =>
+      ipcRenderer.invoke(IPC.chatWriteHistory, projectId, messages),
+    clearHistory: (projectId) => ipcRenderer.invoke(IPC.chatClearHistory, projectId)
+  },
   whisper: {
     listModels: () => ipcRenderer.invoke(IPC.whisperListModels),
     download: (modelId) => ipcRenderer.invoke(IPC.whisperDownload, modelId),

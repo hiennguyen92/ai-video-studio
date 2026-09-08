@@ -1,4 +1,8 @@
 import type { GlossaryEntry } from '../../shared/domain/transcript-types'
+import { extractJsonBlock } from '../../shared/ai/model-json-extractor'
+
+// Giữ lại tên cũ cho nơi đang dùng; phần hiện thực nằm ở shared vì AI Chat cũng cần.
+export { extractJsonBlock }
 
 /**
  * Đọc kết quả dịch do mô hình ngôn ngữ trả về và ÉP giữ liên kết 1-1 với segment gốc.
@@ -29,52 +33,6 @@ export interface ParsedTranslation {
   unknownIds: string[]
   /** Id xuất hiện nhiều lần; chỉ lấy lần đầu. */
   duplicateIds: string[]
-}
-
-/**
- * Bóc khối JSON ra khỏi văn bản tự do.
- *
- * Quét theo dấu ngoặc thay vì dùng biểu thức chính quy vì chuỗi dịch hoàn toàn
- * có thể chứa "{" hoặc "}" — biểu thức chính quy sẽ cắt nhầm giữa câu.
- */
-export function extractJsonBlock(raw: string): string | null {
-  const text = raw.replace(/```(?:json)?/gi, '').trim()
-
-  // Bắt đầu từ dấu mở nào xuất hiện TRƯỚC. Luôn thử "{" trước sẽ cắt nhầm một
-  // mảng trần `[{...},{...}]` thành đúng phần tử đầu tiên, và mất sạch phần sau.
-  const candidates = [
-    ['{', '}'],
-    ['[', ']']
-  ]
-    .map(([open, close]) => ({ open, close, start: text.indexOf(open) }))
-    .filter((candidate) => candidate.start !== -1)
-    .sort((left, right) => left.start - right.start)
-
-  for (const { open, close, start } of candidates) {
-    let depth = 0
-    let inString = false
-    let escaped = false
-
-    for (let index = start; index < text.length; index += 1) {
-      const character = text[index]
-
-      if (inString) {
-        if (escaped) escaped = false
-        else if (character === '\\') escaped = true
-        else if (character === '"') inString = false
-        continue
-      }
-
-      if (character === '"') inString = true
-      else if (character === open) depth += 1
-      else if (character === close) {
-        depth -= 1
-        if (depth === 0) return text.slice(start, index + 1)
-      }
-    }
-  }
-
-  return null
 }
 
 /** Lấy mảng segment ra khỏi JSON đã bóc, chấp nhận cả mảng trần lẫn object bọc ngoài. */

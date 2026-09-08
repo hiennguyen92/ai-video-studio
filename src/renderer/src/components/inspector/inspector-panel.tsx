@@ -12,6 +12,7 @@ import { selectDocument, useEditorStore } from '../../state/editor-store'
 import { useT } from '../../i18n/use-translation'
 import { EmptyState } from '../ui/empty-state'
 import { ToolButton } from '../ui/tool-button'
+import { AiChatPanel } from '../chat/ai-chat-panel'
 import './inspector-panel.css'
 
 /**
@@ -48,6 +49,8 @@ export function InspectorPanel(): JSX.Element {
   const selection = useEditorStore((state) => state.selection)
   const run = useEditorStore((state) => state.run)
   const [activeTab, setActiveTab] = useState<'inspector' | 'chat'>('inspector')
+  // Chỉ dựng chat khi lần đầu mở, nhưng đã dựng thì giữ nguyên.
+  const [visitedChat, setVisitedChat] = useState(false)
 
   const found = useMemo(
     () => findClipWithTrack(document, selection.clipIds[0]),
@@ -82,15 +85,21 @@ export function InspectorPanel(): JSX.Element {
           role="tab"
           aria-selected={activeTab === 'chat'}
           className={`tab ${activeTab === 'chat' ? 'tab--active' : ''}`}
-          onClick={() => setActiveTab('chat')}
+          onClick={() => {
+            setActiveTab('chat')
+            setVisitedChat(true)
+          }}
         >
           {t.inspector.chat}
         </button>
       </div>
 
       <div className="panel__body">
-        {activeTab === 'chat' && (
-          <EmptyState title={t.studio.comingSoon} hint={t.studio.comingSoonHint} />
+        {/* Giữ chat trong cây khi chuyển tab, nếu không hội thoại đang soạn sẽ mất. */}
+        {visitedChat && (
+          <div className="inspector__tab-panel" hidden={activeTab !== 'chat'}>
+            <AiChatPanel />
+          </div>
         )}
 
         {activeTab === 'inspector' && !found && (

@@ -47,6 +47,10 @@ export const IPC = {
   sttReadResult: 'stt:read-result',
   translateRun: 'translate:run',
   translateReadResult: 'translate:read-result',
+  chatSend: 'chat:send',
+  chatReadHistory: 'chat:read-history',
+  chatWriteHistory: 'chat:write-history',
+  chatClearHistory: 'chat:clear-history',
   whisperListModels: 'whisper:list-models',
   whisperDownload: 'whisper:download',
   whisperCancelDownload: 'whisper:cancel-download',
@@ -255,6 +259,30 @@ export interface TranslationResultDto {
   glossaryViolations: Array<{ sourceSegmentId: string; from: string; to: string }>
 }
 
+export interface ChatMessageRecord {
+  id: string
+  role: 'user' | 'assistant'
+  content: string
+  createdAt: string
+  /** Mô tả các bước AI đề xuất ở lượt đó, để đọc lại sau khi mở lại dự án. */
+  steps?: string[]
+}
+
+export interface ChatSendRequest {
+  systemPrompt: string
+  projectContext: string
+  history: Array<{ role: 'user' | 'assistant'; content: string }>
+  userMessage: string
+}
+
+export interface ChatSendResponse {
+  reply: string
+  /** Lời gọi công cụ CHƯA kiểm tra — renderer mới là nơi xác thực và dịch sang lệnh. */
+  toolCalls: Array<{ name: string; arguments: unknown }>
+  plainTextOnly: boolean
+  model: string
+}
+
 export interface WhisperModelDto {
   id: string
   fileName: string
@@ -324,6 +352,12 @@ export interface RendererApi {
   translate: {
     run(request: TranslateIpcRequest): Promise<IpcResult<JobRecord>>
     readResult(jobId: string): Promise<IpcResult<TranslationResultDto>>
+  }
+  chat: {
+    send(request: ChatSendRequest): Promise<IpcResult<ChatSendResponse>>
+    readHistory(projectId: string): Promise<IpcResult<ChatMessageRecord[]>>
+    writeHistory(projectId: string, messages: ChatMessageRecord[]): Promise<IpcResult<void>>
+    clearHistory(projectId: string): Promise<IpcResult<void>>
   }
   whisper: {
     listModels(): Promise<IpcResult<WhisperModelDto[]>>

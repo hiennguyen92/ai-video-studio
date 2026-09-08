@@ -68,13 +68,14 @@ giao diện chỉ lộ ra khi chuyển tab với dữ liệu thật.
 
 ## Mốc 4 — AI Chat và hoàn thiện
 
-- [ ] AI Chat dùng chung cấu hình với AI Studio
-- [ ] Chat đọc được project, clip đang chọn, playhead
-- [ ] Tool chỉnh sửa có kiểm tra dữ liệu, ánh xạ sang tập lệnh sẵn có
-- [ ] Thay đổi nhiều bước tạo bản đề xuất xem trước được rồi mới áp dụng
-- [ ] Phát hiện project đã đổi trong lúc AI chạy
-- [ ] Lịch sử hội thoại lưu theo project
-- [ ] Auto-ducking: giảm nhạc nền tại đoạn có lời nói
+- [x] AI Chat dùng chung cấu hình với AI Studio (cùng provider máy chủ LLM với tab Dịch)
+- [x] Chat đọc được project, clip đang chọn, playhead
+- [x] Tool chỉnh sửa có kiểm tra dữ liệu, ánh xạ sang tập lệnh sẵn có
+- [x] Thay đổi nhiều bước tạo bản đề xuất xem trước được rồi mới áp dụng
+- [x] Phát hiện project đã đổi trong lúc AI chạy (so `revision` trước khi ghi)
+- [x] Lịch sử hội thoại lưu theo project (`chat.json` cạnh project.json)
+- [x] Auto-ducking: giảm nhạc nền tại đoạn có lời nói — cắt nhạc tại ranh giới lời
+      nói rồi hạ âm lượng mảnh ở giữa. Chuyển mức là bậc thang, chưa có automation.
 - [ ] Tạo nhạc bằng mô tả, nếu tìm được provider có API công khai ổn định
 
 ## Backlog (chưa xếp lịch)

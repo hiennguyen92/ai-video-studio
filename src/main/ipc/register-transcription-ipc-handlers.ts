@@ -1,5 +1,7 @@
 import { ipcMain, type WebContents } from 'electron'
 import type {
+  ChatMessageRecord,
+  ChatSendRequest,
   IpcResult,
   TranscribeIpcRequest,
   TranslateIpcRequest,
@@ -10,6 +12,8 @@ import { IPC, IPC_EVENT } from '../../shared/ipc/ipc-contract'
 import { ProviderError } from '../../shared/ai/ai-provider-contracts'
 import { enqueueTranscription, readTranscriptionResult } from '../ai/transcription-service'
 import { enqueueTranslation, readTranslationResult } from '../ai/translation-service'
+import { runChatTurn } from '../ai/chat-service'
+import { clearChatHistory, readChatHistory, writeChatHistory } from '../storage/chat-history-store'
 import {
   WHISPER_MODELS,
   deleteWhisperModel,
@@ -60,6 +64,22 @@ export function registerTranscriptionIpcHandlers(): void {
 
   ipcMain.handle(IPC.translateReadResult, (_event, jobId: string) =>
     guard(() => readTranslationResult(jobId))
+  )
+
+  ipcMain.handle(IPC.chatSend, (_event, request: ChatSendRequest) =>
+    guard(() => runChatTurn(request))
+  )
+
+  ipcMain.handle(IPC.chatReadHistory, (_event, projectId: string) =>
+    guard(() => readChatHistory(projectId))
+  )
+
+  ipcMain.handle(IPC.chatWriteHistory, (_event, projectId: string, messages: ChatMessageRecord[]) =>
+    guard(() => writeChatHistory(projectId, messages))
+  )
+
+  ipcMain.handle(IPC.chatClearHistory, (_event, projectId: string) =>
+    guard(() => clearChatHistory(projectId))
   )
 
   ipcMain.handle(IPC.whisperListModels, () =>

@@ -346,6 +346,27 @@ export const dictionaryEn: Dictionary = {
     deleteSession: 'Delete dubbing session',
     segmentText: 'Segment {index} text'
   },
+  chat: {
+    title: 'AI Chat',
+    tabInspector: 'Properties',
+    tabChat: 'AI Chat',
+    placeholder: 'For example: split the selected clip at 5 seconds',
+    send: 'Send',
+    sending: 'Working…',
+    empty: 'No conversation yet.',
+    emptyHint:
+      'Ask in your own words. The assistant can read the project, the selected clip and the playhead, but can only change things through validated actions.',
+    proposalTitle: 'The assistant proposes {count} changes',
+    proposalHint: 'Review before applying. Applying is a single undo step.',
+    apply: 'Apply',
+    discard: 'Discard',
+    rejected: 'Rejected: {count}',
+    staleWarning:
+      'The project changed since the assistant read it. Ask again so it sees the latest state.',
+    clearHistory: 'Clear conversation',
+    needsServer: 'Configure an LLM server in the AI settings tab before using AI Chat.',
+    noProject: 'Open a project to use AI Chat.'
+  },
   transcribe: {
     title: 'Transcribe',
     modelSection: 'Recognition model',
