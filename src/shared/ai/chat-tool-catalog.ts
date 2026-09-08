@@ -241,6 +241,18 @@ export const chatToolSchemas = {
     reset: z.boolean().optional()
   }),
 
+  /**
+   * Xoá một media khỏi thư viện.
+   *
+   * Mặc định TỪ CHỐI khi media đang được dùng: agent thường không biết trên
+   * timeline còn gì, và xoá nhầm sẽ kéo theo cả loạt clip biến mất. Muốn xoá
+   * kèm thì phải nói rõ `removeClips`.
+   */
+  remove_media: z.object({
+    assetId: z.string().min(1).max(120),
+    removeClips: z.boolean().optional()
+  }),
+
   auto_duck_music: z.object({
     duckVolume: gain.optional(),
     baseVolume: gain.optional(),
@@ -293,7 +305,9 @@ export const chatToolDescriptions: Record<ChatToolName, string> = {
   set_clip_motion:
     'Move the frame over the whole length of a clip: a slow push in or out, a slow pan, a punch in at the cut, or a shake. Use this on footage that barely moves — a still product shot with a slow push reads as edited, the same shot held still reads as a frozen photo. Use "none" to remove it.',
   set_clip_color:
-    'Grade one clip: brightness, contrast, saturation, warm/cool temperature, and a vignette. Fields are applied on top of what is already set, so changing one does not clear the others. Pass reset to put the clip back to its original colour. There is no LUT support.'
+    'Grade one clip: brightness, contrast, saturation, warm/cool temperature, and a vignette. Fields are applied on top of what is already set, so changing one does not clear the others. Pass reset to put the clip back to its original colour. There is no LUT support.',
+  remove_media:
+    'Remove one asset from the media library. Refuses if any clip on the timeline still uses it; pass removeClips to delete those clips as well. The file on disk is never touched.'
 }
 
 /** Mô tả tham số cho mô hình — dựng thủ công để không phải kéo thêm thư viện. */
@@ -328,7 +342,8 @@ export const chatToolParameterHints: Record<ChatToolName, string> = {
   set_clip_motion:
     "{ clipId?: string, kind: 'none' | 'zoom-in' | 'zoom-out' | 'pan-left' | 'pan-right' | 'pan-up' | 'pan-down' | 'punch-in' | 'shake', intensity?: number }",
   set_clip_color:
-    '{ clipId?: string, brightness?: number, contrast?: number, saturation?: number, temperature?: number, vignette?: number, reset?: boolean }'
+    '{ clipId?: string, brightness?: number, contrast?: number, saturation?: number, temperature?: number, vignette?: number, reset?: boolean }',
+  remove_media: '{ assetId: string, removeClips?: boolean }'
 }
 
 /**

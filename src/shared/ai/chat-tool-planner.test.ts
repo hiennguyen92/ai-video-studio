@@ -540,3 +540,55 @@ describe('công cụ chỉnh màu clip', () => {
     ).toHaveLength(1)
   })
 })
+
+describe('công cụ xoá media', () => {
+  it('xoá được media không ai dùng', () => {
+    const document = project()
+    const plan = planChatToolCalls(context(document), [
+      { name: 'remove_media', arguments: { assetId: 'asset_1' } }
+    ])
+
+    expect(plan.failures).toEqual([])
+    for (const command of plan.steps.flatMap((step) => step.commands)) {
+      expect(applyEditorCommand(document, command).ok).toBe(true)
+    }
+    expect(document.assets).toHaveLength(0)
+  })
+
+  it('từ chối khi media đang được dùng, và NÓI RA số clip sẽ mất', () => {
+    const { document } = withClip()
+    const plan = planChatToolCalls(context(document), [
+      { name: 'remove_media', arguments: { assetId: 'asset_1' } }
+    ])
+
+    expect(plan.steps).toEqual([])
+    // Chỉ nói "đang được dùng" thì agent không biết mình sắp làm mất bao nhiêu.
+    expect(plan.failures[0].reason).toContain('1 clip')
+    expect(document.assets).toHaveLength(1)
+  })
+
+  it('nói rõ removeClips thì xoá cả clip lẫn media', () => {
+    const { document } = withClip()
+    const plan = planChatToolCalls(context(document), [
+      { name: 'remove_media', arguments: { assetId: 'asset_1', removeClips: true } }
+    ])
+
+    expect(plan.failures).toEqual([])
+    for (const command of plan.steps.flatMap((step) => step.commands)) {
+      expect(applyEditorCommand(document, command).ok).toBe(true)
+    }
+
+    expect(document.assets).toHaveLength(0)
+    expect(document.tracks.flatMap((track) => track.clips)).toHaveLength(0)
+  })
+
+  it('media không có thật thì báo lỗi thay vì im lặng', () => {
+    const document = project()
+    const plan = planChatToolCalls(context(document), [
+      { name: 'remove_media', arguments: { assetId: 'asset_khong_co' } }
+    ])
+
+    expect(plan.steps).toEqual([])
+    expect(plan.failures).toHaveLength(1)
+  })
+})

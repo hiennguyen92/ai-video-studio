@@ -1,6 +1,6 @@
 import type { EditorCommand } from '../commands/editor-command-types'
 import type { ProjectDocument } from '../domain/project-document-types'
-import { findClip } from '../domain/project-document-types'
+import { countAssetUsages, findClip } from '../domain/project-document-types'
 import { DEFAULT_MOTION_INTENSITY } from '../domain/clip-motion-types'
 import { clipEndUs, type Clip } from '../domain/timeline-track-types'
 import { buildSubtitleCues } from '../domain/subtitle-cue-builder'
@@ -635,6 +635,30 @@ function planOne(context: ChatEditContext, tool: ChatToolName, args: unknown): P
         tool,
         description: `Chỉnh màu clip (${Object.keys(grade).join(', ')})`,
         commands: [{ type: 'clip/set-color-grade', clipId, grade }]
+      }
+    }
+
+    case 'remove_media': {
+      const input = chatToolSchemas.remove_media.parse(args)
+      const asset = document.assets.find((item) => item.id === input.assetId)
+      if (!asset) throw new Error(`Không tìm thấy media "${input.assetId}"`)
+
+      const usages = countAssetUsages(document, input.assetId)
+      // Chặn ngay tại đây thay vì để reducer từ chối: thông báo ở đây nói RA số
+      // clip sẽ mất, còn lỗi của reducer thì không.
+      if (usages > 0 && !input.removeClips) {
+        throw new Error(
+          `"${asset.name}" đang được dùng bởi ${usages} clip. Gọi lại với removeClips nếu muốn xoá cả chúng.`
+        )
+      }
+
+      return {
+        tool,
+        description:
+          usages > 0
+            ? `Xoá media "${asset.name}" và ${usages} clip đang dùng nó`
+            : `Xoá media "${asset.name}"`,
+        commands: [{ type: 'asset/remove', assetId: input.assetId, removeUsages: usages > 0 }]
       }
     }
 

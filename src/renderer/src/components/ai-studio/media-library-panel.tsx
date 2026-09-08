@@ -1,12 +1,21 @@
-import { useMemo, useState, type DragEvent, type JSX } from 'react'
+import { useCallback, useMemo, useState, type DragEvent, type JSX } from 'react'
 import type { MediaAsset } from '../../../../shared/domain/media-asset-types'
 import { formatClockTime } from '../../../../shared/domain/time-units'
 import { mediaFileUrl } from '../../../../shared/ipc/ipc-contract'
+import { countAssetUsages } from '../../../../shared/domain/project-document-types'
 import { useEditorStore } from '../../state/editor-store'
 import { interpolate, useT } from '../../i18n/use-translation'
 import { ToolButton } from '../ui/tool-button'
 import { EmptyState } from '../ui/empty-state'
-import { IconFilm, IconImage, IconImport, IconSearch, IconSparkle, IconWaveform } from '../ui/icons'
+import {
+  IconFilm,
+  IconImage,
+  IconImport,
+  IconSearch,
+  IconSparkle,
+  IconTrash,
+  IconWaveform
+} from '../ui/icons'
 import './media-library-panel.css'
 
 /**
@@ -38,8 +47,32 @@ export function MediaLibraryPanel({
 }): JSX.Element {
   const t = useT()
   const assets = useEditorStore((state) => state.session?.document.assets)
+  const document = useEditorStore((state) => state.session?.document)
+  const run = useEditorStore((state) => state.run)
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState<FilterKind>('all')
+
+  const handleRemove = useCallback(
+    (asset: MediaAsset) => {
+      if (!document) return
+      const usages = countAssetUsages(document, asset.id)
+
+      // Không dùng ở đâu thì xoá thẳng — vẫn hoàn tác được bằng Ctrl+Z. Chỉ hỏi
+      // khi việc xoá kéo theo mất clip trên timeline, và nói RA số clip sẽ mất.
+      if (usages > 0) {
+        const confirmed = window.confirm(
+          interpolate(t.media.removeConfirm, { name: asset.name, count: usages })
+        )
+        if (!confirmed) return
+      }
+
+      run(
+        [{ type: 'asset/remove', assetId: asset.id, removeUsages: usages > 0 }],
+        `Xoá media "${asset.name}"`
+      )
+    },
+    [document, run, t.media.removeConfirm]
+  )
 
   const filtered = useMemo(() => {
     const list = assets ?? []
@@ -173,6 +206,15 @@ export function MediaLibraryPanel({
               className="media-card__add"
               onClick={() => onAddToTimeline(asset)}
               disabled={asset.missing}
+            />
+
+            <ToolButton
+              label={interpolate(t.media.remove, { name: asset.name })}
+              icon={<IconTrash />}
+              iconOnly
+              variant="danger"
+              className="media-card__remove"
+              onClick={() => handleRemove(asset)}
             />
           </article>
         ))}

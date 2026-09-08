@@ -104,3 +104,17 @@ export function findClip(
 export function isAssetInUse(doc: ProjectDocument, assetId: string): boolean {
   return doc.tracks.some((track) => track.clips.some((clip) => clip.assetId === assetId))
 }
+
+/**
+ * Đếm số clip đang dùng một media.
+ *
+ * Xoá media sẽ xoá luôn những clip đó, nên lời hỏi xác nhận phải nói RA con số.
+ * "Media này đang được dùng, xoá không?" không đủ để người dùng biết mình sắp mất
+ * bao nhiêu thứ trên timeline.
+ */
+export function countAssetUsages(doc: ProjectDocument, assetId: string): number {
+  return doc.tracks.reduce(
+    (total, track) => total + track.clips.filter((clip) => clip.assetId === assetId).length,
+    0
+  )
+}

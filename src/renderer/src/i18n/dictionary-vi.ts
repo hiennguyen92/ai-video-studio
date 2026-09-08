@@ -60,6 +60,9 @@ export const dictionaryVi = {
     dragHint: 'Kéo vào timeline để dùng',
     missing: 'Thiếu file',
     noResults: 'Không có media nào khớp bộ lọc.',
+    remove: 'Xoá {name} khỏi thư viện',
+    removeConfirm:
+      'Xoá "{name}" khỏi thư viện? {count} clip đang dùng nó trên timeline cũng sẽ bị xoá. File gốc trên đĩa không bị đụng tới.',
     generatedBadge: 'AI'
   },
   preview: {

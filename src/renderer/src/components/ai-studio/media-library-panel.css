@@ -204,7 +204,19 @@
   transition: opacity var(--transition-fast);
 }
 
+/* Nút xoá nằm dưới nút thêm vào timeline, cùng góc phải trên. */
+.media-card__remove {
+  position: absolute;
+  right: 4px;
+  top: 36px;
+  background: rgba(11, 13, 18, 0.85);
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+}
+
 .media-card:hover .media-card__add,
-.media-card__add:focus-visible {
+.media-card:hover .media-card__remove,
+.media-card__add:focus-visible,
+.media-card__remove:focus-visible {
   opacity: 1;
 }

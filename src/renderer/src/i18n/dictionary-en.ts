@@ -56,6 +56,9 @@ export const dictionaryEn: Dictionary = {
     dragHint: 'Drag onto the timeline to use',
     missing: 'File missing',
     noResults: 'No media matches the filter.',
+    remove: 'Remove {name} from the library',
+    removeConfirm:
+      'Remove "{name}" from the library? The {count} clips using it on the timeline go too. The original file on disk is left alone.',
     generatedBadge: 'AI'
   },
   preview: {
