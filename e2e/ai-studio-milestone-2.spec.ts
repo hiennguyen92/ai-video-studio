@@ -107,10 +107,20 @@ test('tab Cấu hình AI liệt kê provider và cho biết kho bí mật đang 
   }
 })
 
+/**
+ * Thẻ provider theo TÊN, không theo chỉ số.
+ *
+ * Chọn bằng `.nth(1)` từng làm test này ngã khi thêm một provider mới lên đầu
+ * danh sách: nút bấm trúng một provider không cần khoá nên đang bị vô hiệu hoá.
+ */
+const providerCard = (name: string): ReturnType<Page['locator']> =>
+  page.locator('.provider-card').filter({ has: page.getByText(name, { exact: true }) })
+
 test('lưu khoá qua safeStorage thật rồi đọc lại đúng trạng thái', async () => {
+  const card = providerCard('OpenAI')
   const keyField = page.getByLabel('OpenAI API key')
   await keyField.fill('sk-khoa-gia-chi-de-kiem-thu-khong-hop-le')
-  await page.getByRole('button', { name: 'Lưu khoá' }).nth(1).click()
+  await card.getByRole('button', { name: 'Lưu khoá' }).click()
 
   await expect(page.getByText('Đã lưu khoá cho OpenAI')).toBeVisible()
   await expect(page.getByText('Đã lưu khoá', { exact: true })).toBeVisible()
@@ -120,7 +130,7 @@ test('lưu khoá qua safeStorage thật rồi đọc lại đúng trạng thái'
 
 test('khoá sai được báo lỗi rõ ràng chứ không treo', async () => {
   // Đây là một mục trong tiêu chí nghiệm thu §10: "API key thiếu hoặc sai".
-  await page.getByRole('button', { name: 'Kiểm tra kết nối' }).nth(1).click()
+  await providerCard('OpenAI').getByRole('button', { name: 'Kiểm tra kết nối' }).click()
 
   // Chấp nhận cả hai kết cục: provider từ chối khoá, hoặc máy không có mạng.
   // Điều bắt buộc là giao diện phải kết luận rõ ràng trong thời gian hữu hạn.
@@ -226,11 +236,9 @@ test('phần giảm nhạc dùng được mà không cần khoá AI, và nói r�
 
 test('xoá khoá đưa provider về trạng thái chưa cấu hình', async () => {
   await studio().getByRole('tab', { name: 'Cấu hình AI' }).click()
-  await page.getByRole('button', { name: 'Xoá khoá' }).nth(1).click()
+  const card = providerCard('OpenAI')
+  await card.getByRole('button', { name: 'Xoá khoá' }).click()
 
   await expect(page.getByText('Đã xoá khoá của OpenAI')).toBeVisible()
-  const openAiCard = page
-    .locator('.provider-card')
-    .filter({ has: page.getByText('OpenAI', { exact: true }) })
-  await expect(openAiCard.getByText('Chưa có khoá', { exact: true })).toBeVisible()
+  await expect(card.getByText('Chưa có khoá', { exact: true })).toBeVisible()
 })

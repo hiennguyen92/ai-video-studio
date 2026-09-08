@@ -5,6 +5,12 @@ import type { Voice } from '../../../../shared/ai/ai-provider-contracts'
 import type { AiSettingsSnapshot } from '../../../../shared/ipc/ipc-contract'
 import { mediaFileUrl } from '../../../../shared/ipc/ipc-contract'
 import { formatClockTime } from '../../../../shared/domain/time-units'
+import {
+  DEFAULT_SPEECH_CALIBRATION,
+  calibrateFromSamples,
+  estimateSpeechSeconds,
+  maxCharactersWithin
+} from '../../../../shared/ai/speech-duration-estimate'
 import { selectDocument, useEditorStore } from '../../state/editor-store'
 import { useSpeechGeneration } from '../../hooks/use-speech-generation'
 import { useAudioInsertion, type InsertMode } from '../../hooks/use-audio-insertion'
@@ -66,6 +72,8 @@ export function VoicePanel({
   const [script, setScript] = useState('')
   const [segments, setSegments] = useState<ScriptSegment[]>([])
   const [insertMode, setInsertMode] = useState<InsertMode>('playhead')
+  /** Độ dài mong muốn mỗi đoạn. Video ngắn thường 2–3 giây một câu. */
+  const [targetSeconds, setTargetSeconds] = useState(3)
   const [loadingVoices, setLoadingVoices] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -131,6 +139,45 @@ export function VoicePanel({
       cancelled = true
     }
   }, [providerId, model])
+
+  /**
+   * Nhịp đọc suy ra từ chính audio ĐÃ sinh trong dự án.
+   *
+   * Phải hiệu chỉnh chứ không dùng một hằng số: mỗi giọng và mỗi mức tốc độ đọc
+   * một nhịp khác nhau, nên con số của giọng này áp lên giọng kia sẽ báo "quá
+   * dài" sai hàng loạt. Chưa đủ mẫu thì lùi về mức mặc định, và giao diện nói rõ.
+   */
+  const calibration = useMemo(() => {
+    const samples = segments
+      .map((segment) => {
+        const assetId = states[segment.id]?.assetId
+        const asset = assetId ? document?.assets.find((item) => item.id === assetId) : undefined
+        if (!asset) return null
+        return {
+          characters: segment.text.trim().length,
+          seconds: asset.probe.durationUs / 1_000_000
+        }
+      })
+      .filter((sample): sample is { characters: number; seconds: number } => sample !== null)
+
+    return calibrateFromSamples(samples) ?? DEFAULT_SPEECH_CALIBRATION
+  }, [segments, states, document])
+
+  /** Tổng thời lượng cả kịch bản: đoạn nào đã có audio thì lấy số đo thật. */
+  const totalSeconds = useMemo(
+    () =>
+      segments.reduce((total, segment) => {
+        const assetId = states[segment.id]?.assetId
+        const asset = assetId ? document?.assets.find((item) => item.id === assetId) : undefined
+        return (
+          total +
+          (asset
+            ? asset.probe.durationUs / 1_000_000
+            : estimateSpeechSeconds(segment.text, calibration))
+        )
+      }, 0),
+    [segments, states, document, calibration]
+  )
 
   const providerStatus = settings?.providers.find((entry) => entry.descriptor.id === providerId)
   const hasCredential = providerStatus?.hasCredential ?? false
@@ -451,6 +498,40 @@ export function VoicePanel({
         )}
       </div>
 
+      {segments.length > 0 && (
+        <div className="voice-panel__budget">
+          <label>
+            <span className="field-row__label">{t.voice.targetSeconds}</span>
+            <input
+              type="number"
+              min={0.5}
+              max={60}
+              step={0.5}
+              value={targetSeconds}
+              aria-label={t.voice.targetSeconds}
+              onChange={(event) =>
+                setTargetSeconds(Math.max(0.5, Number(event.target.value) || targetSeconds))
+              }
+            />
+          </label>
+
+          <span className="field-row__value">
+            {interpolate(t.voice.estimatedTotal, { seconds: totalSeconds.toFixed(1) })}
+          </span>
+
+          {/*
+            Nói rõ con số đến từ đâu. Ước lượng mặc định dựng trên một giọng cụ
+            thể, nên với giọng khác nó có thể lệch — giấu điều đó đi thì người
+            dùng tin vào một con số không phải của giọng mình đang dùng.
+          */}
+          <span className="voice-panel__calibration">
+            {calibration.sampleCount > 0
+              ? interpolate(t.voice.estimateCalibrated, { count: calibration.sampleCount })
+              : t.voice.estimateDefault}
+          </span>
+        </div>
+      )}
+
       {segments.length === 0 && (
         <EmptyState title={t.voice.emptyScript} hint={t.voice.scriptPlaceholder} />
       )}
@@ -463,6 +544,11 @@ export function VoicePanel({
           : undefined
         const tooLong = limit !== undefined && segment.text.length > limit
         const busy = state.status === 'queued' || state.status === 'running'
+        const actualSeconds = asset ? asset.probe.durationUs / 1_000_000 : null
+        const estimatedSeconds = estimateSpeechSeconds(segment.text, calibration)
+        // Cảnh báo dựa trên số ĐO được khi đã có audio; chưa có thì dựa trên ước
+        // lượng. Cứ bám ước lượng cả khi đã đo được là báo sai ngay chỗ biết chắc.
+        const overBudget = (actualSeconds ?? estimatedSeconds) > targetSeconds
 
         return (
           <article key={segment.id} className="script-segment">
@@ -470,6 +556,28 @@ export function VoicePanel({
               <span className="script-segment__index">{index + 1}</span>
               <span className="script-segment__meta">
                 {interpolate(t.voice.characters, { count: segment.text.length })}
+                {' · '}
+                {/*
+                  Đã có audio thì hiện độ dài THẬT, không hiện ước lượng nữa: giữ
+                  con số ước lượng bên cạnh số đo được chỉ làm người đọc phân vân
+                  nên tin cái nào.
+                */}
+                <span className={overBudget ? 'script-segment__warning' : undefined}>
+                  {actualSeconds === null
+                    ? interpolate(t.voice.estimatedSeconds, {
+                        seconds: estimatedSeconds.toFixed(1)
+                      })
+                    : `${actualSeconds.toFixed(1)}s`}
+                </span>
+                {overBudget && (
+                  <span className="script-segment__warning">
+                    {' · '}
+                    {interpolate(t.voice.overBudget, {
+                      seconds: targetSeconds,
+                      characters: maxCharactersWithin(targetSeconds, calibration)
+                    })}
+                  </span>
+                )}
                 {tooLong && (
                   <span className="script-segment__warning">
                     {' · '}
