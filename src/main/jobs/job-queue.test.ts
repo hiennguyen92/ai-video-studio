@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises'
 import type { JobRecord } from '../../shared/jobs/job-types'
 import { ProviderError } from '../../shared/ai/ai-provider-contracts'
 import { jobQueue } from './job-queue'
-import { computeRequestFingerprint } from './job-result-cache'
+import { computeRequestFingerprint, resultBaseName } from './job-result-cache'
 
 /**
  * Kiểm thử vòng đời job — đúng những điều DESCRIPTION §6 đòi hỏi:
@@ -280,4 +280,108 @@ describe('computeRequestFingerprint', () => {
     expect(a).toBe(b)
     expect(a).not.toBe(c)
   })
+})
+
+describe('tên file kết quả', () => {
+  it('chín câu xếp hàng cùng lúc ra chín file KHÁC nhau', async () => {
+    const projectId = newProjectId()
+    const lines = [
+      'Bé bằng bàn tay mà thổi bay cả tờ giấy.',
+      'Gấp lại nhỏ như cây bút.',
+      'Mở ra hai giây là thành quạt.',
+      'Gió mạnh mà chạy rất êm.',
+      'Đủ mát cho cả mặt và cổ.',
+      'Gập chân đế xuống là để bàn.',
+      'Kiêm luôn đèn ngủ ánh vàng dịu.',
+      'Kiêm cả sạc dự phòng.',
+      'Giỏ hàng màu cam ngay bên dưới nhé.'
+    ]
+
+    // Xếp hàng TẤT CẢ trong cùng một nhịp, đúng như nút "Tạo audio" làm. Đặt tên
+    // theo Date.now() thì nhiều job rơi vào cùng một mili giây, trùng tên và ghi
+    // đè lên nhau — quan sát thật: 9 câu chỉ còn 2 file, timeline đọc sai câu.
+    const jobs = lines.map((text) => {
+      const fingerprint = computeRequestFingerprint({ task: 'tts', text })
+      return jobQueue.enqueue({
+        kind: 'tts',
+        projectId,
+        label: text,
+        fingerprint,
+        providerId: 'test',
+        model: 'test-model',
+        resultBaseName: resultBaseName('giong-doc', fingerprint),
+        handler: async () => ({ bytes: bytesOf(text), fileExtension: 'mp3' })
+      })
+    })
+
+    const finished = await Promise.all(
+      jobs.map((job) => waitForJob(job.id, (item) => item.status === 'succeeded'))
+    )
+
+    const paths = finished.map((job) => job.resultPath as string)
+    expect(new Set(paths).size).toBe(lines.length)
+
+    // Và nội dung thật trên đĩa phải khớp từng câu, không phải câu của job khác.
+    for (const [index, path] of paths.entries()) {
+      expect(await readFile(path, 'utf8')).toBe(lines[index])
+    }
+  }, 30_000)
+
+  it('cùng một yêu cầu vẫn ra cùng tên file, để dùng lại kết quả cũ', () => {
+    const fingerprint = computeRequestFingerprint({ task: 'tts', text: 'xin chào' })
+
+    expect(resultBaseName('giong-doc', fingerprint)).toBe(resultBaseName('giong-doc', fingerprint))
+    expect(resultBaseName('giong-doc', fingerprint)).not.toBe(
+      resultBaseName('giong-doc', computeRequestFingerprint({ task: 'tts', text: 'tạm biệt' }))
+    )
+  })
+})
+
+describe('chỉ mục cache khi nhiều job xong cùng lúc', () => {
+  it('không job nào ngã, và MỌI vân tay đều được nhớ lại', async () => {
+    const projectId = newProjectId()
+    const texts = Array.from({ length: 8 }, (_, index) => `câu số ${index}`)
+
+    const jobs = texts.map((text) => {
+      const fingerprint = computeRequestFingerprint({ task: 'tts', text })
+      return jobQueue.enqueue({
+        kind: 'tts',
+        projectId,
+        label: text,
+        fingerprint,
+        providerId: 'test',
+        model: 'test-model',
+        resultBaseName: resultBaseName('giong-doc', fingerprint),
+        handler: async () => ({ bytes: bytesOf(text), fileExtension: 'mp3' })
+      })
+    })
+
+    await Promise.all(jobs.map((job) => waitForJob(job.id, (item) => item.status === 'succeeded')))
+
+    // Xếp hàng lại y hệt: mọi job phải TRÚNG cache. Trượt một mục nghĩa là hai
+    // lượt ghi chỉ mục đã đè lên nhau và kết quả sẽ bị sinh lại — với provider
+    // tính tiền thì đó là tiền mất thật.
+    const again = texts.map((text) =>
+      jobQueue.enqueue({
+        kind: 'tts',
+        projectId,
+        label: text,
+        fingerprint: computeRequestFingerprint({ task: 'tts', text }),
+        providerId: 'test',
+        model: 'test-model',
+        resultBaseName: resultBaseName(
+          'giong-doc',
+          computeRequestFingerprint({ task: 'tts', text })
+        ),
+        handler: async () => {
+          throw new Error('không được sinh lại: kết quả đã có trong cache')
+        }
+      })
+    )
+
+    const finished = await Promise.all(
+      again.map((job) => waitForJob(job.id, (item) => item.status === 'succeeded'))
+    )
+    expect(finished.every((job) => Boolean(job.resultPath))).toBe(true)
+  }, 30_000)
 })

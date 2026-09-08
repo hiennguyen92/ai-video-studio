@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 import { access, mkdir, readFile, rename, writeFile } from 'node:fs/promises'
 import { constants } from 'node:fs'
 import { join } from 'node:path'
@@ -59,6 +59,21 @@ export function computeRequestFingerprint(input: Record<string, unknown>): strin
     .digest('hex')
 }
 
+/**
+ * Tên file kết quả của một job.
+ *
+ * Phải lấy theo VÂN TAY, không lấy theo mốc thời gian. Bấm "Tạo audio" cho cả
+ * kịch bản xếp hàng chín job trong vài mili giây; đặt tên bằng `Date.now()` thì
+ * nhiều job trùng tên và ghi đè lên nhau — quan sát thật trên một kịch bản 9 câu:
+ * 8 asset trỏ vào đúng 2 file, và timeline đọc sai câu mà không báo lỗi gì.
+ *
+ * Lấy theo vân tay còn giữ đúng hành vi dùng lại: cùng một yêu cầu ra cùng tên
+ * file nên không sinh lại.
+ */
+export function resultBaseName(prefix: string, fingerprint: string): string {
+  return `${prefix}-${fingerprint.slice(0, 16)}`
+}
+
 async function readIndex(projectId: string): Promise<CacheIndex> {
   try {
     const raw = await readFile(indexPath(projectId), 'utf8')
@@ -73,9 +88,34 @@ async function readIndex(projectId: string): Promise<CacheIndex> {
 async function writeIndex(projectId: string, index: CacheIndex): Promise<void> {
   const target = indexPath(projectId)
   await mkdir(projectPaths(projectId).cacheDir, { recursive: true })
-  const temporary = `${target}.tmp`
+  // Tên file tạm phải DUY NHẤT cho từng lần ghi. Dùng chung một `.tmp` thì hai
+  // job xong cùng lúc cùng ghi vào đó, cái đầu đổi tên xong, cái sau đổi tên một
+  // file không còn tồn tại và ngã với ENOENT — job coi như thất bại dù audio đã
+  // sinh xong.
+  const temporary = `${target}.${randomUUID()}.tmp`
   await writeFile(temporary, JSON.stringify(index, null, 2), 'utf8')
   await rename(temporary, target)
+}
+
+/**
+ * Hàng đợi ghi chỉ mục, MỘT hàng cho mỗi project.
+ *
+ * Chỉ đặt tên file tạm khác nhau là chưa đủ. Đọc–sửa–ghi chồng nhau vẫn mất dữ
+ * liệu: hai job cùng đọc một bản chỉ mục, mỗi bên thêm mục của mình rồi ghi đè,
+ * và mục của bên ghi trước biến mất. Hậu quả là kết quả đã sinh nhưng cache
+ * không nhớ, nên lần sau sinh lại — tốn tiền với provider tính phí.
+ */
+const indexWriteQueues = new Map<string, Promise<unknown>>()
+
+function serialiseIndexWrite<T>(projectId: string, task: () => Promise<T>): Promise<T> {
+  const previous = indexWriteQueues.get(projectId) ?? Promise.resolve()
+  // Nuốt lỗi của lượt trước để một lần ghi hỏng không chặn cả hàng đợi.
+  const next = previous.catch(() => undefined).then(task)
+  indexWriteQueues.set(
+    projectId,
+    next.catch(() => undefined)
+  )
+  return next
 }
 
 /**
@@ -95,8 +135,11 @@ export async function lookupCachedResult(
     return entry
   } catch {
     // Thư mục cache có thể bị xoá bất cứ lúc nào; dọn luôn mục chỉ tới file đã mất.
-    delete index[fingerprint]
-    await writeIndex(projectId, index)
+    await serialiseIndexWrite(projectId, async () => {
+      const current = await readIndex(projectId)
+      delete current[fingerprint]
+      await writeIndex(projectId, current)
+    })
     return null
   }
 }
@@ -105,9 +148,12 @@ export async function rememberResult(
   projectId: string,
   entry: Omit<CacheEntry, 'createdAt'>
 ): Promise<void> {
-  const index = await readIndex(projectId)
-  index[entry.fingerprint] = { ...entry, createdAt: new Date().toISOString() }
-  await writeIndex(projectId, index)
+  await serialiseIndexWrite(projectId, async () => {
+    // Đọc LẠI bên trong hàng đợi: bản đọc ngoài hàng đợi có thể đã cũ.
+    const index = await readIndex(projectId)
+    index[entry.fingerprint] = { ...entry, createdAt: new Date().toISOString() }
+    await writeIndex(projectId, index)
+  })
 }
 
 /** Ghi file kết quả vào thư mục media của project rồi ghi nhớ vân tay. */

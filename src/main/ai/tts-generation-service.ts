@@ -5,7 +5,7 @@ import { keepSupportedParameters } from '../../shared/ai/ai-capability-types'
 import { getCredential } from '../secrets/credential-store'
 import { getProviderConfig } from '../secrets/provider-config-store'
 import { jobQueue } from '../jobs/job-queue'
-import { computeRequestFingerprint } from '../jobs/job-result-cache'
+import { computeRequestFingerprint, resultBaseName } from '../jobs/job-result-cache'
 import { importMediaFile } from '../media/media-import-service'
 import { getTtsAdapter } from './provider-registry'
 
@@ -99,7 +99,7 @@ export async function enqueueSpeechGeneration(
     fingerprint,
     providerId: request.providerId,
     model: request.model,
-    resultBaseName: `giong-doc-${Date.now().toString(36)}`,
+    resultBaseName: resultBaseName('giong-doc', fingerprint),
     handler: async ({ signal }) => {
       const result = await adapter.synthesize(
         { apiKey: apiKey ?? '', config, signal },

@@ -3,7 +3,7 @@ import { ProviderError } from '../../shared/ai/ai-provider-contracts'
 import { getCredential } from '../secrets/credential-store'
 import { getProviderConfig } from '../secrets/provider-config-store'
 import { jobQueue } from '../jobs/job-queue'
-import { computeRequestFingerprint } from '../jobs/job-result-cache'
+import { computeRequestFingerprint, resultBaseName } from '../jobs/job-result-cache'
 import { getMusicAdapter } from './provider-registry'
 
 /**
@@ -63,7 +63,7 @@ export async function enqueueMusicGeneration(request: MusicGenerationRequest): P
     fingerprint,
     providerId: request.providerId,
     model: request.model,
-    resultBaseName: `nhac-nen-${Date.now().toString(36)}`,
+    resultBaseName: resultBaseName('nhac-nen', fingerprint),
     handler: async ({ signal, reportProgress }) => {
       // Provider không báo tiến trình cho việc sinh nhạc, nên hiện sọc chạy vô
       // định thay vì bịa ra phần trăm.

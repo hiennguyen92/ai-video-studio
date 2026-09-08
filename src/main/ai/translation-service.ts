@@ -4,7 +4,7 @@ import type { GlossaryEntry } from '../../shared/domain/transcript-types'
 import { getCredential } from '../secrets/credential-store'
 import { getProviderConfig } from '../secrets/provider-config-store'
 import { jobQueue } from '../jobs/job-queue'
-import { computeRequestFingerprint } from '../jobs/job-result-cache'
+import { computeRequestFingerprint, resultBaseName } from '../jobs/job-result-cache'
 import { getTranslateAdapter } from './provider-registry'
 import { findGlossaryViolations } from './translation-response-parser'
 
@@ -103,7 +103,7 @@ export async function enqueueTranslation(request: TranslationRequest): Promise<J
     fingerprint,
     providerId: request.providerId,
     model,
-    resultBaseName: `ban-dich-${Date.now().toString(36)}`,
+    resultBaseName: resultBaseName('ban-dich', fingerprint),
     handler: async ({ signal, reportProgress }) => {
       reportProgress({ indeterminate: true, stage: 'Đang dịch' })
 

@@ -7,7 +7,7 @@ import type { Micros } from '../../shared/domain/time-units'
 import { getCredential } from '../secrets/credential-store'
 import { getProviderConfig } from '../secrets/provider-config-store'
 import { jobQueue } from '../jobs/job-queue'
-import { computeRequestFingerprint } from '../jobs/job-result-cache'
+import { computeRequestFingerprint, resultBaseName } from '../jobs/job-result-cache'
 import { extractAudioForTranscription } from '../media/audio-extraction'
 import { projectPaths } from '../storage/workspace-paths'
 import { getSttAdapter } from './provider-registry'
@@ -96,7 +96,7 @@ export async function enqueueTranscription(request: TranscriptionRequest): Promi
     fingerprint,
     providerId: request.providerId,
     model: config.modelPath ?? '',
-    resultBaseName: `phien-am-${Date.now().toString(36)}`,
+    resultBaseName: resultBaseName('phien-am', fingerprint),
     handler: async ({ signal, reportProgress }) => {
       // File WAV trung gian nằm trong cache của project, xoá được bất cứ lúc nào.
       const audioPath = join(
