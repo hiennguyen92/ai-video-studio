@@ -142,7 +142,11 @@ ghi vào backlog rõ ràng."
 - Hiệu ứng nâng cao khác
 - Bám đối tượng và tự cắt khung theo chủ thể
 - Đa camera
-- Đóng gói bản cài cho macOS / Windows / Linux (cần thay ffmpeg bằng bản build hợp lệ về giấy phép)
+- Đóng gói bản cài cho **Windows và Linux** — cấu hình có sẵn nhưng chưa chạy thử
+  lần nào. Bản macOS đã đóng gói và chạy thật được, xem `docs/deployment-guide.md`.
+- Công chứng cho macOS (cần Developer ID); bản hiện tại ký bằng chứng chỉ
+  Development nên máy khác sẽ bị Gatekeeper chặn
+- Thay ffmpeg bằng bản build hợp lệ về giấy phép trước khi phát hành
 - Kiểm chứng trên Windows và Linux
 - Co giãn cao độ âm thanh khi đổi tốc độ clip trong bản xem trước
 - Nhân bản giọng (voice cloning) cho máy chủ tự host — các dự án chưa thống nhất tên trường
