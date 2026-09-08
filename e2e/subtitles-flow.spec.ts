@@ -233,6 +233,17 @@ test('bấm vào khối phụ đề thì tua đầu phát tới câu đó', asyn
 
   await page.locator('.timeline-text-block--subtitle').nth(1).click()
   await expect(page.locator('.subtitle-cue')).toContainText('Second caption')
+  // Nhìn thấy được, không chỉ có trong DOM.
+  await expect
+    .poll(async () =>
+      Number(
+        await page
+          .locator('.subtitle-cue')
+          .first()
+          .evaluate((node) => getComputedStyle(node).opacity)
+      )
+    )
+    .toBeGreaterThan(0.5)
 
   await page.locator('.timeline-text-block--subtitle').first().click()
   await expect(page.locator('.subtitle-cue')).toContainText('First caption')

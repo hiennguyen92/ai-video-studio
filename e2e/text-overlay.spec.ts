@@ -93,6 +93,22 @@ test.afterAll(async () => {
 
 const studio = (): ReturnType<Page['getByRole']> => page.getByRole('region', { name: 'AI Studio' })
 
+/**
+ * Chữ có THẬT SỰ nhìn thấy được không.
+ *
+ * `toContainText` không đủ: thẻ vẫn nằm trong DOM với đúng nội dung trong khi
+ * `opacity` bằng 0 — đó chính là khung đầu tiên của hiệu ứng vào. Phép thử cũ
+ * xanh suốt trong lúc màn hình trống trơn.
+ */
+async function overlayOpacity(): Promise<number> {
+  return Number(
+    await page
+      .locator('.text-overlay')
+      .first()
+      .evaluate((node) => getComputedStyle(node).opacity)
+  )
+}
+
 test('thêm chữ được ngay cả khi chưa có bản phiên âm nào', async () => {
   await studio().getByRole('tab', { name: 'Phụ đề' }).click()
 
@@ -166,6 +182,10 @@ test('bấm vào khối chữ thì tua đầu phát tới đúng chữ đó', as
   await page.locator('.timeline-text-block--overlay').first().click()
   await expect(page.locator('.text-overlay')).toContainText('Bạn đang bỏ lỡ thứ này')
   await expect(page.locator('.timeline-text-block--active')).toHaveCount(1)
+
+  // Và phải NHÌN THẤY được. Tua tới đúng mốc bắt đầu là rơi trúng khung mà hiệu
+  // ứng vào còn ở opacity 0 — bấm vào một câu để xem nó rồi thấy màn hình trống.
+  await expect.poll(overlayOpacity).toBeGreaterThan(0.5)
 })
 
 test('chữ hiện trên preview trong khoảng đã đặt và biến mất ngoài đó', async () => {
@@ -173,6 +193,7 @@ test('chữ hiện trên preview trong khoảng đã đặt và biến mất ngo
 
   await page.getByRole('button', { name: 'Tua tới đây' }).click()
   await expect(overlay).toContainText('Bạn đang bỏ lỡ thứ này')
+  await expect.poll(overlayOpacity).toBeGreaterThan(0.5)
 
   // Tua ra ngoài khoảng: chữ phải biến mất, không dính lại trên màn hình.
   const ruler = page.locator('.timeline__ruler-row')
@@ -186,7 +207,15 @@ test('đổi hiệu ứng làm đổi hình, ở cùng một thời điểm', as
 
   // Đặt đầu phát vào GIỮA hiệu ứng vào rồi giữ nguyên; đổi vị trí giữa các lần
   // chụp thì hình khác nhau dù hiệu ứng có chạy hay không.
+  //
+  // "Tua tới đây" cố ý nhích QUA hiệu ứng vào để chữ nhìn thấy được, nên phải lùi
+  // lại vài khung mới rơi vào trong hiệu ứng. Không lùi thì mọi kiểu hiệu ứng đều
+  // đã chạy xong và cho ra khung hình y hệt nhau — phép thử xanh mà chẳng chứng
+  // minh được gì.
   await page.getByRole('button', { name: 'Tua tới đây' }).click()
+  for (let step = 0; step < 8; step += 1) {
+    await page.getByRole('button', { name: 'Lùi một frame' }).click()
+  }
   await page.waitForTimeout(700)
 
   await page.getByLabel('Hiệu ứng 1').selectOption('typewriter')
@@ -233,9 +262,11 @@ test('hiệu ứng ra làm chữ biến mất dần thay vì tắt phụt', asyn
   // DỜI khoảng chữ lùi lại, để đầu phát nằm sẵn ở cuối khoảng mới.
   await page.getByLabel('Bắt đầu (giây) 1').fill('3')
   await page.getByLabel('Kết thúc (giây) 1').fill('4')
+  // "Tua tới đây" nhích vào một phần ba khối, tức đầu phát dừng ở 3,33s.
   await page.getByRole('button', { name: 'Tua tới đây' }).click()
-  await page.getByLabel('Bắt đầu (giây) 1').fill('2')
-  await page.getByLabel('Kết thúc (giây) 1').fill('3.05')
+  // Dời khoảng chữ để 3,33s rơi vào giữa hiệu ứng RA (khoảng 3,17s–3,5s).
+  await page.getByLabel('Kết thúc (giây) 1').fill('3.5')
+  await page.getByLabel('Bắt đầu (giây) 1').fill('2.4')
   await page.waitForTimeout(700)
 
   const overlay = page.locator('.text-overlay')

@@ -1,3 +1,4 @@
+import { previewSeekUs } from '../../../../shared/domain/preview-seek'
 import { useCallback, useMemo, useState, type JSX } from 'react'
 import type { ProjectDocument } from '../../../../shared/domain/project-document-types'
 import type { SubtitleTrack } from '../../../../shared/domain/subtitle-types'
@@ -124,10 +125,12 @@ export function SubtitlesPanel(): JSX.Element {
   }, [transcript, translation, bilingual, buildCues, run, document])
 
   const seekToCue = useCallback(
-    (startUs: number) => {
+    (startUs: number, endUs: number) => {
       setPlaying(false)
-      // Cue đã ở hệ toạ độ timeline nên tua thẳng, không phải quy đổi gì thêm.
-      setPlayhead(startUs)
+      // Cue đã ở hệ toạ độ timeline nên không phải quy đổi gì thêm, nhưng vẫn
+      // nhích vào trong khoảng: dừng ở đúng mốc bắt đầu là rơi trúng khung mà chữ
+      // còn đang mờ dần vào.
+      setPlayhead(previewSeekUs(startUs, endUs))
     },
     [setPlayhead, setPlaying]
   )
@@ -294,7 +297,7 @@ export function SubtitlesPanel(): JSX.Element {
                 <button
                   type="button"
                   className="cue-row__time"
-                  onClick={() => seekToCue(cue.startUs)}
+                  onClick={() => seekToCue(cue.startUs, cue.endUs)}
                   title={t.subtitles.seekHint}
                 >
                   {formatClockTime(cue.startUs)}

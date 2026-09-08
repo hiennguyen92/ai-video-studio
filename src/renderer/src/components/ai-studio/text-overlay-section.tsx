@@ -10,6 +10,7 @@ import {
   type TextOverlayBox
 } from '../../../../shared/domain/text-overlay-types'
 import type { SubtitleAlignment } from '../../../../shared/domain/subtitle-types'
+import { previewSeekUs } from '../../../../shared/domain/preview-seek'
 import { createId } from '../../../../shared/domain/project-document-factory'
 import { selectDocument, useEditorStore } from '../../state/editor-store'
 import { useT } from '../../i18n/use-translation'
@@ -325,7 +326,7 @@ export function TextOverlaySection(): JSX.Element {
                   label={t.textOverlay.seek}
                   onClick={() => {
                     setPlaying(false)
-                    setPlayhead(overlay.startUs)
+                    setPlayhead(previewSeekUs(overlay.startUs, overlay.endUs))
                   }}
                 />
                 <ToolButton

@@ -9,6 +9,7 @@ import {
   type PointerEvent as ReactPointerEvent
 } from 'react'
 import type { Track } from '../../../../shared/domain/timeline-track-types'
+import { previewSeekUs } from '../../../../shared/domain/preview-seek'
 import { microsToSeconds } from '../../../../shared/domain/time-units'
 import type { EditorCommand } from '../../../../shared/commands/editor-command-types'
 import {
@@ -56,9 +57,11 @@ export function TimelinePanel(): JSX.Element {
 
   /** Bấm vào một khối chữ thì dừng phát và tua tới đầu khối đó. */
   const seekToBlock = useCallback(
-    (item: { startUs: number }) => {
+    (item: { startUs: number; endUs: number }) => {
       setPlaying(false)
-      setPlayhead(item.startUs)
+      // Nhích vào trong khối, không dừng ở đúng mốc bắt đầu: khung đầu của hiệu
+      // ứng vào có opacity 0, tua tới đó là thấy màn hình trống.
+      setPlayhead(previewSeekUs(item.startUs, item.endUs))
     },
     [setPlaying, setPlayhead]
   )
