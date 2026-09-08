@@ -107,8 +107,32 @@ export function TimelinePanel(): JSX.Element {
       setPlaying(false)
       setPlayhead(clientXToUs(event.clientX))
 
-      const onMove = (moveEvent: PointerEvent): void => setPlayhead(clientXToUs(moveEvent.clientX))
+      // Gộp các lần di chuột về MỘT lần cập nhật mỗi khung vẽ.
+      //
+      // Chuột bắn ra hơn trăm sự kiện mỗi giây, mà mỗi lần cập nhật đầu phát lại
+      // kéo theo một lần tua Player và vẽ lại cả cây.
+      //
+      // Đo thật, kéo tám lượt trên một dự án chín cảnh: chỉ gộp khung mà không có
+      // chốt chặn thì sập ở lượt 3; chỉ có chốt chặn mà không gộp thì sập ở lượt
+      // 1; có cả hai thì không sập. Hai thứ này chặn hai nguồn áp lực khác nhau,
+      // bỏ cái nào cũng không đủ.
+      let pendingUs: number | null = null
+      let frameHandle = 0
+
+      const flush = (): void => {
+        frameHandle = 0
+        if (pendingUs !== null) setPlayhead(pendingUs)
+        pendingUs = null
+      }
+
+      const onMove = (moveEvent: PointerEvent): void => {
+        pendingUs = clientXToUs(moveEvent.clientX)
+        if (frameHandle === 0) frameHandle = window.requestAnimationFrame(flush)
+      }
       const onUp = (): void => {
+        if (frameHandle !== 0) window.cancelAnimationFrame(frameHandle)
+        // Chốt lại vị trí cuối cùng, nếu không đầu phát dừng lệch một khung.
+        flush()
         window.removeEventListener('pointermove', onMove)
         window.removeEventListener('pointerup', onUp)
       }

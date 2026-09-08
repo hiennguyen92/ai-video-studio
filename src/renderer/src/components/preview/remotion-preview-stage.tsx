@@ -38,8 +38,22 @@ export function RemotionPreviewStage({ document }: { document: ProjectDocument }
   const plan = useMemo(() => buildRenderPlan(document), [document])
   const fps = document.settings.frameRate
 
-  /** Bật trong lúc đẩy trạng thái từ Player về store, để hiệu ứng tua không chạy ngược lại. */
-  const syncingFromPlayer = useRef(false)
+  /**
+   * Khung hình mà chính Player vừa báo lên store.
+   *
+   * Đây là chốt chặn vòng lặp: Player báo khung → store đổi → hiệu ứng bên dưới
+   * chạy → nếu nó lại gọi `seekTo` thì Player báo tiếp, và cứ thế.
+   *
+   * Chốt cũ là một cờ bật/tắt quanh `setPlayhead`. Nó KHÔNG bao giờ có tác dụng:
+   * cờ được tắt ngay trong cùng một lượt đồng bộ, còn hiệu ứng thì chạy sau khi
+   * React vẽ xong — lúc đó cờ đã tắt từ lâu. So SỐ KHUNG thì không phụ thuộc thứ
+   * tự thời gian nữa.
+   *
+   * Hậu quả của chốt hỏng, đo được: kéo chuột trên thước vài lượt là React ngã
+   * với lỗi #185 (vượt số lần cập nhật tối đa) và tự gỡ toàn bộ cây — cả cửa sổ
+   * trắng trơn.
+   */
+  const framePushedByPlayer = useRef<number | null>(null)
 
   // Player chạy → store đi theo.
   useEffect(() => {
@@ -47,9 +61,20 @@ export function RemotionPreviewStage({ document }: { document: ProjectDocument }
     if (!player) return
 
     const onFrame: CallbackListener<'frameupdate'> = (event) => {
-      syncingFromPlayer.current = true
+      framePushedByPlayer.current = event.detail.frame
+
+      // CHỈ nghe khi đang phát.
+      //
+      // Lúc dừng, store là nguồn sự thật duy nhất và Player chỉ việc đi theo. Mọi
+      // `frameupdate` lúc đó là tiếng vọng của chính lệnh tua ta vừa gửi — đẩy nó
+      // ngược vào store là tự tạo một vòng cập nhật.
+      //
+      // Đo thật: kéo thước trên dự án chín cảnh, đường vọng này làm React ngã với
+      // lỗi #185 rồi gỡ sạch cây giao diện. Chốt bằng cách so số khung không đủ,
+      // vì đây không phải vòng lặp vô tận mà là một trận dồn cập nhật.
+      if (!useEditorStore.getState().isPlaying) return
+
       setPlayhead(microsOfFrame(event.detail.frame, fps))
-      syncingFromPlayer.current = false
     }
     const onPlay: CallbackListener<'play'> = () => setPlaying(true)
     const onPause: CallbackListener<'pause'> = () => setPlaying(false)
@@ -71,11 +96,14 @@ export function RemotionPreviewStage({ document }: { document: ProjectDocument }
 
   // Store đổi từ chỗ khác (bấm timeline, nhấn đoạn transcript) → tua Player.
   useEffect(() => {
-    if (syncingFromPlayer.current) return
     const player = playerRef.current
     if (!player) return
 
     const target = frameOfMicros(playheadUs, fps)
+
+    // Chính Player vừa báo khung này lên store — tua lại là tự nói với chính mình.
+    if (framePushedByPlayer.current === target) return
+
     // Chỉ tua khi lệch thật: gọi seekTo mỗi khung sẽ làm giật hình lúc phát.
     if (Math.abs(player.getCurrentFrame() - target) > 1) player.seekTo(target)
   }, [playheadUs, fps])
