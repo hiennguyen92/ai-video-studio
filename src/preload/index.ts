@@ -52,6 +52,10 @@ const api: RendererApi = {
     transcribe: (request) => ipcRenderer.invoke(IPC.sttTranscribe, request),
     readResult: (jobId) => ipcRenderer.invoke(IPC.sttReadResult, jobId)
   },
+  translate: {
+    run: (request) => ipcRenderer.invoke(IPC.translateRun, request),
+    readResult: (jobId) => ipcRenderer.invoke(IPC.translateReadResult, jobId)
+  },
   whisper: {
     listModels: () => ipcRenderer.invoke(IPC.whisperListModels),
     download: (modelId) => ipcRenderer.invoke(IPC.whisperDownload, modelId),

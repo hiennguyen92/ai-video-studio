@@ -297,6 +297,45 @@ export function applyEditorCommand(doc: ProjectDocument, command: EditorCommand)
       return OK
     }
 
+    case 'translation/add': {
+      if (doc.translations.some((item) => item.id === command.translation.id)) {
+        return fail(`Bản dịch ${command.translation.id} đã tồn tại`)
+      }
+      // Bản dịch không được tồn tại tách rời bản gốc: mất gốc thì mốc thời gian
+      // của nó không quy chiếu vào đâu được nữa.
+      if (!doc.transcripts.some((item) => item.id === command.translation.transcriptId)) {
+        return fail(`Không tìm thấy transcript ${command.translation.transcriptId}`)
+      }
+      doc.translations.push(command.translation)
+      return OK
+    }
+
+    case 'translation/remove': {
+      const index = doc.translations.findIndex((item) => item.id === command.translationId)
+      if (index < 0) return fail(`Không tìm thấy bản dịch ${command.translationId}`)
+      doc.translations.splice(index, 1)
+      return OK
+    }
+
+    case 'translation/update-segment': {
+      const translation = doc.translations.find((item) => item.id === command.translationId)
+      if (!translation) return fail(`Không tìm thấy bản dịch ${command.translationId}`)
+      const segment = translation.segments.find((item) => item.id === command.segmentId)
+      if (!segment) return fail(`Không tìm thấy đoạn ${command.segmentId}`)
+
+      segment.text = command.text
+      // Đánh dấu để lần dịch lại không ghi đè bản người dùng đã chỉnh.
+      segment.edited = true
+      return OK
+    }
+
+    case 'translation/set-glossary': {
+      const translation = doc.translations.find((item) => item.id === command.translationId)
+      if (!translation) return fail(`Không tìm thấy bản dịch ${command.translationId}`)
+      translation.glossary = command.glossary.map((entry) => ({ ...entry }))
+      return OK
+    }
+
     case 'asset/add': {
       if (doc.assets.some((asset) => asset.id === command.asset.id)) {
         return fail(`Media ${command.asset.id} đã có trong dự án`)

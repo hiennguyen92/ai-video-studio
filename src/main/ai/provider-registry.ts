@@ -1,9 +1,14 @@
 import type { AiTaskKind, ProviderDescriptor } from '../../shared/ai/ai-capability-types'
-import type { SttAdapter, TtsAdapter } from '../../shared/ai/ai-provider-contracts'
+import type {
+  SttAdapter,
+  TranslateAdapter,
+  TtsAdapter
+} from '../../shared/ai/ai-provider-contracts'
 import { elevenLabsTtsAdapter } from './elevenlabs-tts-adapter'
 import { openAiTtsAdapter } from './openai-tts-adapter'
 import { selfHostedOpenAiTtsAdapter } from './self-hosted-openai-tts-adapter'
 import { whisperCppSttAdapter } from './whisper-cpp-stt-adapter'
+import { openAiCompatibleTranslateAdapter } from './openai-compatible-translate-adapter'
 
 /**
  * Sổ đăng ký provider.
@@ -24,6 +29,8 @@ const TTS_ADAPTERS: TtsAdapter[] = [
 
 const STT_ADAPTERS: SttAdapter[] = [whisperCppSttAdapter]
 
+const TRANSLATE_ADAPTERS: TranslateAdapter[] = [openAiCompatibleTranslateAdapter]
+
 export function listTtsAdapters(): TtsAdapter[] {
   return TTS_ADAPTERS
 }
@@ -34,6 +41,14 @@ export function listSttAdapters(): SttAdapter[] {
 
 export function getSttAdapter(providerId: string): SttAdapter | undefined {
   return STT_ADAPTERS.find((adapter) => adapter.descriptor.id === providerId)
+}
+
+export function listTranslateAdapters(): TranslateAdapter[] {
+  return TRANSLATE_ADAPTERS
+}
+
+export function getTranslateAdapter(providerId: string): TranslateAdapter | undefined {
+  return TRANSLATE_ADAPTERS.find((adapter) => adapter.descriptor.id === providerId)
 }
 
 export function getTtsAdapter(providerId: string): TtsAdapter | undefined {
@@ -50,13 +65,13 @@ export function getTtsAdapter(providerId: string): TtsAdapter | undefined {
 export type ConfigurableAdapter = Pick<TtsAdapter, 'descriptor' | 'listModels' | 'testConnection'>
 
 export function getConfigurableAdapter(providerId: string): ConfigurableAdapter | undefined {
-  return getTtsAdapter(providerId) ?? getSttAdapter(providerId)
+  return getTtsAdapter(providerId) ?? getSttAdapter(providerId) ?? getTranslateAdapter(providerId)
 }
 
 /** Mô tả mọi provider đã biết, để giao diện dựng màn hình cài đặt mà không cần khoá. */
 export function listProviderDescriptors(): ProviderDescriptor[] {
   const seen = new Map<string, ProviderDescriptor>()
-  for (const adapter of [...TTS_ADAPTERS, ...STT_ADAPTERS]) {
+  for (const adapter of [...TTS_ADAPTERS, ...STT_ADAPTERS, ...TRANSLATE_ADAPTERS]) {
     seen.set(adapter.descriptor.id, adapter.descriptor)
   }
   return [...seen.values()]

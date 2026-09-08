@@ -1,0 +1,137 @@
+.translate-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding-bottom: var(--space-4);
+}
+
+.translate-panel__hint {
+  margin: 0;
+  padding: 0 var(--space-3);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  line-height: 1.55;
+}
+
+.translate-panel__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  padding: var(--space-2) var(--space-3);
+}
+
+/* ── Bảng thuật ngữ ────────────────────────────────────────────── */
+
+.glossary-editor {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.glossary-editor__row {
+  display: grid;
+  /* Hai ô nhập bằng nhau, mũi tên và nút xoá chỉ chiếm đúng chỗ cần. */
+  grid-template-columns: 1fr auto 1fr auto;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0 var(--space-3);
+}
+
+.glossary-editor__row input {
+  min-width: 0;
+}
+
+.glossary-editor__arrow {
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+}
+
+/* ── Hiển thị song song ────────────────────────────────────────── */
+
+.translate-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.translate-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: 0 var(--space-3);
+}
+
+.translate-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+}
+
+/* Đoạn lệch thuật ngữ được đánh dấu để tìm ra ngay giữa danh sách dài. */
+.translate-row--violation {
+  border-color: var(--warning, #b7791f);
+}
+
+.translate-row__source {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.translate-row__time {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.translate-row__text {
+  margin: 0;
+  font-size: var(--text-sm);
+  line-height: 1.5;
+  /* Lời thoại dài không được đẩy giãn cả hàng. */
+  overflow-wrap: anywhere;
+}
+
+.translate-row__target {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.translate-row__target textarea {
+  width: 100%;
+  resize: vertical;
+  font-size: var(--text-sm);
+  line-height: 1.5;
+}
+
+.translate-row__badges {
+  display: flex;
+  gap: var(--space-1);
+  flex-wrap: wrap;
+}
+
+.translate-row__badge {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  padding: 0 var(--space-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.translate-row__badge--warn {
+  color: var(--warning, #b7791f);
+  border-color: currentColor;
+}

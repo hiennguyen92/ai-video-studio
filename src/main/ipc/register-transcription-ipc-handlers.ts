@@ -2,12 +2,14 @@ import { ipcMain, type WebContents } from 'electron'
 import type {
   IpcResult,
   TranscribeIpcRequest,
+  TranslateIpcRequest,
   WhisperDownloadProgressEvent,
   WhisperModelDto
 } from '../../shared/ipc/ipc-contract'
 import { IPC, IPC_EVENT } from '../../shared/ipc/ipc-contract'
 import { ProviderError } from '../../shared/ai/ai-provider-contracts'
 import { enqueueTranscription, readTranscriptionResult } from '../ai/transcription-service'
+import { enqueueTranslation, readTranslationResult } from '../ai/translation-service'
 import {
   WHISPER_MODELS,
   deleteWhisperModel,
@@ -50,6 +52,14 @@ export function registerTranscriptionIpcHandlers(): void {
 
   ipcMain.handle(IPC.sttReadResult, (_event, jobId: string) =>
     guard(() => readTranscriptionResult(jobId))
+  )
+
+  ipcMain.handle(IPC.translateRun, (_event, request: TranslateIpcRequest) =>
+    guard(() => enqueueTranslation(request))
+  )
+
+  ipcMain.handle(IPC.translateReadResult, (_event, jobId: string) =>
+    guard(() => readTranslationResult(jobId))
   )
 
   ipcMain.handle(IPC.whisperListModels, () =>

@@ -45,6 +45,8 @@ export const IPC = {
 
   sttTranscribe: 'stt:transcribe',
   sttReadResult: 'stt:read-result',
+  translateRun: 'translate:run',
+  translateReadResult: 'translate:read-result',
   whisperListModels: 'whisper:list-models',
   whisperDownload: 'whisper:download',
   whisperCancelDownload: 'whisper:cancel-download',
@@ -232,6 +234,27 @@ export interface TranscriptionResultDto {
   segments: TranscriptionSegmentDto[]
 }
 
+export interface TranslateIpcRequest {
+  projectId: string
+  providerId: string
+  transcriptId: string
+  sourceLanguage?: string
+  targetLanguage: string
+  glossary: Array<{ from: string; to: string }>
+  segments: Array<{ id: string; text: string }>
+  label: string
+}
+
+export interface TranslationResultDto {
+  sourceLanguage: string
+  targetLanguage: string
+  model: string
+  /** Luôn đủ số đoạn như đầu vào và giữ liên kết về đoạn gốc. */
+  segments: Array<{ sourceSegmentId: string; text: string }>
+  /** Đoạn mà mô hình không tuân thủ glossary; chỉ để cảnh báo. */
+  glossaryViolations: Array<{ sourceSegmentId: string; from: string; to: string }>
+}
+
 export interface WhisperModelDto {
   id: string
   fileName: string
@@ -297,6 +320,10 @@ export interface RendererApi {
   stt: {
     transcribe(request: TranscribeIpcRequest): Promise<IpcResult<JobRecord>>
     readResult(jobId: string): Promise<IpcResult<TranscriptionResultDto>>
+  }
+  translate: {
+    run(request: TranslateIpcRequest): Promise<IpcResult<JobRecord>>
+    readResult(jobId: string): Promise<IpcResult<TranslationResultDto>>
   }
   whisper: {
     listModels(): Promise<IpcResult<WhisperModelDto[]>>

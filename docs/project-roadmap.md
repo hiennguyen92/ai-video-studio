@@ -48,7 +48,11 @@ giao diện chỉ lộ ra khi chuyển tab với dữ liệu thật.
 - [x] Trình soạn transcript, nhấn vào đoạn để tua preview tới đúng vị trí
 - [ ] Phân biệt người nói khi provider hỗ trợ — whisper.cpp chỉ tách được theo
       kênh audio, chưa làm; chờ provider có diarization thật
-- [ ] Dịch giữ liên kết theo từng segment, hiển thị song song, sửa được từng đoạn, có glossary
+- [x] Dịch giữ liên kết theo từng segment, hiển thị song song, sửa được từng đoạn, có glossary
+      — qua máy chủ LLM kiểu OpenAI (Ollama, LM Studio, llama.cpp, OpenAI).
+      **Chưa kiểm chứng với mô hình thật**: mới kiểm bằng máy chủ HTTP dựng sẵn.
+      Chạy `LLM_BASE_URL=… LLM_MODEL=… npx vitest run src/main/ai/openai-compatible-translate-live`
+      để kiểm với mô hình thật.
 - [ ] Giao diện tạo và sửa phụ đề (mô hình dữ liệu, ghi ASS/SRT, nung vào video **đã xong**)
 - [ ] Phụ đề song ngữ và các preset dễ đọc
 - [ ] Lồng tiếng theo bản dịch: tạo từng segment, **đo thời lượng thật**, phát hiện tràn giờ

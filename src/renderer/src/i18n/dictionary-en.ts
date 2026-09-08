@@ -236,6 +236,41 @@ export const dictionaryEn: Dictionary = {
       "Filters by the voice's verified languages. Multilingual models still read other languages, so clear the filter to see every voice.",
     emptyScript: 'Enter a script to start generating speech.'
   },
+  translate: {
+    title: 'Translate',
+    providerSection: 'Translation server',
+    providerHint:
+      'Use any OpenAI-compatible LLM server — Ollama, LM Studio, llama.cpp — or OpenAI itself. Running locally keeps the dialogue on your machine.',
+    sourceSection: 'Source',
+    noTranscript: 'No transcript to translate yet.',
+    noTranscriptHint: 'Open the Transcribe tab to create one first.',
+    transcriptLabel: 'Transcript',
+    targetLanguage: 'Translate into',
+    start: 'Start translating',
+    retranslate: 'Translate again',
+    running: 'Translating…',
+    cancel: 'Cancel',
+    resultSection: 'Translation',
+    sourceColumn: 'Source ({language})',
+    targetColumn: 'Translation ({language})',
+    noTranslation: 'No translation yet.',
+    noTranslationHint: 'Pick a target language and press "Start translating".',
+    edited: 'edited',
+    deleteTranslation: 'Delete translation',
+    glossarySection: 'Glossary',
+    glossaryHint:
+      'Terms on the left are translated as the text on the right. Use it for names, products and domain terms.',
+    glossaryFrom: 'Source term',
+    glossaryTo: 'Translate as',
+    glossaryAdd: 'Add term',
+    glossaryRemove: 'Remove term',
+    glossaryViolation:
+      'The model ignored the glossary in {count} segments. They are flagged below.',
+    glossaryViolationBadge: 'glossary mismatch',
+    retranslateWarning:
+      'Translating again replaces the whole translation, including segments you edited by hand.',
+    segmentCount: '{count} segments'
+  },
   transcribe: {
     title: 'Transcribe',
     modelSection: 'Recognition model',

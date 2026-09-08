@@ -239,6 +239,41 @@ export const dictionaryVi = {
       'Lọc theo ngôn ngữ đã xác thực của giọng. Model đa ngôn ngữ vẫn đọc được ngôn ngữ khác, nên có thể bỏ lọc để thấy đủ giọng.',
     emptyScript: 'Nhập kịch bản để bắt đầu tạo giọng đọc.'
   },
+  translate: {
+    title: 'Dịch',
+    providerSection: 'Máy chủ dịch',
+    providerHint:
+      'Dùng máy chủ LLM nói giao thức OpenAI — Ollama, LM Studio, llama.cpp — hoặc chính OpenAI. Chạy trong máy thì lời thoại không gửi ra ngoài.',
+    sourceSection: 'Bản gốc',
+    noTranscript: 'Chưa có bản phiên âm nào để dịch.',
+    noTranscriptHint: 'Sang tab Phiên âm để tạo bản phiên âm trước.',
+    transcriptLabel: 'Bản phiên âm',
+    targetLanguage: 'Dịch sang',
+    start: 'Bắt đầu dịch',
+    retranslate: 'Dịch lại',
+    running: 'Đang dịch…',
+    cancel: 'Huỷ',
+    resultSection: 'Bản dịch',
+    sourceColumn: 'Gốc ({language})',
+    targetColumn: 'Dịch ({language})',
+    noTranslation: 'Chưa có bản dịch.',
+    noTranslationHint: 'Chọn ngôn ngữ đích rồi nhấn "Bắt đầu dịch".',
+    edited: 'đã sửa',
+    deleteTranslation: 'Xoá bản dịch',
+    glossarySection: 'Thuật ngữ riêng',
+    glossaryHint:
+      'Từ trong cột trái sẽ được dịch thành từ ở cột phải. Dùng cho tên riêng, tên sản phẩm, thuật ngữ chuyên ngành.',
+    glossaryFrom: 'Từ gốc',
+    glossaryTo: 'Dịch thành',
+    glossaryAdd: 'Thêm thuật ngữ',
+    glossaryRemove: 'Xoá thuật ngữ',
+    glossaryViolation:
+      'Mô hình không dùng thuật ngữ đã khai ở {count} đoạn. Đoạn đó được đánh dấu bên dưới.',
+    glossaryViolationBadge: 'lệch thuật ngữ',
+    retranslateWarning:
+      'Dịch lại sẽ thay toàn bộ bản dịch hiện tại, kể cả các đoạn bạn đã sửa tay.',
+    segmentCount: '{count} đoạn'
+  },
   transcribe: {
     title: 'Phiên âm',
     modelSection: 'Model nhận dạng',

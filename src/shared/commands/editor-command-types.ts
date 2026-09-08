@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import type { MediaAsset } from '../domain/media-asset-types'
-import type { Transcript } from '../domain/transcript-types'
+import type { Transcript, Translation } from '../domain/transcript-types'
 
 /**
  * Tập lệnh chỉnh sửa — ĐƯỜNG GHI DUY NHẤT vào project document.
@@ -249,6 +249,52 @@ const mergeTranscriptSegments = z.object({
   segmentId: z.string()
 })
 
+/* ── Lệnh bản dịch ─────────────────────────────────────────────── */
+
+const translationShape = z.custom<Translation>(
+  (value) => {
+    if (!value || typeof value !== 'object') return false
+    const translation = value as Partial<Translation>
+    return (
+      typeof translation.id === 'string' &&
+      typeof translation.transcriptId === 'string' &&
+      typeof translation.targetLanguage === 'string' &&
+      Array.isArray(translation.segments)
+    )
+  },
+  { message: 'bản dịch không hợp lệ' }
+)
+
+const addTranslation = z.object({
+  type: z.literal('translation/add'),
+  translation: translationShape
+})
+
+const removeTranslation = z.object({
+  type: z.literal('translation/remove'),
+  translationId: z.string()
+})
+
+const updateTranslationSegment = z.object({
+  type: z.literal('translation/update-segment'),
+  translationId: z.string(),
+  segmentId: z.string(),
+  text: z.string().max(5000)
+})
+
+/**
+ * Sửa glossary của một bản dịch.
+ *
+ * Thay cả danh sách thay vì thêm/xoá từng mục: glossary luôn được sửa nguyên
+ * bảng trên giao diện, và thay cả cụm giữ cho một lần hoàn tác đúng bằng một
+ * lần chỉnh sửa của người dùng.
+ */
+const setTranslationGlossary = z.object({
+  type: z.literal('translation/set-glossary'),
+  translationId: z.string(),
+  glossary: z.array(z.object({ from: z.string().max(200), to: z.string().max(200) })).max(200)
+})
+
 export const editorCommandSchema = z.discriminatedUnion('type', [
   setProjectSettings,
   renameProject,
@@ -267,6 +313,10 @@ export const editorCommandSchema = z.discriminatedUnion('type', [
   removeTranscript,
   updateTranscriptSegment,
   mergeTranscriptSegments,
+  addTranslation,
+  removeTranslation,
+  updateTranslationSegment,
+  setTranslationGlossary,
   addAsset,
   relinkAsset,
   removeAsset,

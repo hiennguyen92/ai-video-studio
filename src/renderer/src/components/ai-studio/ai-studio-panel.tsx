@@ -7,6 +7,7 @@ import { AiSettingsPanel } from './ai-settings-panel'
 import { VoicePanel } from './voice-panel'
 import { MusicPanel } from './music-panel'
 import { TranscribePanel } from './transcribe-panel'
+import { TranslatePanel } from './translate-panel'
 
 /**
  * Panel trái — AI Studio (DESCRIPTION §3).
@@ -130,7 +131,13 @@ export function AiStudioPanel({
           </div>
         )}
 
-        {(activeTab === 'translate' || activeTab === 'subtitles') && (
+        {visitedTabs.has('translate') && (
+          <div className="studio-tab-panel" hidden={activeTab !== 'translate'}>
+            <TranslatePanel onOpenSettings={openSettings} />
+          </div>
+        )}
+
+        {activeTab === 'subtitles' && (
           <EmptyState title={t.studio.comingSoon} hint={t.studio.comingSoonHint} />
         )}
       </div>
