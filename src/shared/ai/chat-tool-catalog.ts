@@ -151,7 +151,9 @@ export const chatToolSchemas = {
     /** Hiệu ứng khi chữ biến mất. Bỏ trống thì tắt phụt. */
     exit: z.enum(['none', 'fade', 'shrink', 'slide-down']).optional(),
     /** Viền phát sáng quanh chữ. */
-    glow: z.boolean().optional()
+    glow: z.boolean().optional(),
+    /** Góc xoay, tính bằng độ theo chiều kim đồng hồ. */
+    rotationDeg: z.number().min(-45).max(45).optional()
   }),
 
   remove_text_overlay: z.object({
@@ -268,6 +270,13 @@ export const chatToolSchemas = {
     subtitleTrackId: z.string().min(1).max(120).optional()
   }),
 
+  /** Xoay chữ đã có. Bỏ trống cả hai id thì áp cho MỌI chữ overlay. */
+  set_text_rotation: z.object({
+    rotationDeg: z.number().min(-45).max(45),
+    overlayId: z.string().min(1).max(120).optional(),
+    subtitleTrackId: z.string().min(1).max(120).optional()
+  }),
+
   auto_duck_music: z.object({
     duckVolume: gain.optional(),
     baseVolume: gain.optional(),
@@ -323,6 +332,8 @@ export const chatToolDescriptions: Record<ChatToolName, string> = {
     'Grade one clip: brightness, contrast, saturation, warm/cool temperature, and a vignette. Fields are applied on top of what is already set, so changing one does not clear the others. Pass reset to put the clip back to its original colour. There is no LUT support.',
   remove_media:
     'Remove one asset from the media library. Refuses if any clip on the timeline still uses it; pass removeClips to delete those clips as well. The file on disk is never touched.',
+  set_text_rotation:
+    'Tilt text by an angle, clockwise, from -45 to 45 degrees. Works in the preview and in the exported file alike. With no overlayId and no subtitleTrackId it applies to every text overlay.',
   set_text_font:
     'Change the font of text overlays or a subtitle track. Call list_fonts first and use a family name from it — a font that is not installed silently falls back to the default. Pass fontPostScriptName to pick a specific weight or width within the family; the family name alone cannot select a face. With no overlayId and no subtitleTrackId it applies to every text overlay.'
 }
@@ -351,7 +362,7 @@ export const chatToolParameterHints: Record<ChatToolName, string> = {
   build_cut_from_shots:
     '{ assetId: string, shotIndexes: number[], trackId?: string, maxShotSeconds?: number }',
   add_text_overlay:
-    "{ text: string, startSeconds: number, endSeconds: number, animation?: 'none' | 'fade' | 'pop' | 'slide-up' | 'typewriter', position?: 'bottom' | 'middle' | 'top', fontSizePx?: number, box?: 'none' | 'dark' | 'light', exit?: 'none' | 'fade' | 'shrink' | 'slide-down', glow?: boolean }",
+    "{ text: string, startSeconds: number, endSeconds: number, animation?: 'none' | 'fade' | 'pop' | 'slide-up' | 'typewriter', position?: 'bottom' | 'middle' | 'top', fontSizePx?: number, box?: 'none' | 'dark' | 'light', exit?: 'none' | 'fade' | 'shrink' | 'slide-down', glow?: boolean, rotationDeg?: number }",
   remove_text_overlay: '{ overlayId: string }',
   set_canvas: "{ aspect: '16:9' | '9:16' | '1:1', longEdgePx?: number }",
   set_clip_transition:
@@ -362,7 +373,8 @@ export const chatToolParameterHints: Record<ChatToolName, string> = {
     '{ clipId?: string, brightness?: number, contrast?: number, saturation?: number, temperature?: number, vignette?: number, reset?: boolean }',
   remove_media: '{ assetId: string, removeClips?: boolean }',
   set_text_font:
-    '{ fontFamily: string, fontPostScriptName?: string, overlayId?: string, subtitleTrackId?: string }'
+    '{ fontFamily: string, fontPostScriptName?: string, overlayId?: string, subtitleTrackId?: string }',
+  set_text_rotation: '{ rotationDeg: number, overlayId?: string, subtitleTrackId?: string }'
 }
 
 /**

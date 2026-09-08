@@ -508,6 +508,7 @@ function planOne(context: ChatEditContext, tool: ChatToolName, args: unknown): P
         style.marginVerticalPx = 160
       }
       if (input.fontSizePx) style.fontSizePx = input.fontSizePx
+      if (input.rotationDeg !== undefined) style.rotationDeg = input.rotationDeg
 
       const overlay: TextOverlay = {
         id: context.makeId('text'),
@@ -667,6 +668,51 @@ function planOne(context: ChatEditContext, tool: ChatToolName, args: unknown): P
             ? `Xoá media "${asset.name}" và ${usages} clip đang dùng nó`
             : `Xoá media "${asset.name}"`,
         commands: [{ type: 'asset/remove', assetId: input.assetId, removeUsages: usages > 0 }]
+      }
+    }
+
+    case 'set_text_rotation': {
+      const input = chatToolSchemas.set_text_rotation.parse(args)
+
+      if (input.subtitleTrackId) {
+        const subtitleTrack = document.subtitleTracks.find(
+          (item) => item.id === input.subtitleTrackId
+        )
+        if (!subtitleTrack) {
+          throw new Error(`Không tìm thấy track phụ đề "${input.subtitleTrackId}"`)
+        }
+        return {
+          tool,
+          description: `Xoay phụ đề "${subtitleTrack.name}" ${input.rotationDeg}°`,
+          commands: [
+            {
+              type: 'subtitle/set-style',
+              trackId: subtitleTrack.id,
+              style: { ...subtitleTrack.style, rotationDeg: input.rotationDeg }
+            }
+          ]
+        }
+      }
+
+      const targets = input.overlayId
+        ? document.textOverlays.filter((item) => item.id === input.overlayId)
+        : document.textOverlays
+      if (targets.length === 0) {
+        throw new Error(
+          input.overlayId
+            ? `Không tìm thấy chữ overlay "${input.overlayId}"`
+            : 'Dự án chưa có chữ overlay nào'
+        )
+      }
+
+      return {
+        tool,
+        description: `Xoay ${targets.length} chữ ${input.rotationDeg}°`,
+        commands: targets.map((overlay) => ({
+          type: 'text/set-style' as const,
+          overlayId: overlay.id,
+          style: { ...overlay.style, rotationDeg: input.rotationDeg }
+        }))
       }
     }
 

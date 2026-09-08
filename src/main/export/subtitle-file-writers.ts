@@ -74,7 +74,9 @@ function assStyleLine(name: string, style: SubtitleStyle): string {
     '100',
     '100',
     '0',
-    '0',
+    // Trường Angle. ASS đếm NGƯỢC chiều kim đồng hồ, CSS đếm xuôi — không đảo dấu
+    // thì preview nghiêng một đằng còn bản nung nghiêng một nẻo.
+    String(-(style.rotationDeg ?? 0)),
     String(borderStyle),
     String(style.outlineWidthPx),
     String(style.shadowPx),

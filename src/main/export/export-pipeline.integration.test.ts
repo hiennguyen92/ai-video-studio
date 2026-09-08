@@ -358,6 +358,109 @@ describe('xuất video thật', () => {
   }, 60_000)
 })
 
+describe('góc xoay phụ đề khi nung thật', () => {
+  /**
+   * Nung file ASS lên nền đen rồi ĐO độ nghiêng của chữ trong khung hình.
+   *
+   * Phải đo thật vì hai chỗ có thể hỏng lặng lẽ: libass có thể bỏ qua trường
+   * Angle với cấu hình style của chúng ta, và dấu của góc có thể ngược — ASS đếm
+   * ngược chiều kim đồng hồ còn CSS của bản xem trước đếm xuôi. Cả hai kiểu hỏng
+   * đều cho ra một file MP4 hợp lệ nên không có gì báo lỗi.
+   */
+  const WIDTH = 600
+  const HEIGHT = 400
+
+  /** Trọng tâm dọc của các điểm sáng ở nửa trái và nửa phải khung hình. */
+  async function tiltOf(rotationDeg: number): Promise<{ left: number; right: number }> {
+    const assPath = join(workDir, `xoay-${rotationDeg}.ass`)
+    const track: SubtitleTrack = {
+      id: 'sub_xoay',
+      name: 'Xoay',
+      language: 'vi',
+      source: { kind: 'manual' },
+      style: {
+        ...DEFAULT_SUBTITLE_STYLE,
+        fontFamily: 'Arial',
+        fontSizePx: 64,
+        outlineWidthPx: 0,
+        // Giữa khung hình, mọi lề bằng 0: lề lệch sẽ kéo trọng tâm đi và phép đo
+        // hoá ra đo lề chứ không đo góc xoay.
+        alignment: 5,
+        marginLeftPx: 0,
+        marginRightPx: 0,
+        marginVerticalPx: 0,
+        rotationDeg
+      },
+      cues: [{ id: 'c1', startUs: 0, endUs: 2_000_000, text: 'HHHHHHHH', edited: false }]
+    }
+    await writeAssFile(track, WIDTH, HEIGHT, assPath)
+
+    const { ffmpegPath } = resolveFfmpegBinaries()
+    const { stdout } = await execFileAsync(
+      ffmpegPath,
+      [
+        '-hide_banner',
+        '-loglevel',
+        'error',
+        '-f',
+        'lavfi',
+        '-i',
+        `color=black:s=${WIDTH}x${HEIGHT}:d=0.1:r=1`,
+        '-vf',
+        `ass=${assPath}`,
+        '-frames:v',
+        '1',
+        '-pix_fmt',
+        'gray',
+        '-f',
+        'rawvideo',
+        '-'
+      ],
+      { encoding: 'buffer', maxBuffer: 1 << 28 }
+    )
+
+    let leftSum = 0
+    let leftCount = 0
+    let rightSum = 0
+    let rightCount = 0
+    for (let y = 0; y < HEIGHT; y++) {
+      for (let x = 0; x < WIDTH; x++) {
+        if (stdout[y * WIDTH + x] < 128) continue
+        // Chừa dải giữa: gần trục xoay thì chữ gần như không dịch lên xuống.
+        if (x < WIDTH / 2 - 60) {
+          leftSum += y
+          leftCount++
+        } else if (x > WIDTH / 2 + 60) {
+          rightSum += y
+          rightCount++
+        }
+      }
+    }
+
+    // Không có chữ nào sáng lên nghĩa là libass đã bỏ qua file, chứ không phải
+    // "không nghiêng".
+    expect(leftCount).toBeGreaterThan(50)
+    expect(rightCount).toBeGreaterThan(50)
+    return { left: leftSum / leftCount, right: rightSum / rightCount }
+  }
+
+  it('không đặt góc thì chữ nằm ngang', async () => {
+    const flat = await tiltOf(0)
+    expect(Math.abs(flat.right - flat.left)).toBeLessThan(4)
+  }, 60_000)
+
+  it('góc dương nghiêng XUÔI chiều kim đồng hồ, đúng như bản xem trước CSS', async () => {
+    const tilted = await tiltOf(20)
+    // Xuôi chiều kim đồng hồ: đầu bên phải của dòng chữ ĐI XUỐNG, tức y lớn hơn.
+    expect(tilted.right).toBeGreaterThan(tilted.left + 20)
+  }, 60_000)
+
+  it('góc âm nghiêng ngược lại', async () => {
+    const tilted = await tiltOf(-20)
+    expect(tilted.right).toBeLessThan(tilted.left - 20)
+  }, 60_000)
+})
+
 describe('phông chữ khi nung phụ đề', () => {
   it('chỉ thẳng cho ffmpeg thư mục font khi có', async () => {
     const doc = await buildSampleProject()

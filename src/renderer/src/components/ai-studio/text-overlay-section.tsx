@@ -161,6 +161,31 @@ export function TextOverlaySection(): JSX.Element {
                 </label>
               </div>
 
+              <div className="field-row">
+                <span className="field-row__label">{t.subtitles.rotation}</span>
+                <input
+                  type="range"
+                  min={-45}
+                  max={45}
+                  step={1}
+                  value={overlay.style.rotationDeg ?? 0}
+                  aria-label={`${t.subtitles.rotation} ${index + 1}`}
+                  onChange={(event) =>
+                    run(
+                      [
+                        {
+                          type: 'text/set-style',
+                          overlayId: overlay.id,
+                          style: { ...overlay.style, rotationDeg: Number(event.target.value) }
+                        }
+                      ],
+                      'Xoay chữ'
+                    )
+                  }
+                />
+                <span className="field-row__value">{overlay.style.rotationDeg ?? 0}°</span>
+              </div>
+
               <FontFamilySelect
                 family={overlay.style.fontFamily}
                 postScriptName={overlay.style.fontPostScriptName}

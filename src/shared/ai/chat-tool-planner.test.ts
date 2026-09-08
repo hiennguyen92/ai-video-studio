@@ -684,3 +684,116 @@ describe('công cụ đổi phông chữ', () => {
     expect(plan.failures).toHaveLength(1)
   })
 })
+
+describe('công cụ xoay chữ', () => {
+  const withOverlays = (): ProjectDocument => {
+    const document = project()
+    for (const [index, text] of ['Hook', 'CTA'].entries()) {
+      const plan = planChatToolCalls(context(document), [
+        {
+          name: 'add_text_overlay',
+          arguments: { text, startSeconds: index * 2, endSeconds: index * 2 + 1.5 }
+        }
+      ])
+      for (const command of plan.steps.flatMap((step) => step.commands)) {
+        expect(applyEditorCommand(document, command).ok).toBe(true)
+      }
+    }
+    return document
+  }
+
+  it('không nêu chữ nào thì xoay TẤT CẢ chữ overlay', () => {
+    const document = withOverlays()
+    const plan = planChatToolCalls(context(document), [
+      { name: 'set_text_rotation', arguments: { rotationDeg: -7 } }
+    ])
+
+    expect(plan.failures).toEqual([])
+    for (const command of plan.steps.flatMap((step) => step.commands)) {
+      expect(applyEditorCommand(document, command).ok).toBe(true)
+    }
+    expect(document.textOverlays.map((item) => item.style.rotationDeg)).toEqual([-7, -7])
+  })
+
+  it('nêu một chữ thì chỉ xoay đúng chữ đó', () => {
+    const document = withOverlays()
+    const target = document.textOverlays[1].id
+    const plan = planChatToolCalls(context(document), [
+      { name: 'set_text_rotation', arguments: { rotationDeg: 12, overlayId: target } }
+    ])
+    for (const command of plan.steps.flatMap((step) => step.commands)) {
+      expect(applyEditorCommand(document, command).ok).toBe(true)
+    }
+
+    expect(document.textOverlays[0].style.rotationDeg).toBeUndefined()
+    expect(document.textOverlays[1].style.rotationDeg).toBe(12)
+  })
+
+  it('xoay chữ không làm mất phông đang dùng', () => {
+    const document = withOverlays()
+    const plans = [
+      { name: 'set_text_font', arguments: { fontFamily: 'Georgia' } },
+      { name: 'set_text_rotation', arguments: { rotationDeg: 9 } }
+    ]
+    for (const call of plans) {
+      const plan = planChatToolCalls(context(document), [call])
+      for (const command of plan.steps.flatMap((step) => step.commands)) {
+        expect(applyEditorCommand(document, command).ok).toBe(true)
+      }
+    }
+
+    // Hai công cụ cùng ghi đè cả khối style; cái sau mà không đọc lại style hiện
+    // tại thì nó xoá mất việc cái trước vừa làm.
+    expect(document.textOverlays[0].style.fontFamily).toBe('Georgia')
+    expect(document.textOverlays[0].style.rotationDeg).toBe(9)
+  })
+
+  it('xoay được cả track phụ đề', () => {
+    const { document } = withClip()
+    document.transcripts.push({
+      id: 'tr_1',
+      assetId: 'asset_1',
+      language: 'vi',
+      languageAutoDetected: false,
+      providerId: 'whisper-cpp',
+      model: 'ggml',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      segments: [{ id: 's1', startUs: 1_000_000, endUs: 2_000_000, text: 'Hi', edited: false }]
+    })
+    const create = planChatToolCalls(context(document), [
+      { name: 'create_subtitle_track', arguments: {} }
+    ])
+    for (const command of create.steps.flatMap((step) => step.commands)) {
+      expect(applyEditorCommand(document, command).ok).toBe(true)
+    }
+
+    const trackId = document.subtitleTracks[0].id
+    const plan = planChatToolCalls(context(document), [
+      { name: 'set_text_rotation', arguments: { rotationDeg: -5, subtitleTrackId: trackId } }
+    ])
+    expect(plan.failures).toEqual([])
+    for (const command of plan.steps.flatMap((step) => step.commands)) {
+      expect(applyEditorCommand(document, command).ok).toBe(true)
+    }
+
+    expect(document.subtitleTracks[0].style.rotationDeg).toBe(-5)
+  })
+
+  it('góc ngoài khoảng cho phép thì báo lỗi, không cắt bớt cho vừa', () => {
+    const plan = planChatToolCalls(context(withOverlays()), [
+      { name: 'set_text_rotation', arguments: { rotationDeg: 120 } }
+    ])
+
+    expect(plan.steps).toEqual([])
+    expect(plan.failures).toHaveLength(1)
+  })
+
+  it('dự án chưa có chữ nào thì báo lỗi, không im lặng thành công', () => {
+    const plan = planChatToolCalls(context(project()), [
+      { name: 'set_text_rotation', arguments: { rotationDeg: 10 } }
+    ])
+
+    expect(plan.steps).toEqual([])
+    expect(plan.failures).toHaveLength(1)
+  })
+})

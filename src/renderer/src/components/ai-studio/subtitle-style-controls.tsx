@@ -40,6 +40,20 @@ export function SubtitleStyleControls({
 
   return (
     <div className="subtitle-style">
+      <div className="field-row">
+        <span className="field-row__label">{t.subtitles.rotation}</span>
+        <input
+          type="range"
+          min={-45}
+          max={45}
+          step={1}
+          value={style.rotationDeg ?? 0}
+          aria-label={t.subtitles.rotation}
+          onChange={(event) => patch({ rotationDeg: Number(event.target.value) })}
+        />
+        <span className="field-row__value">{style.rotationDeg ?? 0}°</span>
+      </div>
+
       <FontFamilySelect
         family={style.fontFamily}
         postScriptName={style.fontPostScriptName}

@@ -284,6 +284,9 @@ function SubtitleCue({ cue, height }: { cue: RenderPlanSubtitleCue; height: numb
           alignItems: 'center',
           gap: style.lineSpacingPx,
           textAlign: 'center',
+          // Xoay CẢ KHỐI chứ không xoay từng dòng: xoay từng dòng thì các dòng
+          // trượt khỏi nhau và khối chữ vỡ ra.
+          transform: style.rotationDeg ? `rotate(${style.rotationDeg}deg)` : undefined,
           backgroundColor:
             style.boxOpacity > 0 ? hexToRgba(style.boxColor, style.boxOpacity) : undefined,
           padding: style.boxOpacity > 0 ? height * 0.008 : 0
@@ -408,7 +411,17 @@ function TextOverlayLayer({ overlay }: { overlay: RenderPlanTextOverlay }): JSX.
           alignItems: 'center',
           gap: style.lineSpacingPx,
           textAlign: 'center',
-          transform,
+          // Transform của hiệu ứng đi TRƯỚC góc xoay. CSS áp dụng từ PHẢI sang
+          // TRÁI, nên để `rotate` ở cuối nghĩa là xoay trước rồi mới dịch chuyển
+          // — hiệu ứng vào/ra vẫn trượt theo trục màn hình. Đảo lại thì phép
+          // trượt bị xoay theo và chữ bay vào chéo góc.
+          // Đo trong Chromium: `rotate(90deg) translateX(100px)` cho ra (0,100),
+          // còn `translateX(100px) rotate(90deg)` cho ra (100,0).
+          transform:
+            [transform ?? '', style.rotationDeg ? `rotate(${style.rotationDeg}deg)` : '']
+              .filter(Boolean)
+              .join(' ')
+              .trim() || undefined,
           backgroundColor:
             style.boxOpacity > 0 ? hexToRgba(style.boxColor, style.boxOpacity) : undefined,
           padding: style.boxOpacity > 0 ? style.fontSizePx * 0.25 : 0,

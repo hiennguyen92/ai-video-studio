@@ -359,6 +359,7 @@ export const dictionaryVi = {
     deleteTrack: 'Xoá track',
     styleSection: 'Kiểu chữ',
     preset: 'Mẫu có sẵn',
+    rotation: 'Góc xoay',
     fontFamily: 'Phông chữ',
     fontStyle: 'Kiểu chữ',
     fontLoading: 'Đang đọc danh sách phông…',

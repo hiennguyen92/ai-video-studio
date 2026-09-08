@@ -39,6 +39,13 @@ export interface SubtitleStyle {
   /** Nền hộp chữ. Đặt boxOpacity = 0 để tắt. */
   boxColor: string
   boxOpacity: number
+  /**
+   * Góc xoay chữ, tính bằng độ, chiều KIM ĐỒNG HỒ như CSS.
+   *
+   * ASS đếm ngược chiều kim đồng hồ nên lớp ghi ASS phải đảo dấu; để nguyên là
+   * preview nghiêng một đằng, bản nung nghiêng một nẻo.
+   */
+  rotationDeg?: number
   alignment: SubtitleAlignment
   marginLeftPx: number
   marginRightPx: number

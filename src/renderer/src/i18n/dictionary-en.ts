@@ -359,6 +359,7 @@ export const dictionaryEn: Dictionary = {
     deleteTrack: 'Delete track',
     styleSection: 'Text style',
     preset: 'Preset',
+    rotation: 'Rotation',
     fontFamily: 'Font',
     fontStyle: 'Style',
     fontLoading: 'Reading installed fonts…',
