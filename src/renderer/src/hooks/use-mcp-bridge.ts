@@ -184,7 +184,7 @@ export function useMcpBridge(): void {
                 document,
                 selectedClipIds: state.selection.clipIds,
                 playheadUs: state.playheadUs,
-                makeId: () => createId('clip'),
+                makeId: (prefix) => createId(prefix ?? 'clip'),
                 shots: Object.fromEntries(shotCache)
               },
               payload.calls ?? []

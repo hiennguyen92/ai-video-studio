@@ -203,8 +203,30 @@ xếp lại cảnh *chính là* việc dựng phim.
 Cú máy quá ngắn bị gộp vào cú trước: footage thật có chớp sáng, lóe đèn, khung mờ
 khi lia máy — mỗi thứ sinh một "cảnh" vài phần trăm giây mà không ai gọi là cú máy.
 
+**Dò chuyển cảnh một mình là không đủ.** Footage review quay bằng điện thoại thường
+là MỘT cú máy liên tục: ffmpeg trả về không mốc nào (đo thật trên một clip 98 giây:
+0 mốc ở ngưỡng 0,3 và cả ở 0,1), và agent nhận đúng một ảnh cho cả video. Nên cú nào
+dài hơn 6 giây bị **chia đều** thành lát. Chia đều chứ không cắt cứng từng 6 giây,
+để không sinh ra lát cuối dài nửa giây.
+
+Lát chia đều mang cờ `synthetic` và `list_shots` nói thẳng điều đó ra: cắt ở một mốc
+chia đều rơi vào giữa động tác, khác hẳn cắt ở chỗ chuyển cảnh thật. Giấu đi thì agent
+tưởng mình đang cắt đúng chỗ chuyển cảnh.
+
 Kết quả dò được lưu trong cache của project như thumbnail hay waveform: xoá đi vẫn
 dò lại được, nên nó không thuộc tài liệu project.
+
+### Khung hình và chuyển cảnh cũng phải gọi được từ agent
+
+Hai công cụ dễ bị bỏ sót nhưng thiếu thì cả nhánh này không ra được video TikTok:
+
+- `set_canvas` — footage dọc đặt trong khung 16:9 thì hai bên là hai dải đen, và
+  **không công cụ nào khác sửa được**. Nhận TỈ LỆ (`9:16`) chứ không nhận hai số
+  pixel: mô hình nhớ sai độ phân giải thường xuyên. Cạnh luôn được làm chẵn — h264
+  với yuv420p không mã hoá được cạnh lẻ, và lỗi đó chỉ lộ ra lúc xuất.
+- `set_clip_transition` — chuyển cảnh kéo clip đến bắt đầu sớm hơn để phủ lên clip
+  đi, nên nó ăn vào phần nguồn nằm TRƯỚC `sourceInUs`. Dựng bằng `insert_clip` với
+  điểm vào nằm sâu trong file thì luôn đủ handle; dựng từ đầu file thì không.
 
 ### Luồng đầy đủ cho video aff từ footage câm
 

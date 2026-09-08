@@ -128,7 +128,7 @@ export function useAiChat(): {
           document: latest,
           selectedClipIds: selection.clipIds,
           playheadUs,
-          makeId: () => createId('clip')
+          makeId: (prefix) => createId(prefix ?? 'clip')
         },
         result.data.toolCalls
       )

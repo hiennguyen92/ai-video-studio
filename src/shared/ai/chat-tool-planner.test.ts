@@ -257,3 +257,119 @@ describe('công cụ giảm nhạc', () => {
     expect(plan.failures).toHaveLength(1)
   })
 })
+
+describe('công cụ đổi khung hình', () => {
+  it('9:16 ra khung dọc, đúng thứ TikTok cần', () => {
+    const document = project()
+    const plan = planChatToolCalls(context(document), [
+      { name: 'set_canvas', arguments: { aspect: '9:16' } }
+    ])
+
+    for (const command of plan.steps.flatMap((step) => step.commands)) {
+      expect(applyEditorCommand(document, command).ok).toBe(true)
+    }
+
+    expect(document.settings.width).toBe(1080)
+    expect(document.settings.height).toBe(1920)
+    expect(document.settings.aspectRatio).toBe('9:16')
+  })
+
+  it('luôn ra cạnh chẵn — cạnh lẻ thì h264 không mã hoá được', () => {
+    const document = project()
+    const plan = planChatToolCalls(context(document), [
+      { name: 'set_canvas', arguments: { aspect: '9:16', longEdgePx: 1001 } }
+    ])
+    for (const command of plan.steps.flatMap((step) => step.commands)) {
+      expect(applyEditorCommand(document, command).ok).toBe(true)
+    }
+
+    expect(document.settings.width % 2).toBe(0)
+    expect(document.settings.height % 2).toBe(0)
+  })
+
+  it('từ chối tỉ lệ không có trong danh sách', () => {
+    const document = project()
+    const plan = planChatToolCalls(context(document), [
+      { name: 'set_canvas', arguments: { aspect: '4:3' } }
+    ])
+    expect(plan.steps).toEqual([])
+    expect(plan.failures).toHaveLength(1)
+  })
+})
+
+describe('công cụ chuyển cảnh', () => {
+  it('đặt được chuyển cảnh vào đầu clip', () => {
+    const { document, clipId } = withClip()
+    const plan = planChatToolCalls(context(document), [
+      {
+        name: 'set_clip_transition',
+        arguments: { clipId, kind: 'wipe-left', durationSeconds: 0.4 }
+      }
+    ])
+
+    for (const command of plan.steps.flatMap((step) => step.commands)) {
+      expect(applyEditorCommand(document, command).ok).toBe(true)
+    }
+
+    const clip = document.tracks[0].clips.find((item) => item.id === clipId)
+    expect(clip?.transitionIn).toEqual({ kind: 'wipe-left', durationUs: 400_000 })
+  })
+
+  it('"none" gỡ chuyển cảnh đã đặt', () => {
+    const { document, clipId } = withClip()
+    const calls = [
+      { name: 'set_clip_transition', arguments: { clipId, kind: 'fade' } },
+      { name: 'set_clip_transition', arguments: { clipId, kind: 'none' } }
+    ]
+
+    for (const call of calls) {
+      const plan = planChatToolCalls(context(document), [call])
+      expect(plan.failures).toEqual([])
+      for (const command of plan.steps.flatMap((step) => step.commands)) {
+        expect(applyEditorCommand(document, command).ok).toBe(true)
+      }
+    }
+
+    const clip = document.tracks[0].clips.find((item) => item.id === clipId)
+    expect(clip?.transitionIn).toBeUndefined()
+  })
+
+  it('từ chối kiểu chuyển cảnh mô hình bịa ra', () => {
+    const { document, clipId } = withClip()
+    const plan = planChatToolCalls(context(document), [
+      { name: 'set_clip_transition', arguments: { clipId, kind: 'star-wipe' } }
+    ])
+    expect(plan.steps).toEqual([])
+    expect(plan.failures).toHaveLength(1)
+  })
+})
+
+describe('id sinh ra mang đúng tiền tố', () => {
+  it('chữ overlay không mang id kiểu clip — agent sẽ gọi nhầm công cụ', () => {
+    const document = project()
+    const plan = planChatToolCalls(
+      { document, selectedClipIds: [], playheadUs: 0, makeId: (prefix) => `${prefix ?? 'clip'}_x` },
+      [{ name: 'add_text_overlay', arguments: { text: 'Hook', startSeconds: 0, endSeconds: 2 } }]
+    )
+
+    for (const command of plan.steps.flatMap((step) => step.commands)) {
+      expect(applyEditorCommand(document, command).ok).toBe(true)
+    }
+
+    expect(document.textOverlays[0].id).toBe('text_x')
+  })
+
+  it('track thêm mới mang id kiểu track', () => {
+    const document = project()
+    const plan = planChatToolCalls(
+      { document, selectedClipIds: [], playheadUs: 0, makeId: (prefix) => `${prefix ?? 'clip'}_x` },
+      [{ name: 'add_track', arguments: { kind: 'audio', name: 'Nhạc' } }]
+    )
+
+    for (const command of plan.steps.flatMap((step) => step.commands)) {
+      expect(applyEditorCommand(document, command).ok).toBe(true)
+    }
+
+    expect(document.tracks.at(-1)?.id).toBe('track_x')
+  })
+})

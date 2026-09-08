@@ -152,6 +152,42 @@ export const chatToolSchemas = {
     overlayId: z.string().min(1).max(120)
   }),
 
+  /**
+   * Đổi khung hình của dự án.
+   *
+   * Bắt buộc phải có cho video dọc: footage quay dọc đặt vào khung 16:9 thì hai
+   * bên là hai dải đen, và không sửa được bằng bất kỳ công cụ nào khác trong bộ
+   * này. Nhận TỈ LỆ chứ không nhận hai số pixel — mô hình nhớ sai độ phân giải
+   * thường xuyên, còn "9:16" thì không nhầm được.
+   */
+  set_canvas: z.object({
+    aspect: z.enum(['16:9', '9:16', '1:1']),
+    /** Cạnh dài tính bằng pixel. Bỏ trống thì 1920 (1080 cho khung vuông). */
+    longEdgePx: z.number().int().min(240).max(4320).optional()
+  }),
+
+  /**
+   * Đặt hiệu ứng chuyển cảnh vào ĐẦU một clip.
+   *
+   * `none` để gỡ. Thời lượng bị kẹp theo phần nguồn còn lại lúc dựng khung hình,
+   * nên xin 1 giây mà clip chỉ còn 0,4 giây thì nhận được 0,4 giây.
+   */
+  set_clip_transition: z.object({
+    clipId: z.string().min(1).max(120).optional(),
+    kind: z.enum([
+      'none',
+      'fade',
+      'slide-left',
+      'slide-right',
+      'slide-up',
+      'slide-down',
+      'wipe-left',
+      'wipe-right',
+      'zoom'
+    ]),
+    durationSeconds: z.number().positive().max(5).optional()
+  }),
+
   auto_duck_music: z.object({
     duckVolume: gain.optional(),
     baseVolume: gain.optional(),
@@ -196,7 +232,11 @@ export const chatToolDescriptions: Record<ChatToolName, string> = {
     'Assemble a cut from detected camera shots, laid end to end in the order given. Use this for footage with no speech, where there is no transcript to work from. Call list_shots first to see each shot and its still frame.',
   add_text_overlay:
     'Put text on top of the video for a stretch of time — a hook, a price, a call to action. Separate from subtitles, which come from speech.',
-  remove_text_overlay: 'Remove a text overlay.'
+  remove_text_overlay: 'Remove a text overlay.',
+  set_canvas:
+    'Set the project canvas shape. Use 9:16 for TikTok, Reels and Shorts, 16:9 for YouTube, 1:1 for square. Do this before laying out text, because it changes where text sits in frame.',
+  set_clip_transition:
+    'Put a transition on the start of a clip, so it blends out of the clip before it. Use "none" to remove one. A transition eats into the clip, so it needs footage before the cut to play over.'
 }
 
 /** Mô tả tham số cho mô hình — dựng thủ công để không phải kéo thêm thư viện. */
@@ -224,7 +264,10 @@ export const chatToolParameterHints: Record<ChatToolName, string> = {
     '{ assetId: string, shotIndexes: number[], trackId?: string, maxShotSeconds?: number }',
   add_text_overlay:
     "{ text: string, startSeconds: number, endSeconds: number, animation?: 'none' | 'fade' | 'pop' | 'slide-up' | 'typewriter', position?: 'bottom' | 'middle' | 'top', fontSizePx?: number }",
-  remove_text_overlay: '{ overlayId: string }'
+  remove_text_overlay: '{ overlayId: string }',
+  set_canvas: "{ aspect: '16:9' | '9:16' | '1:1', longEdgePx?: number }",
+  set_clip_transition:
+    "{ clipId?: string, kind: 'none' | 'fade' | 'slide-left' | 'slide-right' | 'slide-up' | 'slide-down' | 'wipe-left' | 'wipe-right' | 'zoom', durationSeconds?: number }"
 }
 
 /**

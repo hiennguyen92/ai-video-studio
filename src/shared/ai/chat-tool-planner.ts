@@ -29,7 +29,13 @@ export interface ChatEditContext {
   document: ProjectDocument
   selectedClipIds: string[]
   playheadUs: number
-  makeId(): string
+  /**
+   * Sinh id mới. Tiền tố cho biết đó là clip, track hay chữ overlay.
+   *
+   * Không phải chuyện thẩm mỹ: agent đọc bản tổng quan rồi thao tác theo id, và
+   * một chữ overlay mang id `clip_…` sẽ khiến nó gọi nhầm công cụ dành cho clip.
+   */
+  makeId(prefix?: 'clip' | 'track' | 'text'): string
   /**
    * Cú máy đã dò, theo id asset.
    *
@@ -247,7 +253,7 @@ function planOne(context: ChatEditContext, tool: ChatToolName, args: unknown): P
         )
       }
 
-      const trackId = context.makeId()
+      const trackId = context.makeId('track')
       const subtitleTrack: SubtitleTrack = {
         id: trackId,
         name: `Phụ đề ${translation?.targetLanguage ?? transcript.language}`,
@@ -406,7 +412,7 @@ function planOne(context: ChatEditContext, tool: ChatToolName, args: unknown): P
         commands: [
           {
             type: 'track/add',
-            trackId: context.makeId(),
+            trackId: context.makeId('track'),
             kind: input.kind,
             name: input.name,
             role: input.role
@@ -493,7 +499,7 @@ function planOne(context: ChatEditContext, tool: ChatToolName, args: unknown): P
       if (input.fontSizePx) style.fontSizePx = input.fontSizePx
 
       const overlay: TextOverlay = {
-        id: context.makeId(),
+        id: context.makeId('text'),
         text: input.text,
         startUs,
         endUs,
@@ -518,6 +524,57 @@ function planOne(context: ChatEditContext, tool: ChatToolName, args: unknown): P
         tool,
         description: `Xoá chữ "${overlay.text.slice(0, 30)}"`,
         commands: [{ type: 'text/remove', overlayId: input.overlayId }]
+      }
+    }
+
+    case 'set_canvas': {
+      const input = chatToolSchemas.set_canvas.parse(args)
+      // Cạnh phải CHẴN: h264 với yuv420p không mã hoá được cạnh lẻ, và lỗi đó chỉ
+      // lộ ra lúc xuất, khi người dùng đã dựng xong cả video.
+      const even = (value: number): number => Math.round(value / 2) * 2
+      const longEdge = input.longEdgePx ?? (input.aspect === '1:1' ? 1080 : 1920)
+      const size =
+        input.aspect === '9:16'
+          ? { width: even((longEdge * 9) / 16), height: even(longEdge) }
+          : input.aspect === '16:9'
+            ? { width: even(longEdge), height: even((longEdge * 9) / 16) }
+            : { width: even(longEdge), height: even(longEdge) }
+
+      return {
+        tool,
+        description: `Đổi khung hình sang ${input.aspect} (${size.width}x${size.height})`,
+        commands: [
+          {
+            type: 'project/set-settings',
+            settings: { ...size, aspectRatio: input.aspect }
+          }
+        ]
+      }
+    }
+
+    case 'set_clip_transition': {
+      const input = chatToolSchemas.set_clip_transition.parse(args)
+      const clipId = resolveClipId(context, input.clipId)
+
+      if (input.kind === 'none') {
+        return {
+          tool,
+          description: 'Gỡ chuyển cảnh của clip',
+          commands: [{ type: 'clip/set-transition', clipId }]
+        }
+      }
+
+      const durationUs = secondsToMicros(input.durationSeconds ?? 0.5)
+      return {
+        tool,
+        description: `Đặt chuyển cảnh ${input.kind} ${formatSeconds(durationUs)} cho clip`,
+        commands: [
+          {
+            type: 'clip/set-transition',
+            clipId,
+            transition: { kind: input.kind, durationUs }
+          }
+        ]
       }
     }
 
