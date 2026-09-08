@@ -20,6 +20,8 @@ export function AiSettingsPanel({
   const t = useT()
   const [snapshot, setSnapshot] = useState<AiSettingsSnapshot | null>(null)
   const [drafts, setDrafts] = useState<Record<string, string>>({})
+  /** providerId -> { field -> value } đang soạn. */
+  const [configDrafts, setConfigDrafts] = useState<Record<string, Record<string, string>>>({})
   const [busyProvider, setBusyProvider] = useState<string | null>(null)
   const [testResults, setTestResults] = useState<Record<string, ConnectionTestResult>>({})
   const [notice, setNotice] = useState<string | null>(null)
@@ -92,6 +94,27 @@ export function AiSettingsPanel({
     [refresh, t.aiSettings.removed, onCredentialsChanged]
   )
 
+  const handleSaveConfig = useCallback(
+    async (providerId: string, providerName: string) => {
+      const config = configDrafts[providerId]
+      if (!config) return
+      setBusyProvider(providerId)
+      try {
+        const result = await window.api.ai.setConfig(providerId, config)
+        if (!result.ok) {
+          setError(result.error)
+          return
+        }
+        setNotice(interpolate(t.aiSettings.configSaved, { provider: providerName }))
+        await refresh()
+        onCredentialsChanged?.()
+      } finally {
+        setBusyProvider(null)
+      }
+    },
+    [configDrafts, refresh, t.aiSettings.configSaved, onCredentialsChanged]
+  )
+
   const handleTest = useCallback(async (providerId: string) => {
     setBusyProvider(providerId)
     try {
@@ -130,7 +153,7 @@ export function AiSettingsPanel({
       {error && <div className="notice">{interpolate(t.errors.generic, { message: error })}</div>}
       {notice && <p className="ai-settings__notice">{notice}</p>}
 
-      {snapshot?.providers.map(({ descriptor, hasCredential }) => {
+      {snapshot?.providers.map(({ descriptor, hasCredential, config }) => {
         const busy = busyProvider === descriptor.id
         const test = testResults[descriptor.id]
 
@@ -141,7 +164,11 @@ export function AiSettingsPanel({
               <span
                 className={`provider-card__badge ${hasCredential ? 'provider-card__badge--ok' : ''}`}
               >
-                {hasCredential ? t.aiSettings.configured : t.aiSettings.notConfigured}
+                {hasCredential
+                  ? t.aiSettings.configured
+                  : descriptor.credentialRequired
+                    ? t.aiSettings.notConfigured
+                    : t.aiSettings.noCredentialNeeded}
               </span>
             </header>
 
@@ -150,6 +177,47 @@ export function AiSettingsPanel({
             </p>
 
             {descriptor.noteVi && <p className="provider-card__note">{descriptor.noteVi}</p>}
+
+            {/* Ô cấu hình dựng TỪ khai báo của provider — không viết cứng ô nào
+                cho riêng một provider, y như cách tham số model được dựng. */}
+            {(descriptor.configFields ?? []).map((field) => {
+              const saved = config[field.key] ?? field.defaultValue ?? ''
+              const draft = configDrafts[descriptor.id]?.[field.key]
+              return (
+                <label key={field.key} className="provider-card__config">
+                  <span className="field-row__label">
+                    {field.labelVi}
+                    {field.required ? ' *' : ''}
+                  </span>
+                  <input
+                    type="text"
+                    value={draft ?? saved}
+                    placeholder={field.placeholder}
+                    title={field.hintVi}
+                    spellCheck={false}
+                    disabled={busy}
+                    onChange={(event) =>
+                      setConfigDrafts((current) => ({
+                        ...current,
+                        [descriptor.id]: {
+                          ...(current[descriptor.id] ?? config),
+                          [field.key]: event.target.value
+                        }
+                      }))
+                    }
+                  />
+                </label>
+              )
+            })}
+
+            {(descriptor.configFields ?? []).length > 0 && (
+              <ToolButton
+                label={t.aiSettings.configSave}
+                variant="outline"
+                onClick={() => void handleSaveConfig(descriptor.id, descriptor.name)}
+                disabled={busy || !configDrafts[descriptor.id]}
+              />
+            )}
 
             <div className="provider-card__key-row">
               <input
@@ -177,7 +245,7 @@ export function AiSettingsPanel({
                 label={busy ? t.aiSettings.testing : t.aiSettings.test}
                 variant="outline"
                 onClick={() => void handleTest(descriptor.id)}
-                disabled={busy || !hasCredential}
+                disabled={busy || (!hasCredential && descriptor.credentialRequired)}
               />
               <ToolButton
                 label={t.aiSettings.remove}

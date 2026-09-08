@@ -2,6 +2,7 @@ import type { AiTaskKind, ProviderDescriptor } from '../../shared/ai/ai-capabili
 import type { TtsAdapter } from '../../shared/ai/ai-provider-contracts'
 import { elevenLabsTtsAdapter } from './elevenlabs-tts-adapter'
 import { openAiTtsAdapter } from './openai-tts-adapter'
+import { selfHostedOpenAiTtsAdapter } from './self-hosted-openai-tts-adapter'
 
 /**
  * Sổ đăng ký provider.
@@ -14,7 +15,11 @@ import { openAiTtsAdapter } from './openai-tts-adapter'
  * chúng đã có sẵn trong `shared/ai/ai-provider-contracts.ts`.
  */
 
-const TTS_ADAPTERS: TtsAdapter[] = [elevenLabsTtsAdapter, openAiTtsAdapter]
+const TTS_ADAPTERS: TtsAdapter[] = [
+  elevenLabsTtsAdapter,
+  openAiTtsAdapter,
+  selfHostedOpenAiTtsAdapter
+]
 
 export function listTtsAdapters(): TtsAdapter[] {
   return TTS_ADAPTERS

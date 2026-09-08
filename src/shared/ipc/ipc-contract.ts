@@ -34,6 +34,7 @@ export const IPC = {
   aiProviders: 'ai:providers',
   aiCredentialStatus: 'ai:credential-status',
   aiSetCredential: 'ai:set-credential',
+  aiSetConfig: 'ai:set-config',
   aiDeleteCredential: 'ai:delete-credential',
   aiTestConnection: 'ai:test-connection',
   aiListModels: 'ai:list-models',
@@ -151,6 +152,11 @@ export interface ProviderStatus {
   descriptor: ProviderDescriptor
   /** Đã lưu khoá cho provider này chưa. Không bao giờ trả giá trị khoá. */
   hasCredential: boolean
+  /**
+   * Cấu hình không bí mật đã lưu (ví dụ địa chỉ máy chủ tự host).
+   * Trả nguyên giá trị — khác với khoá, đây không phải bí mật.
+   */
+  config: Record<string, string>
 }
 
 export interface AiSettingsSnapshot {
@@ -220,6 +226,7 @@ export interface RendererApi {
   ai: {
     settings(): Promise<IpcResult<AiSettingsSnapshot>>
     setCredential(providerId: string, apiKey: string): Promise<IpcResult<void>>
+    setConfig(providerId: string, config: Record<string, string>): Promise<IpcResult<void>>
     deleteCredential(providerId: string): Promise<IpcResult<void>>
     testConnection(providerId: string): Promise<IpcResult<ConnectionTestResult>>
     listModels(providerId: string): Promise<IpcResult<ProviderModel[]>>

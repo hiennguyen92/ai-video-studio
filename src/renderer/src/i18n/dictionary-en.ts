@@ -160,6 +160,9 @@ export const dictionaryEn: Dictionary = {
     storageOk: 'Secret store: {backend}',
     storageUnavailable:
       'The OS is not ready to store secrets securely. Keys cannot be entered until this is fixed.',
+    configSave: 'Save settings',
+    configSaved: 'Saved settings for {provider}',
+    noCredentialNeeded: 'Key optional',
     keyPlaceholder: 'Paste the API key here',
     save: 'Save key',
     remove: 'Remove key',
@@ -220,6 +223,10 @@ export const dictionaryEn: Dictionary = {
     presets: 'Saved presets',
     applyPreset: 'Apply',
     deletePreset: 'Delete preset',
+    voiceManualLabel: 'Voice name',
+    voiceManualPlaceholder: 'Type a voice your server supports',
+    voiceCatalogManual:
+      'Self-hosted servers do not publish a voice list — type a voice name, or preset the list in AI settings.',
     voiceVerifiedBadge: 'verified',
     voiceCategoryPremade: 'built-in',
     voiceCategoryProfessional: 'library',

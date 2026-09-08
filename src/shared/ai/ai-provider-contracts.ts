@@ -19,6 +19,11 @@ import type {
 
 export interface AdapterContext {
   apiKey: string
+  /**
+   * Cấu hình không bí mật của provider, ví dụ `baseUrl` cho bản tự host.
+   * Rỗng với provider chạy trên dịch vụ đám mây có địa chỉ cố định.
+   */
+  config?: Record<string, string>
   /** Huỷ giữa chừng khi người dùng bấm huỷ job. */
   signal: AbortSignal
   /**

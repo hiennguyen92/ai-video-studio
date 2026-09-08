@@ -164,6 +164,9 @@ export const dictionaryVi = {
     storageOk: 'Kho bí mật: {backend}',
     storageUnavailable:
       'Hệ điều hành chưa sẵn sàng lưu bí mật an toàn. Chưa nhập khoá được cho tới khi khắc phục.',
+    configSave: 'Lưu cấu hình',
+    configSaved: 'Đã lưu cấu hình cho {provider}',
+    noCredentialNeeded: 'Không bắt buộc khoá',
     keyPlaceholder: 'Dán khoá API vào đây',
     save: 'Lưu khoá',
     remove: 'Xoá khoá',
@@ -223,6 +226,10 @@ export const dictionaryVi = {
     presets: 'Preset đã lưu',
     applyPreset: 'Áp dụng',
     deletePreset: 'Xoá preset',
+    voiceManualLabel: 'Tên giọng',
+    voiceManualPlaceholder: 'Gõ tên giọng máy chủ của bạn hỗ trợ',
+    voiceCatalogManual:
+      'Máy chủ tự host không công bố danh sách giọng — hãy gõ tên giọng, hoặc điền sẵn danh sách trong Cấu hình AI.',
     voiceVerifiedBadge: 'đã xác thực',
     voiceCategoryPremade: 'có sẵn',
     voiceCategoryProfessional: 'thư viện',

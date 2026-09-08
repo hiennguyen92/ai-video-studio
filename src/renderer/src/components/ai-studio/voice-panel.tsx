@@ -133,6 +133,9 @@ export function VoicePanel({
 
   const providerStatus = settings?.providers.find((entry) => entry.descriptor.id === providerId)
   const hasCredential = providerStatus?.hasCredential ?? false
+  // Máy chủ tự host thường chạy không xác thực; đừng chặn oan.
+  const credentialRequired = providerStatus?.descriptor.credentialRequired ?? true
+  const ready = hasCredential || !credentialRequired
 
   const loadVoices = useCallback(async () => {
     if (!providerId) return
@@ -243,7 +246,7 @@ export function VoicePanel({
 
   return (
     <div className="voice-panel">
-      {!hasCredential && providerStatus && (
+      {!ready && providerStatus && (
         <div className="notice notice--warning voice-panel__missing-key">
           <span>{t.voice.missingKey}</span>
           <ToolButton label={t.voice.openSettings} variant="outline" onClick={onOpenSettings} />
@@ -265,7 +268,9 @@ export function VoicePanel({
             .map((entry) => (
               <option key={entry.descriptor.id} value={entry.descriptor.id}>
                 {entry.descriptor.name}
-                {entry.hasCredential ? '' : ' — chưa có khoá'}
+                {entry.hasCredential || !entry.descriptor.credentialRequired
+                  ? ''
+                  : ' — chưa có khoá'}
               </option>
             ))}
         </select>
@@ -303,40 +308,69 @@ export function VoicePanel({
         </div>
       )}
 
-      <div className="field-row">
-        <span className="field-row__label">{t.voice.voice}</span>
-        <div className="voice-panel__voice-row">
-          <select
-            value={voiceId}
-            onChange={(event) => setVoiceId(event.target.value)}
-            aria-label={t.voice.voice}
-            disabled={voices.length === 0}
-          >
-            {voices.length === 0 && <option value="">{t.voice.noVoices}</option>}
-            {voices.map((voice) => (
-              <option key={voice.id} value={voice.id}>
-                {voice.verifiedForLanguage ? '✓ ' : ''}
-                {voice.name}
-                {voice.category ? ` · ${categoryLabel(voice.category)}` : ''}
-                {voice.verifiedForLanguage ? ` · ${t.voice.voiceVerifiedBadge}` : ''}
-              </option>
-            ))}
-          </select>
-          {capabilities?.voiceCatalog === 'remote' && (
+      {/* Máy chủ tự host không công bố danh sách giọng và cũng không dò ra được:
+          để người dùng gõ tên giọng, thay vì bày một danh sách bịa. */}
+      {capabilities?.voiceCatalog === 'manual' && voices.length === 0 ? (
+        <div className="field-row">
+          <span className="field-row__label">{t.voice.voiceManualLabel}</span>
+          {/* Vẫn giữ nút dò danh sách bên cạnh ô gõ tay: một số máy chủ tự host
+              CÓ endpoint liệt kê giọng, và không cho người dùng cách nào để thử
+              thì họ buộc phải gõ mò tên giọng. */}
+          <div className="voice-panel__voice-row">
+            <input
+              type="text"
+              value={voiceId}
+              spellCheck={false}
+              placeholder={t.voice.voiceManualPlaceholder}
+              aria-label={t.voice.voiceManualLabel}
+              onChange={(event) => setVoiceId(event.target.value)}
+            />
             <ToolButton
               label={loadingVoices ? t.voice.loadingVoices : t.voice.loadVoices}
               variant="outline"
               onClick={() => void loadVoices()}
-              disabled={loadingVoices || !hasCredential}
+              disabled={loadingVoices}
             />
-          )}
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="field-row">
+          <span className="field-row__label">{t.voice.voice}</span>
+          <div className="voice-panel__voice-row">
+            <select
+              value={voiceId}
+              onChange={(event) => setVoiceId(event.target.value)}
+              aria-label={t.voice.voice}
+              disabled={voices.length === 0}
+            >
+              {voices.length === 0 && <option value="">{t.voice.noVoices}</option>}
+              {voices.map((voice) => (
+                <option key={voice.id} value={voice.id}>
+                  {voice.verifiedForLanguage ? '✓ ' : ''}
+                  {voice.name}
+                  {voice.category ? ` · ${categoryLabel(voice.category)}` : ''}
+                  {voice.verifiedForLanguage ? ` · ${t.voice.voiceVerifiedBadge}` : ''}
+                </option>
+              ))}
+            </select>
+            {capabilities?.voiceCatalog !== 'static' && (
+              <ToolButton
+                label={loadingVoices ? t.voice.loadingVoices : t.voice.loadVoices}
+                variant="outline"
+                onClick={() => void loadVoices()}
+                disabled={loadingVoices || (!hasCredential && credentialRequired)}
+              />
+            )}
+          </div>
+        </div>
+      )}
 
       <p className="voice-panel__catalog-note">
         {capabilities?.voiceCatalog === 'remote'
           ? t.voice.voiceCatalogRemote
-          : t.voice.voiceCatalogStatic}
+          : capabilities?.voiceCatalog === 'manual'
+            ? t.voice.voiceCatalogManual
+            : t.voice.voiceCatalogStatic}
       </p>
 
       {/* Giọng thư viện bị gói miễn phí từ chối lúc tạo — nói trước để người
@@ -476,7 +510,7 @@ export function VoicePanel({
                   icon={<IconSparkle />}
                   variant={state.status === 'succeeded' ? 'ghost' : 'outline'}
                   onClick={() => generateSegment(segment)}
-                  disabled={!hasCredential || !voiceId || tooLong}
+                  disabled={!ready || !voiceId || tooLong}
                 />
               )}
 
@@ -515,7 +549,7 @@ export function VoicePanel({
             icon={<IconSparkle />}
             variant="primary"
             onClick={generateAll}
-            disabled={!hasCredential || !voiceId || segments.length === 0}
+            disabled={!ready || !voiceId || segments.length === 0}
           />
 
           <select

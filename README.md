@@ -102,6 +102,9 @@ Phím tắt **không** kích hoạt khi con trỏ đang ở trong ô nhập li�
 - **Ngôn ngữ**: tiếng Việt mặc định, chuyển sang tiếng Anh ngay lập tức
 - **Cấu hình AI**: khoá API lưu bằng `safeStorage` (macOS Keychain), kiểm tra kết nối,
   xoá khoá; thiếu khoá chỉ vô hiệu hoá đúng tính năng phụ thuộc
+- **Máy chủ TTS tự host**: chạy được với mọi máy chủ có `POST /v1/audio/speech` —
+  omnivoice-server (bọc OmniVoice), Piper, Coqui XTTS, openedai-speech, Kokoro… Không cần khoá,
+  không tốn phí gọi API, dữ liệu không rời máy
 - **Giọng đọc**: chọn provider/model/giọng, danh sách giọng và model lấy **trực tiếp từ tài khoản**,
   chia kịch bản thành đoạn tạo lại được riêng, chèn tại playhead / track mới / thay clip đang chọn.
   Audio AI tạo ra là asset thật: có waveform, thời lượng đo bằng ffprobe, cắt và hoàn tác được
@@ -146,6 +149,12 @@ Vì vậy siêu dữ liệu model giờ **đọc từ `/v1/models`**, không vi�
 
 - **OpenAI TTS chưa gọi thật lần nào.** Adapter viết theo tài liệu và kiểm thử bằng fixture; chưa
   có khoá OpenAI để xác nhận.
+- **omnivoice-server thật chưa chạy thử.** Chạy nó cần PyTorch và tải model hàng GB. Adapter được
+  kiểm thử bằng máy chủ HTTP thật dựng trong test, nói đúng giao thức theo tài liệu của dự án đó —
+  nhưng chưa xác nhận omnivoice-server hành xử đúng như tài liệu.
+- **Nhân bản giọng chưa hỗ trợ.** Các máy chủ tự host dùng tên trường khác nhau (`ref_audio`,
+  `speaker_id`, đường dẫn file) và chưa có chuẩn chung; adapter chỉ cam kết phần lõi mọi máy chủ
+  đều có.
 - **Giọng "thư viện" cần gói trả phí.** Tài khoản gói miễn phí bị từ chối bằng HTTP 402 khi dùng
   giọng `professional`. Giao diện đánh dấu phân loại giọng và cảnh báo trước.
 - **Lọc giọng theo ngôn ngữ chỉ là gợi ý.** Nó lọc theo "ngôn ngữ đã xác thực" của giọng, nhưng
@@ -213,19 +222,56 @@ Xem [`docs/system-architecture.md`](docs/system-architecture.md) để biết ch
 | Adapter (fixture) | 18 | Máy chủ giả trả phản hồi đúng hình dạng thật: dựng đúng đường dẫn/header/body, đọc phân trang, tham số theo model, phân loại lỗi |
 | Provider thật | 7 | **Gọi ElevenLabs thật** ở tầng adapter. Chỉ chạy khi có `ELEVENLABS_API_KEY` |
 | Đầu-cuối provider thật | 7 | **Trọn luồng qua giao diện với API thật**: khoá → giọng → sinh audio → clip → cắt → hoàn tác |
+| Máy chủ tự host | 21 | 16 unit + 5 đầu-cuối chạy trên **máy chủ HTTP thật** dựng trong test, trả audio WAV thật |
 | Đầu-cuối | 20 | **Chạy Electron thật đã build**: nhập media, dựng timeline, cắt, hoàn tác, đổi ngôn ngữ, lưu/mở lại, xuất MP4 rồi soi bằng ffprobe, lưu khoá qua keychain thật, tham số đổi theo model, nhạc nền chạy khi không có khoá |
 
 ```bash
-npm test          # 88 đạt + 7 bỏ qua (nhóm gọi API thật)
-npm run test:e2e  # 20 đạt + 6 bỏ qua (nhóm gọi API thật)
+npm test          # 104 đạt + 7 bỏ qua (nhóm gọi API thật)
+npm run test:e2e  # 25 đạt + 7 bỏ qua (nhóm gọi API thật)
 
 # Chạy đầy đủ kể cả phần gọi provider thật — khoá KHÔNG bao giờ ghi vào repo:
-ELEVENLABS_API_KEY=... npx vitest run          # 95 đạt
-ELEVENLABS_API_KEY=... npx playwright test     # 27 đạt
+ELEVENLABS_API_KEY=... npx vitest run          # 111 đạt
+ELEVENLABS_API_KEY=... npx playwright test     # 32 đạt
 ```
 
 Kiểm thử cố tình **không giả lập ffmpeg**: giá trị nằm ở chỗ tham số dòng lệnh có đúng không, mà đó
 lại chính là phần một bản giả lập sẽ che mất.
+
+## Dùng TTS tự host (OmniVoice và các máy chủ khác)
+
+Ứng dụng nói giao thức `POST /v1/audio/speech` kiểu OpenAI — chuẩn de-facto của hệ sinh thái TTS tự
+host. Vì vậy **một provider dùng chung cho tất cả**, không phải mỗi dự án một adapter.
+
+### OmniVoice
+
+[k2-fsa/OmniVoice](https://github.com/k2-fsa/OmniVoice) hỗ trợ 646 ngôn ngữ, trong đó **tiếng Việt có
+8.481 giờ dữ liệu huấn luyện**. Repo chính thức không kèm máy chủ HTTP (chỉ có Gradio demo và SDK
+Python), nên cần một lớp bọc:
+
+```bash
+pip install torch            # bản CPU hoặc CUDA tuỳ máy
+pip install omnivoice-server
+omnivoice-server             # lắng nghe ở http://localhost:8880
+```
+
+Rồi trong ứng dụng: **Cấu hình AI → Máy chủ tự host** → điền `http://localhost:8880/v1` → Lưu cấu
+hình → Kiểm tra kết nối.
+
+> ⚠️ **Giấy phép:** mã nguồn OmniVoice là Apache-2.0 nhưng **trọng số model là CC-BY-NC** — không
+> dùng cho mục đích thương mại. Cân nhắc điều này trước khi đưa vào quy trình sản xuất.
+
+### Máy chủ khác
+
+Cùng một provider, chỉ đổi địa chỉ: [openedai-speech](https://github.com/matatonic/openedai-speech),
+[Piper HTTP](https://github.com/Kamil-Krawiec/piper-tts-http-server),
+[Coqui XTTS](https://github.com/teddybear082/WingmanAI-Coqui-TTS-Openai-Server), Kokoro FastAPI.
+
+### Chọn giọng
+
+Phần lớn máy chủ tự host **không có endpoint liệt kê giọng**. Ứng dụng thử dò `/v1/audio/voices`
+trước; không có thì cho bạn **gõ thẳng tên giọng**, hoặc điền sẵn danh sách trong ô "Danh sách giọng"
+ở Cấu hình AI. Ứng dụng cố tình không bịa ra một danh sách giọng có thể không tồn tại trên máy chủ
+của bạn.
 
 ## Giấy phép và ghi nhận
 

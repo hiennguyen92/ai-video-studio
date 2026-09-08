@@ -33,6 +33,7 @@ Mốc được chia theo `DESCRIPTION.md` §9. Mỗi mốc phải **chạy đư�
 | Vòng đời job đầy đủ, huỷ thật, chống chèn trùng khi retry | ✅ | 10 unit |
 | Thiếu khoá chỉ vô hiệu hoá tính năng phụ thuộc | ✅ | e2e |
 | Khoá sai báo lỗi rõ ràng | ✅ | e2e (chạm mạng thật, nhận 401) |
+| Provider TTS tự host (OmniVoice, Piper, XTTS…) | ✅ | 16 unit + 5 e2e trên máy chủ HTTP thật |
 
 **Đã trả xong nợ Mốc 2.** Trọn luồng chạy thật qua giao diện với khoá ElevenLabs, sửa bảy chỗ sai mà
 fixture không phát hiện được (xem README, mục "Đã kiểm chứng bằng API thật"), trong đó có hai lỗi
@@ -75,6 +76,8 @@ ghi vào backlog rõ ràng."
 - Đóng gói bản cài cho macOS / Windows / Linux (cần thay ffmpeg bằng bản build hợp lệ về giấy phép)
 - Kiểm chứng trên Windows và Linux
 - Co giãn cao độ âm thanh khi đổi tốc độ clip trong bản xem trước
+- Nhân bản giọng (voice cloning) cho máy chủ tự host — các dự án chưa thống nhất tên trường
+- Chạy thử với omnivoice-server thật (cần PyTorch + model hàng GB)
 - Ảo hoá timeline khi số clip rất lớn
 
 ## Câu hỏi còn mở

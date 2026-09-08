@@ -38,6 +38,7 @@ export const elevenLabsDescriptor: ProviderDescriptor = {
   tasks: ['tts'],
   voiceCatalog: 'remote',
   credentialLabel: 'API key',
+  credentialRequired: true,
   credentialHelpUrl: 'https://elevenlabs.io/app/settings/api-keys',
   noteVi:
     'Khoá cần quyền text_to_speech để tạo giọng, models_read để đọc model, và voices_read để liệt kê giọng.',

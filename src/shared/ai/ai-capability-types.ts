@@ -62,6 +62,14 @@ export type VoiceCatalogKind =
    * trong tài liệu chính thức. Giao diện phải nói rõ đây là danh mục cố định.
    */
   | 'static'
+  /**
+   * Không thể biết trước có giọng nào — người dùng tự nhập tên giọng.
+   *
+   * Dành cho máy chủ tự host: mỗi bản cài có bộ giọng riêng, và phần lớn máy chủ
+   * không có endpoint liệt kê. Bịa ra một danh sách cố định ở đây sẽ là nói dối;
+   * để người dùng gõ tên giọng là cách trung thực duy nhất.
+   */
+  | 'manual'
 
 export interface TtsCapabilities {
   voiceCatalog: VoiceCatalogKind
@@ -86,6 +94,27 @@ export interface ProviderModel {
 }
 
 /**
+ * Một ô cấu hình mà provider cần, ngoài khoá API.
+ *
+ * Có để phục vụ provider TỰ HOST: chúng không có địa chỉ cố định, người dùng
+ * phải chỉ ra máy chủ đang chạy ở đâu. Khai báo theo kiểu dữ liệu để giao diện
+ * dựng ô nhập từ đó, giống hệt cách tham số model được dựng — không viết cứng
+ * ô "địa chỉ máy chủ" cho riêng một provider nào.
+ *
+ * KHÔNG dùng cho bí mật. Khoá API đi đường riêng qua keychain.
+ */
+export interface ProviderConfigField {
+  key: string
+  labelVi: string
+  labelEn: string
+  placeholder?: string
+  hintVi?: string
+  hintEn?: string
+  required: boolean
+  defaultValue?: string
+}
+
+/**
  * Thông tin tĩnh để giao diện dựng phần Cấu hình AI mà KHÔNG cần khoá API.
  * Nhờ vậy màn hình cài đặt vẫn dùng được khi chưa nhập khoá nào.
  */
@@ -102,6 +131,15 @@ export interface ProviderDescriptor {
   voiceCatalog: VoiceCatalogKind
   /** Nhãn của ô nhập khoá, ví dụ "API key". */
   credentialLabel: string
+  /**
+   * Provider có bắt buộc phải có khoá không.
+   *
+   * Máy chủ tự host thường chạy trong mạng nội bộ và không cần xác thực, nên
+   * bắt nhập khoá sẽ chặn oan một cấu hình hoàn toàn hợp lệ.
+   */
+  credentialRequired: boolean
+  /** Ô cấu hình thêm, ví dụ địa chỉ máy chủ của bản tự host. */
+  configFields?: ProviderConfigField[]
   /** Trang lấy khoá, mở bằng trình duyệt hệ thống. */
   credentialHelpUrl: string
   /** Ghi chú hiển thị trong phần cài đặt. */

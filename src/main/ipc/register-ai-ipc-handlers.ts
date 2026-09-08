@@ -15,6 +15,11 @@ import {
   hasCredential,
   setCredential
 } from '../secrets/credential-store'
+import {
+  getAllProviderConfigs,
+  getProviderConfig,
+  setProviderConfig
+} from '../secrets/provider-config-store'
 import { bridgeJobEvents, jobQueue } from '../jobs/job-queue'
 import { getTtsAdapter, listProviderDescriptors } from '../ai/provider-registry'
 import { attachGeneratedAudioAsset, enqueueSpeechGeneration } from '../ai/tts-generation-service'
@@ -41,11 +46,17 @@ async function guard<T>(work: () => Promise<T>): Promise<IpcResult<T>> {
 }
 
 /** Dựng ngữ cảnh gọi provider, kèm khoá đã giải mã. */
-async function adapterContextFor(
-  providerId: string
-): Promise<{ apiKey: string; signal: AbortSignal }> {
+async function adapterContextFor(providerId: string): Promise<{
+  apiKey: string
+  config: Record<string, string>
+  signal: AbortSignal
+}> {
+  const adapter = getTtsAdapter(providerId)
   const apiKey = await getCredential(providerId)
-  if (!apiKey) {
+
+  // Máy chủ tự host thường chạy trong mạng nội bộ và không cần xác thực, nên
+  // chỉ đòi khoá với provider nào khai báo là bắt buộc.
+  if (!apiKey && adapter?.descriptor.credentialRequired !== false) {
     throw new ProviderError({
       kind: 'missing-credential',
       providerId,
@@ -53,18 +64,25 @@ async function adapterContextFor(
       retryable: false
     })
   }
+
   // Các lời gọi tra cứu đều ngắn; thời hạn chờ trong lớp HTTP đã đủ bảo vệ.
-  return { apiKey, signal: new AbortController().signal }
+  return {
+    apiKey: apiKey ?? '',
+    config: await getProviderConfig(providerId),
+    signal: new AbortController().signal
+  }
 }
 
 export function registerAiIpcHandlers(): void {
   ipcMain.handle(IPC.aiProviders, () =>
     guard(async () => {
       const descriptors = listProviderDescriptors()
+      const configs = await getAllProviderConfigs()
       const providers = await Promise.all(
         descriptors.map(async (descriptor) => ({
           descriptor,
-          hasCredential: await hasCredential(descriptor.id)
+          hasCredential: await hasCredential(descriptor.id),
+          config: configs[descriptor.id] ?? {}
         }))
       )
       const snapshot: AiSettingsSnapshot = { providers, encryption: encryptionStatus() }
@@ -74,6 +92,10 @@ export function registerAiIpcHandlers(): void {
 
   ipcMain.handle(IPC.aiSetCredential, (_event, providerId: string, apiKey: string) =>
     guard(() => setCredential(providerId, apiKey))
+  )
+
+  ipcMain.handle(IPC.aiSetConfig, (_event, providerId: string, config: Record<string, string>) =>
+    guard(() => setProviderConfig(providerId, config))
   )
 
   ipcMain.handle(IPC.aiDeleteCredential, (_event, providerId: string) =>
@@ -98,7 +120,11 @@ export function registerAiIpcHandlers(): void {
       // danh mục cố định (OpenAI). Có khoá thì gửi kèm; không có thì vẫn thử,
       // và provider cần khoá sẽ tự báo lỗi thiếu quyền cho đúng.
       const apiKey = (await getCredential(providerId)) ?? ''
-      return adapter.listModels({ apiKey, signal: new AbortController().signal })
+      return adapter.listModels({
+        apiKey,
+        config: await getProviderConfig(providerId),
+        signal: new AbortController().signal
+      })
     })
   )
 
@@ -112,7 +138,11 @@ export function registerAiIpcHandlers(): void {
       // mà lấy danh sách model lại cần chính khoá đang muốn tránh dùng.
       if (adapter.descriptor.voiceCatalog === 'static') {
         return adapter.listVoices(
-          { apiKey: '', signal: new AbortController().signal },
+          {
+            apiKey: '',
+            config: await getProviderConfig(request.providerId),
+            signal: new AbortController().signal
+          },
           { language: request.language }
         )
       }
@@ -131,9 +161,13 @@ export function registerAiIpcHandlers(): void {
       // model lấy qua API (cờ can_use_style, giới hạn ký tự…). Bỏ bước này thì
       // giao diện sẽ dựng theo giá trị dè dặt mặc định thay vì giá trị thật.
       const apiKey = await getCredential(providerId)
-      if (apiKey) {
+      if (apiKey || adapter.descriptor.credentialRequired === false) {
         try {
-          await adapter.listModels({ apiKey, signal: new AbortController().signal })
+          await adapter.listModels({
+            apiKey: apiKey ?? '',
+            config: await getProviderConfig(providerId),
+            signal: new AbortController().signal
+          })
         } catch {
           // Không nạp được thì vẫn trả năng lực mặc định — người dùng vẫn dùng
           // được panel, chỉ là không có tham số phụ thuộc model.

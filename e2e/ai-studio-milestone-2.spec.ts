@@ -83,12 +83,15 @@ const studio = (): ReturnType<Page['getByRole']> => page.getByRole('region', { n
 test('tab Cấu hình AI liệt kê provider và cho biết kho bí mật đang dùng', async () => {
   await studio().getByRole('tab', { name: 'Cấu hình AI' }).click()
 
-  await expect(page.getByText('ElevenLabs')).toBeVisible()
-  await expect(page.getByText('OpenAI')).toBeVisible()
+  await expect(page.getByText('ElevenLabs', { exact: true })).toBeVisible()
+  // Khớp chính xác: tên provider tự host cũng chứa chuỗi "OpenAI".
+  await expect(page.getByText('OpenAI', { exact: true })).toBeVisible()
+  await expect(page.getByText('Máy chủ tự host (OpenAI-compatible)')).toBeVisible()
   // safeStorage thật của Electron phải sẵn sàng trên macOS.
   await expect(page.getByText(/Kho bí mật:/)).toBeVisible()
   // Chưa nhập gì thì cả hai provider đều ở trạng thái chưa có khoá.
   await expect(page.getByText('Chưa có khoá', { exact: true })).toHaveCount(2)
+  await expect(page.getByText('Không bắt buộc khoá')).toHaveCount(1)
 })
 
 test('lưu khoá qua safeStorage thật rồi đọc lại đúng trạng thái', async () => {
@@ -138,11 +141,11 @@ test('danh mục giọng cố định nạp được mà không cần khoá và 
 
 test('bộ tham số đổi theo model — không bày ô mà model không nhận', async () => {
   // Đây là điều DESCRIPTION §3.B đòi hỏi, và là điểm dễ làm sai nhất.
-  await page.getByLabel('Model').selectOption('gpt-4o-mini-tts')
+  await page.getByLabel('Model', { exact: true }).selectOption('gpt-4o-mini-tts')
   await expect(page.getByLabel('Phong cách đọc')).toBeVisible()
   await expect(page.getByLabel('Tốc độ đọc')).toBeVisible()
 
-  await page.getByLabel('Model').selectOption('tts-1')
+  await page.getByLabel('Model', { exact: true }).selectOption('tts-1')
   // tts-1 không nhận `instructions`, nên ô đó phải BIẾN MẤT, không phải bị làm mờ.
   await expect(page.getByLabel('Phong cách đọc')).toHaveCount(0)
   await expect(page.getByLabel('Tốc độ đọc')).toBeVisible()
@@ -192,4 +195,5 @@ test('xoá khoá đưa provider về trạng thái chưa cấu hình', async () 
 
   await expect(page.getByText('Đã xoá khoá của OpenAI')).toBeVisible()
   await expect(page.getByText('Chưa có khoá', { exact: true })).toHaveCount(2)
+  await expect(page.getByText('Không bắt buộc khoá')).toHaveCount(1)
 })

@@ -95,7 +95,7 @@ test('tải danh sách giọng thật từ tài khoản', async () => {
 
 test('chọn model hỗ trợ tiếng Việt và giọng dùng được với gói hiện tại', async () => {
   // Model phải lấy từ API; chọn một model có tiếng Việt.
-  const modelSelect = page.getByLabel('Model')
+  const modelSelect = page.getByLabel('Model', { exact: true })
   const modelValues = await modelSelect
     .locator('option')
     .evaluateAll((options) => options.map((option) => (option as HTMLOptionElement).value))

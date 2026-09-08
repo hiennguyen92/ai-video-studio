@@ -3,6 +3,7 @@ import type { MediaAsset } from '../../shared/domain/media-asset-types'
 import { ProviderError } from '../../shared/ai/ai-provider-contracts'
 import { keepSupportedParameters } from '../../shared/ai/ai-capability-types'
 import { getCredential } from '../secrets/credential-store'
+import { getProviderConfig } from '../secrets/provider-config-store'
 import { jobQueue } from '../jobs/job-queue'
 import { computeRequestFingerprint } from '../jobs/job-result-cache'
 import { importMediaFile } from '../media/media-import-service'
@@ -49,11 +50,28 @@ export async function enqueueSpeechGeneration(
   }
 
   const apiKey = await getCredential(request.providerId)
-  if (!apiKey) {
+  // Provider tự host có thể chạy không cần xác thực; chỉ chặn khi khoá là bắt buộc.
+  if (!apiKey && adapter.descriptor.credentialRequired) {
     throw new ProviderError({
       kind: 'missing-credential',
       providerId: request.providerId,
       message: `Chưa có khoá API cho ${adapter.descriptor.name}. Vào Cấu hình AI để nhập khoá.`,
+      retryable: false
+    })
+  }
+
+  const config = await getProviderConfig(request.providerId)
+
+  // Ô cấu hình bắt buộc mà bỏ trống thì chặn ngay, thay vì để lỗi mạng khó hiểu
+  // xuất hiện lúc job đã chạy.
+  const missingField = (adapter.descriptor.configFields ?? []).find(
+    (field) => field.required && !config[field.key]
+  )
+  if (missingField) {
+    throw new ProviderError({
+      kind: 'bad-request',
+      providerId: request.providerId,
+      message: `Chưa cấu hình "${missingField.labelVi}" cho ${adapter.descriptor.name}. Vào Cấu hình AI để điền.`,
       retryable: false
     })
   }
@@ -84,7 +102,7 @@ export async function enqueueSpeechGeneration(
     resultBaseName: `giong-doc-${Date.now().toString(36)}`,
     handler: async ({ signal }) => {
       const result = await adapter.synthesize(
-        { apiKey, signal },
+        { apiKey: apiKey ?? '', config, signal },
         {
           model: request.model,
           voiceId: request.voiceId,

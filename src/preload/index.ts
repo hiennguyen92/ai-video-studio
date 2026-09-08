@@ -38,6 +38,7 @@ const api: RendererApi = {
     settings: () => ipcRenderer.invoke(IPC.aiProviders),
     setCredential: (providerId, apiKey) =>
       ipcRenderer.invoke(IPC.aiSetCredential, providerId, apiKey),
+    setConfig: (providerId, config) => ipcRenderer.invoke(IPC.aiSetConfig, providerId, config),
     deleteCredential: (providerId) => ipcRenderer.invoke(IPC.aiDeleteCredential, providerId),
     testConnection: (providerId) => ipcRenderer.invoke(IPC.aiTestConnection, providerId),
     listModels: (providerId) => ipcRenderer.invoke(IPC.aiListModels, providerId),

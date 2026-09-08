@@ -111,3 +111,14 @@
 .provider-card__test--fail {
   color: var(--danger);
 }
+
+.provider-card__config {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.provider-card__config input {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+}

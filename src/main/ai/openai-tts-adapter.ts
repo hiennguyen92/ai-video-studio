@@ -38,6 +38,7 @@ export const openAiDescriptor: ProviderDescriptor = {
   tasks: ['tts'],
   voiceCatalog: 'static',
   credentialLabel: 'API key',
+  credentialRequired: true,
   credentialHelpUrl: 'https://platform.openai.com/api-keys',
   noteVi:
     'Không có endpoint liệt kê giọng — danh sách giọng là tập cố định theo tài liệu. Tài liệu không công bố mức độ hỗ trợ riêng cho tiếng Việt.',
