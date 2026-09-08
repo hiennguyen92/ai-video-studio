@@ -26,6 +26,8 @@ const api: RendererApi = {
     load: (projectId) => ipcRenderer.invoke(IPC.projectLoad, projectId),
     save: (document) => ipcRenderer.invoke(IPC.projectSave, document),
     remove: (projectId) => ipcRenderer.invoke(IPC.projectDelete, projectId),
+    scanGarbage: (document) => ipcRenderer.invoke(IPC.projectScanGarbage, document),
+    removeGarbage: (document) => ipcRenderer.invoke(IPC.projectRemoveGarbage, document),
     snapshot: (document) => ipcRenderer.invoke(IPC.projectSnapshot, document),
     checkMedia: (document) => ipcRenderer.invoke(IPC.projectCheckMedia, document)
   },

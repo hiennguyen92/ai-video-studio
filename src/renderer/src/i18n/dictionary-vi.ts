@@ -60,6 +60,12 @@ export const dictionaryVi = {
     dragHint: 'Kéo vào timeline để dùng',
     missing: 'Thiếu file',
     noResults: 'Không có media nào khớp bộ lọc.',
+    cleanup: 'Dọn file rác',
+    cleaningUp: 'Đang dọn…',
+    cleanupNothing: 'Không có file rác nào để dọn.',
+    cleanupConfirm:
+      'Dọn {count} file do ứng dụng sinh ra mà không còn ai dùng, giải phóng {size}? File bạn nhập vào không bị đụng tới.',
+    cleanupDone: 'Đã dọn {count} file, giải phóng {size}.',
     remove: 'Xoá {name} khỏi thư viện',
     removeConfirm:
       'Xoá "{name}" khỏi thư viện? {count} clip đang dùng nó trên timeline cũng sẽ bị xoá. File gốc trên đĩa không bị đụng tới.',

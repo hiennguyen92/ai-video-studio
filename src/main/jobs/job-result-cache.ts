@@ -144,6 +144,31 @@ export async function lookupCachedResult(
   }
 }
 
+/**
+ * Bỏ khỏi chỉ mục những mục trỏ tới file không còn trên đĩa.
+ *
+ * `lookupCachedResult` đã tự dọn từng mục khi tra trúng, nhưng mục không ai tra
+ * tới thì nằm lại mãi. Sau một lần dọn rác, phần lớn mục rơi vào loại đó.
+ */
+export async function pruneMissingCacheEntries(projectId: string): Promise<number> {
+  return serialiseIndexWrite(projectId, async () => {
+    const index = await readIndex(projectId)
+    let removed = 0
+
+    for (const [fingerprint, entry] of Object.entries(index)) {
+      try {
+        await access(entry.path, constants.R_OK)
+      } catch {
+        delete index[fingerprint]
+        removed += 1
+      }
+    }
+
+    if (removed > 0) await writeIndex(projectId, index)
+    return removed
+  })
+}
+
 export async function rememberResult(
   projectId: string,
   entry: Omit<CacheEntry, 'createdAt'>

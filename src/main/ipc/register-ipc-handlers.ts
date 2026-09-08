@@ -1,3 +1,4 @@
+import { removeProjectGarbage, scanProjectGarbage } from '../storage/project-garbage-service'
 import { app, dialog, ipcMain } from 'electron'
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
@@ -96,6 +97,14 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle(IPC.projectDelete, (_event, projectId: string) =>
     guard(() => deleteProject(projectId))
+  )
+
+  ipcMain.handle(IPC.projectScanGarbage, (_event, document: ProjectDocument) =>
+    guard(() => scanProjectGarbage(document.id, document))
+  )
+
+  ipcMain.handle(IPC.projectRemoveGarbage, (_event, document: ProjectDocument) =>
+    guard(() => removeProjectGarbage(document.id, document))
   )
 
   ipcMain.handle(IPC.projectSnapshot, (_event, document: ProjectDocument) =>

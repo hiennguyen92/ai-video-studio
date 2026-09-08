@@ -165,6 +165,39 @@ test('đồng ý thì xoá cả media lẫn clip đang dùng nó', async () => {
   await expect(page.locator('.timeline-clip')).toHaveCount(0)
 })
 
+test('dọn rác thu hồi file phái sinh của media đã xoá', async () => {
+  // Hai media trong dự án này đều là file NHẬP VÀO nên bản thân chúng không nằm
+  // trong thư mục dự án. Nhưng thumbnail và waveform sinh ra cho chúng thì có, và
+  // sau khi xoá khỏi thư viện thì không ai dùng nữa — đó chính là rác.
+  //
+  // Một lượt dọn mở HAI hộp thoại: hỏi trước, rồi báo kết quả. Bắt bằng một bộ
+  // nghe chung rồi soi cả chuỗi, chứ dùng `once` cho từng cái thì hộp thoại thứ
+  // hai của lượt trước sẽ rơi nhầm vào tay lượt sau.
+  const messages: string[] = []
+  page.on('dialog', (dialog) => {
+    messages.push(dialog.message())
+    void dialog.accept()
+  })
+
+  const cleanup = page
+    .getByRole('region', { name: 'AI Studio' })
+    .getByRole('button', { name: 'Dọn file rác' })
+
+  await cleanup.click()
+  await expect.poll(() => messages.length).toBe(2)
+  expect(messages[0]).toMatch(/Dọn \d+ file/)
+  // Lời hỏi phải nói rõ file nhập vào không bị đụng tới, nếu không chẳng ai dám bấm.
+  expect(messages[0]).toContain('File bạn nhập vào không bị đụng tới')
+  expect(messages[1]).toMatch(/Đã dọn \d+ file/)
+
+  // Lần hai phải báo đã sạch. Nếu vẫn "đã dọn N file" thì lần đầu chưa xoá thật.
+  await cleanup.click()
+  await expect.poll(() => messages.length).toBe(3)
+  expect(messages[2]).toContain('Không có file rác')
+
+  page.removeAllListeners('dialog')
+})
+
 test('file gốc trên đĩa vẫn còn nguyên', async () => {
   // Thư viện là danh sách THAM CHIẾU. Xoá khỏi thư viện mà mất file gốc thì đó là
   // phá dữ liệu người dùng, và DESCRIPTION §7 cấm đụng tới file nguồn.

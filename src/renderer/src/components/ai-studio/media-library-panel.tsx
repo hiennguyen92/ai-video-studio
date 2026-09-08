@@ -30,6 +30,12 @@ export const MEDIA_DRAG_MIME = 'application/x-ai-video-studio-asset'
 
 type FilterKind = 'all' | 'video' | 'audio' | 'image' | 'generated'
 
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
 function assetIcon(asset: MediaAsset): JSX.Element {
   if (asset.kind === 'video') return <IconFilm />
   if (asset.kind === 'audio') return <IconWaveform />
@@ -51,6 +57,44 @@ export function MediaLibraryPanel({
   const run = useEditorStore((state) => state.run)
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState<FilterKind>('all')
+
+  const [cleaning, setCleaning] = useState(false)
+
+  const handleCleanup = useCallback(async () => {
+    if (!document || cleaning) return
+    setCleaning(true)
+    try {
+      const scan = await window.api.project.scanGarbage(document)
+      if (!scan.ok) return
+
+      if (scan.data.fileCount === 0) {
+        window.alert(t.media.cleanupNothing)
+        return
+      }
+
+      // Hỏi bằng CON SỐ THẬT đã quét được, không phải bằng một lời chung chung:
+      // người dùng cần biết mình sắp giải phóng bao nhiêu trước khi đồng ý.
+      const confirmed = window.confirm(
+        interpolate(t.media.cleanupConfirm, {
+          count: scan.data.fileCount,
+          size: formatBytes(scan.data.totalBytes)
+        })
+      )
+      if (!confirmed) return
+
+      const removed = await window.api.project.removeGarbage(document)
+      if (removed.ok) {
+        window.alert(
+          interpolate(t.media.cleanupDone, {
+            count: removed.data.fileCount,
+            size: formatBytes(removed.data.totalBytes)
+          })
+        )
+      }
+    } finally {
+      setCleaning(false)
+    }
+  }, [document, cleaning, t.media])
 
   const handleRemove = useCallback(
     (asset: MediaAsset) => {
@@ -109,6 +153,13 @@ export function MediaLibraryPanel({
           variant="outline"
           onClick={onImportClick}
           disabled={importing}
+        />
+        <ToolButton
+          label={cleaning ? t.media.cleaningUp : t.media.cleanup}
+          icon={<IconTrash />}
+          variant="outline"
+          onClick={() => void handleCleanup()}
+          disabled={cleaning || !document}
         />
         <div className="media-library__search">
           <IconSearch />

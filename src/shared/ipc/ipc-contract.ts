@@ -22,6 +22,8 @@ export const IPC = {
   projectCreate: 'project:create',
   projectLoad: 'project:load',
   projectSave: 'project:save',
+  projectScanGarbage: 'project:scan-garbage',
+  projectRemoveGarbage: 'project:remove-garbage',
   projectDelete: 'project:delete',
   projectSnapshot: 'project:snapshot',
   projectCheckMedia: 'project:check-media',
@@ -314,6 +316,11 @@ export interface McpServerStatus {
   error?: string
 }
 
+export interface GarbageReportDto {
+  fileCount: number
+  totalBytes: number
+}
+
 export interface DetectedShotDto {
   index: number
   startUs: number
@@ -386,6 +393,9 @@ export interface RendererApi {
     load(projectId: string): Promise<IpcResult<ProjectDocument>>
     save(document: ProjectDocument): Promise<IpcResult<void>>
     remove(projectId: string): Promise<IpcResult<void>>
+    /** Đếm file rác do ứng dụng sinh ra mà không còn ai dùng. Chưa xoá gì. */
+    scanGarbage(document: ProjectDocument): Promise<IpcResult<GarbageReportDto>>
+    removeGarbage(document: ProjectDocument): Promise<IpcResult<GarbageReportDto>>
     snapshot(document: ProjectDocument): Promise<IpcResult<string>>
     checkMedia(document: ProjectDocument): Promise<IpcResult<MissingMediaReport[]>>
   }

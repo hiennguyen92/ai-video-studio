@@ -56,6 +56,12 @@ export const dictionaryEn: Dictionary = {
     dragHint: 'Drag onto the timeline to use',
     missing: 'File missing',
     noResults: 'No media matches the filter.',
+    cleanup: 'Clean up',
+    cleaningUp: 'Cleaning…',
+    cleanupNothing: 'Nothing to clean up.',
+    cleanupConfirm:
+      'Delete {count} generated files that nothing uses any more, freeing {size}? Files you imported are left alone.',
+    cleanupDone: 'Deleted {count} files, freed {size}.',
     remove: 'Remove {name} from the library',
     removeConfirm:
       'Remove "{name}" from the library? The {count} clips using it on the timeline go too. The original file on disk is left alone.',
