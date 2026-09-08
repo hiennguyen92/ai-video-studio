@@ -282,6 +282,26 @@ test('bấm vào khối phụ đề thì panel thuộc tính hiện đúng câu 
   await expect(inspector.getByText('thuộc về CẢ track phụ đề')).toBeVisible()
 })
 
+test('chọn câu phụ đề rồi bấm Delete thì xoá đúng câu đó', async () => {
+  // Cue đi qua lệnh `subtitle/remove-cue` chứ không phải `clip/remove`, và lệnh
+  // đó cần cả trackId — nên phải kiểm riêng, không suy ra từ phép thử chữ overlay.
+  const cues = page.locator('.timeline-text-block--subtitle')
+  await expect(cues).toHaveCount(2)
+
+  await cues.nth(1).click()
+  await page.keyboard.press('Delete')
+
+  await expect(cues).toHaveCount(1)
+  await expect(cues.first()).toContainText('First caption')
+  await expect(page.locator('.timeline-clip')).toHaveCount(1)
+
+  // Trả lại nguyên trạng cho các phép thử sau, và tiện thể chứng minh xoá câu
+  // phụ đề cũng hoàn tác được.
+  await expect(page.getByRole('button', { name: /Hoàn tác: Xoá câu phụ đề/ })).toBeVisible()
+  await page.keyboard.press('ControlOrMeta+z')
+  await expect(cues).toHaveCount(2)
+})
+
 /** Đọc giờ của cue đầu tiên từ chính file dự án đã lưu. */
 async function savedCueRange(): Promise<{ startUs: number; endUs: number }> {
   const projectsRoot = join(userDataDir, 'projects')

@@ -254,6 +254,38 @@ test('xoay chữ từ panel thuộc tính làm nghiêng chữ trên preview', as
   await inspector.getByLabel('Góc xoay').fill('0')
 })
 
+test('chọn khối chữ rồi bấm Delete thì xoá đúng chữ đó', async () => {
+  // Thêm một chữ nữa để xoá, giữ nguyên chữ gốc cho các phép thử sau.
+  await page.getByRole('button', { name: 'Thêm chữ' }).click()
+  await studio().getByLabel('Nội dung 2').fill('Chữ sắp bị xoá')
+  const blocks = page.locator('.timeline-text-block--overlay')
+  await expect(blocks).toHaveCount(2)
+
+  await page
+    .locator('.timeline__scroll')
+    .evaluate((element) => element.scrollTo({ top: element.scrollHeight }))
+  await blocks.filter({ hasText: 'Chữ sắp bị xoá' }).click()
+  await page.keyboard.press('Delete')
+
+  // Đúng MỘT khối bị xoá, và là khối vừa chọn — không phải clip video, cũng
+  // không phải chữ còn lại.
+  await expect(blocks).toHaveCount(1)
+  await expect(blocks.first()).toContainText('Bạn đang bỏ lỡ thứ này')
+  await expect(page.locator('.timeline-clip')).toHaveCount(1)
+
+  // Hoàn tác được, và nhãn nói đúng việc vừa làm.
+  await expect(page.getByRole('button', { name: /Hoàn tác: Xoá chữ/ })).toBeVisible()
+  await page.keyboard.press('ControlOrMeta+z')
+  await expect(blocks).toHaveCount(2)
+
+  // Làm lại để trả về đúng một chữ cho các phép thử sau. Dọn bằng nút "Xoá chữ"
+  // thì không được: nút hoàn tác trên thanh trên cùng mang tên "Hoàn tác: Xoá
+  // chữ", nên nó lọt vào cùng danh sách và nth(1) trỏ nhầm sang chữ gốc.
+  await page.keyboard.press('ControlOrMeta+Shift+z')
+  await expect(blocks).toHaveCount(1)
+  await expect(blocks.first()).toContainText('Bạn đang bỏ lỡ thứ này')
+})
+
 /** Đọc giờ của chữ đầu tiên từ chính file dự án đã lưu. */
 async function savedOverlayRange(): Promise<{ startUs: number; endUs: number }> {
   const { readFile, readdir } = await import('node:fs/promises')

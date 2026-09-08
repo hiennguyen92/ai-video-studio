@@ -161,6 +161,7 @@ export const dictionaryEn: Dictionary = {
     snapOff: 'Snap: off',
     split: 'Split at playhead',
     deleteClip: 'Delete clip',
+    deleteTextBlock: 'Delete text block',
     duplicateClip: 'Duplicate clip',
     textOverlayLane: 'Text on video',
     addVideoTrack: 'Add video track',

@@ -11,6 +11,7 @@ import {
 import type { Track } from '../../../../shared/domain/timeline-track-types'
 import { previewSeekUs } from '../../../../shared/domain/preview-seek'
 import type { TextBlockRef } from '../../../../shared/domain/text-block-drag'
+import { selectionRemovalCommands } from '../../../../shared/commands/selection-removal'
 import { microsToSeconds } from '../../../../shared/domain/time-units'
 import type { EditorCommand } from '../../../../shared/commands/editor-command-types'
 import {
@@ -57,6 +58,7 @@ export function TimelinePanel(): JSX.Element {
   const toggleSnap = useEditorStore((state) => state.toggleSnap)
   const selection = useEditorStore((state) => state.selection)
   const selectTextBlock = useEditorStore((state) => state.selectTextBlock)
+  const clearSelection = useEditorStore((state) => state.clearSelection)
 
   /** Bấm vào một khối chữ thì dừng phát và tua tới đầu khối đó. */
   const { preview: textDrag, handleTextBlockPointerDown } = useTextBlockDrag({
@@ -214,13 +216,15 @@ export function TimelinePanel(): JSX.Element {
     run([{ type: 'clip/split', clipId: selectedClipId, atUs: playheadUs }], t.timeline.split)
   }, [selectedClipId, playheadUs, run, t.timeline.split])
 
+  // Nút thùng rác xoá đúng thứ phím Delete xoá — cùng một hàm, nên không thể lệch
+  // nhau kiểu nút mờ đi trong khi phím vẫn xoá được.
+  const removal = useMemo(() => selectionRemovalCommands(selection), [selection])
+
   const handleDelete = useCallback(() => {
-    if (selection.clipIds.length === 0) return
-    run(
-      selection.clipIds.map((clipId) => ({ type: 'clip/remove', clipId }) as EditorCommand),
-      t.timeline.deleteClip
-    )
-  }, [selection.clipIds, run, t.timeline.deleteClip])
+    if (!removal) return
+    run(removal.commands, removal.label)
+    clearSelection()
+  }, [removal, run, clearSelection])
 
   const handleZoomFit = useCallback(() => {
     const width = scrollRef.current?.clientWidth ?? 0
@@ -281,11 +285,11 @@ export function TimelinePanel(): JSX.Element {
           disabled={!selectedClipId}
         />
         <ToolButton
-          label={t.timeline.deleteClip}
+          label={selection.text ? t.timeline.deleteTextBlock : t.timeline.deleteClip}
           icon={<IconTrash />}
           iconOnly
           onClick={handleDelete}
-          disabled={selection.clipIds.length === 0}
+          disabled={!removal}
         />
 
         <div className="top-bar__divider" />

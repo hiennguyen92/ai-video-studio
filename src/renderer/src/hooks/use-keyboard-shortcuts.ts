@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { frameDurationUs } from '../../../shared/domain/time-units'
-import type { EditorCommand } from '../../../shared/commands/editor-command-types'
+import { selectionRemovalCommands } from '../../../shared/commands/selection-removal'
 import { useEditorStore } from '../state/editor-store'
 
 /**
@@ -63,14 +63,13 @@ export function useKeyboardShortcuts(): void {
         }
         case 'Delete':
         case 'Backspace': {
-          if (store.selection.clipIds.length === 0) return
+          // Xoá được cả clip lẫn khối chữ. Trước đây nhánh này chỉ nhìn
+          // `clipIds`, nên chọn một câu phụ đề rồi bấm Delete thì không có gì
+          // xảy ra và cũng không có gì báo vì sao.
+          const removal = selectionRemovalCommands(store.selection)
+          if (!removal) return
           event.preventDefault()
-          store.run(
-            store.selection.clipIds.map(
-              (clipId) => ({ type: 'clip/remove', clipId }) as EditorCommand
-            ),
-            'Xoá clip'
-          )
+          store.run(removal.commands, removal.label)
           store.clearSelection()
           return
         }

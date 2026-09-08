@@ -163,6 +163,7 @@ export const dictionaryVi = {
     snapOff: 'Bắt dính: tắt',
     split: 'Cắt tại playhead',
     deleteClip: 'Xoá clip',
+    deleteTextBlock: 'Xoá khối chữ',
     duplicateClip: 'Nhân bản clip',
     textOverlayLane: 'Chữ trên hình',
     addVideoTrack: 'Thêm track video',
