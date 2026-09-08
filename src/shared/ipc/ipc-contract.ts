@@ -49,6 +49,7 @@ export const IPC = {
   translateReadResult: 'translate:read-result',
   musicGenerate: 'music:generate',
   mediaRegisterLocal: 'media:register-local',
+  mediaDetectShots: 'media:detect-shots',
   mcpRespond: 'mcp:respond',
   mcpStatus: 'mcp:status',
   chatSend: 'chat:send',
@@ -286,7 +287,7 @@ export interface GenerateMusicRequest {
 /** Máy chủ MCP hỏi renderer những gì. */
 export interface McpBridgeRequest {
   requestId: string
-  kind: 'project-overview' | 'transcript' | 'media' | 'apply-tools'
+  kind: 'project-overview' | 'transcript' | 'media' | 'shots' | 'apply-tools'
   payload: unknown
 }
 
@@ -311,6 +312,13 @@ export interface McpServerStatus {
   url?: string
   token?: string
   error?: string
+}
+
+export interface DetectedShotDto {
+  index: number
+  startUs: number
+  endUs: number
+  framePath?: string
 }
 
 export interface ChatMessageRecord {
@@ -392,6 +400,13 @@ export interface RendererApi {
     registerLocal(
       entries: Array<{ id: string; path: string }>
     ): Promise<IpcResult<Record<string, string>>>
+    /** Dò cú máy trong một asset và trích ảnh đại diện cho từng cú. */
+    detectShots(request: {
+      projectId: string
+      assetId: string
+      sourcePath: string
+      force?: boolean
+    }): Promise<IpcResult<DetectedShotDto[]>>
     readWaveform(waveformPath: string): Promise<IpcResult<WaveformData>>
   }
   ai: {

@@ -111,6 +111,18 @@ function buildMcpServer(): McpServer {
     })
   )
 
+  server.registerTool(
+    'list_shots',
+    {
+      description:
+        'Detect and list the camera shots in a video, each with its time range and the file path of a still frame taken from its middle. Read those images to choose shots by what they look like. This is the only way to edit footage that has no speech.',
+      inputSchema: { assetId: z.string().optional() }
+    },
+    async ({ assetId }) => ({
+      content: [{ type: 'text', text: await requestFromRenderer<string>('shots', { assetId }) }]
+    })
+  )
+
   // ── Công cụ GHI ──────────────────────────────────────────────
   // Sinh từ chính danh mục của AI Chat, nên hai lối vào không thể lệch nhau.
 

@@ -19,6 +19,7 @@ import { enqueueMusicGeneration } from '../ai/music-generation-service'
 import { resolveRendererResponse } from '../mcp/mcp-renderer-bridge'
 import { mcpStatus } from '../mcp/mcp-server'
 import { localMediaUrl, registerMediaFiles } from '../media/local-media-server'
+import { detectShotsForAsset } from '../media/shot-detection-service'
 import { clearChatHistory, readChatHistory, writeChatHistory } from '../storage/chat-history-store'
 import {
   WHISPER_MODELS,
@@ -81,6 +82,14 @@ export function registerTranscriptionIpcHandlers(): void {
 
   // Renderer báo danh sách media của dự án đang mở rồi nhận lại URL http. Máy chủ
   // chỉ phục vụ đúng những id này, không nhận đường dẫn từ URL.
+  ipcMain.handle(
+    IPC.mediaDetectShots,
+    (
+      _event,
+      request: { projectId: string; assetId: string; sourcePath: string; force?: boolean }
+    ) => guard(async () => (await detectShotsForAsset(request)).shots)
+  )
+
   ipcMain.handle(IPC.mediaRegisterLocal, (_event, entries: Array<{ id: string; path: string }>) =>
     guard(async () => {
       registerMediaFiles(entries)

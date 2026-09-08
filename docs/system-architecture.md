@@ -181,6 +181,41 @@ lần hai cho ra đúng kết quả lần một; nhân dồn sẽ làm nhạc nh
 Tính năng này gọi được từ AI Chat, nhưng cũng có nút riêng trong tab Nhạc nền:
 chat cần một máy chủ LLM, còn đây là thao tác thuần cục bộ.
 
+## Dựng từ footage KHÔNG có tiếng
+
+Đường dựng theo transcript chỉ chạy khi footage có lời nói. Video quay review sản
+phẩm thường **không có tiếng** — transcript rỗng, agent không có gì để đọc. Đó là
+một nhánh khác hẳn, không phải một biến thể nhỏ.
+
+Nhánh này dựa trên **phát hiện cú máy**: bộ lọc `select='gt(scene,…)'` của ffmpeg
+chấm điểm khác biệt giữa hai khung liền nhau, `metadata=print` in ra mốc vượt
+ngưỡng. Mỗi cú được trích một ảnh đại diện lấy **ở giữa cú** — khung ngay sau chỗ
+cắt hay dính mờ chuyển động, nhìn không ra nội dung.
+
+**Đường dẫn ảnh là phần quan trọng nhất.** `list_shots` trả về chúng, và agent nào
+đọc được file — Claude Code chẳng hạn — sẽ *xem* từng cú mà chọn, thay vì đoán theo
+mốc thời gian. Không có nó thì cả nhánh này vô nghĩa.
+
+`build_cut_from_shots` giữ **đúng thứ tự agent đưa ra**, khác hẳn
+`build_cut_from_transcript` vốn luôn xếp theo thứ tự lời nói. Với footage câm, sắp
+xếp lại cảnh *chính là* việc dựng phim.
+
+Cú máy quá ngắn bị gộp vào cú trước: footage thật có chớp sáng, lóe đèn, khung mờ
+khi lia máy — mỗi thứ sinh một "cảnh" vài phần trăm giây mà không ai gọi là cú máy.
+
+Kết quả dò được lưu trong cache của project như thumbnail hay waveform: xoá đi vẫn
+dò lại được, nên nó không thuộc tài liệu project.
+
+### Luồng đầy đủ cho video aff từ footage câm
+
+1. dò cú máy → agent xem ảnh, chọn và xếp cảnh
+2. agent viết kịch bản → TTS sinh giọng đọc
+3. phiên âm chính file giọng đọc đó → phụ đề khớp giọng
+4. chữ overlay cho hook và CTA
+5. nhạc nền + giảm nhạc dưới giọng đọc
+6. chuyển cảnh giữa các cảnh
+7. xuất bằng Remotion (bắt buộc, vì có chuyển cảnh và chữ overlay)
+
 ## MCP: agent bên ngoài dựng phim
 
 App mở một máy chủ MCP trên `127.0.0.1` (Streamable HTTP, đường dẫn

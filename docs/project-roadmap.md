@@ -101,7 +101,8 @@ giao diện chỉ lộ ra khi chuyển tab với dữ liệu thật.
 - [x] Chuyển cảnh: mờ chồng, trượt, gạt ngang, phóng vào — không làm co timeline
 - [x] Chữ overlay như một đối tượng riêng, có hiệu ứng vào, AI tạo được
 - ~~Phụ đề nảy chữ theo từng từ~~ — **không làm**, người dùng không cần
-- [ ] Phát hiện chuyển cảnh trong footage thô
+- [x] Phát hiện cú máy trong footage thô + trích ảnh đại diện, để agent chọn cảnh
+      bằng HÌNH — đường duy nhất dựng được video không có tiếng
 - [ ] Đổi mặc định xuất sang Remotion khi các tính năng trên đủ chín
 
 ## Backlog (chưa xếp lịch)

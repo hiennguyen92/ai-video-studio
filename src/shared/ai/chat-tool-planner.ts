@@ -30,6 +30,13 @@ export interface ChatEditContext {
   selectedClipIds: string[]
   playheadUs: number
   makeId(): string
+  /**
+   * Cú máy đã dò, theo id asset.
+   *
+   * Không nằm trong tài liệu project vì đây là dữ liệu phái sinh nằm trong cache;
+   * nơi gọi nạp vào khi cần dựng theo hình.
+   */
+  shots?: Record<string, Array<{ startUs: number; endUs: number }>>
 }
 
 export interface PlannedToolCall {
@@ -405,6 +412,65 @@ function planOne(context: ChatEditContext, tool: ChatToolName, args: unknown): P
             role: input.role
           }
         ]
+      }
+    }
+
+    case 'build_cut_from_shots': {
+      const input = chatToolSchemas.build_cut_from_shots.parse(args)
+      const asset = document.assets.find((item) => item.id === input.assetId)
+      if (!asset) throw new Error(`Không tìm thấy media "${input.assetId}"`)
+
+      const shots = context.shots?.[input.assetId]
+      if (!shots || shots.length === 0) {
+        throw new Error('Chưa dò cú máy cho media này. Gọi list_shots trước.')
+      }
+
+      const unknown = input.shotIndexes.filter((index) => !shots[index])
+      if (unknown.length > 0) {
+        throw new Error(`Không có cú máy số: ${unknown.slice(0, 3).join(', ')}`)
+      }
+
+      const wantedKind = asset.kind === 'audio' ? 'audio' : 'video'
+      const track = input.trackId
+        ? document.tracks.find((item) => item.id === input.trackId)
+        : document.tracks.find((item) => item.kind === wantedKind)
+      if (!track) throw new Error('Không tìm thấy track để dựng bản cut')
+      if (track.locked) throw new Error(`Track "${track.name}" đang bị khoá`)
+
+      // Dọn track trước rồi mới xếp lại, cùng lý do như dựng theo transcript:
+      // chèn đè lên clip cũ sẽ kích hoạt chính sách ghi đè khó đoán.
+      const commands: EditorCommand[] = track.clips.map((clip) => ({
+        type: 'clip/remove' as const,
+        clipId: clip.id
+      }))
+
+      const maxUs = input.maxShotSeconds ? secondsToMicros(input.maxShotSeconds) : undefined
+      let cursorUs = 0
+
+      // Giữ ĐÚNG thứ tự agent đưa ra — khác dựng theo transcript, nơi thứ tự lời
+      // nói là bắt buộc. Với footage câm, xếp lại cảnh chính là việc dựng phim.
+      for (const index of input.shotIndexes) {
+        const shot = shots[index]
+        const fullUs = shot.endUs - shot.startUs
+        const durationUs = maxUs ? Math.min(fullUs, maxUs) : fullUs
+        if (durationUs <= 0) continue
+
+        commands.push({
+          type: 'clip/insert',
+          clipId: context.makeId(),
+          trackId: track.id,
+          assetId: asset.id,
+          startUs: cursorUs,
+          durationUs,
+          sourceInUs: shot.startUs
+        })
+        cursorUs += durationUs
+      }
+
+      return {
+        tool,
+        description: `Dựng bản cut ${input.shotIndexes.length} cú máy (${formatSeconds(cursorUs)}) trên ${track.name}`,
+        commands
       }
     }
 

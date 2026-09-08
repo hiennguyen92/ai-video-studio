@@ -47,6 +47,13 @@ export interface MediaDerived {
   filmstripFrameCount?: number
   /** File nhị phân chứa peak waveform. */
   waveformPath?: string
+  /**
+   * File JSON chứa danh sách cú máy đã phát hiện, kèm đường dẫn ảnh đại diện.
+   *
+   * Là dữ liệu phái sinh như thumbnail: xoá đi vẫn dò lại được, nên nằm trong
+   * cache chứ không nằm trong tài liệu project.
+   */
+  shotsPath?: string
 }
 
 export interface GeneratedOrigin {

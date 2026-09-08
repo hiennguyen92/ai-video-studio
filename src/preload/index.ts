@@ -34,6 +34,7 @@ const api: RendererApi = {
     import: (request) => ipcRenderer.invoke(IPC.mediaImport, request),
     relink: (asset, newPath) => ipcRenderer.invoke(IPC.mediaRelink, asset, newPath),
     registerLocal: (entries) => ipcRenderer.invoke(IPC.mediaRegisterLocal, entries),
+    detectShots: (request) => ipcRenderer.invoke(IPC.mediaDetectShots, request),
     readWaveform: (waveformPath) => ipcRenderer.invoke(IPC.mediaReadWaveform, waveformPath)
   },
   ai: {

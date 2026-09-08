@@ -1,6 +1,6 @@
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
-import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises'
+import { mkdtemp, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import {
@@ -71,27 +71,43 @@ test.beforeAll(async () => {
   mediaPath = join(workDir, 'canh-quay.mp4')
 
   const { default: ffmpegStatic } = await import('ffmpeg-static')
+  // Bốn cú máy màu khác nhau, KHÔNG TIẾNG — đúng loại footage quay review sản
+  // phẩm, nơi transcript rỗng và agent phải chọn cảnh bằng hình.
+  const parts: string[] = []
+  for (const [index, color] of ['red', 'blue', 'green', 'yellow'].entries()) {
+    const part = join(workDir, `part-${index}.mp4`)
+    await execFileAsync(String(ffmpegStatic), [
+      '-v',
+      'error',
+      '-y',
+      '-f',
+      'lavfi',
+      '-i',
+      `color=c=${color}:size=320x180:rate=30:duration=3`,
+      '-c:v',
+      'libx264',
+      '-pix_fmt',
+      'yuv420p',
+      '-preset',
+      'ultrafast',
+      part
+    ])
+    parts.push(`file '${part}'`)
+  }
+  const listPath = join(workDir, 'list.txt')
+  await writeFile(listPath, parts.join('\n'), 'utf8')
   await execFileAsync(String(ffmpegStatic), [
     '-v',
     'error',
     '-y',
     '-f',
-    'lavfi',
+    'concat',
+    '-safe',
+    '0',
     '-i',
-    'testsrc2=size=320x180:rate=25:duration=20',
-    '-f',
-    'lavfi',
-    '-i',
-    'sine=frequency=300:duration=20:sample_rate=48000',
-    '-c:v',
-    'libx264',
-    '-pix_fmt',
-    'yuv420p',
-    '-preset',
-    'ultrafast',
-    '-c:a',
-    'aac',
-    '-shortest',
+    listPath,
+    '-c',
+    'copy',
     mediaPath
   ])
 
@@ -294,6 +310,79 @@ test('agent cắt bỏ được một khoảng và dồn phần sau lên', async
   // Cắt 1 giây đầu: clip đầu ngắn lại, clip sau lùi lên lấp chỗ trống.
   expect(clips[0].durationUs).toBe(1_000_000)
   expect(clips[1].startUs).toBe(1_000_000)
+
+  await client.close()
+})
+
+test('agent dò được cú máy và XEM được ảnh đại diện của từng cú', async () => {
+  const client = await connect()
+
+  const shots = textOf(await client.callTool({ name: 'list_shots', arguments: {} }))
+  expect(shots).toContain('shots=4')
+  // Đường dẫn ảnh là thứ quan trọng nhất: có nó thì agent nhìn được cú máy mà
+  // chọn, thay vì đoán mò theo mốc thời gian.
+  expect(shots).toContain('frame=')
+
+  const framePaths = [...shots.matchAll(/frame=(\S+)/g)].map((match) => match[1])
+  expect(framePaths).toHaveLength(4)
+  for (const framePath of framePaths) {
+    expect((await stat(framePath)).size).toBeGreaterThan(0)
+  }
+
+  await client.close()
+})
+
+test('agent dựng bản cut từ cú máy đã chọn, theo ĐÚNG thứ tự nó muốn', async () => {
+  const client = await connect()
+  await client.callTool({ name: 'list_shots', arguments: {} })
+
+  // Đảo thứ tự có chủ ý: với footage câm, xếp lại cảnh chính là việc dựng phim,
+  // nên thứ tự agent đưa ra phải được tôn trọng — khác hẳn dựng theo lời nói.
+  const assetId = /asset id=(\S+)/.exec(
+    textOf(await client.callTool({ name: 'list_shots', arguments: {} }))
+  )?.[1] as string
+
+  const built = textOf(
+    await client.callTool({
+      name: 'build_cut_from_shots',
+      arguments: { assetId, shotIndexes: [3, 0, 2], maxShotSeconds: 1.5 }
+    })
+  )
+  expect(built).toContain('Đã áp dụng')
+  expect(built).toContain('3 cú máy')
+
+  await expect(page.locator('.timeline-clip')).toHaveCount(3)
+
+  await expect(page.locator('.top-bar__status')).toHaveText('Đã lưu', { timeout: 15_000 })
+  const saved = await savedDocument()
+  const clips = saved.tracks.flatMap((track) => track.clips)
+
+  // Mỗi cú bị cắt còn 1,5 giây và xếp sát nhau; sourceInUs phải theo đúng thứ
+  // tự đảo mà agent yêu cầu: cú 3 (giây 9), cú 0 (giây 0), cú 2 (giây 6).
+  expect(clips.map((clip) => [clip.startUs, clip.durationUs, clip.sourceInUs])).toEqual([
+    [0, 1_500_000, 9_000_000],
+    [1_500_000, 1_500_000, 0],
+    [3_000_000, 1_500_000, 6_000_000]
+  ])
+
+  await client.close()
+})
+
+test('agent bị chặn khi chọn cú máy không tồn tại', async () => {
+  const client = await connect()
+  await client.callTool({ name: 'list_shots', arguments: {} })
+  const assetId = /asset id=(\S+)/.exec(
+    textOf(await client.callTool({ name: 'list_shots', arguments: {} }))
+  )?.[1] as string
+
+  const result = textOf(
+    await client.callTool({
+      name: 'build_cut_from_shots',
+      arguments: { assetId, shotIndexes: [99] }
+    })
+  )
+  expect(result).toContain('Bị từ chối')
+  expect(result).toContain('Không có cú máy số')
 
   await client.close()
 })

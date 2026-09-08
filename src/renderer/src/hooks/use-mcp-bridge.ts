@@ -69,6 +69,34 @@ function formatMedia(document: ProjectDocument): string {
     .join('\n')
 }
 
+/** Cú máy đã dò, giữ trong bộ nhớ phiên làm việc để công cụ dựng dùng lại. */
+const shotCache = new Map<string, Array<{ startUs: number; endUs: number; framePath?: string }>>()
+
+/**
+ * Liệt kê cú máy kèm đường dẫn ảnh đại diện.
+ *
+ * Đường dẫn ảnh là phần quan trọng nhất: agent nào đọc được file — Claude Code
+ * chẳng hạn — sẽ XEM được từng cú mà chọn, thay vì đoán mò theo mốc thời gian.
+ * Đây là đường duy nhất dựng được video từ footage không có tiếng.
+ */
+function formatShots(
+  assetId: string,
+  assetName: string,
+  shots: Array<{ index: number; startUs: number; endUs: number; framePath?: string }>
+): string {
+  if (shots.length === 0) return 'Không dò được cú máy nào.'
+
+  const header = `asset id=${assetId} name="${assetName}" shots=${shots.length}`
+  const lines = shots.map((shot) => {
+    const from = (shot.startUs / 1_000_000).toFixed(2)
+    const to = (shot.endUs / 1_000_000).toFixed(2)
+    const duration = ((shot.endUs - shot.startUs) / 1_000_000).toFixed(2)
+    return `- shot ${shot.index}: ${from}s–${to}s (${duration}s)${shot.framePath ? ` frame=${shot.framePath}` : ''}`
+  })
+
+  return [header, '', ...lines].join('\n')
+}
+
 export function useMcpBridge(): void {
   useEffect(() => {
     return window.api.mcp.onRequest((request: McpBridgeRequest) => {
@@ -105,6 +133,35 @@ export function useMcpBridge(): void {
             respond(true, formatMedia(document))
             return
 
+          case 'shots': {
+            const payload = request.payload as { assetId?: string }
+            const asset = payload?.assetId
+              ? document.assets.find((item) => item.id === payload.assetId)
+              : document.assets.find((item) => item.kind === 'video')
+            if (!asset) {
+              respond(false, undefined, 'Không tìm thấy media video nào trong dự án.')
+              return
+            }
+
+            // Dò cú máy tốn thời gian nên chạy bất đồng bộ; kết quả giữ lại để
+            // công cụ dựng dùng mà không phải quét lại.
+            void window.api.media
+              .detectShots({
+                projectId: document.id,
+                assetId: asset.id,
+                sourcePath: asset.source.path
+              })
+              .then((result) => {
+                if (!result.ok) {
+                  respond(false, undefined, result.error)
+                  return
+                }
+                shotCache.set(asset.id, result.data)
+                respond(true, formatShots(asset.id, asset.name, result.data))
+              })
+            return
+          }
+
           case 'apply-tools': {
             const payload = request.payload as {
               calls: Array<{ name: string; arguments: unknown }>
@@ -114,7 +171,8 @@ export function useMcpBridge(): void {
                 document,
                 selectedClipIds: state.selection.clipIds,
                 playheadUs: state.playheadUs,
-                makeId: () => createId('clip')
+                makeId: () => createId('clip'),
+                shots: Object.fromEntries(shotCache)
               },
               payload.calls ?? []
             )

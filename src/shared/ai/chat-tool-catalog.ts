@@ -122,6 +122,22 @@ export const chatToolSchemas = {
    * Đây là thứ mô hình ngôn ngữ làm tốt nhất trong cả bộ công cụ: viết câu, chứ
    * không phải cộng trừ micro giây.
    */
+  /**
+   * Dựng bản cut từ các CÚ MÁY được chọn.
+   *
+   * Song song với `build_cut_from_transcript`, dành cho footage KHÔNG có tiếng —
+   * quay review sản phẩm chẳng hạn. Ở đó transcript rỗng nên agent phải chọn
+   * theo hình, dùng ảnh đại diện mà `list_shots` trả về.
+   */
+  build_cut_from_shots: z.object({
+    assetId: z.string().min(1).max(120),
+    /** Chỉ số cú máy, THEO ĐÚNG THỨ TỰ muốn xếp trên timeline. */
+    shotIndexes: z.array(z.number().int().min(0).max(2000)).min(1).max(200),
+    trackId: z.string().min(1).max(120).optional(),
+    /** Cắt bớt mỗi cú còn bấy nhiêu giây; bỏ trống thì giữ nguyên độ dài. */
+    maxShotSeconds: z.number().positive().max(60).optional()
+  }),
+
   add_text_overlay: z.object({
     text: z.string().min(1).max(300),
     startSeconds: seconds,
@@ -176,6 +192,8 @@ export const chatToolDescriptions: Record<ChatToolName, string> = {
   build_cut_from_transcript:
     'Assemble a cut from a transcript: keep only the listed segments, laid end to end in transcript order on one track. Replaces whatever is already on that track. This is the main tool for editing by what was said.',
   add_track: 'Add a new track to the timeline.',
+  build_cut_from_shots:
+    'Assemble a cut from detected camera shots, laid end to end in the order given. Use this for footage with no speech, where there is no transcript to work from. Call list_shots first to see each shot and its still frame.',
   add_text_overlay:
     'Put text on top of the video for a stretch of time — a hook, a price, a call to action. Separate from subtitles, which come from speech.',
   remove_text_overlay: 'Remove a text overlay.'
@@ -202,6 +220,8 @@ export const chatToolParameterHints: Record<ChatToolName, string> = {
     '{ transcriptId?: string, keepSegmentIds: string[], trackId?: string }',
   add_track:
     "{ kind: 'video' | 'audio' | 'subtitle', name: string, role?: 'dialogue' | 'voiceover' | 'music' | 'sfx' }",
+  build_cut_from_shots:
+    '{ assetId: string, shotIndexes: number[], trackId?: string, maxShotSeconds?: number }',
   add_text_overlay:
     "{ text: string, startSeconds: number, endSeconds: number, animation?: 'none' | 'fade' | 'pop' | 'slide-up' | 'typewriter', position?: 'bottom' | 'middle' | 'top', fontSizePx?: number }",
   remove_text_overlay: '{ overlayId: string }'
