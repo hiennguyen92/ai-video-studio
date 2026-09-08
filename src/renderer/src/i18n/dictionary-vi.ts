@@ -75,6 +75,20 @@ export const dictionaryVi = {
     aspectRatio: 'Tỷ lệ khung hình'
   },
   inspector: {
+    transition: 'Chuyển cảnh',
+    transitionNone: 'Cắt thẳng',
+    transitionFade: 'Mờ chồng',
+    transitionSlideLeft: 'Trượt sang trái',
+    transitionSlideRight: 'Trượt sang phải',
+    transitionSlideUp: 'Trượt lên',
+    transitionSlideDown: 'Trượt xuống',
+    transitionWipeLeft: 'Gạt sang trái',
+    transitionWipeRight: 'Gạt sang phải',
+    transitionZoom: 'Phóng vào',
+    transitionDuration: 'Thời lượng (giây)',
+    transitionHint:
+      'Chuyển cảnh lấy phần nguồn nằm trước điểm vào của clip. Không đủ thì nó tự ngắn lại, và clip đầu timeline không có chuyển cảnh.',
+    transitionClamped: 'Chỉ dùng được {seconds}s vì clip không còn đủ phần nguồn phía trước.',
     title: 'Thuộc tính',
     chat: 'AI Chat',
     noSelection: 'Chưa chọn đối tượng nào.',

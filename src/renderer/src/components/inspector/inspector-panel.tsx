@@ -12,6 +12,7 @@ import { selectDocument, useEditorStore } from '../../state/editor-store'
 import { useT } from '../../i18n/use-translation'
 import { EmptyState } from '../ui/empty-state'
 import { ToolButton } from '../ui/tool-button'
+import { ClipTransitionControls } from './clip-transition-controls'
 import { AiChatPanel } from '../chat/ai-chat-panel'
 import './inspector-panel.css'
 
@@ -135,6 +136,20 @@ export function InspectorPanel(): JSX.Element {
               <span className="field-row__label">{t.inspector.sourceIn}</span>
               <span className="field-row__value">{formatClockTime(found.clip.sourceInUs)}</span>
             </div>
+
+            {/* Chuyển cảnh chỉ có nghĩa với clip hình. */}
+            {found.track.kind === 'video' && document && (
+              <ClipTransitionControls
+                clip={found.clip}
+                frameRate={document.settings.frameRate}
+                onChange={(transition) =>
+                  run(
+                    [{ type: 'clip/set-transition', clipId: found.clip.id, transition }],
+                    'Đổi chuyển cảnh'
+                  )
+                }
+              />
+            )}
 
             <p className="field-group__title">{t.inspector.volume}</p>
             <SliderRow

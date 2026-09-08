@@ -71,6 +71,21 @@ export const dictionaryEn: Dictionary = {
     aspectRatio: 'Aspect ratio'
   },
   inspector: {
+    transition: 'Transition',
+    transitionNone: 'Hard cut',
+    transitionFade: 'Crossfade',
+    transitionSlideLeft: 'Slide left',
+    transitionSlideRight: 'Slide right',
+    transitionSlideUp: 'Slide up',
+    transitionSlideDown: 'Slide down',
+    transitionWipeLeft: 'Wipe left',
+    transitionWipeRight: 'Wipe right',
+    transitionZoom: 'Zoom in',
+    transitionDuration: 'Duration (seconds)',
+    transitionHint:
+      'A transition uses source material before the clip in point. When there is not enough it shortens itself, and the first clip on the timeline gets none.',
+    transitionClamped:
+      'Only {seconds}s is usable — the clip has no more source before its in point.',
     title: 'Inspector',
     chat: 'AI Chat',
     noSelection: 'Nothing selected.',

@@ -36,6 +36,33 @@ export const DEFAULT_CLIP_TRANSFORM: ClipTransform = {
   opacity: 1
 }
 
+/**
+ * Kiểu chuyển cảnh khi một clip xuất hiện.
+ *
+ * Tất cả đều là hiệu ứng vẽ trên CHÍNH clip đến, phủ dần lên clip đi phía dưới —
+ * không có phép trộn hai luồng nào. Nhờ vậy chúng biểu diễn được bằng CSS thuần,
+ * chạy y hệt ở preview lẫn lúc xuất, và không làm co thời lượng timeline như
+ * toán tử `xfade` của ffmpeg.
+ */
+export type TransitionKind =
+  | 'fade'
+  | 'slide-left'
+  | 'slide-right'
+  | 'slide-up'
+  | 'slide-down'
+  | 'wipe-left'
+  | 'wipe-right'
+  | 'zoom'
+
+export interface ClipTransition {
+  kind: TransitionKind
+  /** Thời lượng chuyển cảnh. Bị kẹp lại khi clip không đủ phần nguồn phía trước. */
+  durationUs: Micros
+}
+
+/** Chuyển cảnh dài mặc định — đủ thấy nhưng không làm chậm nhịp video ngắn. */
+export const DEFAULT_TRANSITION_DURATION_US = 500_000
+
 export interface Clip {
   id: string
   /** Không có với clip phụ đề (nội dung nằm trong SubtitleTrack). */
@@ -53,6 +80,14 @@ export interface Clip {
   fadeInUs: Micros
   fadeOutUs: Micros
   transform?: ClipTransform
+  /**
+   * Hiệu ứng khi clip này xuất hiện.
+   *
+   * Chuyển cảnh "ăn" vào phần nguồn NẰM TRƯỚC `sourceInUs` — đúng khái niệm
+   * handle của các trình dựng phim. Không đủ handle thì thời lượng bị kẹp lại
+   * chứ không kéo clip đi chỗ khác.
+   */
+  transitionIn?: ClipTransition
   /** Clip video và audio tách từ cùng một file di chuyển cùng nhau. */
   linkGroupId?: string
   label?: string

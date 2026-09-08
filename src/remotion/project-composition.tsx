@@ -69,15 +69,62 @@ function useFadeGain(
   return gain
 }
 
+/**
+ * Kiểu vẽ cho hiệu ứng xuất hiện, tại khung hiện tại.
+ *
+ * Mọi hiệu ứng đều tác động lên CHÍNH clip đến, phủ dần lên clip phía dưới. Không
+ * có phép trộn hai luồng, nên chúng chạy được bằng CSS thuần và giống hệt nhau ở
+ * preview lẫn lúc xuất.
+ */
+function useTransitionStyle(transition: RenderPlanVideoClip['transition']): {
+  opacity: number
+  transform?: string
+  clipPath?: string
+} {
+  const frame = useCurrentFrame()
+  if (!transition) return { opacity: 1 }
+
+  // 0 ở đầu chuyển cảnh, 1 khi đã hiện hẳn.
+  const progress = interpolate(frame, [0, transition.frames], [0, 1], {
+    extrapolateLeft: 'clamp',
+    extrapolateRight: 'clamp'
+  })
+  const offset = (1 - progress) * 100
+
+  switch (transition.kind) {
+    case 'fade':
+      return { opacity: progress }
+    case 'slide-left':
+      return { opacity: 1, transform: `translateX(${offset}%)` }
+    case 'slide-right':
+      return { opacity: 1, transform: `translateX(${-offset}%)` }
+    case 'slide-up':
+      return { opacity: 1, transform: `translateY(${offset}%)` }
+    case 'slide-down':
+      return { opacity: 1, transform: `translateY(${-offset}%)` }
+    case 'wipe-left':
+      // Lộ dần từ mép phải sang trái; phần chưa lộ bị cắt đi chứ không mờ.
+      return { opacity: 1, clipPath: `inset(0 0 0 ${offset}%)` }
+    case 'wipe-right':
+      return { opacity: 1, clipPath: `inset(0 ${offset}% 0 0)` }
+    case 'zoom':
+      return { opacity: progress, transform: `scale(${1 + (1 - progress) * 0.25})` }
+  }
+}
+
 function VideoClip({ clip, url }: { clip: RenderPlanVideoClip; url: string }): JSX.Element {
   const fade = useFadeGain(clip.durationInFrames, clip.fadeInFrames, clip.fadeOutFrames)
+  const enter = useTransitionStyle(clip.transition)
   const { transform } = clip
 
   return (
     <AbsoluteFill
+      // Biến đổi của chuyển cảnh đi TRƯỚC biến đổi của clip: hiệu ứng vào phải
+      // tác động lên khung hình đã đặt đúng vị trí, không phải ngược lại.
       style={{
-        opacity: transform.opacity * fade,
-        transform: `translate(${transform.x}px, ${transform.y}px) scale(${transform.scale}) rotate(${transform.rotationDeg}deg)`
+        opacity: transform.opacity * fade * enter.opacity,
+        clipPath: enter.clipPath,
+        transform: `${enter.transform ?? ''} translate(${transform.x}px, ${transform.y}px) scale(${transform.scale}) rotate(${transform.rotationDeg}deg)`
       }}
     >
       <OffthreadVideo

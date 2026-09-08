@@ -269,6 +269,31 @@ Quy đổi micro giây → khung hình nằm gọn trong `buildRenderPlan`, khô
 component. Lệch một khung ở đó thì hình và tiếng lệch cả bản dựng mà không có lỗi
 nào báo ra.
 
+### Chuyển cảnh
+
+Chuyển cảnh là **hiệu ứng vẽ trên chính clip đến**, phủ dần lên clip đi phía dưới:
+mờ chồng, trượt, gạt ngang, phóng vào. Không có phép trộn hai luồng nào, nên tất
+cả biểu diễn được bằng CSS thuần và chạy y hệt ở preview lẫn lúc xuất.
+
+**Vì sao không dùng `xfade` của ffmpeg:** nó là toán tử tuần tự, nuốt hai luồng
+nhả ra một luồng, và **làm CO độ dài** — nối năm chuyển cảnh 0,5s là mọi thứ phía
+sau lệch 2,5 giây so với thứ preview hiển thị. Dự án này lấy vị trí tuyệt đối làm
+nguồn sự thật nên đó là điều không chấp nhận được.
+
+Cách làm ở đây giữ nguyên vị trí tuyệt đối: clip đến **bắt đầu sớm hơn** đúng bằng
+thời lượng chuyển cảnh, và điểm vào nguồn lùi tương ứng — tức là nó tiêu thụ phần
+nguồn nằm trước điểm vào, đúng khái niệm *handle* của các trình dựng phim. Tổng
+thời lượng timeline không đổi, không clip nào bị đẩy đi.
+
+Thời lượng bị **kẹp** theo cái nhỏ nhất trong ba giới hạn: phần nguồn còn phía
+trước, vị trí trên timeline (không lùi qua mốc 0), và độ dài chính clip. Kẹp chứ
+không từ chối — đặt 1 giây trên clip chỉ còn 0,3 giây handle thì nên được 0,3 giây.
+Giao diện **nói ra** khi bị kẹp, nếu không người dùng sẽ thấy hiệu ứng chớp qua mà
+không hiểu vì sao.
+
+Hệ quả: **clip đầu timeline không bao giờ có chuyển cảnh** — không có gì phía trước
+để lấy, và cũng không có gì để phủ lên.
+
 ### Máy chủ media cục bộ
 
 Remotion **không đọc được đường dẫn file tuỳ ý** — asset phải nằm dưới `publicDir`

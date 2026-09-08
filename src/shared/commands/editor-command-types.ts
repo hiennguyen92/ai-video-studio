@@ -2,6 +2,7 @@ import { z } from 'zod'
 import type { MediaAsset } from '../domain/media-asset-types'
 import type { Transcript, Translation } from '../domain/transcript-types'
 import type { SubtitleCue, SubtitleStyle, SubtitleTrack } from '../domain/subtitle-types'
+import type { TransitionKind } from '../domain/timeline-track-types'
 import type { DubbingSession } from '../domain/transcript-types'
 
 /**
@@ -160,6 +161,38 @@ const duplicateClip = z.object({
   type: z.literal('clip/duplicate'),
   clipId: z.string(),
   newClipId: z.string().optional()
+})
+
+/**
+ * Đặt hoặc gỡ hiệu ứng xuất hiện của một clip.
+ *
+ * Tách khỏi `clip/update` vì nó không phải một thuộc tính hiển thị đơn lẻ: thời
+ * lượng chuyển cảnh còn bị kẹp theo phần nguồn còn lại lúc dựng khung hình.
+ */
+const setClipTransition = z.object({
+  type: z.literal('clip/set-transition'),
+  clipId: z.string(),
+  /** Bỏ trống nghĩa là gỡ chuyển cảnh. */
+  transition: z
+    .object({
+      kind: z.custom<TransitionKind>(
+        (value) =>
+          typeof value === 'string' &&
+          [
+            'fade',
+            'slide-left',
+            'slide-right',
+            'slide-up',
+            'slide-down',
+            'wipe-left',
+            'wipe-right',
+            'zoom'
+          ].includes(value),
+        { message: 'kiểu chuyển cảnh không hợp lệ' }
+      ),
+      durationUs: positiveMicros
+    })
+    .optional()
 })
 
 const updateClip = z.object({
@@ -441,6 +474,7 @@ export const editorCommandSchema = z.discriminatedUnion('type', [
   rippleDelete,
   duplicateClip,
   updateClip,
+  setClipTransition,
   addTranscript,
   removeTranscript,
   updateTranscriptSegment,

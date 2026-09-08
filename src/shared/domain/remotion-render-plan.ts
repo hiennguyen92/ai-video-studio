@@ -1,6 +1,12 @@
 import type { ProjectDocument } from './project-document-types'
 import { projectDurationUs } from './project-document-types'
-import { DEFAULT_CLIP_TRANSFORM, clipEndUs, type ClipTransform } from './timeline-track-types'
+import {
+  DEFAULT_CLIP_TRANSFORM,
+  clipEndUs,
+  type Clip,
+  type ClipTransform,
+  type TransitionKind
+} from './timeline-track-types'
 import type { SubtitleStyle } from './subtitle-types'
 import { frameOfMicros, type FrameRate } from './time-units'
 
@@ -31,6 +37,13 @@ export interface RenderPlanVideoClip {
   layerIndex: number
   transform: ClipTransform
   muted: boolean
+  /**
+   * Hiệu ứng xuất hiện, tính bằng khung.
+   *
+   * Số khung này ĐÃ được kẹp theo phần nguồn còn dùng được, nên lớp vẽ cứ tin
+   * dùng thẳng, không phải kiểm lại.
+   */
+  transition?: { kind: TransitionKind; frames: number }
 }
 
 export interface RenderPlanAudioClip {
@@ -65,6 +78,33 @@ export interface RenderPlan {
   subtitles: RenderPlanSubtitleCue[]
 }
 
+/**
+ * Số khung mà chuyển cảnh của một clip thật sự dùng được.
+ *
+ * Chuyển cảnh làm clip đến BẮT ĐẦU SỚM HƠN để phủ lên clip đi, nên nó tiêu thụ
+ * phần nguồn nằm trước `sourceInUs`. Ba giới hạn, lấy cái nhỏ nhất:
+ *
+ *   1. phần nguồn còn phía trước (`sourceInUs`) — không đọc được trước đầu file
+ *   2. vị trí trên timeline — không kéo lùi qua mốc 0
+ *   3. độ dài của chính clip — chuyển cảnh dài hơn clip thì vô nghĩa
+ *
+ * Kẹp lại thay vì từ chối: người dùng đặt 1 giây trên một clip chỉ còn 0,3 giây
+ * handle thì nên được 0,3 giây, không nên mất trắng hiệu ứng.
+ */
+export function resolveTransitionFrames(clip: Clip, fps: FrameRate): number {
+  if (!clip.transitionIn) return 0
+
+  const wanted = frameOfMicros(clip.transitionIn.durationUs, fps)
+  if (wanted <= 0) return 0
+
+  // Nguồn tiêu thụ nhanh hơn khi clip chạy nhanh, nên quy đổi theo tốc độ phát.
+  const handleFrames = Math.floor(frameOfMicros(clip.sourceInUs, fps) / Math.max(clip.speed, 0.01))
+  const startFrame = frameOfMicros(clip.startUs, fps)
+  const clipFrames = frameOfMicros(clipEndUs(clip), fps) - startFrame
+
+  return Math.max(0, Math.min(wanted, handleFrames, startFrame, clipFrames))
+}
+
 /** Track có phát ra tiếng không, xét cả solo lẫn mute (giống lớp preview hiện có). */
 function audioTrackAudible(track: ProjectDocument['tracks'][number], anySolo: boolean): boolean {
   if (track.muted) return false
@@ -85,19 +125,31 @@ export function buildRenderPlan(document: ProjectDocument): RenderPlan {
 
       for (const clip of track.clips) {
         if (!clip.assetId) continue
-        const fromFrame = frameOfMicros(clip.startUs, fps)
+        const startFrame = frameOfMicros(clip.startUs, fps)
         const endFrame = frameOfMicros(clipEndUs(clip), fps)
-        const durationInFrames = endFrame - fromFrame
         // Clip ngắn hơn một khung thì không vẽ được; bỏ qua thay vì tạo Sequence
         // dài 0 khung mà Remotion sẽ từ chối.
-        if (durationInFrames <= 0) continue
+        if (endFrame - startFrame <= 0) continue
+
+        // Chuyển cảnh kéo clip bắt đầu sớm hơn để phủ lên clip phía trước, và
+        // lùi điểm vào nguồn tương ứng để nội dung không bị nhảy.
+        const transitionFrames = resolveTransitionFrames(clip, fps)
+        const fromFrame = startFrame - transitionFrames
+        const durationInFrames = endFrame - fromFrame
 
         video.push({
           key: clip.id,
           assetId: clip.assetId,
           fromFrame,
           durationInFrames,
-          sourceFromFrame: frameOfMicros(clip.sourceInUs, fps),
+          sourceFromFrame: Math.max(
+            0,
+            frameOfMicros(clip.sourceInUs, fps) - Math.round(transitionFrames * clip.speed)
+          ),
+          transition:
+            transitionFrames > 0 && clip.transitionIn
+              ? { kind: clip.transitionIn.kind, frames: transitionFrames }
+              : undefined,
           playbackRate: clip.speed,
           volume: clip.volume * track.volume,
           fadeInFrames: frameOfMicros(clip.fadeInUs, fps),
