@@ -16,6 +16,19 @@ vá để nâng lên; đổi Node là cách duy nhất.
 nvm use 22 && npm run build:mac
 ```
 
+## `ENOTEMPTY: rmdir dist/mac-arm64`
+
+Mở thư mục đóng gói bằng Finder là nó để lại `.DS_Store` trong đó, và
+electron-builder không xoá được thư mục cũ nên ngã ngay sau bước tải Electron.
+Dọn tay rồi build lại:
+
+```bash
+rm -rf dist/mac-arm64 dist/mac-arm64.tmp
+```
+
+Xoá cả `dist/` cũng được, nhưng làm vậy là mất luôn bản `.dmg` trước đó nếu lần
+build này hỏng.
+
 ## Build xong KHÔNG có nghĩa là chạy được
 
 Ba lỗi dưới đây đều để build thành công rồi mới chết lúc chạy. Không có bước chạy
