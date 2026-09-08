@@ -154,6 +154,7 @@ export const dictionaryVi = {
     split: 'Cắt tại playhead',
     deleteClip: 'Xoá clip',
     duplicateClip: 'Nhân bản clip',
+    textOverlayLane: 'Chữ trên hình',
     addVideoTrack: 'Thêm track video',
     addAudioTrack: 'Thêm track âm thanh',
     removeTrack: 'Xoá track',

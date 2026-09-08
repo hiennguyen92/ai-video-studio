@@ -105,6 +105,69 @@ test('thêm chữ được ngay cả khi chưa có bản phiên âm nào', async
   await page.getByLabel('Kết thúc (giây) 1').fill('4')
 })
 
+test('chữ overlay hiện thành khối trên lane riêng của timeline', async () => {
+  // Chữ overlay nằm ở CẤP TÀI LIỆU, không thuộc track nào, nên timeline vốn
+  // không vẽ gì cho nó. Thiếu lane này thì trên timeline không có dấu vết nào
+  // của chữ — đúng thứ người dùng báo thiếu.
+  const timeline = page.getByRole('region', { name: 'Timeline' })
+  await expect(timeline.getByText('Chữ trên hình')).toBeVisible()
+
+  const blocks = page.locator('.timeline-text-block--overlay')
+  await expect(blocks).toHaveCount(1)
+  await expect(blocks.first()).toContainText('Bạn đang bỏ lỡ thứ này')
+
+  // Khối phải có bề rộng thật, đặt đúng mốc bắt đầu.
+  const box = await blocks.first().boundingBox()
+  expect(box!.width).toBeGreaterThan(1)
+})
+
+test('thêm chữ thứ hai thì lane có hai khối, khối sau nằm bên phải', async () => {
+  // Tua đầu phát ra xa TRƯỚC khi thêm: chữ mới bắt đầu ngay tại đầu phát, nên
+  // không phải sửa ô giờ nào cả.
+  //
+  // Sửa ô giờ ở đây từng làm phép thử này ngã theo một cách đáng nhớ: đặt giờ
+  // BẮT ĐẦU vượt quá giờ KẾT THÚC hiện tại thì lệnh bị từ chối im lặng, ô nhập
+  // bật về giá trị cũ, và chữ nằm nguyên chỗ cũ.
+  const ruler = page.locator('.timeline__ruler-row')
+  const box = await ruler.boundingBox()
+  await page.mouse.click(box!.x + 350, box!.y + 12)
+
+  await page.getByRole('button', { name: 'Thêm chữ' }).click()
+  await page.getByLabel('Nội dung 2').fill('Giỏ hàng bên dưới')
+
+  const blocks = page.locator('.timeline-text-block--overlay')
+  await expect(blocks).toHaveCount(2)
+
+  const lefts = await blocks.evaluateAll((nodes) =>
+    nodes.map((node) => node.getBoundingClientRect().left)
+  )
+  expect(lefts[1]).toBeGreaterThan(lefts[0])
+
+  // Dọn lại để các phép thử sau vẫn làm việc với đúng một chữ.
+  await page.getByRole('button', { name: 'Xoá chữ' }).nth(1).click()
+  await expect(blocks).toHaveCount(1)
+})
+
+test('bấm vào khối chữ thì tua đầu phát tới đúng chữ đó', async () => {
+  const ruler = page.locator('.timeline__ruler-row')
+  const box = await ruler.boundingBox()
+
+  // Tua ra ngoài khoảng chữ trước, để lần bấm sau chứng minh được điều gì đó.
+  await page.mouse.click(box!.x + 420, box!.y + 12)
+  await expect(page.locator('.text-overlay')).toHaveCount(0)
+
+  // Lane chữ nằm cuối cùng, mà thước thời gian dính ở đỉnh vùng cuộn. Panel
+  // timeline thấp thì lane cuối rơi ngay dưới thước và không bấm tới được — cuộn
+  // xuống đáy trước.
+  await page
+    .locator('.timeline__scroll')
+    .evaluate((element) => element.scrollTo({ top: element.scrollHeight }))
+
+  await page.locator('.timeline-text-block--overlay').first().click()
+  await expect(page.locator('.text-overlay')).toContainText('Bạn đang bỏ lỡ thứ này')
+  await expect(page.locator('.timeline-text-block--active')).toHaveCount(1)
+})
+
 test('chữ hiện trên preview trong khoảng đã đặt và biến mất ngoài đó', async () => {
   const overlay = page.locator('.text-overlay')
 

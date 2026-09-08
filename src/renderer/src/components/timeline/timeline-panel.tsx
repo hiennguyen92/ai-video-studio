@@ -23,7 +23,7 @@ import { ToolButton } from '../ui/tool-button'
 import { EmptyState } from '../ui/empty-state'
 import { IconMagnet, IconPlus, IconSplit, IconTrash, IconZoomIn, IconZoomOut } from '../ui/icons'
 import { MEDIA_DRAG_MIME } from '../ai-studio/media-library-panel'
-import { TimelineSubtitleCue } from './timeline-subtitle-cue'
+import { TimelineTextBlock } from './timeline-text-block'
 import { TimelineClip, type ClipDragMode } from './timeline-clip'
 import { TimelineRuler } from './timeline-ruler'
 import { TimelineTrackHead } from './timeline-track-head'
@@ -53,6 +53,15 @@ export function TimelinePanel(): JSX.Element {
   const snapEnabled = useEditorStore((state) => state.snapEnabled)
   const toggleSnap = useEditorStore((state) => state.toggleSnap)
   const selection = useEditorStore((state) => state.selection)
+
+  /** Bấm vào một khối chữ thì dừng phát và tua tới đầu khối đó. */
+  const seekToBlock = useCallback(
+    (item: { startUs: number }) => {
+      setPlaying(false)
+      setPlayhead(item.startUs)
+    },
+    [setPlaying, setPlayhead]
+  )
   const run = useEditorStore((state) => state.run)
 
   const lanesRef = useRef<HTMLDivElement>(null)
@@ -280,6 +289,16 @@ export function TimelinePanel(): JSX.Element {
           {document.tracks.map((track) => (
             <TimelineTrackHead key={track.id} track={track} />
           ))}
+          {/* Đầu của lane ảo. Chiều cao phải KHỚP với lane, nếu không mọi hàng
+              phía dưới lệch nhau. */}
+          {document.textOverlays.length > 0 && (
+            <div className="track-head" style={{ height: 44 }}>
+              <div className="track-head__title">
+                <span className="track-head__name">{t.timeline.textOverlayLane}</span>
+                <span className="track-head__count">{document.textOverlays.length}</span>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="timeline__scroll" ref={scrollRef}>
@@ -322,15 +341,13 @@ export function TimelinePanel(): JSX.Element {
                     document.subtitleTracks
                       .find((item) => item.id === track.subtitleTrackId)
                       ?.cues.map((cue) => (
-                        <TimelineSubtitleCue
+                        <TimelineTextBlock
                           key={cue.id}
-                          cue={cue}
+                          item={cue}
+                          variant="subtitle"
                           pixelsPerSecond={pixelsPerSecond}
-                          selected={playheadUs >= cue.startUs && playheadUs < cue.endUs}
-                          onSelect={(selectedCue) => {
-                            setPlaying(false)
-                            setPlayhead(selectedCue.startUs)
-                          }}
+                          active={playheadUs >= cue.startUs && playheadUs < cue.endUs}
+                          onSelect={seekToBlock}
                         />
                       ))}
 
@@ -372,6 +389,29 @@ export function TimelinePanel(): JSX.Element {
                     )}
                 </div>
               ))}
+
+              {/*
+                Lane chữ đè lên hình.
+                
+                Không dựa trên một Track nào: chữ overlay nằm ở CẤP TÀI LIỆU
+                (`document.textOverlays`), không thuộc track nào cả — đúng như
+                bản chất của nó, vì nó vẽ trên toàn khung hình chứ không thuộc
+                một lớp hình nào. Nên đây là một lane ảo, chỉ hiện khi có chữ.
+              */}
+              {document.textOverlays.length > 0 && (
+                <div className="timeline-lane timeline-lane--overlay" style={{ height: 44 }}>
+                  {document.textOverlays.map((overlay) => (
+                    <TimelineTextBlock
+                      key={overlay.id}
+                      item={overlay}
+                      variant="overlay"
+                      pixelsPerSecond={pixelsPerSecond}
+                      active={playheadUs >= overlay.startUs && playheadUs < overlay.endUs}
+                      onSelect={seekToBlock}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
 
             {preview?.snappedToUs != null && (

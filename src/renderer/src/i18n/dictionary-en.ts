@@ -152,6 +152,7 @@ export const dictionaryEn: Dictionary = {
     split: 'Split at playhead',
     deleteClip: 'Delete clip',
     duplicateClip: 'Duplicate clip',
+    textOverlayLane: 'Text on video',
     addVideoTrack: 'Add video track',
     addAudioTrack: 'Add audio track',
     removeTrack: 'Remove track',
