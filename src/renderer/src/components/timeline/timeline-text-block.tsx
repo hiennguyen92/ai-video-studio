@@ -1,4 +1,5 @@
-import type { JSX } from 'react'
+import type { JSX, PointerEvent as ReactPointerEvent } from 'react'
+import type { TextBlockDragMode } from '../../../../shared/domain/text-block-drag'
 import { usToPx } from './timeline-geometry'
 
 /**
@@ -25,30 +26,46 @@ export interface TimelineTextBlockItem {
   edited?: boolean
 }
 
+/** Bề rộng vùng bắt chuột để kéo mép, giống hệt clip. */
+const TRIM_HANDLE_PX = 7
+
 export function TimelineTextBlock({
   item,
   variant,
   pixelsPerSecond,
   active,
-  onSelect
+  dragging,
+  onSelect,
+  onPointerDown
 }: {
   item: TimelineTextBlockItem
   variant: TextBlockVariant
   pixelsPerSecond: number
   /** Đầu phát đang nằm trong khoảng của khối này. */
   active: boolean
+  /** Đang được kéo — tắt hiệu ứng chuyển động cho khối bám theo chuột. */
+  dragging: boolean
   onSelect(item: TimelineTextBlockItem): void
+  onPointerDown(
+    event: ReactPointerEvent<HTMLElement>,
+    item: TimelineTextBlockItem,
+    mode: TextBlockDragMode
+  ): void
 }): JSX.Element {
   const left = usToPx(item.startUs, pixelsPerSecond)
   const width = usToPx(item.endUs - item.startUs, pixelsPerSecond)
 
+  // Khối quá hẹp thì hai tay cầm ăn hết chỗ và không còn cách nào dời cả khối;
+  // lúc đó chỉ cho dời, bỏ hẳn phần cắt mép.
+  const showHandles = width > TRIM_HANDLE_PX * 3
+
   return (
-    <button
-      type="button"
+    <div
       className={[
         'timeline-text-block',
         `timeline-text-block--${variant}`,
         active ? 'timeline-text-block--active' : '',
+        dragging ? 'timeline-text-block--dragging' : '',
         item.edited ? 'timeline-text-block--edited' : ''
       ]
         .filter(Boolean)
@@ -58,10 +75,46 @@ export function TimelineTextBlock({
       // Nội dung đầy đủ trong tooltip: câu dài hơn bề rộng khối thì trên hình chỉ
       // còn vài chữ, mà đúng lúc đó mới cần đọc cả câu.
       title={item.text}
+      role="button"
+      tabIndex={0}
       aria-label={item.text}
+      onPointerDown={(event) => {
+        // Lấy tiêu điểm về khối. Lớp kéo gọi `preventDefault()` nên trình duyệt
+        // không tự chuyển tiêu điểm, và nó kẹt lại ở ô nhập vừa gõ — lúc đó Ctrl+Z
+        // bị phím tắt bỏ qua vì tưởng người dùng đang gõ chữ.
+        event.currentTarget.focus()
+        onPointerDown(event, item, 'move')
+      }}
       onClick={() => onSelect(item)}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault()
+          onSelect(item)
+        }
+      }}
     >
       <span className="timeline-text-block__text">{item.text}</span>
-    </button>
+
+      {showHandles && (
+        <>
+          <span
+            className="timeline-text-block__handle timeline-text-block__handle--start"
+            aria-hidden="true"
+            onPointerDown={(event) => {
+              event.currentTarget.parentElement?.focus()
+              onPointerDown(event, item, 'trim-start')
+            }}
+          />
+          <span
+            className="timeline-text-block__handle timeline-text-block__handle--end"
+            aria-hidden="true"
+            onPointerDown={(event) => {
+              event.currentTarget.parentElement?.focus()
+              onPointerDown(event, item, 'trim-end')
+            }}
+          />
+        </>
+      )}
+    </div>
   )
 }

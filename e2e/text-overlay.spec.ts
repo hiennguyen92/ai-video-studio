@@ -188,8 +188,99 @@ test('bấm vào khối chữ thì tua đầu phát tới đúng chữ đó', as
   await expect.poll(overlayOpacity).toBeGreaterThan(0.5)
 })
 
+/** Đọc giờ của chữ đầu tiên từ chính file dự án đã lưu. */
+async function savedOverlayRange(): Promise<{ startUs: number; endUs: number }> {
+  const { readFile, readdir } = await import('node:fs/promises')
+  const projectsRoot = join(userDataDir, 'projects')
+  const [projectId] = await readdir(projectsRoot)
+  const document = JSON.parse(
+    await readFile(join(projectsRoot, projectId, 'project.json'), 'utf8')
+  ) as { textOverlays: Array<{ startUs: number; endUs: number }> }
+  return document.textOverlays[0]
+}
+
+test('kéo cả khối trên timeline thì dời giờ, giữ nguyên độ dài', async () => {
+  await page.getByLabel('Bắt đầu (giây) 1').fill('1')
+  await page.getByLabel('Kết thúc (giây) 1').fill('4')
+  await expect(page.locator('.top-bar__status')).toHaveText('Đã lưu', { timeout: 15_000 })
+
+  const before = await savedOverlayRange()
+  const block = page.locator('.timeline-text-block--overlay').first()
+  const box = (await block.boundingBox())!
+
+  // Bắt vào GIỮA khối, tránh hai tay cầm ở hai mép.
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
+  await page.mouse.down()
+  await page.mouse.move(box.x + box.width / 2 + 120, box.y + box.height / 2, { steps: 12 })
+  await page.mouse.up()
+
+  await expect(page.locator('.top-bar__status')).toHaveText('Đã lưu', { timeout: 15_000 })
+  const after = await savedOverlayRange()
+
+  expect(after.startUs).toBeGreaterThan(before.startUs)
+  // Dời thì độ dài phải y nguyên; lệch đi nghĩa là đang cắt chứ không phải dời.
+  expect(after.endUs - after.startUs).toBe(before.endUs - before.startUs)
+})
+
+test('một lần kéo là MỘT bước hoàn tác', async () => {
+  const before = await savedOverlayRange()
+
+  await page.keyboard.press('ControlOrMeta+z')
+  await expect(page.locator('.top-bar__status')).toHaveText('Đã lưu', { timeout: 15_000 })
+  const undone = await savedOverlayRange()
+
+  // Kéo sinh hàng trăm sự kiện chuột. Nếu mỗi sự kiện ghi một lệnh thì một lần
+  // Ctrl+Z chỉ lùi được một chút xíu, và người dùng phải bấm hàng trăm lần.
+  expect(undone.startUs).toBeLessThan(before.startUs)
+
+  await page.keyboard.press('ControlOrMeta+Shift+z')
+  await expect(page.locator('.top-bar__status')).toHaveText('Đã lưu', { timeout: 15_000 })
+  expect((await savedOverlayRange()).startUs).toBe(before.startUs)
+})
+
+test('kéo mép phải chỉ đổi giờ kết thúc', async () => {
+  const before = await savedOverlayRange()
+  const block = page.locator('.timeline-text-block--overlay').first()
+  const box = (await block.boundingBox())!
+
+  await page.mouse.move(box.x + box.width - 3, box.y + box.height / 2)
+  await page.mouse.down()
+  await page.mouse.move(box.x + box.width + 100, box.y + box.height / 2, { steps: 12 })
+  await page.mouse.up()
+
+  await expect(page.locator('.top-bar__status')).toHaveText('Đã lưu', { timeout: 15_000 })
+  const after = await savedOverlayRange()
+
+  expect(after.startUs).toBe(before.startUs)
+  expect(after.endUs).toBeGreaterThan(before.endUs)
+})
+
+test('kéo mép trái vượt qua mép phải vẫn để lại một khoảng hợp lệ', async () => {
+  const before = await savedOverlayRange()
+  const block = page.locator('.timeline-text-block--overlay').first()
+  const box = (await block.boundingBox())!
+
+  // Kéo mép trái sang tận bên phải mép phải. Reducer từ chối khoảng ngược một
+  // cách IM LẶNG, nên nếu không kẹp thì khối chỉ lặng lẽ bật về chỗ cũ.
+  await page.mouse.move(box.x + 3, box.y + box.height / 2)
+  await page.mouse.down()
+  await page.mouse.move(box.x + box.width + 200, box.y + box.height / 2, { steps: 16 })
+  await page.mouse.up()
+
+  await expect(page.locator('.top-bar__status')).toHaveText('Đã lưu', { timeout: 15_000 })
+  const after = await savedOverlayRange()
+
+  expect(after.endUs).toBeGreaterThan(after.startUs)
+  expect(after.endUs).toBe(before.endUs)
+})
+
 test('chữ hiện trên preview trong khoảng đã đặt và biến mất ngoài đó', async () => {
   const overlay = page.locator('.text-overlay')
+
+  // Tự đặt lại giờ thay vì dựa vào trạng thái các phép thử trước để lại: nhóm
+  // phép thử kéo phía trên đã dời chữ đi chỗ khác.
+  await page.getByLabel('Bắt đầu (giây) 1').fill('1')
+  await page.getByLabel('Kết thúc (giây) 1').fill('4')
 
   await page.getByRole('button', { name: 'Tua tới đây' }).click()
   await expect(overlay).toContainText('Bạn đang bỏ lỡ thứ này')

@@ -24,6 +24,7 @@ import { ToolButton } from '../ui/tool-button'
 import { EmptyState } from '../ui/empty-state'
 import { IconMagnet, IconPlus, IconSplit, IconTrash, IconZoomIn, IconZoomOut } from '../ui/icons'
 import { MEDIA_DRAG_MIME } from '../ai-studio/media-library-panel'
+import { useTextBlockDrag } from './use-text-block-drag'
 import { TimelineTextBlock } from './timeline-text-block'
 import { TimelineClip, type ClipDragMode } from './timeline-clip'
 import { TimelineRuler } from './timeline-ruler'
@@ -56,6 +57,20 @@ export function TimelinePanel(): JSX.Element {
   const selection = useEditorStore((state) => state.selection)
 
   /** Bấm vào một khối chữ thì dừng phát và tua tới đầu khối đó. */
+  const { preview: textDrag, handleTextBlockPointerDown } = useTextBlockDrag({
+    document,
+    pixelsPerSecond
+  })
+
+  /** Trong lúc kéo, vẽ khối theo trạng thái xem trước chứ không theo tài liệu. */
+  const shownRange = useCallback(
+    <T extends { id: string; startUs: number; endUs: number }>(item: T): T =>
+      textDrag && textDrag.id === item.id
+        ? { ...item, startUs: textDrag.startUs, endUs: textDrag.endUs }
+        : item,
+    [textDrag]
+  )
+
   const seekToBlock = useCallback(
     (item: { startUs: number; endUs: number }) => {
       setPlaying(false)
@@ -367,16 +382,33 @@ export function TimelinePanel(): JSX.Element {
                   {track.kind === 'subtitle' &&
                     document.subtitleTracks
                       .find((item) => item.id === track.subtitleTrackId)
-                      ?.cues.map((cue) => (
-                        <TimelineTextBlock
-                          key={cue.id}
-                          item={cue}
-                          variant="subtitle"
-                          pixelsPerSecond={pixelsPerSecond}
-                          active={playheadUs >= cue.startUs && playheadUs < cue.endUs}
-                          onSelect={seekToBlock}
-                        />
-                      ))}
+                      ?.cues.map((cue) => {
+                        const shown = shownRange(cue)
+                        return (
+                          <TimelineTextBlock
+                            key={cue.id}
+                            item={shown}
+                            variant="subtitle"
+                            pixelsPerSecond={pixelsPerSecond}
+                            active={playheadUs >= shown.startUs && playheadUs < shown.endUs}
+                            dragging={textDrag?.id === cue.id}
+                            onSelect={seekToBlock}
+                            onPointerDown={(event, _item, mode) =>
+                              handleTextBlockPointerDown(
+                                event,
+                                cue.id,
+                                { startUs: cue.startUs, endUs: cue.endUs },
+                                {
+                                  kind: 'subtitle',
+                                  subtitleTrackId: track.subtitleTrackId as string,
+                                  cueId: cue.id
+                                },
+                                mode
+                              )
+                            }
+                          />
+                        )
+                      })}
 
                   {track.clips.map((clip) => {
                     const isDragging = preview?.clipId === clip.id
@@ -427,16 +459,29 @@ export function TimelinePanel(): JSX.Element {
               */}
               {document.textOverlays.length > 0 && (
                 <div className="timeline-lane timeline-lane--overlay" style={{ height: 44 }}>
-                  {document.textOverlays.map((overlay) => (
-                    <TimelineTextBlock
-                      key={overlay.id}
-                      item={overlay}
-                      variant="overlay"
-                      pixelsPerSecond={pixelsPerSecond}
-                      active={playheadUs >= overlay.startUs && playheadUs < overlay.endUs}
-                      onSelect={seekToBlock}
-                    />
-                  ))}
+                  {document.textOverlays.map((overlay) => {
+                    const shown = shownRange(overlay)
+                    return (
+                      <TimelineTextBlock
+                        key={overlay.id}
+                        item={shown}
+                        variant="overlay"
+                        pixelsPerSecond={pixelsPerSecond}
+                        active={playheadUs >= shown.startUs && playheadUs < shown.endUs}
+                        dragging={textDrag?.id === overlay.id}
+                        onSelect={seekToBlock}
+                        onPointerDown={(event, _item, mode) =>
+                          handleTextBlockPointerDown(
+                            event,
+                            overlay.id,
+                            { startUs: overlay.startUs, endUs: overlay.endUs },
+                            { kind: 'overlay', overlayId: overlay.id },
+                            mode
+                          )
+                        }
+                      />
+                    )
+                  })}
                 </div>
               )}
             </div>

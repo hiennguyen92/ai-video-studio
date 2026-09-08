@@ -259,6 +259,41 @@ test('câu đang phát được đánh dấu khác các câu còn lại', async 
   await expect(page.locator('.timeline-text-block--active')).toContainText('Second caption')
 })
 
+/** Đọc giờ của cue đầu tiên từ chính file dự án đã lưu. */
+async function savedCueRange(): Promise<{ startUs: number; endUs: number }> {
+  const projectsRoot = join(userDataDir, 'projects')
+  const [projectId] = await readdir(projectsRoot)
+  const document = JSON.parse(
+    await readFile(join(projectsRoot, projectId, 'project.json'), 'utf8')
+  ) as { subtitleTracks: Array<{ cues: Array<{ startUs: number; endUs: number }> }> }
+  return document.subtitleTracks[0].cues[0]
+}
+
+test('kéo khối phụ đề trên timeline thì dời giờ của cue', async () => {
+  // Cue phụ đề đi qua lệnh KHÁC với chữ overlay (`subtitle/update-cue` chứ không
+  // phải `text/update`), nên phải kiểm riêng chứ không suy ra từ phép thử kia.
+  await expect(page.locator('.top-bar__status')).toHaveText('Đã lưu', { timeout: 15_000 })
+  const before = await savedCueRange()
+
+  const block = page.locator('.timeline-text-block--subtitle').first()
+  const box = (await block.boundingBox())!
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
+  await page.mouse.down()
+  await page.mouse.move(box.x + box.width / 2 + 90, box.y + box.height / 2, { steps: 12 })
+  await page.mouse.up()
+
+  await expect(page.locator('.top-bar__status')).toHaveText('Đã lưu', { timeout: 15_000 })
+  const after = await savedCueRange()
+
+  expect(after.startUs).toBeGreaterThan(before.startUs)
+  expect(after.endUs - after.startUs).toBe(before.endUs - before.startUs)
+
+  // Trả về chỗ cũ cho các phép thử sau vẫn đúng mốc.
+  await page.keyboard.press('ControlOrMeta+z')
+  await expect(page.locator('.top-bar__status')).toHaveText('Đã lưu', { timeout: 15_000 })
+  expect((await savedCueRange()).startUs).toBe(before.startUs)
+})
+
 test('ẩn lane phụ đề thì chữ biến mất khỏi preview, hiện lại thì quay về', async () => {
   await page.locator('.timeline-text-block--subtitle').first().click()
   await expect(page.locator('.subtitle-cue')).toContainText('First caption')

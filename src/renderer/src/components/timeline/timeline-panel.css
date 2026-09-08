@@ -229,8 +229,41 @@
   border-left-width: 4px;
 }
 
+/* Kéo cả khối để dời giờ; hai mép để đổi độ dài. */
+.timeline-text-block {
+  cursor: grab;
+}
+
+.timeline-text-block--dragging {
+  cursor: grabbing;
+  /* Nổi lên trên các khối khác để không bị che lúc kéo chồng lấn. */
+  z-index: 3;
+}
+
+.timeline-text-block__handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 7px;
+  cursor: ew-resize;
+}
+
+.timeline-text-block__handle--start {
+  left: 0;
+}
+
+.timeline-text-block__handle--end {
+  right: 0;
+}
+
+.timeline-text-block:hover .timeline-text-block__handle {
+  background: color-mix(in srgb, var(--text-primary) 45%, transparent);
+}
+
 .timeline-text-block__text {
   display: block;
+  /* Chữ không được nuốt sự kiện chuột, nếu không kéo vào giữa khối là trượt. */
+  pointer-events: none;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
