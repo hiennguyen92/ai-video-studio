@@ -368,6 +368,22 @@ export const dictionaryVi = {
     needsServer: 'Cần cấu hình máy chủ LLM ở tab Cấu hình AI trước khi dùng AI Chat.',
     noProject: 'Mở một dự án để dùng AI Chat.'
   },
+  musicGen: {
+    section: 'Tạo nhạc bằng AI',
+    hint: 'Mô tả bản nhạc bạn muốn. Nhạc tạo ra thành asset thật trong thư viện, chèn và chỉnh như mọi file nhạc khác.',
+    prompt: 'Mô tả bản nhạc',
+    promptPlaceholder: 'Ví dụ: nhạc nền nhẹ nhàng, guitar mộc, không lời',
+    duration: 'Độ dài (giây)',
+    instrumental: 'Không lời',
+    generate: 'Tạo nhạc',
+    generating: 'Đang tạo nhạc…',
+    cancel: 'Huỷ',
+    needsKey: 'Chưa có khoá API cho ElevenLabs Music. Vào Cấu hình AI để nhập khoá.',
+    done: 'Đã thêm "{name}" vào thư viện',
+    fromCache: 'Dùng lại kết quả đã tạo trước đó, không gọi lại provider',
+    unverified:
+      'Lưu ý: đường gọi tới ElevenLabs Music chưa được kiểm chứng bằng khoá thật — mới kiểm bằng máy chủ giả lập đúng giao thức.'
+  },
   transcribe: {
     title: 'Phiên âm',
     modelSection: 'Model nhận dạng',

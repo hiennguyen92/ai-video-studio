@@ -47,6 +47,7 @@ export const IPC = {
   sttReadResult: 'stt:read-result',
   translateRun: 'translate:run',
   translateReadResult: 'translate:read-result',
+  musicGenerate: 'music:generate',
   chatSend: 'chat:send',
   chatReadHistory: 'chat:read-history',
   chatWriteHistory: 'chat:write-history',
@@ -259,6 +260,16 @@ export interface TranslationResultDto {
   glossaryViolations: Array<{ sourceSegmentId: string; from: string; to: string }>
 }
 
+export interface GenerateMusicRequest {
+  projectId: string
+  providerId: string
+  model: string
+  prompt: string
+  durationSeconds: number
+  parameters: Record<string, number | string | boolean>
+  label: string
+}
+
 export interface ChatMessageRecord {
   id: string
   role: 'user' | 'assistant'
@@ -352,6 +363,9 @@ export interface RendererApi {
   translate: {
     run(request: TranslateIpcRequest): Promise<IpcResult<JobRecord>>
     readResult(jobId: string): Promise<IpcResult<TranslationResultDto>>
+  }
+  music: {
+    generate(request: GenerateMusicRequest): Promise<IpcResult<JobRecord>>
   }
   chat: {
     send(request: ChatSendRequest): Promise<IpcResult<ChatSendResponse>>

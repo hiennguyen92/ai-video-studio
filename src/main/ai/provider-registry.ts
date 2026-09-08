@@ -1,5 +1,6 @@
 import type { AiTaskKind, ProviderDescriptor } from '../../shared/ai/ai-capability-types'
 import type {
+  MusicAdapter,
   SttAdapter,
   TranslateAdapter,
   TtsAdapter
@@ -9,6 +10,7 @@ import { openAiTtsAdapter } from './openai-tts-adapter'
 import { selfHostedOpenAiTtsAdapter } from './self-hosted-openai-tts-adapter'
 import { whisperCppSttAdapter } from './whisper-cpp-stt-adapter'
 import { openAiCompatibleTranslateAdapter } from './openai-compatible-translate-adapter'
+import { elevenLabsMusicAdapter } from './elevenlabs-music-adapter'
 
 /**
  * Sổ đăng ký provider.
@@ -31,6 +33,8 @@ const STT_ADAPTERS: SttAdapter[] = [whisperCppSttAdapter]
 
 const TRANSLATE_ADAPTERS: TranslateAdapter[] = [openAiCompatibleTranslateAdapter]
 
+const MUSIC_ADAPTERS: MusicAdapter[] = [elevenLabsMusicAdapter]
+
 export function listTtsAdapters(): TtsAdapter[] {
   return TTS_ADAPTERS
 }
@@ -51,6 +55,14 @@ export function getTranslateAdapter(providerId: string): TranslateAdapter | unde
   return TRANSLATE_ADAPTERS.find((adapter) => adapter.descriptor.id === providerId)
 }
 
+export function listMusicAdapters(): MusicAdapter[] {
+  return MUSIC_ADAPTERS
+}
+
+export function getMusicAdapter(providerId: string): MusicAdapter | undefined {
+  return MUSIC_ADAPTERS.find((adapter) => adapter.descriptor.id === providerId)
+}
+
 export function getTtsAdapter(providerId: string): TtsAdapter | undefined {
   return TTS_ADAPTERS.find((adapter) => adapter.descriptor.id === providerId)
 }
@@ -65,13 +77,23 @@ export function getTtsAdapter(providerId: string): TtsAdapter | undefined {
 export type ConfigurableAdapter = Pick<TtsAdapter, 'descriptor' | 'listModels' | 'testConnection'>
 
 export function getConfigurableAdapter(providerId: string): ConfigurableAdapter | undefined {
-  return getTtsAdapter(providerId) ?? getSttAdapter(providerId) ?? getTranslateAdapter(providerId)
+  return (
+    getTtsAdapter(providerId) ??
+    getSttAdapter(providerId) ??
+    getTranslateAdapter(providerId) ??
+    getMusicAdapter(providerId)
+  )
 }
 
 /** Mô tả mọi provider đã biết, để giao diện dựng màn hình cài đặt mà không cần khoá. */
 export function listProviderDescriptors(): ProviderDescriptor[] {
   const seen = new Map<string, ProviderDescriptor>()
-  for (const adapter of [...TTS_ADAPTERS, ...STT_ADAPTERS, ...TRANSLATE_ADAPTERS]) {
+  for (const adapter of [
+    ...TTS_ADAPTERS,
+    ...STT_ADAPTERS,
+    ...TRANSLATE_ADAPTERS,
+    ...MUSIC_ADAPTERS
+  ]) {
     seen.set(adapter.descriptor.id, adapter.descriptor)
   }
   return [...seen.values()]

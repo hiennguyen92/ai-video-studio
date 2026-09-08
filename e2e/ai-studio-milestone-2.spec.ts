@@ -90,8 +90,14 @@ test('tab Cấu hình AI liệt kê provider và cho biết kho bí mật đang 
   await expect(page.getByText('whisper.cpp (chạy trong máy)')).toBeVisible()
   // safeStorage thật của Electron phải sẵn sàng trên macOS.
   await expect(page.getByText(/Kho bí mật:/)).toBeVisible()
-  // Chưa nhập gì thì hai provider dùng dịch vụ đám mây đều ở trạng thái chưa có khoá.
-  await expect(page.getByText('Chưa có khoá', { exact: true })).toHaveCount(2)
+  // Kiểm theo TỪNG thẻ thay vì đếm tổng: thêm provider mới là con số lại sai, mà
+  // con số đó chẳng khẳng định được điều gì.
+  for (const name of ['ElevenLabs', 'OpenAI', 'ElevenLabs Music']) {
+    const card = page.locator('.provider-card').filter({
+      has: page.getByText(name, { exact: true })
+    })
+    await expect(card.getByText('Chưa có khoá', { exact: true })).toBeVisible()
+  }
 
   // Huy hiệu được kiểm theo TỪNG thẻ: đếm tổng sẽ phải sửa lại mỗi lần thêm
   // provider chạy local, mà con số đó chẳng nói lên điều gì.
@@ -201,7 +207,6 @@ test('xoá khoá đưa provider về trạng thái chưa cấu hình', async () 
   await page.getByRole('button', { name: 'Xoá khoá' }).nth(1).click()
 
   await expect(page.getByText('Đã xoá khoá của OpenAI')).toBeVisible()
-  await expect(page.getByText('Chưa có khoá', { exact: true })).toHaveCount(2)
   const openAiCard = page
     .locator('.provider-card')
     .filter({ has: page.getByText('OpenAI', { exact: true }) })

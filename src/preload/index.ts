@@ -56,6 +56,9 @@ const api: RendererApi = {
     run: (request) => ipcRenderer.invoke(IPC.translateRun, request),
     readResult: (jobId) => ipcRenderer.invoke(IPC.translateReadResult, jobId)
   },
+  music: {
+    generate: (request) => ipcRenderer.invoke(IPC.musicGenerate, request)
+  },
   chat: {
     send: (request) => ipcRenderer.invoke(IPC.chatSend, request),
     readHistory: (projectId) => ipcRenderer.invoke(IPC.chatReadHistory, projectId),

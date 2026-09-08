@@ -76,7 +76,16 @@ giao diện chỉ lộ ra khi chuyển tab với dữ liệu thật.
 - [x] Lịch sử hội thoại lưu theo project (`chat.json` cạnh project.json)
 - [x] Auto-ducking: giảm nhạc nền tại đoạn có lời nói — cắt nhạc tại ranh giới lời
       nói rồi hạ âm lượng mảnh ở giữa. Chuyển mức là bậc thang, chưa có automation.
-- [ ] Tạo nhạc bằng mô tả, nếu tìm được provider có API công khai ổn định
+- [x] Tạo nhạc bằng mô tả — ElevenLabs Music (`POST /v1/music`), dùng chung khoá với
+      phần giọng đọc. Hình dạng API đọc từ tài liệu chính thức, không theo trí nhớ.
+      **Chưa gọi thật lần nào**: chưa có khoá ElevenLabs còn hiệu lực; mới kiểm
+      bằng máy chủ HTTP dựng tại chỗ nói đúng giao thức.
+
+**Còn lại của Mốc 4:**
+
+- Đường gọi ElevenLabs Music chưa xác nhận bằng khoá thật.
+- Auto-ducking chuyển mức theo bậc thang; muốn dốc mượt phải thêm automation âm
+  lượng vào mô hình clip, không phải mẹo với fade.
 
 ## Backlog (chưa xếp lịch)
 

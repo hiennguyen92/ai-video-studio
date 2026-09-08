@@ -2,6 +2,7 @@ import { ipcMain, type WebContents } from 'electron'
 import type {
   ChatMessageRecord,
   ChatSendRequest,
+  GenerateMusicRequest,
   IpcResult,
   TranscribeIpcRequest,
   TranslateIpcRequest,
@@ -13,6 +14,7 @@ import { ProviderError } from '../../shared/ai/ai-provider-contracts'
 import { enqueueTranscription, readTranscriptionResult } from '../ai/transcription-service'
 import { enqueueTranslation, readTranslationResult } from '../ai/translation-service'
 import { runChatTurn } from '../ai/chat-service'
+import { enqueueMusicGeneration } from '../ai/music-generation-service'
 import { clearChatHistory, readChatHistory, writeChatHistory } from '../storage/chat-history-store'
 import {
   WHISPER_MODELS,
@@ -64,6 +66,10 @@ export function registerTranscriptionIpcHandlers(): void {
 
   ipcMain.handle(IPC.translateReadResult, (_event, jobId: string) =>
     guard(() => readTranslationResult(jobId))
+  )
+
+  ipcMain.handle(IPC.musicGenerate, (_event, request: GenerateMusicRequest) =>
+    guard(() => enqueueMusicGeneration(request))
   )
 
   ipcMain.handle(IPC.chatSend, (_event, request: ChatSendRequest) =>

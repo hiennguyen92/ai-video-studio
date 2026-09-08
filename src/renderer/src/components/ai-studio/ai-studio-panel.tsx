@@ -110,7 +110,7 @@ export function AiStudioPanel({
 
         {visitedTabs.has('music') && (
           <div className="studio-tab-panel" hidden={activeTab !== 'music'}>
-            <MusicPanel />
+            <MusicPanel onOpenSettings={openSettings} credentialsVersion={credentialsVersion} />
           </div>
         )}
 

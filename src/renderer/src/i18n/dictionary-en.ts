@@ -367,6 +367,22 @@ export const dictionaryEn: Dictionary = {
     needsServer: 'Configure an LLM server in the AI settings tab before using AI Chat.',
     noProject: 'Open a project to use AI Chat.'
   },
+  musicGen: {
+    section: 'Generate music with AI',
+    hint: 'Describe the track you want. Generated music becomes a real asset in the library, edited like any other audio file.',
+    prompt: 'Describe the track',
+    promptPlaceholder: 'For example: gentle background music, acoustic guitar, instrumental',
+    duration: 'Length (seconds)',
+    instrumental: 'Instrumental only',
+    generate: 'Generate music',
+    generating: 'Generating…',
+    cancel: 'Cancel',
+    needsKey: 'No API key for ElevenLabs Music yet. Add one in the AI settings tab.',
+    done: 'Added "{name}" to the library',
+    fromCache: 'Reused an earlier result instead of calling the provider again',
+    unverified:
+      'Note: the ElevenLabs Music call has not been verified with a real key — only against a server that follows the documented protocol.'
+  },
   transcribe: {
     title: 'Transcribe',
     modelSection: 'Recognition model',

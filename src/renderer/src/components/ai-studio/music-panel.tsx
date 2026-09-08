@@ -9,6 +9,7 @@ import { interpolate, useT } from '../../i18n/use-translation'
 import { ToolButton } from '../ui/tool-button'
 import { EmptyState } from '../ui/empty-state'
 import { IconImport, IconWaveform } from '../ui/icons'
+import { MusicGenerationSection } from './music-generation-section'
 import './music-panel.css'
 
 /**
@@ -22,7 +23,13 @@ import './music-panel.css'
  * Âm lượng và fade của clip đã chèn được chỉnh trong Inspector, không nhân đôi
  * ô điều khiển ở đây; panel chỉ nhắc người dùng chọn clip.
  */
-export function MusicPanel(): JSX.Element {
+export function MusicPanel({
+  onOpenSettings,
+  credentialsVersion
+}: {
+  onOpenSettings(): void
+  credentialsVersion: number
+}): JSX.Element {
   const t = useT()
   const document = useEditorStore(selectDocument)
   const selection = useEditorStore((state) => state.selection)
@@ -137,6 +144,10 @@ export function MusicPanel(): JSX.Element {
       <p className="field-group__title">{t.music.ducking}</p>
       <p className="music-panel__hint">{t.music.duckingComingSoon}</p>
       <p className="music-panel__hint">{t.music.generateComingSoon}</p>
+      <MusicGenerationSection
+        onOpenSettings={onOpenSettings}
+        credentialsVersion={credentialsVersion}
+      />
     </div>
   )
 }
