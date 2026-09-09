@@ -28,6 +28,13 @@ import { frameOfMicros, type FrameRate } from './time-units'
 export interface RenderPlanVideoClip {
   key: string
   assetId: string
+  /**
+   * Ảnh tĩnh hay cảnh quay.
+   *
+   * Lớp vẽ phải biết để dùng đúng thẻ: ảnh đưa cho `OffthreadVideo` thì không ra
+   * gì cả — và không có lỗi nào, chỉ là một ô trống.
+   */
+  media: 'video' | 'image'
   fromFrame: number
   durationInFrames: number
   /** Khung bắt đầu bên trong file nguồn. */
@@ -113,14 +120,27 @@ export interface RenderPlan {
  * Kẹp lại thay vì từ chối: người dùng đặt 1 giây trên một clip chỉ còn 0,3 giây
  * handle thì nên được 0,3 giây, không nên mất trắng hiệu ứng.
  */
-export function resolveTransitionFrames(clip: Clip, fps: FrameRate): number {
+export function resolveTransitionFrames(
+  clip: Clip,
+  fps: FrameRate,
+  /**
+   * Nguồn có vô hạn phần đệm phía trước không.
+   *
+   * Đúng với ẢNH TĨNH: một tấm ảnh không có "phần nguồn trước điểm vào", nó cứ
+   * đứng yên nên lấy bao nhiêu khung phía trước cũng được. Không mở ngoại lệ này
+   * thì mọi chuyển cảnh trên ảnh bị kẹp về 0 và lặng lẽ mất tác dụng.
+   */
+  unlimitedHandle = false
+): number {
   if (!clip.transitionIn) return 0
 
   const wanted = frameOfMicros(clip.transitionIn.durationUs, fps)
   if (wanted <= 0) return 0
 
   // Nguồn tiêu thụ nhanh hơn khi clip chạy nhanh, nên quy đổi theo tốc độ phát.
-  const handleFrames = Math.floor(frameOfMicros(clip.sourceInUs, fps) / Math.max(clip.speed, 0.01))
+  const handleFrames = unlimitedHandle
+    ? Number.MAX_SAFE_INTEGER
+    : Math.floor(frameOfMicros(clip.sourceInUs, fps) / Math.max(clip.speed, 0.01))
   const startFrame = frameOfMicros(clip.startUs, fps)
   const clipFrames = frameOfMicros(clipEndUs(clip), fps) - startFrame
 
@@ -139,13 +159,17 @@ export function resolveTransitionFrames(clip: Clip, fps: FrameRate): number {
  */
 export function requiresRemotionRenderer(document: ProjectDocument): boolean {
   if (document.textOverlays.length > 0) return true
-  return document.tracks.some((track) =>
-    track.clips.some(
-      (clip) =>
-        clip.transitionIn !== undefined ||
-        clip.motion !== undefined ||
-        !isNeutralColorGrade(clip.colorGrade)
-    )
+  return document.tracks.some(
+    (track) =>
+      // Filter graph ffmpeg dựng cho track hình đọc file bằng trục thời gian của
+      // video; một tấm ảnh tĩnh không có trục đó, nên lane ảnh phải đi Remotion.
+      (track.kind === 'image' && track.clips.length > 0) ||
+      track.clips.some(
+        (clip) =>
+          clip.transitionIn !== undefined ||
+          clip.motion !== undefined ||
+          !isNeutralColorGrade(clip.colorGrade)
+      )
   )
 }
 
@@ -164,8 +188,9 @@ export function buildRenderPlan(document: ProjectDocument): RenderPlan {
   const subtitles: RenderPlanSubtitleCue[] = []
 
   document.tracks.forEach((track, layerIndex) => {
-    if (track.kind === 'video') {
+    if (track.kind === 'video' || track.kind === 'image') {
       if (track.hidden) return
+      const isImageTrack = track.kind === 'image'
 
       for (const clip of track.clips) {
         if (!clip.assetId) continue
@@ -177,19 +202,23 @@ export function buildRenderPlan(document: ProjectDocument): RenderPlan {
 
         // Chuyển cảnh kéo clip bắt đầu sớm hơn để phủ lên clip phía trước, và
         // lùi điểm vào nguồn tương ứng để nội dung không bị nhảy.
-        const transitionFrames = resolveTransitionFrames(clip, fps)
+        const transitionFrames = resolveTransitionFrames(clip, fps, isImageTrack)
         const fromFrame = startFrame - transitionFrames
         const durationInFrames = endFrame - fromFrame
 
         video.push({
           key: clip.id,
           assetId: clip.assetId,
+          media: isImageTrack ? 'image' : 'video',
           fromFrame,
           durationInFrames,
-          sourceFromFrame: Math.max(
-            0,
-            frameOfMicros(clip.sourceInUs, fps) - Math.round(transitionFrames * clip.speed)
-          ),
+          // Ảnh không có trục thời gian nguồn; đọc từ khung 0 là đủ.
+          sourceFromFrame: isImageTrack
+            ? 0
+            : Math.max(
+                0,
+                frameOfMicros(clip.sourceInUs, fps) - Math.round(transitionFrames * clip.speed)
+              ),
           transition:
             transitionFrames > 0 && clip.transitionIn
               ? { kind: clip.transitionIn.kind, frames: transitionFrames }
@@ -202,8 +231,9 @@ export function buildRenderPlan(document: ProjectDocument): RenderPlan {
           transform: clip.transform ?? DEFAULT_CLIP_TRANSFORM,
           motion: clip.motion,
           colorGrade: clip.colorGrade,
-          // Track hình bị tắt tiếng vẫn phải hiện hình, chỉ câm.
-          muted: !audioTrackAudible(track, anySolo)
+          // Track hình bị tắt tiếng vẫn phải hiện hình, chỉ câm. Ảnh thì không
+          // có tiếng để mà bật.
+          muted: isImageTrack || !audioTrackAudible(track, anySolo)
         })
       }
       return

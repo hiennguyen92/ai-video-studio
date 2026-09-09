@@ -19,7 +19,7 @@ import { useT } from '../../i18n/use-translation'
  * sửa một cái rất dễ quên hai cái kia.
  */
 
-export type AddableTrackKind = 'video' | 'audio' | 'text'
+export type AddableTrackKind = 'video' | 'audio' | 'text' | 'image'
 
 export interface TimelineTracks {
   /** Chiều cao lane đang dùng, tính bằng pixel. */
@@ -74,11 +74,17 @@ export function useTimelineTracks(options: {
     (kind: AddableTrackKind) => {
       if (!document) return
       const count = document.tracks.filter((track) => track.kind === kind).length + 1
-      const names = { video: `Video ${count}`, audio: `Âm thanh ${count}`, text: `Text ${count}` }
+      const names = {
+        video: `Video ${count}`,
+        audio: `Âm thanh ${count}`,
+        text: `Text ${count}`,
+        image: `Hình ảnh ${count}`
+      }
       const labels = {
         video: t.timeline.addVideoTrack,
         audio: t.timeline.addAudioTrack,
-        text: t.timeline.addTextTrack
+        text: t.timeline.addTextTrack,
+        image: t.timeline.addImageTrack
       }
       run(
         [
@@ -100,7 +106,8 @@ export function useTimelineTracks(options: {
       trackHeightPx,
       t.timeline.addVideoTrack,
       t.timeline.addAudioTrack,
-      t.timeline.addTextTrack
+      t.timeline.addTextTrack,
+      t.timeline.addImageTrack
     ]
   )
 

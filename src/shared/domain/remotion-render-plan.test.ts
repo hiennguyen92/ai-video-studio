@@ -348,3 +348,97 @@ describe('lane chữ', () => {
     expect(buildRenderPlan(document).textOverlays.map((item) => item.key)).toEqual(['mo-coi'])
   })
 })
+
+describe('lane ảnh', () => {
+  function addImageLane(document: ProjectDocument, name = 'Hình ảnh 1'): string {
+    const before = new Set(document.tracks.map((track) => track.id))
+    expect(
+      applyEditorCommand(document, { type: 'track/add', kind: 'image', name }, makeId).ok
+    ).toBe(true)
+    return document.tracks.find((track) => !before.has(track.id))!.id
+  }
+
+  it('clip trên lane ảnh được đánh dấu là ảnh, không phải video', () => {
+    const document = project()
+    const laneId = addImageLane(document)
+    addClip(document, laneId, 0, 3_000_000)
+
+    const [clip] = buildRenderPlan(document).video
+    // Lớp vẽ dựa vào đúng cờ này để chọn thẻ; sai cờ là một ô trống, không lỗi.
+    expect(clip.media).toBe('image')
+  })
+
+  it('clip trên lane hình vẫn là video', () => {
+    const document = project()
+    addClip(document, videoTrack(document), 0, 3_000_000)
+    expect(buildRenderPlan(document).video[0].media).toBe('video')
+  })
+
+  it('ảnh luôn câm, kể cả khi track không bị tắt tiếng', () => {
+    const document = project()
+    const laneId = addImageLane(document)
+    addClip(document, laneId, 0, 3_000_000)
+    expect(buildRenderPlan(document).video[0].muted).toBe(true)
+  })
+
+  it('ảnh đọc từ khung 0 dù clip có điểm vào nguồn', () => {
+    const document = project()
+    const laneId = addImageLane(document)
+    addClip(document, laneId, 0, 3_000_000, 2_000_000)
+    // Ảnh không có trục thời gian nguồn; đọc theo `sourceInUs` là vô nghĩa.
+    expect(buildRenderPlan(document).video[0].sourceFromFrame).toBe(0)
+  })
+
+  it('chuyển cảnh trên ảnh KHÔNG bị kẹp về 0 vì thiếu phần nguồn phía trước', () => {
+    const document = project()
+    const laneId = addImageLane(document)
+    addClip(document, laneId, 2_000_000, 3_000_000)
+    const clipId = document.tracks.find((track) => track.id === laneId)!.clips[0].id
+    expect(
+      applyEditorCommand(document, {
+        type: 'clip/set-transition',
+        clipId,
+        transition: { kind: 'fade', durationUs: 500_000 }
+      }).ok
+    ).toBe(true)
+
+    // Một tấm ảnh đứng yên nên lấy bao nhiêu khung phía trước cũng được. Kẹp về 0
+    // thì chuyển cảnh lặng lẽ mất tác dụng trên mọi ảnh.
+    expect(buildRenderPlan(document).video[0].transition?.frames).toBeGreaterThan(0)
+  })
+
+  it('lane ảnh ẩn thì ảnh biến mất khỏi bản dựng', () => {
+    const document = project()
+    const laneId = addImageLane(document)
+    addClip(document, laneId, 0, 3_000_000)
+    applyEditorCommand(document, { type: 'track/update', trackId: laneId, patch: { hidden: true } })
+    expect(buildRenderPlan(document).video).toHaveLength(0)
+  })
+
+  it('lane ảnh nằm dưới thì vẽ ĐÈ lên lane hình', () => {
+    const document = project()
+    addClip(document, videoTrack(document), 0, 3_000_000)
+    const laneId = addImageLane(document)
+    addClip(document, laneId, 0, 3_000_000)
+
+    const plan = buildRenderPlan(document)
+    const videoLayer = plan.video.find((clip) => clip.media === 'video')!.layerIndex
+    const imageLayer = plan.video.find((clip) => clip.media === 'image')!.layerIndex
+    expect(imageLayer).toBeGreaterThan(videoLayer)
+    // Danh sách đã sắp theo lớp, nên lớp vẽ cứ theo thứ tự mà vẽ.
+    expect(plan.video.map((clip) => clip.media)).toEqual(['video', 'image'])
+  })
+
+  it('dự án có ảnh buộc phải dựng bằng Remotion', () => {
+    const document = project()
+    expect(requiresRemotionRenderer(document)).toBe(false)
+    const laneId = addImageLane(document)
+    // Lane rỗng thì chưa cần: chưa có gì để vẽ.
+    expect(requiresRemotionRenderer(document)).toBe(false)
+
+    addClip(document, laneId, 0, 3_000_000)
+    // Filter graph ffmpeg đọc file theo trục thời gian của video; ảnh không có
+    // trục đó, nên xuất bằng ffmpeg sẽ ra file thiếu ảnh mà không báo gì.
+    expect(requiresRemotionRenderer(document)).toBe(true)
+  })
+})

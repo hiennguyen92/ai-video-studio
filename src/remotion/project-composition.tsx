@@ -2,6 +2,7 @@ import type { CSSProperties, JSX } from 'react'
 import {
   AbsoluteFill,
   Audio,
+  Img,
   OffthreadVideo,
   Sequence,
   interpolate,
@@ -192,21 +193,39 @@ function VideoClip({ clip, url }: { clip: RenderPlanVideoClip; url: string }): J
         transform: `${enter.transform ?? ''} translate(${transform.x}px, ${transform.y}px) scale(${transform.scale}) rotate(${transform.rotationDeg}deg) ${motion}`
       }}
     >
-      <OffthreadVideo
-        src={url}
-        startFrom={clip.sourceFromFrame}
-        playbackRate={clip.playbackRate}
-        volume={clip.muted ? 0 : clip.volume * fade}
-        // Bộ lọc chỉnh màu đặt lên CHÍNH thẻ video, không đặt lên khung bao:
-        // khung bao đã mang bộ lọc của chuyển cảnh, hai chỗ cùng đặt `filter` thì
-        // cái sau đè mất cái trước.
-        style={{
-          width: '100%',
-          height: '100%',
-          objectFit: 'contain',
-          filter: colorGradeFilterCss(clip.colorGrade)
-        }}
-      />
+      {/*
+        Ảnh tĩnh phải đi bằng `Img`, không phải `OffthreadVideo`.
+        
+        Đưa một tấm PNG cho `OffthreadVideo` thì Remotion không dựng ra gì cả —
+        không lỗi, không cảnh báo, chỉ là một ô trống trong cả preview lẫn file
+        xuất ra. Bộ lọc chỉnh màu đặt lên CHÍNH thẻ media chứ không lên khung
+        bao: khung bao đã mang bộ lọc của chuyển cảnh, hai chỗ cùng đặt `filter`
+        thì cái sau đè mất cái trước.
+      */}
+      {clip.media === 'image' ? (
+        <Img
+          src={url}
+          style={{
+            width: '100%',
+            height: '100%',
+            objectFit: 'contain',
+            filter: colorGradeFilterCss(clip.colorGrade)
+          }}
+        />
+      ) : (
+        <OffthreadVideo
+          src={url}
+          startFrom={clip.sourceFromFrame}
+          playbackRate={clip.playbackRate}
+          volume={clip.muted ? 0 : clip.volume * fade}
+          style={{
+            width: '100%',
+            height: '100%',
+            objectFit: 'contain',
+            filter: colorGradeFilterCss(clip.colorGrade)
+          }}
+        />
+      )}
 
       {temperature && (
         <AbsoluteFill

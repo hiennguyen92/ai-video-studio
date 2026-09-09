@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type JSX } from 'react'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import type { MediaAsset } from '../../../../shared/domain/media-asset-types'
+import type { ProjectDocument } from '../../../../shared/domain/project-document-types'
 import type { EditorCommand } from '../../../../shared/commands/editor-command-types'
 import type { MissingMediaReport } from '../../../../shared/ipc/ipc-contract'
 import { findFreeSlot } from '../../../../shared/commands/timeline-mutations'
@@ -81,12 +82,21 @@ export function EditorWorkspace({
   const handleAddToTimeline = useCallback(
     (asset: MediaAsset) => {
       if (!document) return
-      const wantsVideoTrack = asset.kind === 'video' || asset.kind === 'image'
-      const track = document.tracks.find((item) =>
-        wantsVideoTrack
-          ? item.kind === 'video' && !item.locked
-          : item.kind === 'audio' && !item.locked
-      )
+      // Ảnh ưu tiên lane ảnh, nhưng vẫn rơi về lane hình khi chưa có lane ảnh
+      // nào — dự án cũ không có lane ảnh, và bấm thêm vào timeline vẫn phải chạy.
+      type TimelineTrack = ProjectDocument['tracks'][number]
+      const wanted: Array<(item: TimelineTrack) => boolean> =
+        asset.kind === 'image'
+          ? [(item) => item.kind === 'image', (item) => item.kind === 'video']
+          : asset.kind === 'video'
+            ? [(item) => item.kind === 'video']
+            : [(item) => item.kind === 'audio']
+
+      let track: TimelineTrack | undefined
+      for (const matches of wanted) {
+        track = document.tracks.find((item) => matches(item) && !item.locked)
+        if (track) break
+      }
       if (!track) {
         setError(t.timeline.addVideoTrack)
         return

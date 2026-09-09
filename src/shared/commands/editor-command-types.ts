@@ -60,7 +60,7 @@ const renameProject = z.object({
 const addTrack = z.object({
   type: z.literal('track/add'),
   trackId: z.string().optional(),
-  kind: z.enum(['video', 'audio', 'subtitle', 'text']),
+  kind: z.enum(['video', 'audio', 'subtitle', 'text', 'image']),
   name: z.string().min(1).max(120),
   role: z.enum(['dialogue', 'voiceover', 'music', 'sfx']).optional(),
   subtitleTrackId: z.string().optional(),

@@ -70,6 +70,10 @@ export function InspectorPanel(): JSX.Element {
   )
 
   const asset = found ? document?.assets.find((item) => item.id === found.clip.assetId) : undefined
+  // Lane ảnh và lane hình cùng vẽ ra khung hình, nên cùng chỉnh được chuyển cảnh,
+  // chuyển động, màu và biến đổi. Khác nhau ở chỗ ảnh không có tiếng.
+  const isVisualTrack = found?.track.kind === 'video' || found?.track.kind === 'image'
+  const hasAudio = found?.track.kind === 'video' || found?.track.kind === 'audio'
   const transform = found?.clip.transform ?? DEFAULT_CLIP_TRANSFORM
 
   return (
@@ -147,7 +151,7 @@ export function InspectorPanel(): JSX.Element {
             </div>
 
             {/* Chuyển cảnh chỉ có nghĩa với clip hình. */}
-            {found.track.kind === 'video' && document && (
+            {isVisualTrack && document && (
               <ClipTransitionControls
                 clip={found.clip}
                 frameRate={document.settings.frameRate}
@@ -160,7 +164,7 @@ export function InspectorPanel(): JSX.Element {
               />
             )}
 
-            {found.track.kind === 'video' && (
+            {isVisualTrack && (
               <ClipMotionControls
                 clip={found.clip}
                 onChange={(motion) =>
@@ -172,7 +176,7 @@ export function InspectorPanel(): JSX.Element {
               />
             )}
 
-            {found.track.kind === 'video' && (
+            {isVisualTrack && (
               <ClipColorControls
                 clip={found.clip}
                 onChange={(grade) =>
@@ -184,38 +188,46 @@ export function InspectorPanel(): JSX.Element {
               />
             )}
 
-            <p className="field-group__title">{t.inspector.volume}</p>
-            <SliderRow
-              label={t.inspector.volume}
-              value={found.clip.volume}
-              min={0}
-              max={2}
-              step={0.01}
-              format={(value) => `${Math.round(value * 100)}%`}
-              onCommit={(value) => updateClip({ volume: value }, t.inspector.volume)}
-            />
-            <SliderRow
-              label={t.inspector.fadeIn}
-              value={found.clip.fadeInUs}
-              min={0}
-              max={Math.min(found.clip.durationUs, 5_000_000)}
-              step={10_000}
-              format={(value) => formatClockTime(value)}
-              onCommit={(value) => updateClip({ fadeInUs: Math.round(value) }, t.inspector.fadeIn)}
-            />
-            <SliderRow
-              label={t.inspector.fadeOut}
-              value={found.clip.fadeOutUs}
-              min={0}
-              max={Math.min(found.clip.durationUs, 5_000_000)}
-              step={10_000}
-              format={(value) => formatClockTime(value)}
-              onCommit={(value) =>
-                updateClip({ fadeOutUs: Math.round(value) }, t.inspector.fadeOut)
-              }
-            />
+            {/* Ảnh không có tiếng: bày ô âm lượng ở đó là bày một tuỳ chọn
+                không có tác dụng nào. */}
+            {hasAudio && (
+              <>
+                <p className="field-group__title">{t.inspector.volume}</p>
+                <SliderRow
+                  label={t.inspector.volume}
+                  value={found.clip.volume}
+                  min={0}
+                  max={2}
+                  step={0.01}
+                  format={(value) => `${Math.round(value * 100)}%`}
+                  onCommit={(value) => updateClip({ volume: value }, t.inspector.volume)}
+                />
+                <SliderRow
+                  label={t.inspector.fadeIn}
+                  value={found.clip.fadeInUs}
+                  min={0}
+                  max={Math.min(found.clip.durationUs, 5_000_000)}
+                  step={10_000}
+                  format={(value) => formatClockTime(value)}
+                  onCommit={(value) =>
+                    updateClip({ fadeInUs: Math.round(value) }, t.inspector.fadeIn)
+                  }
+                />
+                <SliderRow
+                  label={t.inspector.fadeOut}
+                  value={found.clip.fadeOutUs}
+                  min={0}
+                  max={Math.min(found.clip.durationUs, 5_000_000)}
+                  step={10_000}
+                  format={(value) => formatClockTime(value)}
+                  onCommit={(value) =>
+                    updateClip({ fadeOutUs: Math.round(value) }, t.inspector.fadeOut)
+                  }
+                />
+              </>
+            )}
 
-            {found.track.kind === 'video' && (
+            {isVisualTrack && (
               <>
                 <p className="field-group__title">{t.inspector.resetTransform}</p>
                 <SliderRow

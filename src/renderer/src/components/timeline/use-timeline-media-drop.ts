@@ -54,6 +54,9 @@ export function useTimelineMediaDrop(options: {
       if (durationUsForAsset <= 0) return
 
       const kindFits =
+        (track.kind === 'image' && asset.kind === 'image') ||
+        // Lane hình vẫn nhận ảnh như trước: ảnh làm cảnh nền là chuyện thường,
+        // và dự án cũ đã đặt ảnh ở đó rồi.
         (track.kind === 'video' && (asset.kind === 'video' || asset.kind === 'image')) ||
         (track.kind === 'audio' && (asset.kind === 'audio' || asset.probe.hasAudio))
       if (!kindFits) return

@@ -86,6 +86,11 @@ export function TimelineToolbar({
         onClick={() => onAddTrack('audio')}
       />
       <ToolButton
+        label={t.timeline.addImageTrack}
+        icon={<IconPlus />}
+        onClick={() => onAddTrack('image')}
+      />
+      <ToolButton
         label={t.timeline.addTextTrack}
         icon={<IconPlus />}
         onClick={() => onAddTrack('text')}

@@ -170,6 +170,7 @@ export const dictionaryEn: Dictionary = {
     addVideoTrack: 'Add video track',
     addAudioTrack: 'Add audio track',
     addTextTrack: 'Add text track',
+    addImageTrack: 'Add image track',
     removeTrack: 'Remove track',
     mute: 'Mute',
     unmute: 'Unmute',

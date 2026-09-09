@@ -172,6 +172,7 @@ export const dictionaryVi = {
     addVideoTrack: 'Thêm track video',
     addAudioTrack: 'Thêm track âm thanh',
     addTextTrack: 'Thêm track text',
+    addImageTrack: 'Thêm track hình ảnh',
     removeTrack: 'Xoá track',
     mute: 'Tắt tiếng',
     unmute: 'Bật tiếng',

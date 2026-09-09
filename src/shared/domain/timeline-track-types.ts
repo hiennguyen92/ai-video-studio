@@ -14,12 +14,17 @@ import type { Micros } from './time-units'
  */
 
 /**
+ * `image` là lane chứa ẢNH TĨNH. Nó chứa clip như lane hình, nhưng tách riêng
+ * để ảnh không lẫn vào giữa các cảnh quay, và để clip ảnh chỉ kéo được sang lane
+ * ảnh khác. Lane ảnh nằm dưới trong danh sách thì vẽ ĐÈ lên lane hình — đó là
+ * cách đặt logo hay ảnh sản phẩm lên trên cảnh quay.
+ *
  * `text` là lane chứa chữ đè hình. Khác ba loại kia ở một điểm quan trọng: nó
  * KHÔNG chứa clip. Chữ overlay nằm ở cấp tài liệu (`document.textOverlays`) và
  * chỉ trỏ ngược về lane bằng `trackId` — vì một dòng chữ vẽ trên toàn khung hình
  * chứ không thuộc một lớp hình nào. Lane ở đây chỉ để xếp chỗ trên timeline.
  */
-export type TrackKind = 'video' | 'audio' | 'subtitle' | 'text'
+export type TrackKind = 'video' | 'audio' | 'subtitle' | 'text' | 'image'
 
 /**
  * Vai trò của track audio. Quyết định nhóm hiển thị mặc định và là đầu vào của

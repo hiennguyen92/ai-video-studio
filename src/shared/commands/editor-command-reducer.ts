@@ -67,6 +67,17 @@ function locateClip(
   return null
 }
 
+/**
+ * Track có vẽ ra khung hình không.
+ *
+ * Lane ảnh và lane hình cùng vẽ ra hình nên cùng nhận chuyển cảnh, chuyển động và
+ * chỉnh màu. Chỉ so `kind === 'video'` thì các ô đó vẫn hiện trên panel nhưng
+ * lệnh bị từ chối, và người dùng bấm mãi không thấy gì đổi.
+ */
+function isVisualTrack(track: { kind: string }): boolean {
+  return track.kind === 'video' || track.kind === 'image'
+}
+
 export function applyEditorCommand(doc: ProjectDocument, command: EditorCommand): CommandResult {
   switch (command.type) {
     case 'project/rename': {
@@ -154,7 +165,9 @@ export function applyEditorCommand(doc: ProjectDocument, command: EditorCommand)
         volume: 1,
         fadeInUs: 0,
         fadeOutUs: 0,
-        transform: track.kind === 'video' ? { ...DEFAULT_CLIP_TRANSFORM } : undefined,
+        // Lane ảnh cũng cần biến đổi: đặt logo hay ảnh sản phẩm là phải kéo cỡ
+        // và dời chỗ được, y như clip hình.
+        transform: isVisualTrack(track) ? { ...DEFAULT_CLIP_TRANSFORM } : undefined,
         linkGroupId: command.linkGroupId,
         label: command.label
       }
@@ -236,7 +249,8 @@ export function applyEditorCommand(doc: ProjectDocument, command: EditorCommand)
       const track = doc.tracks[found.trackIndex]
       if (track.locked) return fail(`Track "${track.name}" đang bị khoá`)
       // Chuyển cảnh là hiệu ứng hình; đặt lên track tiếng không có nghĩa gì.
-      if (track.kind !== 'video') return fail('Chỉ đặt được chuyển cảnh cho clip hình')
+      // Lane ảnh cũng vẽ ra khung hình nên vẫn nhận.
+      if (!isVisualTrack(track)) return fail('Chỉ đặt được chuyển cảnh cho clip hình')
 
       const clip = track.clips[found.clipIndex]
       clip.transitionIn = command.transition ? { ...command.transition } : undefined
@@ -249,7 +263,7 @@ export function applyEditorCommand(doc: ProjectDocument, command: EditorCommand)
       const track = doc.tracks[found.trackIndex]
       if (track.locked) return fail(`Track "${track.name}" đang bị khoá`)
       // Chuyển động là hiệu ứng hình, đặt lên track tiếng không có nghĩa gì.
-      if (track.kind !== 'video') return fail('Chỉ đặt được chuyển động cho clip hình')
+      if (!isVisualTrack(track)) return fail('Chỉ đặt được chuyển động cho clip hình')
 
       const clip = track.clips[found.clipIndex]
       clip.motion = command.motion ? { ...command.motion } : undefined
@@ -261,7 +275,7 @@ export function applyEditorCommand(doc: ProjectDocument, command: EditorCommand)
       if (!found) return fail(`Không tìm thấy clip ${command.clipId}`)
       const track = doc.tracks[found.trackIndex]
       if (track.locked) return fail(`Track "${track.name}" đang bị khoá`)
-      if (track.kind !== 'video') return fail('Chỉ chỉnh màu được cho clip hình')
+      if (!isVisualTrack(track)) return fail('Chỉ chỉnh màu được cho clip hình')
 
       const clip = track.clips[found.clipIndex]
       // Trộn vào giá trị đang có: chỉnh riêng một thông số không được xoá những
