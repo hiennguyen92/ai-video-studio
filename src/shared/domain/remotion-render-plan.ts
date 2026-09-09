@@ -83,6 +83,8 @@ export interface RenderPlanAudioClip {
 
 export interface RenderPlanSubtitleCue {
   key: string
+  /** Lớp vẽ, lấy theo vị trí lane trên timeline. */
+  layerIndex: number
   fromFrame: number
   durationInFrames: number
   text: string
@@ -92,6 +94,8 @@ export interface RenderPlanSubtitleCue {
 
 export interface RenderPlanTextOverlay {
   key: string
+  /** Lớp vẽ, lấy theo vị trí lane trên timeline. */
+  layerIndex: number
   fromFrame: number
   durationInFrames: number
   text: string
@@ -319,6 +323,7 @@ export function buildRenderPlan(document: ProjectDocument): RenderPlan {
 
         subtitles.push({
           key: cue.id,
+          layerIndex,
           fromFrame,
           durationInFrames,
           text: cue.text,
@@ -332,13 +337,13 @@ export function buildRenderPlan(document: ProjectDocument): RenderPlan {
   // Lớp dưới vẽ trước; giữ đúng thứ tự track như lớp preview hiện có.
   video.sort((left, right) => left.layerIndex - right.layerIndex)
 
-  // Chữ overlay tự mang mốc thời gian và luôn nằm TRÊN phụ đề, vì hook và CTA
-  // phải đọc được kể cả khi có phụ đề bên dưới.
+  // Thứ tự vẽ đi theo THỨ TỰ LANE trên timeline, chung một luật cho hình, ảnh,
+  // phụ đề và chữ: lane trên cùng vẽ trước nên nằm dưới, lane dưới cùng vẽ sau
+  // nên nằm trên. Người dùng xếp lane chính là để quyết định cái nào che cái nào.
   //
-  // Thứ tự vẽ giữa các dòng chữ đi theo thứ tự lane trên timeline: lane dưới vẽ
-  // sau, tức nằm trên. Dòng không thuộc lane nào xếp cuối cùng, giữ đúng chỗ mà
-  // lane ảo vẫn đứng. Chỉ ăn thua khi hai dòng chồng giờ nhau, nhưng lúc đó
-  // người dùng xếp lane chính là để quyết định dòng nào che dòng nào.
+  // Dòng chữ chưa thuộc lane nào xếp trên cùng, giữ đúng chỗ mà lane ảo vẫn đứng
+  // ở cuối timeline.
+  const LOOSE_TEXT_LAYER = Number.MAX_SAFE_INTEGER
   const textLaneOrder = new Map<string, number>()
   document.tracks.forEach((track, index) => {
     if (track.kind === 'text') textLaneOrder.set(track.id, index)
@@ -352,8 +357,8 @@ export function buildRenderPlan(document: ProjectDocument): RenderPlan {
   const orderedOverlays = document.textOverlays
     .map((overlay, index) => ({ overlay, index }))
     .sort((left, right) => {
-      const leftLane = textLaneOrder.get(left.overlay.trackId ?? '') ?? Number.MAX_SAFE_INTEGER
-      const rightLane = textLaneOrder.get(right.overlay.trackId ?? '') ?? Number.MAX_SAFE_INTEGER
+      const leftLane = textLaneOrder.get(left.overlay.trackId ?? '') ?? LOOSE_TEXT_LAYER
+      const rightLane = textLaneOrder.get(right.overlay.trackId ?? '') ?? LOOSE_TEXT_LAYER
       // Cùng lane thì giữ nguyên thứ tự trong tài liệu — sort ổn định không được
       // đảm bảo với mọi công cụ, nên so luôn chỉ số gốc.
       return leftLane - rightLane || left.index - right.index
@@ -372,6 +377,7 @@ export function buildRenderPlan(document: ProjectDocument): RenderPlan {
 
     textOverlays.push({
       key: overlay.id,
+      layerIndex: textLaneOrder.get(overlay.trackId ?? '') ?? LOOSE_TEXT_LAYER,
       fromFrame,
       durationInFrames,
       text: overlay.text,

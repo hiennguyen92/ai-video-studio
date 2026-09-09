@@ -524,18 +524,66 @@ function hexToRgba(hex: string, alpha: number): string {
 }
 
 export function ProjectComposition({ plan, mediaUrls }: ProjectCompositionProps): JSX.Element {
+  /**
+   * Mọi lớp NHÌN THẤY xếp chung một hàng, theo đúng thứ tự lane trên timeline.
+   *
+   * Trước đây thứ tự cứng: hình trước, rồi phụ đề, rồi chữ. Đặt lane chữ lên
+   * trên lane hình trong timeline cũng không đổi được gì, vì lớp vẽ không nhìn
+   * tới thứ tự đó. Nay lane trên cùng vẽ trước nên nằm dưới, lane dưới cùng vẽ
+   * sau nên nằm trên — một luật cho cả bốn loại.
+   *
+   * Cùng một lane thì giữ nguyên thứ tự trong kế hoạch; so thêm chỉ số gốc vì
+   * không phải công cụ nào cũng đảm bảo `sort` ổn định.
+   */
+  const layers: Array<{ layerIndex: number; order: number; node: JSX.Element }> = []
+  const push = (layerIndex: number, node: JSX.Element): void => {
+    layers.push({ layerIndex, order: layers.length, node })
+  }
+
+  for (const clip of plan.video) {
+    const url = mediaUrls[clip.assetId]
+    if (!url) continue
+    push(
+      clip.layerIndex,
+      <Sequence
+        key={`clip-${clip.key}`}
+        from={clip.fromFrame}
+        durationInFrames={clip.durationInFrames}
+      >
+        <VideoClip clip={clip} url={url} frame={{ width: plan.width, height: plan.height }} />
+      </Sequence>
+    )
+  }
+
+  for (const cue of plan.subtitles) {
+    push(
+      cue.layerIndex,
+      <Sequence key={`cue-${cue.key}`} from={cue.fromFrame} durationInFrames={cue.durationInFrames}>
+        <SubtitleCue cue={cue} height={plan.height} />
+      </Sequence>
+    )
+  }
+
+  for (const overlay of plan.textOverlays) {
+    push(
+      overlay.layerIndex,
+      <Sequence
+        key={`text-${overlay.key}`}
+        from={overlay.fromFrame}
+        durationInFrames={overlay.durationInFrames}
+      >
+        <TextOverlayLayer overlay={overlay} />
+      </Sequence>
+    )
+  }
+
+  layers.sort((left, right) => left.layerIndex - right.layerIndex || left.order - right.order)
+
   return (
     <AbsoluteFill style={{ backgroundColor: plan.backgroundColor }}>
-      {plan.video.map((clip) => {
-        const url = mediaUrls[clip.assetId]
-        if (!url) return null
-        return (
-          <Sequence key={clip.key} from={clip.fromFrame} durationInFrames={clip.durationInFrames}>
-            <VideoClip clip={clip} url={url} frame={{ width: plan.width, height: plan.height }} />
-          </Sequence>
-        )
-      })}
+      {layers.map((layer) => layer.node)}
 
+      {/* Tiếng không có lớp: nghe được thì nghe, không che gì của ai. */}
       {plan.audio.map((clip) => {
         const url = mediaUrls[clip.assetId]
         if (!url) return null
@@ -545,23 +593,6 @@ export function ProjectComposition({ plan, mediaUrls }: ProjectCompositionProps)
           </Sequence>
         )
       })}
-
-      {plan.subtitles.map((cue) => (
-        <Sequence key={cue.key} from={cue.fromFrame} durationInFrames={cue.durationInFrames}>
-          <SubtitleCue cue={cue} height={plan.height} />
-        </Sequence>
-      ))}
-
-      {/* Sau phụ đề: hook và CTA phải nằm trên cùng mới đọc được. */}
-      {plan.textOverlays.map((overlay) => (
-        <Sequence
-          key={overlay.key}
-          from={overlay.fromFrame}
-          durationInFrames={overlay.durationInFrames}
-        >
-          <TextOverlayLayer overlay={overlay} />
-        </Sequence>
-      ))}
     </AbsoluteFill>
   )
 }

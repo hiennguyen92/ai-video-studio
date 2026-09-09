@@ -552,3 +552,103 @@ describe('kích thước gốc của ảnh', () => {
     expect(buildRenderPlan(document).video[0].natural).toEqual({ width: 800, height: 600 })
   })
 })
+
+describe('thứ tự lớp chung cho mọi loại lane', () => {
+  /** Thêm một lane và trả về id. */
+  function addLane(
+    document: ProjectDocument,
+    kind: 'video' | 'image' | 'text',
+    name: string
+  ): string {
+    const before = new Set(document.tracks.map((track) => track.id))
+    expect(applyEditorCommand(document, { type: 'track/add', kind, name }, makeId).ok).toBe(true)
+    return document.tracks.find((track) => !before.has(track.id))!.id
+  }
+
+  function addOverlay(document: ProjectDocument, id: string, trackId?: string): void {
+    document.textOverlays.push({
+      id,
+      trackId,
+      text: id,
+      startUs: 0,
+      endUs: 1_000_000,
+      style: { ...DEFAULT_SUBTITLE_STYLE },
+      animation: 'none',
+      animationDurationUs: 0
+    })
+  }
+
+  it('lane chữ đặt TRÊN lane hình thì chữ nằm DƯỚI hình', () => {
+    const document = project()
+    // Lane chữ chèn vào đầu danh sách, trên cả track hình mặc định.
+    const before = new Set(document.tracks.map((track) => track.id))
+    applyEditorCommand(
+      document,
+      { type: 'track/add', kind: 'text', name: 'Text 1', index: 0 },
+      makeId
+    )
+    const textLane = document.tracks.find((track) => !before.has(track.id))!.id
+    addOverlay(document, 'chu', textLane)
+    addClip(document, videoTrack(document), 0, 1_000_000)
+
+    const plan = buildRenderPlan(document)
+    // Lớp nhỏ hơn vẽ trước, tức nằm dưới. Trước đây chữ luôn nằm trên bất kể
+    // xếp lane thế nào, nên kéo lane cũng không đổi được gì.
+    expect(plan.textOverlays[0].layerIndex).toBeLessThan(plan.video[0].layerIndex)
+  })
+
+  it('lane chữ đặt DƯỚI lane hình thì chữ nằm TRÊN hình', () => {
+    const document = project()
+    addClip(document, videoTrack(document), 0, 1_000_000)
+    const textLane = addLane(document, 'text', 'Text 1')
+    addOverlay(document, 'chu', textLane)
+
+    const plan = buildRenderPlan(document)
+    expect(plan.textOverlays[0].layerIndex).toBeGreaterThan(plan.video[0].layerIndex)
+  })
+
+  it('cue phụ đề cũng lấy lớp theo lane của nó', () => {
+    const document = project()
+    addClip(document, videoTrack(document), 0, 1_000_000)
+    document.subtitleTracks.push({
+      id: 'sub_1',
+      name: 'Tiếng Việt',
+      language: 'vi',
+      source: { kind: 'manual' },
+      style: { ...DEFAULT_SUBTITLE_STYLE },
+      cues: [{ id: 'cue_1', startUs: 0, endUs: 1_000_000, text: 'Xin chào', edited: false }]
+    })
+    const before = new Set(document.tracks.map((track) => track.id))
+    applyEditorCommand(
+      document,
+      { type: 'track/add', kind: 'subtitle', name: 'Phụ đề', subtitleTrackId: 'sub_1' },
+      makeId
+    )
+    const laneIndex = document.tracks.findIndex((track) => !before.has(track.id))
+
+    expect(buildRenderPlan(document).subtitles[0].layerIndex).toBe(laneIndex)
+  })
+
+  it('chữ chưa thuộc lane nào nằm TRÊN CÙNG', () => {
+    const document = project()
+    addClip(document, videoTrack(document), 0, 1_000_000)
+    const textLane = addLane(document, 'text', 'Text 1')
+    addOverlay(document, 'tren-cung')
+    addOverlay(document, 'trong-lane', textLane)
+
+    const plan = buildRenderPlan(document)
+    const loose = plan.textOverlays.find((item) => item.key === 'tren-cung')!
+    const inLane = plan.textOverlays.find((item) => item.key === 'trong-lane')!
+    expect(loose.layerIndex).toBeGreaterThan(inLane.layerIndex)
+  })
+
+  it('lane ảnh dưới lane hình thì ảnh đè lên hình', () => {
+    const document = project()
+    addClip(document, videoTrack(document), 0, 1_000_000)
+    const imageLane = addLane(document, 'image', 'Hình ảnh 1')
+    addClip(document, imageLane, 0, 1_000_000)
+
+    const plan = buildRenderPlan(document)
+    expect(plan.video.map((clip) => clip.media)).toEqual(['video', 'image'])
+  })
+})
