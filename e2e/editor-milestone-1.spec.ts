@@ -208,3 +208,86 @@ test('đóng và mở lại dự án giữ nguyên dữ liệu đã dựng', asy
   await expect(page.locator('.media-card')).toHaveCount(2)
   await expect(page.getByTitle('Video 1')).toBeVisible()
 })
+
+test('kéo clip sang track video khác', async () => {
+  // Kéo giữa các track cùng loại là thao tác dựng cơ bản, mà trước giờ không có
+  // phép thử nào chạm tới — chỉ có mã nguồn nói rằng nó chạy được.
+  const timeline = page.getByRole('region', { name: 'Timeline' })
+  await timeline.getByRole('button', { name: 'Thêm track video' }).click()
+
+  const lanes = page.locator('.timeline-lane--video')
+  await expect(lanes).toHaveCount(2)
+  const before = await lanes.nth(0).locator('.timeline-clip').count()
+  expect(before).toBeGreaterThan(0)
+
+  const clip = lanes.nth(0).locator('.timeline-clip').first()
+  await clip.hover()
+  const from = await clip.boundingBox()
+  const to = await lanes.nth(1).boundingBox()
+
+  // Kéo THẲNG XUỐNG: đổi track mà không đổi giờ.
+  await page.mouse.down()
+  await page.mouse.move(from!.x + from!.width / 2, to!.y + to!.height / 2, { steps: 10 })
+  await page.mouse.up()
+
+  await expect(lanes.nth(1).locator('.timeline-clip')).toHaveCount(1)
+  await expect(lanes.nth(0).locator('.timeline-clip')).toHaveCount(before - 1)
+
+  await page.keyboard.press('ControlOrMeta+z')
+  await expect(lanes.nth(0).locator('.timeline-clip')).toHaveCount(before)
+})
+
+test('không kéo được clip video sang track âm thanh', async () => {
+  const videoLane = page.locator('.timeline-lane--video').first()
+  const audioLane = page.locator('.timeline-lane--audio').first()
+  const clip = videoLane.locator('.timeline-clip').first()
+
+  await clip.hover()
+  const from = await clip.boundingBox()
+  const to = await audioLane.boundingBox()
+  const audioBefore = await audioLane.locator('.timeline-clip').count()
+
+  await page.mouse.down()
+  await page.mouse.move(from!.x + from!.width / 2, to!.y + to!.height / 2, { steps: 10 })
+  await page.mouse.up()
+
+  // Clip hình rơi vào track tiếng thì nó không còn được vẽ ra hình nữa.
+  await expect(audioLane.locator('.timeline-clip')).toHaveCount(audioBefore)
+})
+
+test('kéo clip âm thanh sang track âm thanh khác', async () => {
+  // Track tiếng đi qua cùng một lối kéo với track hình, nhưng luật "cùng loại"
+  // được kiểm bằng `kind` nên phải thử cả hai chiều mới biết nó đúng.
+  const audioCard = page.locator('.media-card', { hasText: 'nhac-nen-thu.mp3' })
+  await audioCard.dblclick()
+
+  const lanes = page.locator('.timeline-lane--audio')
+  const lanesBefore = await lanes.count()
+
+  const timeline = page.getByRole('region', { name: 'Timeline' })
+  await timeline.getByRole('button', { name: 'Thêm track âm thanh' }).click()
+  await expect(lanes).toHaveCount(lanesBefore + 1)
+
+  // Tìm đúng lane đang giữ clip thay vì đoán theo thứ tự: dự án mặc định đã có
+  // sẵn vài track tiếng, và clip rơi vào track nào là do lớp thêm media quyết
+  // định. Chốt lại bằng CHỈ SỐ chứ không giữ một locator lọc theo "có clip" —
+  // locator kiểu đó tự trỏ sang lane đích ngay sau khi kéo xong.
+  const sourceIndex = await lanes.evaluateAll((nodes) =>
+    nodes.findIndex((node) => node.querySelector('.timeline-clip'))
+  )
+  expect(sourceIndex).toBeGreaterThanOrEqual(0)
+  const source = lanes.nth(sourceIndex)
+
+  const clip = source.locator('.timeline-clip').first()
+  await clip.hover()
+  const from = await clip.boundingBox()
+  const empty = lanes.nth(lanesBefore)
+  const to = await empty.boundingBox()
+
+  await page.mouse.down()
+  await page.mouse.move(from!.x + from!.width / 2, to!.y + to!.height / 2, { steps: 10 })
+  await page.mouse.up()
+
+  await expect(empty.locator('.timeline-clip')).toHaveCount(1)
+  await expect(source.locator('.timeline-clip')).toHaveCount(0)
+})
