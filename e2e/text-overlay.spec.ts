@@ -429,6 +429,71 @@ async function savedOverlayStyle(): Promise<{
   return document.textOverlays[0].style
 }
 
+test('nút Thêm track text tạo một lane chữ thật, và chữ mới rơi vào đó', async () => {
+  const timeline = page.getByRole('region', { name: 'Timeline' })
+  await expect(page.locator('.timeline-lane--text')).toHaveCount(0)
+
+  await timeline.getByRole('button', { name: 'Thêm track text' }).click()
+  await expect(page.locator('.timeline-lane--text')).toHaveCount(1)
+  await expect(timeline.getByTitle('Text 1')).toBeVisible()
+
+  // Chữ thêm sau đó phải rơi vào lane vừa tạo, nếu không cái nút chẳng để làm gì.
+  await page.getByRole('button', { name: 'Thêm chữ' }).click()
+  await studio().getByLabel('Nội dung 2').fill('Trên lane mới')
+
+  const laneBlocks = page.locator('.timeline-lane--text .timeline-text-block--overlay')
+  await expect(laneBlocks).toHaveCount(1)
+  await expect(laneBlocks.first()).toContainText('Trên lane mới')
+
+  // Chữ cũ chưa thuộc lane nào vẫn nằm ở lane ảo, không bị kéo sang.
+  await expect(page.locator('.timeline-lane--overlay .timeline-text-block')).toHaveCount(1)
+})
+
+test('ẩn lane chữ chỉ giấu chữ TRÊN LANE ĐÓ, không giấu chữ khác', async () => {
+  const onLane = page.locator('.text-overlay').filter({ hasText: 'Trên lane mới' })
+  const loose = page.locator('.text-overlay').filter({ hasText: 'Bạn đang bỏ lỡ thứ này' })
+
+  await page.locator('.timeline-text-block--overlay').filter({ hasText: 'Trên lane mới' }).click()
+  await expect(onLane).toHaveCount(1)
+  await expect(loose).toHaveCount(1)
+
+  const head = page.locator('.track-head').filter({ hasText: 'Text 1' })
+  await head.getByRole('button', { name: 'Ẩn' }).click()
+
+  // Chỉ chữ của lane bị ẩn mất đi. Giấu cả hai nghĩa là nút ẩn đang tắt toàn bộ
+  // lớp chữ chứ không tắt đúng lane.
+  await expect(onLane).toHaveCount(0)
+  await expect(loose).toHaveCount(1)
+
+  await head.getByRole('button', { name: 'Hiện' }).click()
+  await expect(onLane).toHaveCount(1)
+})
+
+test('xoá lane chữ thì xoá luôn chữ trên nó, và hoàn tác trả lại cả hai', async () => {
+  const head = page.locator('.track-head').filter({ hasText: 'Text 1' })
+  await head.getByRole('button', { name: 'Xoá track' }).click()
+
+  await expect(page.locator('.track-head').filter({ hasText: 'Text 1' })).toHaveCount(0)
+  // Chữ phải đi theo lane: còn sót thì nó vẫn vẽ lên hình mà không còn chỗ nào
+  // trên timeline để bấm vào sửa.
+  await expect(
+    page.locator('.timeline-text-block--overlay').filter({ hasText: 'Trên lane mới' })
+  ).toHaveCount(0)
+  await expect(page.locator('.timeline-text-block--overlay')).toHaveCount(1)
+
+  await page.keyboard.press('ControlOrMeta+z')
+  await expect(page.locator('.track-head').filter({ hasText: 'Text 1' })).toHaveCount(1)
+  await expect(page.locator('.timeline-text-block--overlay')).toHaveCount(2)
+
+  // Dọn lại: xoá hẳn lane để các phép thử sau vẫn làm việc với đúng một chữ.
+  await page
+    .locator('.track-head')
+    .filter({ hasText: 'Text 1' })
+    .getByRole('button', { name: 'Xoá track' })
+    .click()
+  await expect(page.locator('.timeline-text-block--overlay')).toHaveCount(1)
+})
+
 /** Đọc giờ của chữ đầu tiên từ chính file dự án đã lưu. */
 async function savedOverlayRange(): Promise<{ startUs: number; endUs: number }> {
   const { readFile, readdir } = await import('node:fs/promises')

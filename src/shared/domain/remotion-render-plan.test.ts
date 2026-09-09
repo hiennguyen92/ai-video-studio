@@ -251,3 +251,100 @@ describe('chuyển động trong clip buộc phải dựng bằng Remotion', () 
     expect(requiresRemotionRenderer(document)).toBe(true)
   })
 })
+
+describe('lane chữ', () => {
+  /** Thêm một lane chữ và trả về id của nó. */
+  function addTextLane(document: ProjectDocument, name: string): string {
+    const before = new Set(document.tracks.map((track) => track.id))
+    expect(applyEditorCommand(document, { type: 'track/add', kind: 'text', name }, makeId).ok).toBe(
+      true
+    )
+    const added = document.tracks.find((track) => !before.has(track.id))
+    return added!.id
+  }
+
+  function addOverlay(document: ProjectDocument, id: string, trackId?: string): void {
+    document.textOverlays.push({
+      id,
+      trackId,
+      text: id,
+      startUs: 0,
+      endUs: 1_000_000,
+      style: { ...DEFAULT_SUBTITLE_STYLE },
+      animation: 'none',
+      animationDurationUs: 0
+    })
+  }
+
+  it('ẩn lane chữ thì chữ trên nó biến mất khỏi bản dựng', () => {
+    const document = project()
+    const laneId = addTextLane(document, 'Text 1')
+    addOverlay(document, 'text_1', laneId)
+    addOverlay(document, 'text_2')
+
+    expect(buildRenderPlan(document).textOverlays.map((item) => item.key)).toEqual([
+      'text_1',
+      'text_2'
+    ])
+
+    applyEditorCommand(document, {
+      type: 'track/update',
+      trackId: laneId,
+      patch: { hidden: true }
+    })
+    // Chỉ chữ trên lane bị ẩn mất đi; chữ chưa thuộc lane nào vẫn còn.
+    expect(buildRenderPlan(document).textOverlays.map((item) => item.key)).toEqual(['text_2'])
+  })
+
+  it('lane dưới vẽ sau, tức nằm trên; chữ chưa thuộc lane nào vẫn trên cùng', () => {
+    const document = project()
+    const first = addTextLane(document, 'Text 1')
+    const second = addTextLane(document, 'Text 2')
+
+    // Thêm ngược thứ tự lane, để phép thử đo đúng việc sắp xếp chứ không đo
+    // trùng hợp với thứ tự trong tài liệu.
+    addOverlay(document, 'tren-cung')
+    addOverlay(document, 'lane-2', second)
+    addOverlay(document, 'lane-1', first)
+
+    expect(buildRenderPlan(document).textOverlays.map((item) => item.key)).toEqual([
+      'lane-1',
+      'lane-2',
+      'tren-cung'
+    ])
+  })
+
+  it('cùng một lane thì giữ nguyên thứ tự trong tài liệu', () => {
+    const document = project()
+    const laneId = addTextLane(document, 'Text 1')
+    addOverlay(document, 'a', laneId)
+    addOverlay(document, 'b', laneId)
+
+    expect(buildRenderPlan(document).textOverlays.map((item) => item.key)).toEqual(['a', 'b'])
+  })
+
+  it('xoá lane chữ thì xoá luôn chữ thuộc lane đó, chừa chữ của lane khác', () => {
+    const document = project()
+    const first = addTextLane(document, 'Text 1')
+    const second = addTextLane(document, 'Text 2')
+    addOverlay(document, 'cua-lane-1', first)
+    addOverlay(document, 'cua-lane-2', second)
+    addOverlay(document, 'khong-lane')
+
+    expect(applyEditorCommand(document, { type: 'track/remove', trackId: first }).ok).toBe(true)
+
+    // Còn sót lại thì chữ vẫn vẽ lên hình mà không còn chỗ nào bấm vào để sửa.
+    expect(document.textOverlays.map((item) => item.id)).toEqual(['cua-lane-2', 'khong-lane'])
+  })
+
+  it('chữ trỏ vào lane đã xoá vẫn được dựng, không biến mất theo', () => {
+    const document = project()
+    const laneId = addTextLane(document, 'Text 1')
+    addOverlay(document, 'mo-coi', 'lane_khong_ton_tai')
+    addOverlay(document, 'cua-lane', laneId)
+    applyEditorCommand(document, { type: 'track/remove', trackId: laneId })
+
+    // `mo-coi` không thuộc lane nào còn sống nên rơi về lane ảo — vẫn thấy được.
+    expect(buildRenderPlan(document).textOverlays.map((item) => item.key)).toEqual(['mo-coi'])
+  })
+})

@@ -2,6 +2,7 @@ import { useCallback, type JSX } from 'react'
 import {
   DEFAULT_TEXT_ANIMATION_DURATION_US,
   createDefaultTextOverlayStyle,
+  defaultTextTrackId,
   type TextOverlay
 } from '../../../../shared/domain/text-overlay-types'
 import { previewSeekUs } from '../../../../shared/domain/preview-seek'
@@ -37,6 +38,8 @@ export function TextOverlaySection(): JSX.Element {
   const handleAdd = useCallback(() => {
     const overlay: TextOverlay = {
       id: createId('text'),
+      // Rơi vào lane chữ vừa thêm, nếu có.
+      trackId: defaultTextTrackId(document?.tracks ?? []),
       text: '',
       // Bắt đầu ở đầu phát hiện tại: người dùng thường tua tới chỗ cần chữ rồi mới thêm.
       startUs: playheadUs,
@@ -46,7 +49,7 @@ export function TextOverlaySection(): JSX.Element {
       animationDurationUs: DEFAULT_TEXT_ANIMATION_DURATION_US
     }
     run([{ type: 'text/add', overlay }], 'Thêm chữ')
-  }, [playheadUs, run])
+  }, [document, playheadUs, run])
 
   return (
     <div className="text-overlay-section">

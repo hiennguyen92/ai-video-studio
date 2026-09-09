@@ -13,7 +13,13 @@ import type { Micros } from './time-units'
  *   (ảnh là ngoại lệ — kéo dài bao lâu cũng được)
  */
 
-export type TrackKind = 'video' | 'audio' | 'subtitle'
+/**
+ * `text` là lane chứa chữ đè hình. Khác ba loại kia ở một điểm quan trọng: nó
+ * KHÔNG chứa clip. Chữ overlay nằm ở cấp tài liệu (`document.textOverlays`) và
+ * chỉ trỏ ngược về lane bằng `trackId` — vì một dòng chữ vẽ trên toàn khung hình
+ * chứ không thuộc một lớp hình nào. Lane ở đây chỉ để xếp chỗ trên timeline.
+ */
+export type TrackKind = 'video' | 'audio' | 'subtitle' | 'text'
 
 /**
  * Vai trò của track audio. Quyết định nhóm hiển thị mặc định và là đầu vào của

@@ -11,6 +11,7 @@ import {
 import type { Track } from '../../../../shared/domain/timeline-track-types'
 import { previewSeekUs } from '../../../../shared/domain/preview-seek'
 import type { TextBlockRef } from '../../../../shared/domain/text-block-drag'
+import type { TextOverlay } from '../../../../shared/domain/text-overlay-types'
 import { selectionRemovalCommands } from '../../../../shared/commands/selection-removal'
 import { microsToSeconds } from '../../../../shared/domain/time-units'
 import type { EditorCommand } from '../../../../shared/commands/editor-command-types'
@@ -209,6 +210,50 @@ export function TimelinePanel(): JSX.Element {
     [document, pixelsPerSecond, playheadUs, snapEnabled, clientXToUs, run, t.media.addToTimeline]
   )
 
+  /**
+   * Chữ chưa thuộc lane nào.
+   *
+   * Dự án dựng trước khi có lane chữ không gán `trackId` cho dòng nào cả, và
+   * chúng vẫn phải hiện ra. Lane ảo ở cuối timeline là chỗ của chúng — chỉ hiện
+   * khi thật sự còn dòng như vậy, chứ không phải một hàng trống thường trực.
+   */
+  const looseOverlays = useMemo(
+    () =>
+      (document?.textOverlays ?? []).filter(
+        (overlay) =>
+          !overlay.trackId ||
+          !document?.tracks.some((track) => track.kind === 'text' && track.id === overlay.trackId)
+      ),
+    [document]
+  )
+
+  /** Một khối chữ overlay trên timeline. Dùng chung cho lane thật và lane ảo. */
+  const renderTextBlock = (overlay: TextOverlay): JSX.Element => {
+    const shown = shownRange(overlay)
+    const block: TextBlockRef = { kind: 'overlay', overlayId: overlay.id }
+    return (
+      <TimelineTextBlock
+        key={overlay.id}
+        item={shown}
+        variant="overlay"
+        pixelsPerSecond={pixelsPerSecond}
+        active={playheadUs >= shown.startUs && playheadUs < shown.endUs}
+        selected={selection.text?.kind === 'overlay' && selection.text.overlayId === overlay.id}
+        dragging={textDrag?.id === overlay.id}
+        onSelect={(item) => chooseBlock(block, item)}
+        onPointerDown={(event, _item, mode) =>
+          handleTextBlockPointerDown(
+            event,
+            overlay.id,
+            { startUs: overlay.startUs, endUs: overlay.endUs },
+            block,
+            mode
+          )
+        }
+      />
+    )
+  }
+
   const selectedClipId = selection.clipIds[0]
 
   const handleSplit = useCallback(() => {
@@ -232,22 +277,28 @@ export function TimelinePanel(): JSX.Element {
   }, [durationUs, setPixelsPerSecond])
 
   const addTrack = useCallback(
-    (kind: 'video' | 'audio') => {
+    (kind: 'video' | 'audio' | 'text') => {
       if (!document) return
       const count = document.tracks.filter((track) => track.kind === kind).length + 1
+      const names = { video: `Video ${count}`, audio: `Âm thanh ${count}`, text: `Text ${count}` }
+      const labels = {
+        video: t.timeline.addVideoTrack,
+        audio: t.timeline.addAudioTrack,
+        text: t.timeline.addTextTrack
+      }
       run(
         [
           {
             type: 'track/add',
             kind,
-            name: kind === 'video' ? `Video ${count}` : `Âm thanh ${count}`,
+            name: names[kind],
             role: kind === 'audio' ? 'dialogue' : undefined
           }
         ],
-        kind === 'video' ? t.timeline.addVideoTrack : t.timeline.addAudioTrack
+        labels[kind]
       )
     },
-    [document, run, t.timeline.addVideoTrack, t.timeline.addAudioTrack]
+    [document, run, t.timeline.addVideoTrack, t.timeline.addAudioTrack, t.timeline.addTextTrack]
   )
 
   // Giữ playhead luôn trong tầm nhìn khi nó chạy ra ngoài vùng cuộn.
@@ -314,6 +365,11 @@ export function TimelinePanel(): JSX.Element {
           icon={<IconPlus />}
           onClick={() => addTrack('audio')}
         />
+        <ToolButton
+          label={t.timeline.addTextTrack}
+          icon={<IconPlus />}
+          onClick={() => addTrack('text')}
+        />
 
         <div className="top-bar__spacer" />
 
@@ -342,11 +398,11 @@ export function TimelinePanel(): JSX.Element {
           ))}
           {/* Đầu của lane ảo. Chiều cao phải KHỚP với lane, nếu không mọi hàng
               phía dưới lệch nhau. */}
-          {document.textOverlays.length > 0 && (
+          {looseOverlays.length > 0 && (
             <div className="track-head" style={{ height: 44 }}>
               <div className="track-head__title">
                 <span className="track-head__name">{t.timeline.textLane}</span>
-                <span className="track-head__count">{document.textOverlays.length}</span>
+                <span className="track-head__count">{looseOverlays.length}</span>
               </div>
             </div>
           )}
@@ -370,9 +426,12 @@ export function TimelinePanel(): JSX.Element {
                     if (element) trackRowRefs.current.set(track.id, element)
                     else trackRowRefs.current.delete(track.id)
                   }}
-                  className={`timeline-lane ${track.locked ? 'timeline-lane--locked' : ''} ${
-                    dropTargetTrackId === track.id ? 'timeline-lane--drop' : ''
-                  }`}
+                  // Lane mang luôn LOẠI của nó: lane chữ và lane phụ đề trông
+                  // khác lane hình, và có class thì CSS lẫn kiểm thử đều bám vào
+                  // được mà không phải đếm thứ tự hàng.
+                  className={`timeline-lane timeline-lane--${track.kind} ${
+                    track.locked ? 'timeline-lane--locked' : ''
+                  } ${dropTargetTrackId === track.id ? 'timeline-lane--drop' : ''}`}
                   style={{ height: track.height }}
                   onDragOver={(event) => {
                     if (!event.dataTransfer.types.includes(MEDIA_DRAG_MIME)) return
@@ -423,6 +482,16 @@ export function TimelinePanel(): JSX.Element {
                         )
                       })}
 
+                  {/*
+                    Lane chữ: vẽ CHỮ OVERLAY thuộc về nó. Cũng như cue phụ đề,
+                    chữ overlay nằm ở cấp tài liệu chứ không nằm trong
+                    `track.clips`, nên thiếu nhánh này thì lane luôn trống.
+                  */}
+                  {track.kind === 'text' &&
+                    document.textOverlays
+                      .filter((overlay) => overlay.trackId === track.id)
+                      .map((overlay) => renderTextBlock(overlay))}
+
                   {track.clips.map((clip) => {
                     const isDragging = preview?.clipId === clip.id
                     const shown =
@@ -470,36 +539,9 @@ export function TimelinePanel(): JSX.Element {
                 bản chất của nó, vì nó vẽ trên toàn khung hình chứ không thuộc
                 một lớp hình nào. Nên đây là một lane ảo, chỉ hiện khi có chữ.
               */}
-              {document.textOverlays.length > 0 && (
+              {looseOverlays.length > 0 && (
                 <div className="timeline-lane timeline-lane--overlay" style={{ height: 44 }}>
-                  {document.textOverlays.map((overlay) => {
-                    const shown = shownRange(overlay)
-                    const block: TextBlockRef = { kind: 'overlay', overlayId: overlay.id }
-                    return (
-                      <TimelineTextBlock
-                        key={overlay.id}
-                        item={shown}
-                        variant="overlay"
-                        pixelsPerSecond={pixelsPerSecond}
-                        active={playheadUs >= shown.startUs && playheadUs < shown.endUs}
-                        selected={
-                          selection.text?.kind === 'overlay' &&
-                          selection.text.overlayId === overlay.id
-                        }
-                        dragging={textDrag?.id === overlay.id}
-                        onSelect={(item) => chooseBlock(block, item)}
-                        onPointerDown={(event, _item, mode) =>
-                          handleTextBlockPointerDown(
-                            event,
-                            overlay.id,
-                            { startUs: overlay.startUs, endUs: overlay.endUs },
-                            block,
-                            mode
-                          )
-                        }
-                      />
-                    )
-                  })}
+                  {looseOverlays.map((overlay) => renderTextBlock(overlay))}
                 </div>
               )}
             </div>

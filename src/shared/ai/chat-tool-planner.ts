@@ -13,6 +13,7 @@ import {
   DEFAULT_TEXT_ANIMATION_DURATION_US,
   applyTextOverlayBox,
   createDefaultTextOverlayStyle,
+  defaultTextTrackId,
   type TextOverlay
 } from '../domain/text-overlay-types'
 import { guessDuckingTracks, planAutoDucking } from '../domain/auto-ducking-planner'
@@ -516,6 +517,9 @@ function planOne(context: ChatEditContext, tool: ChatToolName, args: unknown): P
 
       const overlay: TextOverlay = {
         id: context.makeId('text'),
+        // Cùng quy tắc với nút thêm chữ trên giao diện: rơi vào lane chữ cuối
+        // cùng, để agent và người dùng không đặt chữ vào hai chỗ khác nhau.
+        trackId: defaultTextTrackId(document.tracks),
         text: input.text,
         startUs,
         endUs,

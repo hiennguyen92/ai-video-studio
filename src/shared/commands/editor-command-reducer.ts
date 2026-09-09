@@ -102,6 +102,15 @@ export function applyEditorCommand(doc: ProjectDocument, command: EditorCommand)
       const index = doc.tracks.findIndex((track) => track.id === command.trackId)
       if (index < 0) return fail(`Không tìm thấy track ${command.trackId}`)
       if (doc.tracks[index].locked) return fail('Track đang bị khoá')
+
+      // Chữ overlay nằm ở cấp tài liệu chứ không nằm trong track, nên xoá lane
+      // chữ phải xoá luôn những dòng thuộc nó — cùng MỘT lệnh, để hoàn tác trả
+      // lại cả hai. Không làm thì lane biến mất còn chữ vẫn hiện trên hình mà
+      // không còn chỗ nào bấm vào để sửa.
+      if (doc.tracks[index].kind === 'text') {
+        doc.textOverlays = doc.textOverlays.filter((overlay) => overlay.trackId !== command.trackId)
+      }
+
       doc.tracks.splice(index, 1)
       return OK
     }

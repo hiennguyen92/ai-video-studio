@@ -28,11 +28,14 @@ export function TimelineTrackHead({ track }: { track: Track }): JSX.Element {
   const run = useEditorStore((state) => state.run)
   // Số câu phụ đề của lane này. Lane rỗng nhìn giống hệt lane chưa gắn track phụ
   // đề nào, mà hai chuyện đó cần sửa theo hai cách khác nhau.
-  const cueCount = useEditorStore((state) => {
+  const blockCount = useEditorStore((state) => {
+    const document = state.session?.document
+    if (!document) return null
+    if (track.kind === 'text') {
+      return document.textOverlays.filter((overlay) => overlay.trackId === track.id).length
+    }
     if (track.kind !== 'subtitle') return null
-    const subtitles = state.session?.document.subtitleTracks.find(
-      (item) => item.id === track.subtitleTrackId
-    )
+    const subtitles = document.subtitleTracks.find((item) => item.id === track.subtitleTrackId)
     return subtitles?.cues.length ?? 0
   })
 
@@ -46,25 +49,15 @@ export function TimelineTrackHead({ track }: { track: Track }): JSX.Element {
         <span className="track-head__name" title={track.name}>
           {track.name}
         </span>
-        {cueCount !== null && <span className="track-head__count">{cueCount}</span>}
+        {blockCount !== null && <span className="track-head__count">{blockCount}</span>}
       </div>
 
       <div className="track-head__controls">
-        {track.kind === 'video' && (
-          <ToolButton
-            label={track.hidden ? t.timeline.show : t.timeline.hide}
-            icon={track.hidden ? <IconEyeOff /> : <IconEye />}
-            iconOnly
-            active={track.hidden}
-            onClick={() => update({ hidden: !track.hidden }, t.timeline.hide)}
-          />
-        )}
-
         {/*
-          Lane phụ đề cũng cần ẩn/hiện: xem lại hình mà không có chữ che là việc
-          làm thường xuyên, và trước đây chỉ track hình mới có nút này.
+          Mọi lane VẼ RA HÌNH đều ẩn/hiện được — hình, phụ đề và chữ. Xem lại
+          khung hình mà không có chữ che là việc làm thường xuyên.
         */}
-        {track.kind === 'subtitle' && (
+        {track.kind !== 'audio' && (
           <ToolButton
             label={track.hidden ? t.timeline.show : t.timeline.hide}
             icon={track.hidden ? <IconEyeOff /> : <IconEye />}

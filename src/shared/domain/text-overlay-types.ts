@@ -24,6 +24,14 @@ export type TextExitAnimation = 'none' | 'fade' | 'shrink' | 'slide-down'
 
 export interface TextOverlay {
   id: string
+  /**
+   * Lane chữ trên timeline mà dòng này nằm trên.
+   *
+   * Không bắt buộc: dự án dựng trước khi có lane chữ không có trường này, và
+   * chúng vẫn phải hiện ra. Thiếu hoặc trỏ vào lane đã xoá thì dòng chữ rơi về
+   * lane ảo ở cuối timeline — vẫn thấy được, vẫn sửa được, không mất đi đâu.
+   */
+  trackId?: string
   text: string
   startUs: Micros
   endUs: Micros
@@ -98,4 +106,22 @@ export function applyTextOverlayBox(style: SubtitleStyle, box: TextOverlayBox): 
 export function readTextOverlayBox(style: SubtitleStyle): TextOverlayBox {
   if (style.boxOpacity <= 0) return 'none'
   return style.boxColor.toUpperCase() === '#FFFFFF' ? 'light' : 'dark'
+}
+
+/**
+ * Lane chữ mà một dòng mới nên rơi vào.
+ *
+ * Lấy lane chữ CUỐI CÙNG trên timeline, vì đó gần như luôn là lane người dùng
+ * vừa thêm — thêm lane rồi gõ chữ mà chữ rơi xuống lane ảo thì cái nút "Thêm
+ * track text" chẳng để làm gì.
+ *
+ * Chưa có lane nào thì trả `undefined`, và dòng chữ về lane ảo như trước.
+ */
+export function defaultTextTrackId(
+  tracks: Array<{ id: string; kind: string }>
+): string | undefined {
+  for (let index = tracks.length - 1; index >= 0; index--) {
+    if (tracks[index].kind === 'text') return tracks[index].id
+  }
+  return undefined
 }

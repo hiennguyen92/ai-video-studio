@@ -260,10 +260,40 @@ export function buildRenderPlan(document: ProjectDocument): RenderPlan {
   // Lớp dưới vẽ trước; giữ đúng thứ tự track như lớp preview hiện có.
   video.sort((left, right) => left.layerIndex - right.layerIndex)
 
-  // Chữ overlay không thuộc track nào: chúng tự mang mốc thời gian và luôn nằm
-  // trên cùng, vì hook và CTA phải đọc được kể cả khi có phụ đề bên dưới.
+  // Chữ overlay tự mang mốc thời gian và luôn nằm TRÊN phụ đề, vì hook và CTA
+  // phải đọc được kể cả khi có phụ đề bên dưới.
+  //
+  // Thứ tự vẽ giữa các dòng chữ đi theo thứ tự lane trên timeline: lane dưới vẽ
+  // sau, tức nằm trên. Dòng không thuộc lane nào xếp cuối cùng, giữ đúng chỗ mà
+  // lane ảo vẫn đứng. Chỉ ăn thua khi hai dòng chồng giờ nhau, nhưng lúc đó
+  // người dùng xếp lane chính là để quyết định dòng nào che dòng nào.
+  const textLaneOrder = new Map<string, number>()
+  document.tracks.forEach((track, index) => {
+    if (track.kind === 'text') textLaneOrder.set(track.id, index)
+  })
+  const hiddenTextLanes = new Set(
+    document.tracks
+      .filter((track) => track.kind === 'text' && track.hidden)
+      .map((track) => track.id)
+  )
+
+  const orderedOverlays = document.textOverlays
+    .map((overlay, index) => ({ overlay, index }))
+    .sort((left, right) => {
+      const leftLane = textLaneOrder.get(left.overlay.trackId ?? '') ?? Number.MAX_SAFE_INTEGER
+      const rightLane = textLaneOrder.get(right.overlay.trackId ?? '') ?? Number.MAX_SAFE_INTEGER
+      // Cùng lane thì giữ nguyên thứ tự trong tài liệu — sort ổn định không được
+      // đảm bảo với mọi công cụ, nên so luôn chỉ số gốc.
+      return leftLane - rightLane || left.index - right.index
+    })
+    .map((entry) => entry.overlay)
+
   const textOverlays: RenderPlanTextOverlay[] = []
-  for (const overlay of document.textOverlays) {
+  for (const overlay of orderedOverlays) {
+    // Ẩn lane thì chữ trên nó biến mất khỏi cả preview lẫn bản xuất, giống hệt
+    // ẩn track hình.
+    if (overlay.trackId && hiddenTextLanes.has(overlay.trackId)) continue
+
     const fromFrame = frameOfMicros(overlay.startUs, fps)
     const durationInFrames = frameOfMicros(overlay.endUs, fps) - fromFrame
     if (durationInFrames <= 0) continue
