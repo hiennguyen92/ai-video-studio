@@ -102,6 +102,7 @@ export function TimelinePanel(): JSX.Element {
 
   const lanesRef = useRef<HTMLDivElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
+  const bodyRef = useRef<HTMLDivElement>(null)
   const trackRowRefs = useRef(new Map<string, HTMLDivElement>())
   const [dropTargetTrackId, setDropTargetTrackId] = useState<string | null>(null)
 
@@ -337,6 +338,28 @@ export function TimelinePanel(): JSX.Element {
     [document, run, t.timeline.addVideoTrack, t.timeline.addAudioTrack, t.timeline.addTextTrack]
   )
 
+  /**
+   * Cuộn tới track vừa thêm.
+   *
+   * Ở chiều cao mặc định của timeline chỉ vừa khoảng bốn lane, nên track thứ năm
+   * trở đi được tạo ra NGOÀI tầm nhìn: bấm "Thêm track" xong màn hình không đổi
+   * gì cả và trông y như cái nút không ăn.
+   *
+   * `track/add` luôn nối vào cuối danh sách nên cuộn xuống đáy là tới đúng chỗ.
+   * Chỉ cuộn khi số track TĂNG, và bỏ qua lần đầu — mở một dự án có sẵn mười
+   * track mà nhảy thẳng xuống đáy thì không ai muốn.
+   */
+  const trackCountRef = useRef<number | null>(null)
+  const trackCount = document?.tracks.length ?? 0
+  useLayoutEffect(() => {
+    const previous = trackCountRef.current
+    trackCountRef.current = trackCount
+    if (previous === null || trackCount <= previous) return
+
+    const body = bodyRef.current
+    if (body) body.scrollTop = body.scrollHeight
+  }, [trackCount])
+
   // Giữ playhead luôn trong tầm nhìn khi nó chạy ra ngoài vùng cuộn.
   useLayoutEffect(() => {
     const scroll = scrollRef.current
@@ -426,7 +449,7 @@ export function TimelinePanel(): JSX.Element {
         />
       </div>
 
-      <div className="timeline__body">
+      <div className="timeline__body" ref={bodyRef}>
         <div className="timeline__heads">
           <div className="timeline__heads-spacer" />
           {document.tracks.map((track) => (

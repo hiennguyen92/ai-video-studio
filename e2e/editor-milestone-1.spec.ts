@@ -291,3 +291,47 @@ test('kéo clip âm thanh sang track âm thanh khác', async () => {
   await expect(empty.locator('.timeline-clip')).toHaveCount(1)
   await expect(source.locator('.timeline-clip')).toHaveCount(0)
 })
+
+test('thêm track thì cuộn tới lane mới, không để nó nằm ngoài tầm nhìn', async () => {
+  // Chiều cao mặc định của timeline chỉ vừa khoảng bốn lane. Track thứ năm trở
+  // đi được tạo ra NGOÀI tầm nhìn, và nếu không tự cuộn tới thì màn hình không
+  // đổi gì cả — trông y như cái nút không ăn.
+  const timeline = page.getByRole('region', { name: 'Timeline' })
+  const lanes = page.locator('.timeline-lane')
+
+  // Thêm cho tới khi vùng lane thật sự tràn ra ngoài khung nhìn.
+  for (let index = 0; index < 5; index++) {
+    await timeline.getByRole('button', { name: 'Thêm track video' }).click()
+  }
+
+  const overflow = await page.evaluate(() => {
+    const body = document.querySelector('.timeline__body') as HTMLElement
+    return body.scrollHeight - body.clientHeight
+  })
+  expect(overflow).toBeGreaterThan(0)
+
+  // Lane cuối phải nằm TRONG khung nhìn ngay sau khi thêm.
+  const visible = await page.evaluate(() => {
+    const body = document.querySelector('.timeline__body') as HTMLElement
+    const all = [...document.querySelectorAll('.timeline-lane')] as HTMLElement[]
+    const last = all[all.length - 1].getBoundingClientRect()
+    const frame = body.getBoundingClientRect()
+    return last.bottom <= frame.bottom + 1 && last.top >= frame.top - 1
+  })
+  expect(visible).toBe(true)
+
+  // Đầu track đi cùng lane, không lệch hàng.
+  const aligned = await page.evaluate(() => {
+    const lanesEls = [...document.querySelectorAll('.timeline-lane')] as HTMLElement[]
+    const heads = [...document.querySelectorAll('.track-head')] as HTMLElement[]
+    const laneTop = lanesEls[lanesEls.length - 1].getBoundingClientRect().top
+    const headTop = heads[heads.length - 1].getBoundingClientRect().top
+    return Math.abs(laneTop - headTop) < 2
+  })
+  expect(aligned).toBe(true)
+
+  for (let index = 0; index < 5; index++) {
+    await page.keyboard.press('ControlOrMeta+z')
+  }
+  await expect(lanes).toHaveCount(await lanes.count())
+})
