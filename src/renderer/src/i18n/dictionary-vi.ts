@@ -176,6 +176,7 @@ export const dictionaryVi = {
     addTextTrack: 'Thêm track text',
     addImageTrack: 'Thêm track hình ảnh',
     removeTrack: 'Xoá track',
+    reorderTrack: 'Kéo để đổi thứ tự lane',
     mute: 'Tắt tiếng',
     unmute: 'Bật tiếng',
     solo: 'Solo',

@@ -15,6 +15,7 @@ import { EmptyState } from '../ui/empty-state'
 import { TimelineToolbar } from './timeline-toolbar'
 import { useTimelineMediaDrop } from './use-timeline-media-drop'
 import { useTimelineTracks } from './use-timeline-tracks'
+import { useTrackReorder } from './use-track-reorder'
 import { useTimelineTextLanes } from './use-timeline-text-lanes'
 import { TimelineClip, type ClipDragMode } from './timeline-clip'
 import { TimelineRuler } from './timeline-ruler'
@@ -185,6 +186,12 @@ export function TimelinePanel(): JSX.Element {
     setPixelsPerSecond(zoomToFit(durationUs, laneViewportWidth()))
   }, [durationUs, laneViewportWidth, setPixelsPerSecond])
 
+  const { reorder, handleReorderPointerDown } = useTrackReorder({
+    document,
+    trackRowRefs,
+    headsRef
+  })
+
   const { trackHeightPx, heightPreset, setTrackHeight, addTrack } = useTimelineTracks({
     document,
     bodyRef,
@@ -236,8 +243,18 @@ export function TimelinePanel(): JSX.Element {
         <div className="timeline__heads" ref={headsRef}>
           <div className="timeline__heads-spacer" />
           {document.tracks.map((track) => (
-            <TimelineTrackHead key={track.id} track={track} />
+            <TimelineTrackHead
+              key={track.id}
+              track={track}
+              dragging={reorder?.trackId === track.id}
+              onReorderPointerDown={handleReorderPointerDown}
+            />
           ))}
+
+          {/* Vạch chỉ chỗ lane sẽ rơi vào khi thả. */}
+          {reorder && (
+            <div className="timeline__reorder-line" style={{ top: reorder.indicatorY }} />
+          )}
           {/* Đầu của lane ảo. Chiều cao phải KHỚP với lane, nếu không mọi hàng
               phía dưới lệch nhau. */}
           {looseOverlays.length > 0 && (

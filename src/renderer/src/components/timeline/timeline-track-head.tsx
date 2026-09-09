@@ -1,4 +1,4 @@
-import type { JSX } from 'react'
+import type { JSX, PointerEvent as ReactPointerEvent } from 'react'
 import type { Track } from '../../../../shared/domain/timeline-track-types'
 import type { EditorCommand } from '../../../../shared/commands/editor-command-types'
 import { useEditorStore } from '../../state/editor-store'
@@ -23,7 +23,16 @@ import {
  */
 type TrackUpdatePatch = Extract<EditorCommand, { type: 'track/update' }>['patch']
 
-export function TimelineTrackHead({ track }: { track: Track }): JSX.Element {
+export function TimelineTrackHead({
+  track,
+  dragging,
+  onReorderPointerDown
+}: {
+  track: Track
+  /** Đang bị kéo để sắp lại thứ tự. */
+  dragging: boolean
+  onReorderPointerDown(event: ReactPointerEvent<HTMLElement>, trackId: string): void
+}): JSX.Element {
   const t = useT()
   const run = useEditorStore((state) => state.run)
   // Số câu phụ đề của lane này. Lane rỗng nhìn giống hệt lane chưa gắn track phụ
@@ -44,8 +53,28 @@ export function TimelineTrackHead({ track }: { track: Track }): JSX.Element {
   }
 
   return (
-    <div className="track-head" style={{ height: track.height }}>
+    <div
+      className={`track-head ${dragging ? 'track-head--dragging' : ''}`}
+      style={{ height: track.height }}
+    >
       <div className="track-head__title">
+        {/*
+          Tay nắm riêng để kéo sắp lại thứ tự.
+          
+          Không cho kéo từ cả đầu lane: chỗ đó còn có nút ẩn, khoá, xoá, và một
+          cú bấm hụt vào nút sẽ biến thành cú kéo. Tay nắm riêng thì ý định rõ
+          ràng, và con trỏ đổi hình báo trước là kéo được.
+        */}
+        <span
+          className="track-head__grip"
+          role="button"
+          tabIndex={-1}
+          aria-label={t.timeline.reorderTrack}
+          title={t.timeline.reorderTrack}
+          onPointerDown={(event) => onReorderPointerDown(event, track.id)}
+        >
+          ⋮⋮
+        </span>
         <span className="track-head__name" title={track.name}>
           {track.name}
         </span>

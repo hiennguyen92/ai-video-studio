@@ -438,3 +438,33 @@
   border-radius: var(--radius-sm);
   color: var(--text-muted);
 }
+
+/* Tay nắm kéo sắp lại thứ tự lane. */
+.track-head__grip {
+  color: var(--text-muted);
+  font-size: 10px;
+  letter-spacing: -2px;
+  cursor: grab;
+  user-select: none;
+  padding: 0 2px;
+}
+
+.track-head__grip:hover {
+  color: var(--text-primary);
+}
+
+.track-head--dragging {
+  opacity: 0.55;
+}
+
+/* Vạch chỉ chỗ lane sẽ rơi vào. Cột đầu lane là `position: sticky` nên đã có
+   containing block riêng; vạch bám theo nó. */
+.timeline__reorder-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--accent);
+  pointer-events: none;
+  z-index: 5;
+}

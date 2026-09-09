@@ -465,3 +465,106 @@ test('lane dưới cùng được VẼ RA thật, không chỉ nằm đúng ch�
   expect(rows.length).toBeGreaterThan(3)
   expect(rows.every((row) => row.painted)).toBe(true)
 })
+
+test('kéo tay nắm ở đầu lane để đổi thứ tự lane', async () => {
+  // Thứ tự lane quyết định thứ tự LỚP khi dựng hình, nên đây không phải chuyện
+  // sắp cho gọn mắt: nó đổi hẳn cái gì che cái gì.
+  const timeline = page.getByRole('region', { name: 'Timeline' })
+  await timeline.getByRole('button', { name: 'Thêm track video' }).click()
+
+  const names = async (): Promise<string[]> =>
+    page.evaluate(() =>
+      [...document.querySelectorAll('.track-head__name')].map((node) => node.textContent ?? '')
+    )
+  const before = await names()
+  expect(before.length).toBeGreaterThan(2)
+
+  // Kéo lane CUỐI lên trên cùng. Chỉ theo CHỈ SỐ chứ không lọc theo tên: "Video
+  // 1" là chuỗi con của "Video 10", và bộ lọc theo chữ sẽ trúng cả chùm.
+  const lastName = before[before.length - 1]
+  const grip = page
+    .locator('.track-head')
+    .nth(before.length - 1)
+    .locator('.track-head__grip')
+  await grip.hover()
+  const firstHead = await page.locator('.track-head').first().boundingBox()
+
+  await page.mouse.down()
+  await page.mouse.move(firstHead!.x + 20, firstHead!.y + 4, { steps: 10 })
+
+  // Vạch chỉ chỗ thả phải hiện ra trong lúc kéo — không có nó thì người dùng
+  // thả mù.
+  await expect(page.locator('.timeline__reorder-line')).toBeVisible()
+  await page.mouse.up()
+
+  const after = await names()
+  expect(after[0]).toBe(lastName)
+  expect(after).toHaveLength(before.length)
+  // Không mất lane nào và không nhân đôi lane nào.
+  expect([...after].sort()).toEqual([...before].sort())
+
+  // Một lần kéo là MỘT bước hoàn tác.
+  await expect(page.getByRole('button', { name: /Hoàn tác: Đổi thứ tự lane/ })).toBeVisible()
+  await page.keyboard.press('ControlOrMeta+z')
+  expect(await names()).toEqual(before)
+
+  // Và kéo XUỐNG cũng phải đúng chỗ.
+  //
+  // Chiều này mới chạm tới phép trừ một: lệnh gỡ lane ra rồi mới chèn, nên mọi
+  // khe nằm sau vị trí cũ đều tụt đi một. Chỉ kéo lên thì bug đó không lộ ra.
+  const firstName = before[0]
+  const firstGrip = page.locator('.track-head').nth(0).locator('.track-head__grip')
+  await firstGrip.hover()
+  const lastHead = await page.locator('.track-head').last().boundingBox()
+
+  await page.mouse.down()
+  await page.mouse.move(lastHead!.x + 20, lastHead!.y + lastHead!.height - 4, { steps: 10 })
+  await page.mouse.up()
+
+  const afterDown = await names()
+  expect(afterDown[afterDown.length - 1]).toBe(firstName)
+  expect([...afterDown].sort()).toEqual([...before].sort())
+  await page.keyboard.press('ControlOrMeta+z')
+  expect(await names()).toEqual(before)
+
+  // Và thả vào GIỮA danh sách.
+  //
+  // Đây mới là ca duy nhất lộ ra phép trừ một. Thả ở hai đầu thì reducer tự kẹp
+  // `toIndex` về biên và che mất lỗi — phép thử vẫn xanh trong khi phép tính sai.
+  const thirdBottom = await page.evaluate(
+    () =>
+      (document.querySelectorAll('.track-head')[2] as HTMLElement).getBoundingClientRect().bottom
+  )
+  await page.locator('.track-head').nth(0).locator('.track-head__grip').hover()
+  await page.mouse.down()
+  await page.mouse.move(firstHead!.x + 20, thirdBottom - 4, { steps: 10 })
+  await page.mouse.up()
+
+  // [A,B,C,D…] → [B,C,A,D…]
+  const afterMiddle = await names()
+  expect(afterMiddle.slice(0, 3)).toEqual([before[1], before[2], before[0]])
+  await page.keyboard.press('ControlOrMeta+z')
+  expect(await names()).toEqual(before)
+})
+
+test('thả lane vào đúng chỗ cũ thì không ghi bước hoàn tác nào', async () => {
+  const undoLabel = async (): Promise<string | null> =>
+    page.evaluate(
+      () =>
+        document
+          .querySelector('.top-bar button[aria-label^="Hoàn tác"]')
+          ?.getAttribute('aria-label') ?? null
+    )
+  const before = await undoLabel()
+
+  const grip = page.locator('.track-head').first().locator('.track-head__grip')
+  await grip.hover()
+  const box = await grip.boundingBox()
+  await page.mouse.down()
+  // Nhích xuống một chút rồi thả — vẫn nằm trong nửa trên của chính hàng đó.
+  await page.mouse.move(box!.x, box!.y + 12, { steps: 6 })
+  await page.mouse.up()
+  await page.waitForTimeout(300)
+
+  expect(await undoLabel()).toBe(before)
+})

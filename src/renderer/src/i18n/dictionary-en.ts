@@ -174,6 +174,7 @@ export const dictionaryEn: Dictionary = {
     addTextTrack: 'Add text track',
     addImageTrack: 'Add image track',
     removeTrack: 'Remove track',
+    reorderTrack: 'Drag to reorder lane',
     mute: 'Mute',
     unmute: 'Unmute',
     solo: 'Solo',
