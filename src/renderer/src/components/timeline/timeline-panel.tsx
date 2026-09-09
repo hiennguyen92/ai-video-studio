@@ -345,7 +345,7 @@ export function TimelinePanel(): JSX.Element {
           {document.textOverlays.length > 0 && (
             <div className="track-head" style={{ height: 44 }}>
               <div className="track-head__title">
-                <span className="track-head__name">{t.timeline.textOverlayLane}</span>
+                <span className="track-head__name">{t.timeline.textLane}</span>
                 <span className="track-head__count">{document.textOverlays.length}</span>
               </div>
             </div>

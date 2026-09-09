@@ -166,7 +166,7 @@ export const dictionaryEn: Dictionary = {
     deleteClip: 'Delete clip',
     deleteTextBlock: 'Delete text block',
     duplicateClip: 'Duplicate clip',
-    textOverlayLane: 'Text on video',
+    textLane: 'Text',
     addVideoTrack: 'Add video track',
     addAudioTrack: 'Add audio track',
     removeTrack: 'Remove track',

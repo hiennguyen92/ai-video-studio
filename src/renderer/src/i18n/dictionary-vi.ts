@@ -168,7 +168,7 @@ export const dictionaryVi = {
     deleteClip: 'Xoá clip',
     deleteTextBlock: 'Xoá khối chữ',
     duplicateClip: 'Nhân bản clip',
-    textOverlayLane: 'Chữ trên hình',
+    textLane: 'Text',
     addVideoTrack: 'Thêm track video',
     addAudioTrack: 'Thêm track âm thanh',
     removeTrack: 'Xoá track',

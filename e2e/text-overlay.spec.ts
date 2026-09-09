@@ -177,7 +177,7 @@ test('chữ overlay hiện thành khối trên lane riêng của timeline', asyn
   // không vẽ gì cho nó. Thiếu lane này thì trên timeline không có dấu vết nào
   // của chữ — đúng thứ người dùng báo thiếu.
   const timeline = page.getByRole('region', { name: 'Timeline' })
-  await expect(timeline.getByText('Chữ trên hình')).toBeVisible()
+  await expect(timeline.getByText('Text', { exact: true })).toBeVisible()
 
   const blocks = page.locator('.timeline-text-block--overlay')
   await expect(blocks).toHaveCount(1)
