@@ -70,3 +70,25 @@ export function applyTextBlockDrag(
 export function textBlockRangeChanged(before: TextBlockRange, after: TextBlockRange): boolean {
   return before.startUs !== after.startUs || before.endUs !== after.endUs
 }
+
+/**
+ * Lane mà một khối chữ ĐƯỢC PHÉP thả vào.
+ *
+ * Cùng luật với kéo clip: chỉ sang lane cùng loại và không bị khoá. Thả nhầm loại
+ * thì lệnh phát ra sẽ bị reducer từ chối im lặng, và người dùng chỉ thấy khối bật
+ * về chỗ cũ mà không hiểu vì sao.
+ *
+ * Lane ảo (`undefined`) KHÔNG phải chỗ thả được. Nó chỉ là chỗ đứng tạm cho chữ
+ * của dự án cũ chưa gán lane; cho thả vào đó thì khi kéo nốt dòng cuối cùng đi,
+ * lane biến mất và không còn cách nào đưa dòng nào quay lại.
+ */
+export function canDropTextBlock(
+  block: TextBlockRef,
+  lane: { kind: string; locked: boolean; subtitleTrackId?: string } | undefined
+): boolean {
+  if (!lane || lane.locked) return false
+  if (block.kind === 'overlay') return lane.kind === 'text'
+  // Cue phải rơi vào một lane phụ đề ĐANG trỏ tới một track phụ đề nào đó; lane
+  // rỗng chưa gắn track thì không có chỗ nào để đặt cue vào.
+  return lane.kind === 'subtitle' && Boolean(lane.subtitleTrackId)
+}

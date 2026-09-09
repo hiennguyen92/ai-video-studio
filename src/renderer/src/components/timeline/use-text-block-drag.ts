@@ -3,6 +3,7 @@ import type { ProjectDocument } from '../../../../shared/domain/project-document
 import type { EditorCommand } from '../../../../shared/commands/editor-command-types'
 import {
   applyTextBlockDrag,
+  canDropTextBlock,
   textBlockRangeChanged,
   type TextBlockDragMode,
   type TextBlockRange,
@@ -20,6 +21,9 @@ import { collectSnapTargets, pxToUs, snapTime, type SnapContext } from './timeli
  *
  * Phụ đề và chữ overlay dùng chung lối kéo nhưng phát ra HAI lệnh khác nhau — cue
  * phụ đề thuộc về một SubtitleTrack, còn chữ overlay nằm ở cấp tài liệu.
+ *
+ * Kéo được cả theo CHIỀU DỌC để đổi lane, đúng như kéo clip: lane đích lấy theo
+ * vị trí con trỏ, và chỉ nhận lane cùng loại, không bị khoá.
  */
 
 export interface TextBlockDragPreview {
@@ -27,12 +31,16 @@ export interface TextBlockDragPreview {
   startUs: number
   endUs: number
   snappedToUs: number | null
+  /** Lane sẽ nhận khối này khi thả. Bằng lane cũ khi con trỏ ở chỗ không thả được. */
+  targetLaneId: string | null
 }
 
 interface DragSession {
   id: string
   target: TextBlockRef
   original: TextBlockRange
+  /** Lane khối đang đứng lúc bắt đầu kéo. `null` là lane ảo. */
+  sourceLaneId: string | null
   mode: TextBlockDragMode
   pointerStartX: number
   pointerId: number
@@ -41,6 +49,8 @@ interface DragSession {
 export function useTextBlockDrag(options: {
   document: ProjectDocument | null
   pixelsPerSecond: number
+  /** Id lane nằm dưới con trỏ, `null` khi con trỏ ở ngoài mọi lane. */
+  laneAtClientY(clientY: number): string | null
 }): {
   preview: TextBlockDragPreview | null
   handleTextBlockPointerDown(
@@ -48,10 +58,11 @@ export function useTextBlockDrag(options: {
     id: string,
     range: TextBlockRange,
     target: TextBlockRef,
+    sourceLaneId: string | null,
     mode: TextBlockDragMode
   ): void
 } {
-  const { document, pixelsPerSecond } = options
+  const { document, pixelsPerSecond, laneAtClientY } = options
   const run = useEditorStore((state) => state.run)
   const snapEnabled = useEditorStore((state) => state.snapEnabled)
   const playheadUs = useEditorStore((state) => state.playheadUs)
@@ -61,23 +72,50 @@ export function useTextBlockDrag(options: {
 
   const commit = useCallback(
     (session: DragSession, final: TextBlockDragPreview | null) => {
-      if (!final) return
+      if (!final || !document) return
       const next = { startUs: final.startUs, endUs: final.endUs }
-      if (!textBlockRangeChanged(session.original, next)) return
+      const laneChanged = final.targetLaneId !== session.sourceLaneId
+      // Không đổi giờ mà cũng không đổi lane thì đừng ghi một bước hoàn tác rỗng.
+      if (!laneChanged && !textBlockRangeChanged(session.original, next)) return
 
-      const command: EditorCommand =
-        session.target.kind === 'overlay'
-          ? { type: 'text/update', overlayId: session.target.overlayId, ...next }
-          : {
-              type: 'subtitle/update-cue',
-              trackId: session.target.subtitleTrackId,
-              cueId: session.target.cueId,
-              ...next
-            }
+      let command: EditorCommand
+      if (session.target.kind === 'overlay') {
+        command = {
+          type: 'text/update',
+          overlayId: session.target.overlayId,
+          ...next,
+          ...(laneChanged && final.targetLaneId ? { trackId: final.targetLaneId } : {})
+        }
+      } else if (laneChanged && final.targetLaneId) {
+        // Lane phụ đề chỉ là chỗ hiển thị; cue thật sự nằm trong SubtitleTrack mà
+        // lane đó trỏ tới, nên phải tra ngược ra id của track.
+        const lane = document.tracks.find((item) => item.id === final.targetLaneId)
+        command = {
+          type: 'subtitle/move-cue',
+          fromTrackId: session.target.subtitleTrackId,
+          toTrackId: lane?.subtitleTrackId ?? session.target.subtitleTrackId,
+          cueId: session.target.cueId,
+          ...next
+        }
+      } else {
+        command = {
+          type: 'subtitle/update-cue',
+          trackId: session.target.subtitleTrackId,
+          cueId: session.target.cueId,
+          ...next
+        }
+      }
 
-      run([command], session.mode === 'move' ? 'Dời chữ' : 'Đổi độ dài chữ')
+      run(
+        [command],
+        laneChanged
+          ? 'Dời chữ sang lane khác'
+          : session.mode === 'move'
+            ? 'Dời chữ'
+            : 'Đổi độ dài chữ'
+      )
     },
-    [run]
+    [document, run]
   )
 
   const handleTextBlockPointerDown = useCallback(
@@ -86,6 +124,7 @@ export function useTextBlockDrag(options: {
       id: string,
       range: TextBlockRange,
       target: TextBlockRef,
+      sourceLaneId: string | null,
       mode: TextBlockDragMode
     ) => {
       if (!document) return
@@ -96,6 +135,7 @@ export function useTextBlockDrag(options: {
         id,
         target,
         original: range,
+        sourceLaneId,
         mode,
         pointerStartX: event.clientX,
         pointerId: event.pointerId
@@ -117,7 +157,9 @@ export function useTextBlockDrag(options: {
       const handleMove = (moveEvent: PointerEvent): void => {
         if (moveEvent.pointerId !== session.pointerId) return
         const deltaPx = moveEvent.clientX - session.pointerStartX
-        if (!moved && Math.abs(deltaPx) < 3) return
+        // Kéo dọc cũng tính là kéo: đổi lane mà không dịch ngang là chuyện thường.
+        const laneUnderPointer = laneAtClientY(moveEvent.clientY)
+        if (!moved && Math.abs(deltaPx) < 3 && laneUnderPointer === session.sourceLaneId) return
         moved = true
 
         const deltaUs = pxToUs(deltaPx, pixelsPerSecond)
@@ -126,11 +168,21 @@ export function useTextBlockDrag(options: {
         const snapped = snapTime(anchorUs + deltaUs, snapTargets, snapContext)
         const next = applyTextBlockDrag(range, mode, snapped.us)
 
+        // Cắt mép thì khối ở nguyên lane của nó: kéo mép là đổi độ dài, không
+        // phải đổi chỗ.
+        const lane =
+          mode === 'move' ? document.tracks.find((item) => item.id === laneUnderPointer) : undefined
+        const targetLaneId =
+          mode === 'move' && canDropTextBlock(target, lane)
+            ? (laneUnderPointer as string)
+            : session.sourceLaneId
+
         const nextPreview: TextBlockDragPreview = {
           id,
           startUs: next.startUs,
           endUs: next.endUs,
-          snappedToUs: snapped.snappedTo
+          snappedToUs: snapped.snappedTo,
+          targetLaneId
         }
         previewRef.current = nextPreview
         setPreview(nextPreview)
@@ -151,7 +203,7 @@ export function useTextBlockDrag(options: {
       window.addEventListener('pointerup', handleUp)
       window.addEventListener('pointercancel', handleUp)
     },
-    [commit, document, pixelsPerSecond, playheadUs, snapEnabled]
+    [commit, document, laneAtClientY, pixelsPerSecond, playheadUs, snapEnabled]
   )
 
   return { preview, handleTextBlockPointerDown }

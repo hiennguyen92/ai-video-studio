@@ -449,3 +449,38 @@ test('phụ đề nung được vào file MP4 thật', async () => {
   const plain = await frameAt(withoutSubs, 1)
   expect(framed.equals(plain)).toBe(false)
 })
+
+/*
+ * Để CUỐI file có chủ ý: phép thử này tạo thêm một track phụ đề, mà xoá track
+ * trong panel không xoá lane trên timeline — dọn lại đòi hỏi hai thao tác ở hai
+ * chỗ khác nhau, và một bước dọn hụt sẽ làm đổ những phép thử phía sau vì lý do
+ * chẳng liên quan gì tới thứ chúng kiểm.
+ */
+test('kéo cue sang lane phụ đề khác thì nó chuyển hẳn sang track đó', async () => {
+  // Cue đi qua lệnh `subtitle/move-cue` chứ không phải `text/update` như chữ
+  // overlay, nên phải kiểm riêng chứ không suy ra từ phép thử kia.
+  await studio().getByRole('tab', { name: 'Phụ đề' }).click()
+  await page.getByRole('button', { name: 'Tạo track phụ đề' }).click()
+
+  const lanes = page.locator('.timeline-lane--subtitle')
+  await expect(lanes).toHaveCount(2)
+  await expect(lanes.nth(0).locator('.timeline-text-block--subtitle')).toHaveCount(2)
+  await expect(lanes.nth(1).locator('.timeline-text-block--subtitle')).toHaveCount(2)
+
+  const block = lanes.nth(0).locator('.timeline-text-block--subtitle').first()
+  const from = await block.boundingBox()
+  const to = await lanes.nth(1).boundingBox()
+
+  await page.mouse.move(from!.x + from!.width / 2, from!.y + from!.height / 2)
+  await page.mouse.down()
+  await page.mouse.move(from!.x + from!.width / 2, to!.y + to!.height / 2, { steps: 10 })
+  await page.mouse.up()
+
+  // Rời hẳn track cũ, sang hẳn track mới — không nằm ở cả hai.
+  await expect(lanes.nth(0).locator('.timeline-text-block--subtitle')).toHaveCount(1)
+  await expect(lanes.nth(1).locator('.timeline-text-block--subtitle')).toHaveCount(3)
+
+  await expect(page.getByRole('button', { name: /Hoàn tác: Dời chữ sang lane khác/ })).toBeVisible()
+  await page.keyboard.press('ControlOrMeta+z')
+  await expect(lanes.nth(0).locator('.timeline-text-block--subtitle')).toHaveCount(2)
+})

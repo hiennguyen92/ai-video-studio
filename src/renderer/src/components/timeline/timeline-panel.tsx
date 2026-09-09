@@ -12,6 +12,7 @@ import type { Track } from '../../../../shared/domain/timeline-track-types'
 import { previewSeekUs } from '../../../../shared/domain/preview-seek'
 import type { TextBlockRef } from '../../../../shared/domain/text-block-drag'
 import type { TextOverlay } from '../../../../shared/domain/text-overlay-types'
+import type { SubtitleCue } from '../../../../shared/domain/subtitle-types'
 import { selectionRemovalCommands } from '../../../../shared/commands/selection-removal'
 import { microsToSeconds } from '../../../../shared/domain/time-units'
 import type { EditorCommand } from '../../../../shared/commands/editor-command-types'
@@ -62,9 +63,18 @@ export function TimelinePanel(): JSX.Element {
   const clearSelection = useEditorStore((state) => state.clearSelection)
 
   /** Bấm vào một khối chữ thì dừng phát và tua tới đầu khối đó. */
+  const trackAtClientY = useCallback((clientY: number): string | null => {
+    for (const [trackId, element] of trackRowRefs.current) {
+      const bounds = element.getBoundingClientRect()
+      if (clientY >= bounds.top && clientY <= bounds.bottom) return trackId
+    }
+    return null
+  }, [])
+
   const { preview: textDrag, handleTextBlockPointerDown } = useTextBlockDrag({
     document,
-    pixelsPerSecond
+    pixelsPerSecond,
+    laneAtClientY: trackAtClientY
   })
 
   /** Trong lúc kéo, vẽ khối theo trạng thái xem trước chứ không theo tài liệu. */
@@ -101,14 +111,6 @@ export function TimelinePanel(): JSX.Element {
   }, [durationUs, pixelsPerSecond])
 
   /** Track nằm dưới toạ độ Y của con trỏ — dùng khi kéo clip sang track khác. */
-  const trackAtClientY = useCallback((clientY: number): string | null => {
-    for (const [trackId, element] of trackRowRefs.current) {
-      const bounds = element.getBoundingClientRect()
-      if (clientY >= bounds.top && clientY <= bounds.bottom) return trackId
-    }
-    return null
-  }, [])
-
   const { preview, handleClipPointerDown } = useTimelineInteractions({
     document,
     pixelsPerSecond,
@@ -228,7 +230,7 @@ export function TimelinePanel(): JSX.Element {
   )
 
   /** Một khối chữ overlay trên timeline. Dùng chung cho lane thật và lane ảo. */
-  const renderTextBlock = (overlay: TextOverlay): JSX.Element => {
+  const renderTextBlock = (overlay: TextOverlay, laneId: string | null): JSX.Element => {
     const shown = shownRange(overlay)
     const block: TextBlockRef = { kind: 'overlay', overlayId: overlay.id }
     return (
@@ -247,11 +249,45 @@ export function TimelinePanel(): JSX.Element {
             overlay.id,
             { startUs: overlay.startUs, endUs: overlay.endUs },
             block,
+            laneId,
             mode
           )
         }
       />
     )
+  }
+
+  /**
+   * Chữ overlay hiện trên MỘT lane, đã tính cả khối đang bị kéo.
+   *
+   * Khối đang kéo phải biến mất khỏi lane cũ và hiện ở lane đích ngay trong lúc
+   * kéo, giống hệt clip. Vẽ ở cả hai chỗ thì trông như đã nhân đôi; chỉ vẽ ở lane
+   * cũ thì không thấy mình sắp thả vào đâu.
+   */
+  const overlaysOnLane = (laneId: string | null): TextOverlay[] =>
+    (document?.textOverlays ?? []).filter((overlay) => {
+      const home =
+        overlay.trackId &&
+        document?.tracks.some((track) => track.kind === 'text' && track.id === overlay.trackId)
+          ? overlay.trackId
+          : null
+      if (textDrag?.id === overlay.id) return textDrag.targetLaneId === laneId
+      return home === laneId
+    })
+
+  /** Cue phụ đề hiện trên một lane, cũng đã tính khối đang bị kéo sang lane khác. */
+  const cuesOnLane = (track: Track): Array<{ cue: SubtitleCue; subtitleTrackId: string }> => {
+    const rows: Array<{ cue: SubtitleCue; subtitleTrackId: string }> = []
+    for (const subtitleTrack of document?.subtitleTracks ?? []) {
+      for (const cue of subtitleTrack.cues) {
+        const dragging = textDrag?.id === cue.id
+        const home = subtitleTrack.id === track.subtitleTrackId
+        if (dragging ? textDrag.targetLaneId === track.id : home) {
+          rows.push({ cue, subtitleTrackId: subtitleTrack.id })
+        }
+      }
+    }
+    return rows
   }
 
   const selectedClipId = selection.clipIds[0]
@@ -431,7 +467,12 @@ export function TimelinePanel(): JSX.Element {
                   // được mà không phải đếm thứ tự hàng.
                   className={`timeline-lane timeline-lane--${track.kind} ${
                     track.locked ? 'timeline-lane--locked' : ''
-                  } ${dropTargetTrackId === track.id ? 'timeline-lane--drop' : ''}`}
+                  } ${
+                    dropTargetTrackId === track.id ||
+                    (textDrag && textDrag.targetLaneId === track.id)
+                      ? 'timeline-lane--drop'
+                      : ''
+                  }`}
                   style={{ height: track.height }}
                   onDragOver={(event) => {
                     if (!event.dataTransfer.types.includes(MEDIA_DRAG_MIME)) return
@@ -448,39 +489,38 @@ export function TimelinePanel(): JSX.Element {
                     Thiếu nhánh này thì lane phụ đề luôn là một hàng trống.
                   */}
                   {track.kind === 'subtitle' &&
-                    document.subtitleTracks
-                      .find((item) => item.id === track.subtitleTrackId)
-                      ?.cues.map((cue) => {
-                        const shown = shownRange(cue)
-                        const block: TextBlockRef = {
-                          kind: 'subtitle',
-                          subtitleTrackId: track.subtitleTrackId as string,
-                          cueId: cue.id
-                        }
-                        return (
-                          <TimelineTextBlock
-                            key={cue.id}
-                            item={shown}
-                            variant="subtitle"
-                            pixelsPerSecond={pixelsPerSecond}
-                            active={playheadUs >= shown.startUs && playheadUs < shown.endUs}
-                            selected={
-                              selection.text?.kind === 'subtitle' && selection.text.cueId === cue.id
-                            }
-                            dragging={textDrag?.id === cue.id}
-                            onSelect={(item) => chooseBlock(block, item)}
-                            onPointerDown={(event, _item, mode) =>
-                              handleTextBlockPointerDown(
-                                event,
-                                cue.id,
-                                { startUs: cue.startUs, endUs: cue.endUs },
-                                block,
-                                mode
-                              )
-                            }
-                          />
-                        )
-                      })}
+                    cuesOnLane(track).map(({ cue, subtitleTrackId }) => {
+                      const shown = shownRange(cue)
+                      const block: TextBlockRef = {
+                        kind: 'subtitle',
+                        subtitleTrackId,
+                        cueId: cue.id
+                      }
+                      return (
+                        <TimelineTextBlock
+                          key={cue.id}
+                          item={shown}
+                          variant="subtitle"
+                          pixelsPerSecond={pixelsPerSecond}
+                          active={playheadUs >= shown.startUs && playheadUs < shown.endUs}
+                          selected={
+                            selection.text?.kind === 'subtitle' && selection.text.cueId === cue.id
+                          }
+                          dragging={textDrag?.id === cue.id}
+                          onSelect={(item) => chooseBlock(block, item)}
+                          onPointerDown={(event, _item, mode) =>
+                            handleTextBlockPointerDown(
+                              event,
+                              cue.id,
+                              { startUs: cue.startUs, endUs: cue.endUs },
+                              block,
+                              track.id,
+                              mode
+                            )
+                          }
+                        />
+                      )
+                    })}
 
                   {/*
                     Lane chữ: vẽ CHỮ OVERLAY thuộc về nó. Cũng như cue phụ đề,
@@ -488,9 +528,7 @@ export function TimelinePanel(): JSX.Element {
                     `track.clips`, nên thiếu nhánh này thì lane luôn trống.
                   */}
                   {track.kind === 'text' &&
-                    document.textOverlays
-                      .filter((overlay) => overlay.trackId === track.id)
-                      .map((overlay) => renderTextBlock(overlay))}
+                    overlaysOnLane(track.id).map((overlay) => renderTextBlock(overlay, track.id))}
 
                   {track.clips.map((clip) => {
                     const isDragging = preview?.clipId === clip.id
@@ -541,7 +579,7 @@ export function TimelinePanel(): JSX.Element {
               */}
               {looseOverlays.length > 0 && (
                 <div className="timeline-lane timeline-lane--overlay" style={{ height: 44 }}>
-                  {looseOverlays.map((overlay) => renderTextBlock(overlay))}
+                  {overlaysOnLane(null).map((overlay) => renderTextBlock(overlay, null))}
                 </div>
               )}
             </div>

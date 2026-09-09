@@ -457,6 +457,13 @@ export function applyEditorCommand(doc: ProjectDocument, command: EditorCommand)
       if (nextEnd <= nextStart) return fail('Thời điểm kết thúc phải sau thời điểm bắt đầu')
 
       if (command.text !== undefined) overlay.text = command.text
+      if (command.trackId !== undefined) {
+        // Lane phải có thật và phải là lane chữ. Nhận bừa thì dòng chữ trỏ vào
+        // một lane không tồn tại và lặng lẽ rơi xuống lane ảo.
+        const lane = doc.tracks.find((item) => item.id === command.trackId)
+        if (!lane || lane.kind !== 'text') return fail(`Không tìm thấy lane chữ ${command.trackId}`)
+        overlay.trackId = command.trackId
+      }
       if (command.animation !== undefined) overlay.animation = command.animation
       if (command.exitAnimation !== undefined) overlay.exitAnimation = command.exitAnimation
       if (command.glow !== undefined) overlay.glow = command.glow
@@ -525,6 +532,38 @@ export function applyEditorCommand(doc: ProjectDocument, command: EditorCommand)
       cue.startUs = nextStart
       cue.endUs = nextEnd
       cue.edited = true
+      return OK
+    }
+
+    case 'subtitle/move-cue': {
+      const from = doc.subtitleTracks.find((item) => item.id === command.fromTrackId)
+      if (!from) return fail(`Không tìm thấy track phụ đề ${command.fromTrackId}`)
+      const to = doc.subtitleTracks.find((item) => item.id === command.toTrackId)
+      if (!to) return fail(`Không tìm thấy track phụ đề ${command.toTrackId}`)
+
+      const index = from.cues.findIndex((item) => item.id === command.cueId)
+      if (index < 0) return fail(`Không tìm thấy cue ${command.cueId}`)
+
+      const cue = from.cues[index]
+      const nextStart = command.startUs ?? cue.startUs
+      const nextEnd = command.endUs ?? cue.endUs
+      if (nextEnd <= nextStart) return fail('Thời điểm kết thúc phải sau thời điểm bắt đầu')
+
+      // Kiểm tra XONG mới đụng vào dữ liệu: thoát giữa chừng sau khi đã gỡ cue ra
+      // là làm mất hẳn nó.
+      if (command.fromTrackId === command.toTrackId) {
+        cue.startUs = nextStart
+        cue.endUs = nextEnd
+        return OK
+      }
+
+      from.cues.splice(index, 1)
+      cue.startUs = nextStart
+      cue.endUs = nextEnd
+      // Chèn đúng chỗ theo thời gian: danh sách cue được đọc tuần tự khi ghi file
+      // SRT/ASS, và mốc thời gian nhảy lung tung thì trình phát không tua đúng.
+      const at = to.cues.findIndex((item) => item.startUs > cue.startUs)
+      to.cues.splice(at < 0 ? to.cues.length : at, 0, cue)
       return OK
     }
 

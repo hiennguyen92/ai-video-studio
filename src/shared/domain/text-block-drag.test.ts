@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   MIN_TEXT_BLOCK_DURATION_US,
   applyTextBlockDrag,
+  canDropTextBlock,
   textBlockRangeChanged,
   type TextBlockDragMode
 } from './text-block-drag'
@@ -107,5 +108,40 @@ describe('textBlockRangeChanged', () => {
   it('đổi một đầu là tính đổi', () => {
     expect(textBlockRangeChanged(original, { ...original, endUs: 5_000_001 })).toBe(true)
     expect(textBlockRangeChanged(original, { ...original, startUs: 1_999_999 })).toBe(true)
+  })
+})
+
+describe('canDropTextBlock', () => {
+  const overlay = { kind: 'overlay' as const, overlayId: 'text_1' }
+  const cue = { kind: 'subtitle' as const, subtitleTrackId: 'sub_1', cueId: 'cue_1' }
+
+  it('chữ overlay chỉ thả được vào lane chữ', () => {
+    expect(canDropTextBlock(overlay, { kind: 'text', locked: false })).toBe(true)
+    expect(canDropTextBlock(overlay, { kind: 'video', locked: false })).toBe(false)
+    expect(canDropTextBlock(overlay, { kind: 'audio', locked: false })).toBe(false)
+    expect(canDropTextBlock(overlay, { kind: 'subtitle', locked: false })).toBe(false)
+  })
+
+  it('cue phụ đề chỉ thả được vào lane phụ đề ĐÃ gắn track', () => {
+    expect(canDropTextBlock(cue, { kind: 'subtitle', locked: false, subtitleTrackId: 's' })).toBe(
+      true
+    )
+    // Lane phụ đề rỗng chưa gắn track thì không có chỗ nào để đặt cue vào.
+    expect(canDropTextBlock(cue, { kind: 'subtitle', locked: false })).toBe(false)
+    expect(canDropTextBlock(cue, { kind: 'text', locked: false })).toBe(false)
+  })
+
+  it('lane bị khoá không nhận gì cả', () => {
+    expect(canDropTextBlock(overlay, { kind: 'text', locked: true })).toBe(false)
+    expect(canDropTextBlock(cue, { kind: 'subtitle', locked: true, subtitleTrackId: 's' })).toBe(
+      false
+    )
+  })
+
+  it('ngoài mọi lane thì không thả được', () => {
+    // Lane ảo cũng rơi vào đây: nó không có track nào để tra ra, và cố tình
+    // không cho thả vào — kéo nốt dòng cuối đi thì nó biến mất và không còn
+    // đường quay lại.
+    expect(canDropTextBlock(overlay, undefined)).toBe(false)
   })
 })

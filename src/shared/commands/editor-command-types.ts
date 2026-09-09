@@ -448,6 +448,22 @@ const updateSubtitleCue = z.object({
   endUs: z.number().int().min(0).optional()
 })
 
+/**
+ * Dời một cue sang track phụ đề khác.
+ *
+ * Phải là MỘT lệnh chứ không phải xoá-rồi-thêm: hai lệnh rời thì một bước hoàn
+ * tác chỉ trả lại được nửa việc, và giữa hai lệnh có một khoảnh khắc cue không
+ * tồn tại ở đâu cả.
+ */
+const moveSubtitleCue = z.object({
+  type: z.literal('subtitle/move-cue'),
+  fromTrackId: z.string(),
+  toTrackId: z.string(),
+  cueId: z.string(),
+  startUs: z.number().int().min(0).optional(),
+  endUs: z.number().int().min(0).optional()
+})
+
 const removeSubtitleCue = z.object({
   type: z.literal('subtitle/remove-cue'),
   trackId: z.string(),
@@ -550,6 +566,8 @@ const removeTextOverlay = z.object({
 const updateTextOverlay = z.object({
   type: z.literal('text/update'),
   overlayId: z.string(),
+  /** Lane chữ mới. Bỏ trống nghĩa là giữ nguyên lane đang có. */
+  trackId: z.string().optional(),
   text: z.string().max(500).optional(),
   startUs: nonNegativeMicros.optional(),
   endUs: nonNegativeMicros.optional(),
@@ -607,6 +625,7 @@ export const editorCommandSchema = z.discriminatedUnion('type', [
   renameSubtitleTrack,
   setSubtitleStyle,
   updateSubtitleCue,
+  moveSubtitleCue,
   removeSubtitleCue,
   replaceSubtitleCues,
   addAsset,

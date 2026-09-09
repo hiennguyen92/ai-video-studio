@@ -348,10 +348,10 @@ test('kéo chữ trên khung xem trước thì dời chữ và ghim vị trí', 
   await expect(gizmo).toBeVisible()
 
   const before = await page.locator('.text-overlay .text-block').boundingBox()
+  await gizmo.hover()
   const box = await gizmo.boundingBox()
 
   // Kéo lên trên và sang trái một quãng rõ ràng.
-  await page.mouse.move(box!.x + box!.width / 2, box!.y + box!.height / 2)
   await page.mouse.down()
   await page.mouse.move(box!.x + box!.width / 2 - 60, box!.y + box!.height / 2 - 50, { steps: 8 })
   await page.mouse.up()
@@ -385,11 +385,13 @@ test('kéo tay nắm tròn thì xoay chữ', async () => {
     page.locator('.text-overlay .text-block').evaluate((node) => getComputedStyle(node).transform)
   const before = await rotationOf()
 
-  const box = await gizmo.boundingBox()
+  // `hover()` chờ phần tử đứng yên hai khung hình liên tiếp rồi mới đưa chuột
+  // tới. Đo toạ độ rồi bấm thẳng thì không có bước chờ đó: khung gizmo đo lại
+  // theo từng khung hình, nên tay nắm có thể đã dịch đi và cú bấm rơi vào thân
+  // khung — thành ra kéo DỜI chứ không kéo xoay, và phép thử đỏ lúc được lúc không.
   const handle = page.locator('.preview-gizmo__rotate')
-  const handleBox = await handle.boundingBox()
-
-  await page.mouse.move(handleBox!.x + handleBox!.width / 2, handleBox!.y + handleBox!.height / 2)
+  await handle.hover()
+  const box = await gizmo.boundingBox()
   await page.mouse.down()
   // Kéo tay nắm sang phải, tức xoay xuôi chiều kim đồng hồ.
   await page.mouse.move(box!.x + box!.width / 2 + 90, box!.y - 30, { steps: 8 })
@@ -447,6 +449,65 @@ test('nút Thêm track text tạo một lane chữ thật, và chữ mới rơi 
 
   // Chữ cũ chưa thuộc lane nào vẫn nằm ở lane ảo, không bị kéo sang.
   await expect(page.locator('.timeline-lane--overlay .timeline-text-block')).toHaveCount(1)
+})
+
+test('kéo khối chữ sang lane khác thì nó đổi lane', async () => {
+  // Lane thứ hai để có chỗ mà kéo sang.
+  await page
+    .getByRole('region', { name: 'Timeline' })
+    .getByRole('button', { name: 'Thêm track text' })
+    .click()
+  await expect(page.locator('.timeline-lane--text')).toHaveCount(2)
+
+  const lanes = page.locator('.timeline-lane--text')
+  const block = lanes.nth(0).locator('.timeline-text-block--overlay')
+  await expect(block).toHaveCount(1)
+
+  const from = await block.boundingBox()
+  const to = await lanes.nth(1).boundingBox()
+
+  // Kéo THẲNG XUỐNG: đổi lane mà không đổi giờ là thao tác thường gặp nhất, và
+  // là ca dễ bị bỏ sót nhất vì con trỏ không dịch ngang chút nào.
+  await page.mouse.move(from!.x + from!.width / 2, from!.y + from!.height / 2)
+  await page.mouse.down()
+  await page.mouse.move(from!.x + from!.width / 2, to!.y + to!.height / 2, { steps: 10 })
+  await page.mouse.up()
+
+  await expect(lanes.nth(0).locator('.timeline-text-block--overlay')).toHaveCount(0)
+  await expect(lanes.nth(1).locator('.timeline-text-block--overlay')).toHaveCount(1)
+  await expect(lanes.nth(1).locator('.timeline-text-block--overlay')).toContainText('Trên lane mới')
+
+  // Một lần kéo là MỘT bước hoàn tác, và hoàn tác trả khối về lane cũ.
+  await expect(page.getByRole('button', { name: /Hoàn tác: Dời chữ sang lane khác/ })).toBeVisible()
+  await page.keyboard.press('ControlOrMeta+z')
+  await expect(lanes.nth(0).locator('.timeline-text-block--overlay')).toHaveCount(1)
+
+  // Dọn lane vừa thêm.
+  await page
+    .locator('.track-head')
+    .filter({ hasText: 'Text 2' })
+    .getByRole('button', { name: 'Xoá track' })
+    .click()
+  await expect(page.locator('.timeline-lane--text')).toHaveCount(1)
+})
+
+test('không thả được khối chữ vào lane hình', async () => {
+  const lane = page.locator('.timeline-lane--text').first()
+  const block = lane.locator('.timeline-text-block--overlay')
+  const from = await block.boundingBox()
+  const videoLane = await page.locator('.timeline-lane--video').first().boundingBox()
+
+  await page.mouse.move(from!.x + from!.width / 2, from!.y + from!.height / 2)
+  await page.mouse.down()
+  await page.mouse.move(from!.x + from!.width / 2, videoLane!.y + videoLane!.height / 2, {
+    steps: 10
+  })
+  await page.mouse.up()
+
+  // Khối phải ở nguyên lane chữ. Lọt sang lane hình thì nó biến mất khỏi mọi
+  // lane, vì lane hình chỉ vẽ clip.
+  await expect(lane.locator('.timeline-text-block--overlay')).toHaveCount(1)
+  await expect(page.locator('.timeline-lane--video .timeline-text-block')).toHaveCount(0)
 })
 
 test('ẩn lane chữ chỉ giấu chữ TRÊN LANE ĐÓ, không giấu chữ khác', async () => {
