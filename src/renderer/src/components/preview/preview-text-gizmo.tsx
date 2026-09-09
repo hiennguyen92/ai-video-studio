@@ -26,6 +26,15 @@ import { resolveGizmoTarget } from './use-gizmo-target'
  *     ASS xoay quanh điểm neo alignment và chữ văng đi một quãng.
  */
 
+/** Bốn góc của khung, theo thứ tự trên-trái → dưới-phải. */
+const CORNERS = ['tl', 'tr', 'bl', 'br'] as const
+
+/** Cạnh của tay nắm, khớp với CSS. */
+const HANDLE_PX = 14
+
+/** Chỗ chừa phía trên khung cho tay nắm xoay đang treo ở đó. */
+const ROTATE_GAP_PX = 22
+
 const MIN_SCALE = 0.1
 const MAX_SCALE = 4
 
@@ -234,10 +243,13 @@ export function PreviewTextGizmo({ document }: { document: ProjectDocument }): J
    * Kẹp lại thì khung ôm đúng phần NHÌN THẤY, và mọi tay nắm luôn bấm tới được.
    */
   const clampToStage = (value: GizmoBox): GizmoBox => {
-    const left = Math.max(0, value.centerXPx - value.widthPx / 2)
-    const top = Math.max(0, value.centerYPx - value.heightPx / 2)
-    const right = Math.min(value.stageWidthPx, value.centerXPx + value.widthPx / 2)
-    const bottom = Math.min(value.stageHeightPx, value.centerYPx + value.heightPx / 2)
+    // Chừa đúng nửa tay nắm: tay nắm đặt tâm ngay trên góc khung, nên khung sát
+    // mép quá thì nửa tay nắm lòi ra ngoài và bấm không tới.
+    const inset = HANDLE_PX / 2
+    const left = Math.max(inset, value.centerXPx - value.widthPx / 2)
+    const top = Math.max(ROTATE_GAP_PX, value.centerYPx - value.heightPx / 2)
+    const right = Math.min(value.stageWidthPx - inset, value.centerXPx + value.widthPx / 2)
+    const bottom = Math.min(value.stageHeightPx - inset, value.centerYPx + value.heightPx / 2)
     if (right <= left || bottom <= top) return value
     return {
       ...value,
@@ -307,18 +319,24 @@ export function PreviewTextGizmo({ document }: { document: ProjectDocument }): J
             {...handlers}
           />
 
-          {/* Chữ đổi cỡ bằng cỡ phông chứ không bằng kéo góc, nên không có tay
-              nắm này — bày ra một tay nắm không làm gì là tệ hơn không có. */}
-          {target.scale !== null && (
-            <span
-              className="preview-gizmo__resize"
-              role="button"
-              tabIndex={0}
-              aria-label={t.preview.resizeText}
-              onPointerDown={(event) => beginDrag(event, 'resize')}
-              {...handlers}
-            />
-          )}
+          {/* BỐN góc, không phải một. Một ô nhỏ nằm lọt trong hình thì không ai
+              nhận ra đó là chỗ để kéo — người dùng với tay ra góc nào cũng phải
+              gặp tay nắm ở đó.
+              
+              Chữ không có bộ này: chữ đổi cỡ bằng cỡ phông, và bày ra một tay
+              nắm không làm gì là tệ hơn không có. */}
+          {target.scale !== null &&
+            CORNERS.map((corner) => (
+              <span
+                key={corner}
+                className={`preview-gizmo__resize preview-gizmo__resize--${corner}`}
+                role="button"
+                tabIndex={0}
+                aria-label={t.preview.resizeText}
+                onPointerDown={(event) => beginDrag(event, 'resize')}
+                {...handlers}
+              />
+            ))}
 
           {readout && <span className="preview-gizmo__readout">{readout}</span>}
         </div>

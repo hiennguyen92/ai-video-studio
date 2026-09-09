@@ -81,16 +81,19 @@
   pointer-events: none;
 }
 
+/*
+  Khung phải khớp ĐÚNG hộp đã tính, không nới thêm.
+  
+  Trước đây khung có `padding: 4px; margin: -5px` cho viền khỏi đè lên chữ. Với
+  tay nắm đặt ngay trên bốn góc thì mẹo đó đẩy chúng ra ngoài vùng xem trước —
+  đo được: tay nắm trên-trái nằm cao hơn mép khung 9px và bấm không tới.
+*/
 .preview-gizmo {
   position: absolute;
   pointer-events: auto;
   cursor: move;
   border: 1px dashed var(--accent);
-  /* Nới ra một chút để viền không đè lên chính chữ. */
-  outline: 4px solid transparent;
-  box-sizing: content-box;
-  padding: 4px;
-  margin: -5px;
+  box-sizing: border-box;
 }
 
 .preview-gizmo--dragging {
@@ -105,14 +108,24 @@
   xem trước và không bao giờ bấm tới được — đo được: thanh tiêu đề của app chặn
   luôn cú bấm. Nằm trong khung thì hễ khung còn thấy là tay nắm còn bấm được.
 */
+/*
+  Tay nắm xoay treo ngay TRÊN mép khung.
+  
+  Đặt nó trong khung thì với khối chữ một dòng, nó phủ luôn phần giữa và cú bấm
+  để KÉO lại trúng nút xoay — đo được: kéo giữa khối chữ ra một bước hoàn tác
+  mang nhãn "Xoay chữ". Phần kẹp khung chừa sẵn chỗ phía trên cho nó.
+*/
 .preview-gizmo__rotate {
   position: absolute;
-  left: 4px;
-  top: 4px;
-  width: 12px;
-  height: 12px;
+  left: 50%;
+  top: -20px;
+  width: 14px;
+  height: 14px;
+  margin-left: -7px;
   border-radius: 50%;
   background: var(--accent);
+  border: 2px solid #fff;
+  box-sizing: border-box;
   cursor: grab;
 }
 
@@ -130,14 +143,44 @@
   white-space: nowrap;
 }
 
-/* Tay nắm đổi cỡ ở góc dưới-phải, cũng nằm trong khung vì cùng lý do. */
+/*
+  Tay nắm đổi cỡ ở CẢ BỐN góc.
+  
+  Một ô nhỏ cùng màu nằm lọt trong hình thì không ai nhận ra đó là chỗ để kéo —
+  đo trên ảnh chụp: nó chỉ là một chấm 12px giữa nền ảnh. Nền trắng viền accent
+  thì nổi lên trên mọi nền, và đặt tâm ngay trên góc thì đúng chỗ tay người dùng
+  với tới.
+*/
 .preview-gizmo__resize {
   position: absolute;
-  right: 4px;
-  bottom: 4px;
-  width: 12px;
-  height: 12px;
-  border-radius: 2px;
-  background: var(--accent);
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  background: #fff;
+  border: 2px solid var(--accent);
+  box-sizing: border-box;
+}
+
+.preview-gizmo__resize--tl {
+  left: -7px;
+  top: -7px;
+  cursor: nwse-resize;
+}
+
+.preview-gizmo__resize--tr {
+  right: -7px;
+  top: -7px;
+  cursor: nesw-resize;
+}
+
+.preview-gizmo__resize--bl {
+  left: -7px;
+  bottom: -7px;
+  cursor: nesw-resize;
+}
+
+.preview-gizmo__resize--br {
+  right: -7px;
+  bottom: -7px;
   cursor: nwse-resize;
 }

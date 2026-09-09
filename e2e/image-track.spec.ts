@@ -211,6 +211,35 @@ test('kéo ảnh trên khung xem trước thì ảnh dời theo', async () => {
   expect(transform.x).toBeLessThan(1)
 })
 
+test('có tay nắm ở CẢ BỐN góc, và tay nắm nào cũng bấm tới được', async () => {
+  await page.locator('.timeline-lane--image .timeline-clip').first().click()
+  await expect(page.locator('.preview-gizmo')).toBeVisible()
+
+  const handles = page.locator('.preview-gizmo__resize')
+  await expect(handles).toHaveCount(4)
+
+  // Tay nắm nằm ngoài vùng xem trước là tay nắm không bấm được: đo được là
+  // thanh tiêu đề của app chặn luôn cú bấm.
+  const inside = await page.evaluate(() => {
+    const stage = document.querySelector('.preview__stage')!.getBoundingClientRect()
+    return [...document.querySelectorAll('.preview-gizmo__resize')].every((node) => {
+      const r = node.getBoundingClientRect()
+      return (
+        r.left >= stage.left - 1 &&
+        r.right <= stage.right + 1 &&
+        r.top >= stage.top - 1 &&
+        r.bottom <= stage.bottom + 1
+      )
+    })
+  })
+  expect(inside).toBe(true)
+
+  // Và mỗi tay nắm phải thật sự nhận được cú hover, không bị thứ khác che.
+  for (const corner of ['tl', 'tr', 'bl', 'br']) {
+    await page.locator(`.preview-gizmo__resize--${corner}`).hover({ timeout: 5000 })
+  }
+})
+
 test('kéo góc thì đổi cỡ ảnh', async () => {
   await page.locator('.timeline-lane--image .timeline-clip').first().click()
   const gizmo = page.locator('.preview-gizmo')
@@ -220,12 +249,14 @@ test('kéo góc thì đổi cỡ ảnh', async () => {
   const before = await image.boundingBox()
   const beforeScale = (await savedImageTransform()).scale
 
-  const handle = page.locator('.preview-gizmo__resize')
+  // Kéo góc TRÊN-TRÁI: bốn góc dùng chung một phép tính theo khoảng cách tới
+  // tâm, nên góc nào cũng phải phóng được, không riêng góc dưới-phải.
+  const handle = page.locator('.preview-gizmo__resize--tl')
   await handle.hover()
   const box = await gizmo.boundingBox()
   await page.mouse.down()
-  // Kéo ra xa tâm: ảnh phải to lên.
-  await page.mouse.move(box!.x + box!.width + 80, box!.y + box!.height + 80, { steps: 8 })
+  // Kéo RA XA tâm (lên trên-trái): ảnh phải to lên.
+  await page.mouse.move(box!.x - 80, box!.y - 60, { steps: 8 })
   await page.mouse.up()
 
   await expect
