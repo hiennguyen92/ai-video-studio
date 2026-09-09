@@ -5,6 +5,7 @@ import {
   pointerRotationDeg,
   type TextPosition
 } from '../../../../shared/domain/text-placement'
+import { scaledSizeFromBounds } from '../../../../shared/domain/clip-frame-fit'
 import { useEditorStore } from '../../state/editor-store'
 import { useT } from '../../i18n/use-translation'
 import { resolveGizmoTarget } from './use-gizmo-target'
@@ -89,6 +90,11 @@ export function PreviewTextGizmo({ document }: { document: ProjectDocument }): J
 
   const target = resolveGizmoTarget(document, selection)
   const selector = target?.selector
+  // Vòng đo cần góc xoay để suy ngược kích thước thật từ hộp bao. Nhận nó làm
+  // phụ thuộc thay vì nhét vào ref: góc chỉ đổi khi người dùng thả chuột, nên
+  // vòng đo khởi động lại đúng một lần, còn đọc ref trong lúc dựng là vi phạm
+  // quy tắc của React.
+  const targetRotationDeg = target?.rotationDeg ?? 0
 
   // Số đo phải là của ĐÚNG thứ đang chọn và phải còn hiệu lực (không đang phát),
   // nếu không khung điều khiển sẽ loé lên ở chỗ của thứ trước đó.
@@ -126,17 +132,23 @@ export function PreviewTextGizmo({ document }: { document: ProjectDocument }): J
       }
 
       const rect = node.getBoundingClientRect()
-      const scale = stage.width / document.settings.width
+      // Suy kích thước thật từ hộp bao. Lấy thẳng `offsetWidth` là lấy kích
+      // thước BỐ CỤC, mà `transform: scale()` không đụng tới bố cục — phóng to
+      // ảnh xong khung điều khiển vẫn y nguyên. Lấy thẳng hộp bao thì với phần
+      // tử đã xoay, khung phình ra to hơn chính nó.
+      const size = scaledSizeFromBounds(
+        { width: rect.width, height: rect.height },
+        { width: node.offsetWidth, height: node.offsetHeight },
+        targetRotationDeg
+      )
       const next: GizmoBox = {
         selector,
         // Tâm hộp bao ngoài chính là tâm phần tử sau khi xoay: xoay một hình chữ
         // nhật quanh điểm nào thì hộp bao của nó vẫn nhận tâm hình đó làm tâm.
         centerXPx: rect.left + rect.width / 2 - stage.left,
         centerYPx: rect.top + rect.height / 2 - stage.top,
-        // Bề rộng bố cục nhân mức phóng của Player, không lấy thẳng hộp bao: hộp
-        // bao của một phần tử đã xoay to hơn chính nó.
-        widthPx: node.offsetWidth * scale,
-        heightPx: node.offsetHeight * scale,
+        widthPx: size.width,
+        heightPx: size.height,
         stageWidthPx: stage.width,
         stageHeightPx: stage.height
       }
@@ -145,7 +157,7 @@ export function PreviewTextGizmo({ document }: { document: ProjectDocument }): J
 
     frame = requestAnimationFrame(measure)
     return () => cancelAnimationFrame(frame)
-  }, [selector, isPlaying, document.settings.width])
+  }, [selector, isPlaying, targetRotationDeg, document.settings.width])
 
   const beginDrag = useCallback(
     (event: PointerEvent<HTMLElement>, mode: DragMode) => {

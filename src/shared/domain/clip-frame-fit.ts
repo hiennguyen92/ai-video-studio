@@ -45,3 +45,30 @@ export function clipOffsetPx(transform: { x: number; y: number }, frame: Size): 
     height: (transform.y * frame.height) / 2
   }
 }
+
+/**
+ * Kích thước THẬT của một phần tử đã bị xoay và phóng, suy từ hộp bao của nó.
+ *
+ * Cần vì hai phép đo trong trình duyệt đều thiếu một nửa:
+ *
+ *   - `offsetWidth` là kích thước BỐ CỤC, và `transform: scale()` không đụng tới
+ *     bố cục. Đo bằng nó thì phóng to ảnh xong khung điều khiển vẫn y nguyên.
+ *   - `getBoundingClientRect()` có tính transform, nhưng với phần tử đã xoay nó
+ *     trả về hộp bao NGOÀI, to hơn chính phần tử.
+ *
+ * Một hình chữ nhật `w × h` xoay góc θ có hộp bao rộng `w|cosθ| + h|sinθ|` và cao
+ * `w|sinθ| + h|cosθ|`. Biết tỉ lệ `w/h` từ bố cục và biết θ, giải ngược ra hệ số
+ * phóng rồi nhân lại.
+ */
+export function scaledSizeFromBounds(bounds: Size, layout: Size, rotationDeg: number): Size {
+  if (layout.width <= 0 || layout.height <= 0) return bounds
+
+  const radians = (rotationDeg * Math.PI) / 180
+  const cos = Math.abs(Math.cos(radians))
+  const sin = Math.abs(Math.sin(radians))
+  const denominator = layout.width * cos + layout.height * sin
+  if (denominator <= 0) return bounds
+
+  const scale = bounds.width / denominator
+  return { width: layout.width * scale, height: layout.height * scale }
+}

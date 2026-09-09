@@ -265,6 +265,25 @@ test('kéo góc thì đổi cỡ ảnh', async () => {
 
   await expect(page.locator('.top-bar__status')).toHaveText('Đã lưu', { timeout: 15_000 })
   expect((await savedImageTransform()).scale).toBeGreaterThan(beforeScale)
+
+  // KHUNG phải đi theo ảnh sau khi thả.
+  //
+  // Đây là chỗ hỏng lặng lẽ: khung đo bằng `offsetWidth`, mà `transform: scale()`
+  // không đụng tới bố cục — ảnh to lên còn khung đứng yên, và tay nắm không còn
+  // nằm ở góc ảnh nữa.
+  const anh = await image.boundingBox()
+  const khung = await gizmo.boundingBox()
+  const stage = await page.locator('.preview__stage').boundingBox()
+
+  // So với phần ảnh NHÌN THẤY được: ảnh phóng quá khổ thì phần lòi ra ngoài
+  // khung xem trước không có gì để thao tác, và khung điều khiển kẹp lại ở mép
+  // để tay nắm còn bấm tới được.
+  const thayDuoc = {
+    width: Math.min(anh!.x + anh!.width, stage!.x + stage!.width) - Math.max(anh!.x, stage!.x),
+    height: Math.min(anh!.y + anh!.height, stage!.y + stage!.height) - Math.max(anh!.y, stage!.y)
+  }
+  expect(Math.abs(khung!.width - thayDuoc.width)).toBeLessThan(30)
+  expect(Math.abs(khung!.height - thayDuoc.height)).toBeLessThan(30)
 })
 
 test('kéo tay nắm tròn thì xoay ảnh', async () => {
