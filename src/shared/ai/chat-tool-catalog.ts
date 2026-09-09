@@ -111,9 +111,66 @@ export const chatToolSchemas = {
   }),
 
   add_track: z.object({
-    kind: z.enum(['video', 'audio', 'subtitle']),
+    kind: z.enum(['video', 'audio', 'subtitle', 'text', 'image']),
     name: z.string().min(1).max(120),
     role: z.enum(['dialogue', 'voiceover', 'music', 'sfx']).optional()
+  }),
+
+  remove_track: z.object({
+    trackId: z.string().min(1).max(120)
+  }),
+
+  reorder_track: z.object({
+    trackId: z.string().min(1).max(120),
+    /** Vị trí mới, đếm từ 0 ở lane trên cùng. */
+    toIndex: z.number().int().min(0).max(200)
+  }),
+
+  set_track: z.object({
+    trackId: z.string().min(1).max(120),
+    name: z.string().min(1).max(120).optional(),
+    hidden: z.boolean().optional(),
+    locked: z.boolean().optional()
+  }),
+
+  set_clip_transform: z.object({
+    clipId: z.string().min(1).max(120).optional(),
+    // Tỉ lệ khung hình: 0 là giữa, 1 là đẩy tâm ra đúng mép.
+    x: z.number().min(-1).max(1).optional(),
+    y: z.number().min(-1).max(1).optional(),
+    scale: z.number().min(0.1).max(4).optional(),
+    rotationDeg: z.number().min(-180).max(180).optional(),
+    opacity: z.number().min(0).max(1).optional(),
+    reset: z.boolean().optional()
+  }),
+
+  update_text_overlay: z.object({
+    overlayId: z.string().min(1).max(120),
+    text: z.string().max(500).optional(),
+    startSeconds: seconds.optional(),
+    endSeconds: seconds.optional(),
+    animation: z.enum(['none', 'fade', 'pop', 'slide-up', 'typewriter']).optional(),
+    exit: z.enum(['none', 'fade', 'shrink', 'slide-down']).optional(),
+    glow: z.boolean().optional()
+  }),
+
+  update_subtitle_cue: z.object({
+    subtitleTrackId: z.string().min(1).max(120),
+    cueId: z.string().min(1).max(120),
+    text: z.string().max(5000).optional(),
+    startSeconds: seconds.optional(),
+    endSeconds: seconds.optional()
+  }),
+
+  move_subtitle_cue: z.object({
+    subtitleTrackId: z.string().min(1).max(120),
+    toSubtitleTrackId: z.string().min(1).max(120),
+    cueId: z.string().min(1).max(120)
+  }),
+
+  remove_subtitle_cue: z.object({
+    subtitleTrackId: z.string().min(1).max(120),
+    cueId: z.string().min(1).max(120)
   }),
 
   /**
@@ -181,6 +238,8 @@ export const chatToolSchemas = {
    * nên xin 1 giây mà clip chỉ còn 0,4 giây thì nhận được 0,4 giây.
    */
   set_clip_transition: z.object({
+    /** Mép nào của clip. Bỏ trống là mép VÀO. */
+    edge: z.enum(['in', 'out']).optional(),
     clipId: z.string().min(1).max(120).optional(),
     kind: z.enum([
       'none',
@@ -327,7 +386,21 @@ export const chatToolDescriptions: Record<ChatToolName, string> = {
     'Cut a time range out of the timeline and pull everything after it back to close the gap. Applies to every track so picture and sound stay in sync.',
   build_cut_from_transcript:
     'Assemble a cut from a transcript: keep only the listed segments, laid end to end in transcript order on one track. Replaces whatever is already on that track. This is the main tool for editing by what was said.',
-  add_track: 'Add a new track to the timeline.',
+  add_track:
+    'Add a lane to the timeline. Lane ORDER decides layering: the lowest lane draws on top. Kinds: video and image hold clips, text holds on-screen text, audio holds sound, subtitle shows a subtitle track.',
+  remove_track:
+    'Delete a lane. Clips on it go with it, and a text lane takes its on-screen text with it. One undo step restores everything.',
+  reorder_track:
+    'Move a lane to another position, counting from 0 at the top. This is how you change what covers what: the lowest lane draws on top of everything above it.',
+  set_track:
+    'Rename a lane, hide it, or lock it. A hidden lane disappears from the preview and from the exported file.',
+  set_clip_transform:
+    'Place a clip inside the frame: x and y are fractions of the frame from the centre (0 is centred, 1 pushes the centre to the edge), scale multiplies its size, rotationDeg tilts it, opacity fades it. Use this to put a logo or a product photo where you want it. Pass reset:true to put it back.',
+  update_text_overlay:
+    'Change an existing on-screen text: its words, its timing, or its enter/exit animation.',
+  update_subtitle_cue: 'Change the words or the timing of one subtitle cue.',
+  move_subtitle_cue: 'Move one cue to a different subtitle track. It keeps its words and timing.',
+  remove_subtitle_cue: 'Delete one subtitle cue.',
   build_cut_from_shots:
     'Assemble a cut from detected camera shots, laid end to end in the order given. Use this for footage with no speech, where there is no transcript to work from. Call list_shots first to see each shot and its still frame.',
   add_text_overlay:
@@ -336,7 +409,7 @@ export const chatToolDescriptions: Record<ChatToolName, string> = {
   set_canvas:
     'Set the project canvas shape. Use 9:16 for TikTok, Reels and Shorts, 16:9 for YouTube, 1:1 for square. Do this before laying out text, because it changes where text sits in frame.',
   set_clip_transition:
-    'Put a transition on the start of a clip, so it blends out of the clip before it. Use "none" to remove one. A transition eats into the clip, so it needs footage before the cut to play over.',
+    'Put an effect on one edge of a clip. edge "in" (the default) blends it out of the clip before it and needs footage before the cut to play over; edge "out" plays the same effect in reverse over the last frames and needs no extra footage. Use kind "none" to remove one.',
   set_clip_motion:
     'Move the frame over the whole length of a clip: a slow push in or out, a slow pan, a punch in at the cut, or a shake. Use this on footage that barely moves — a still product shot with a slow push reads as edited, the same shot held still reads as a frozen photo. Use "none" to remove it.',
   set_clip_color:
@@ -371,7 +444,18 @@ export const chatToolParameterHints: Record<ChatToolName, string> = {
   build_cut_from_transcript:
     '{ transcriptId?: string, keepSegmentIds: string[], trackId?: string }',
   add_track:
-    "{ kind: 'video' | 'audio' | 'subtitle', name: string, role?: 'dialogue' | 'voiceover' | 'music' | 'sfx' }",
+    "{ kind: 'video' | 'audio' | 'subtitle' | 'text' | 'image', name: string, role?: 'dialogue' | 'voiceover' | 'music' | 'sfx' }",
+  remove_track: '{ trackId: string }',
+  reorder_track: '{ trackId: string, toIndex: number }',
+  set_track: '{ trackId: string, name?: string, hidden?: boolean, locked?: boolean }',
+  set_clip_transform:
+    '{ clipId?: string, x?: number, y?: number, scale?: number, rotationDeg?: number, opacity?: number, reset?: boolean }',
+  update_text_overlay:
+    "{ overlayId: string, text?: string, startSeconds?: number, endSeconds?: number, animation?: 'none' | 'fade' | 'pop' | 'slide-up' | 'typewriter', exit?: 'none' | 'fade' | 'shrink' | 'slide-down', glow?: boolean }",
+  update_subtitle_cue:
+    '{ subtitleTrackId: string, cueId: string, text?: string, startSeconds?: number, endSeconds?: number }',
+  move_subtitle_cue: '{ subtitleTrackId: string, toSubtitleTrackId: string, cueId: string }',
+  remove_subtitle_cue: '{ subtitleTrackId: string, cueId: string }',
   build_cut_from_shots:
     '{ assetId: string, shotIndexes: number[], trackId?: string, maxShotSeconds?: number }',
   add_text_overlay:
@@ -379,7 +463,7 @@ export const chatToolParameterHints: Record<ChatToolName, string> = {
   remove_text_overlay: '{ overlayId: string }',
   set_canvas: "{ aspect: '16:9' | '9:16' | '1:1', longEdgePx?: number }",
   set_clip_transition:
-    "{ clipId?: string, kind: 'none' | 'fade' | 'slide-left' | 'slide-right' | 'slide-up' | 'slide-down' | 'wipe-left' | 'wipe-right' | 'zoom' | 'whip-left' | 'whip-right' | 'blur' | 'glitch' | 'spin' | 'flash', durationSeconds?: number }",
+    "{ clipId?: string, edge?: 'in' | 'out', kind: 'none' | 'fade' | 'slide-left' | 'slide-right' | 'slide-up' | 'slide-down' | 'wipe-left' | 'wipe-right' | 'zoom' | 'whip-left' | 'whip-right' | 'blur' | 'glitch' | 'spin' | 'flash', durationSeconds?: number }",
   set_clip_motion:
     "{ clipId?: string, kind: 'none' | 'zoom-in' | 'zoom-out' | 'pan-left' | 'pan-right' | 'pan-up' | 'pan-down' | 'punch-in' | 'shake', intensity?: number }",
   set_clip_color:

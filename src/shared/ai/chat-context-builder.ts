@@ -22,6 +22,7 @@ import {
  */
 
 /** Cắt bớt danh sách clip cho ngữ cảnh khỏi phình theo dự án dài. */
+const MAX_CUES_LISTED = 40
 const MAX_CLIPS_LISTED = 60
 
 function seconds(us: number): string {
@@ -50,15 +51,18 @@ export function buildProjectContext(input: ChatContextInput): string {
       : 'Selected clips: none'
   )
 
-  lines.push('', 'Tracks:')
-  for (const track of document.tracks) {
+  // Nói thẳng ý nghĩa của thứ tự: agent muốn đặt logo lên trên cảnh quay thì phải
+  // biết lane nào vẽ trên lane nào, và con số trong ngoặc là thứ `reorder_track` nhận.
+  lines.push('', 'Tracks (index 0 is the top lane; the LOWEST lane draws on top):')
+  for (const [index, track] of document.tracks.entries()) {
     const parts = [
-      `- id=${track.id}`,
+      `- [${index}] id=${track.id}`,
       `kind=${track.kind}`,
       track.role ? `role=${track.role}` : '',
       `name="${track.name}"`,
       `clips=${track.clips.length}`,
       track.muted ? 'muted' : '',
+      track.hidden ? 'hidden' : '',
       track.locked ? 'locked' : ''
     ].filter(Boolean)
     lines.push(parts.join(' '))
@@ -108,6 +112,14 @@ export function buildProjectContext(input: ChatContextInput): string {
   if (document.subtitleTracks.length === 0) lines.push('- none')
   for (const track of document.subtitleTracks) {
     lines.push(`- id=${track.id} name="${track.name}" cues=${track.cues.length}`)
+    // Liệt kê id cue: không có chúng thì agent không sửa hay dời được câu nào.
+    // Cắt bớt vì một track phụ đề dài có hàng trăm câu và sẽ nuốt sạch ngữ cảnh.
+    for (const cue of track.cues.slice(0, MAX_CUES_LISTED)) {
+      lines.push(`  - cue=${cue.id} ${seconds(cue.startUs)}s–${seconds(cue.endUs)}s "${cue.text}"`)
+    }
+    if (track.cues.length > MAX_CUES_LISTED) {
+      lines.push(`  - … còn ${track.cues.length - MAX_CUES_LISTED} câu nữa`)
+    }
   }
 
   return lines.join('\n')

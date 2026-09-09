@@ -12,6 +12,7 @@ import {
 } from '@playwright/test'
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js'
+import { chatToolSchemas } from '../src/shared/ai/chat-tool-catalog'
 
 /**
  * Agent bên ngoài dựng phim qua MCP — chạy bằng CLIENT MCP THẬT.
@@ -53,6 +54,7 @@ function textOf(result: unknown): string {
 
 async function savedDocument(): Promise<{
   tracks: Array<{
+    id: string
     kind: string
     clips: Array<{ startUs: number; durationUs: number; sourceInUs: number }>
   }>
@@ -168,9 +170,12 @@ test('agent liệt kê được công cụ dựng phim', async () => {
   expect(names).toContain('get_transcript')
   expect(names).toContain('list_media')
   // Nhóm dựng — sinh từ chính danh mục của AI Chat trong app.
-  expect(names).toContain('build_cut_from_transcript')
-  expect(names).toContain('insert_clip')
-  expect(names).toContain('ripple_delete_range')
+  //
+  // Kiểm ĐỦ chứ không kiểm vài cái: máy chủ MCP đổi từng schema Zod sang JSON
+  // Schema lúc đăng ký, và một schema mà bộ SDK không đổi được sẽ rơi ra khỏi
+  // danh sách mà không báo gì — công cụ có trong app nhưng agent không gọi được.
+  const missing = Object.keys(chatToolSchemas).filter((name) => !names.includes(name))
+  expect(missing).toEqual([])
 
   await client.close()
 })
@@ -184,7 +189,9 @@ test('agent đọc được dự án và thư viện media', async () => {
 
   const overview = textOf(await client.callTool({ name: 'get_project_overview', arguments: {} }))
   expect(overview).toContain('Dự án MCP')
-  expect(overview).toContain('Tracks:')
+  // Dòng tiêu đề nói luôn ý nghĩa của thứ tự lane; agent cần biết lane nào vẽ
+  // trên lane nào mới đặt được logo lên trên cảnh quay.
+  expect(overview).toContain('Tracks (index 0 is the top lane')
 
   const media = textOf(await client.callTool({ name: 'list_media', arguments: {} }))
   expect(media).toContain('canh-quay.mp4')
@@ -383,6 +390,27 @@ test('agent bị chặn khi chọn cú máy không tồn tại', async () => {
   )
   expect(result).toContain('Bị từ chối')
   expect(result).toContain('Không có cú máy số')
+
+  await client.close()
+})
+
+/*
+ * Để CUỐI file: phép thử này xáo thứ tự lane, mà những phép thử phía trên đọc
+ * track theo chỉ số. Trả lại thứ tự cũ ở đây thì được, nhưng một bước dọn hụt sẽ
+ * làm chúng đổ vì lý do chẳng liên quan gì tới thứ chúng kiểm.
+ */
+test('agent gọi được công cụ sắp lại thứ tự lane', async () => {
+  // Thứ tự lane quyết định lớp nào che lớp nào, nên đây là công cụ agent cần khi
+  // dựng: đặt logo lên trên cảnh quay.
+  const client = await connect()
+  const before = await savedDocument()
+  const trackId = before.tracks[before.tracks.length - 1].id
+
+  await client.callTool({ name: 'reorder_track', arguments: { trackId, toIndex: 0 } })
+
+  await expect
+    .poll(async () => (await savedDocument()).tracks[0].id, { timeout: 15_000 })
+    .toBe(trackId)
 
   await client.close()
 })

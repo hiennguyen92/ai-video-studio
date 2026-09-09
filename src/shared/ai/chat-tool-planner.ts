@@ -2,10 +2,11 @@ import type { EditorCommand } from '../commands/editor-command-types'
 import type { ProjectDocument } from '../domain/project-document-types'
 import { countAssetUsages, findClip } from '../domain/project-document-types'
 import { DEFAULT_MOTION_INTENSITY } from '../domain/clip-motion-types'
-import { clipEndUs, type Clip } from '../domain/timeline-track-types'
+import { DEFAULT_CLIP_TRANSFORM, clipEndUs, type Clip } from '../domain/timeline-track-types'
 import { buildSubtitleCues } from '../domain/subtitle-cue-builder'
 import {
   DEFAULT_SUBTITLE_STYLE,
+  type SubtitleCue,
   type SubtitleStyle,
   type SubtitleTrack
 } from '../domain/subtitle-types'
@@ -116,6 +117,19 @@ function requireTrack(context: ChatEditContext, trackId: string): void {
   if (!context.document.tracks.some((track) => track.id === trackId)) {
     throw new Error(`Không tìm thấy track "${trackId}"`)
   }
+}
+
+/** Cue phụ đề theo id, kèm track chứa nó. Báo lỗi rõ ràng thay vì trả undefined. */
+function locateCue(
+  document: ProjectDocument,
+  subtitleTrackId: string,
+  cueId: string
+): { track: SubtitleTrack; cue: SubtitleCue } {
+  const track = document.subtitleTracks.find((item) => item.id === subtitleTrackId)
+  if (!track) throw new Error(`Không tìm thấy track phụ đề "${subtitleTrackId}"`)
+  const cue = track.cues.find((item) => item.id === cueId)
+  if (!cue) throw new Error(`Không tìm thấy cue "${cueId}" trong "${track.name}"`)
+  return { track, cue }
 }
 
 /** Dựng lệnh cho một lời gọi đã qua schema. */
@@ -578,22 +592,26 @@ function planOne(context: ChatEditContext, tool: ChatToolName, args: unknown): P
       const input = chatToolSchemas.set_clip_transition.parse(args)
       const clipId = resolveClipId(context, input.clipId)
 
+      const edge = input.edge ?? 'in'
+      const edgeLabel = edge === 'out' ? 'hiệu ứng ra' : 'chuyển cảnh'
+
       if (input.kind === 'none') {
         return {
           tool,
-          description: 'Gỡ chuyển cảnh của clip',
-          commands: [{ type: 'clip/set-transition', clipId }]
+          description: `Gỡ ${edgeLabel} của clip`,
+          commands: [{ type: 'clip/set-transition', clipId, edge }]
         }
       }
 
       const durationUs = secondsToMicros(input.durationSeconds ?? 0.5)
       return {
         tool,
-        description: `Đặt chuyển cảnh ${input.kind} ${formatSeconds(durationUs)} cho clip`,
+        description: `Đặt ${edgeLabel} ${input.kind} ${formatSeconds(durationUs)} cho clip`,
         commands: [
           {
             type: 'clip/set-transition',
             clipId,
+            edge,
             transition: { kind: input.kind, durationUs }
           }
         ]
@@ -676,6 +694,202 @@ function planOne(context: ChatEditContext, tool: ChatToolName, args: unknown): P
             ? `Xoá media "${asset.name}" và ${usages} clip đang dùng nó`
             : `Xoá media "${asset.name}"`,
         commands: [{ type: 'asset/remove', assetId: input.assetId, removeUsages: usages > 0 }]
+      }
+    }
+
+    case 'remove_track': {
+      const input = chatToolSchemas.remove_track.parse(args)
+      const track = document.tracks.find((item) => item.id === input.trackId)
+      if (!track) throw new Error(`Không tìm thấy track "${input.trackId}"`)
+      if (track.locked) throw new Error(`Track "${track.name}" đang bị khoá`)
+
+      // Nói rõ sẽ mất gì: agent xoá một lane tưởng là rỗng rồi kéo theo cả chục
+      // clip là chuyện không hoàn tác lại được trong đầu người dùng.
+      const overlays = document.textOverlays.filter((item) => item.trackId === track.id).length
+      const losing = [
+        track.clips.length > 0 ? `${track.clips.length} clip` : '',
+        overlays > 0 ? `${overlays} chữ` : ''
+      ].filter(Boolean)
+
+      return {
+        tool,
+        description: `Xoá lane "${track.name}"${losing.length > 0 ? ` cùng ${losing.join(' và ')}` : ''}`,
+        commands: [{ type: 'track/remove', trackId: track.id }]
+      }
+    }
+
+    case 'reorder_track': {
+      const input = chatToolSchemas.reorder_track.parse(args)
+      const from = document.tracks.findIndex((item) => item.id === input.trackId)
+      if (from < 0) throw new Error(`Không tìm thấy track "${input.trackId}"`)
+      if (input.toIndex >= document.tracks.length) {
+        throw new Error(`Dự án chỉ có ${document.tracks.length} lane`)
+      }
+      if (input.toIndex === from) throw new Error('Lane đã ở đúng vị trí đó')
+
+      return {
+        tool,
+        // Nói cả nghĩa của phép dời: agent thường gọi lệnh này để đổi lớp che.
+        description: `Dời lane "${document.tracks[from].name}" xuống vị trí ${input.toIndex} (lane dưới vẽ trên)`,
+        commands: [{ type: 'track/reorder', trackId: input.trackId, toIndex: input.toIndex }]
+      }
+    }
+
+    case 'set_track': {
+      const input = chatToolSchemas.set_track.parse(args)
+      const track = document.tracks.find((item) => item.id === input.trackId)
+      if (!track) throw new Error(`Không tìm thấy track "${input.trackId}"`)
+
+      const patch: { name?: string; hidden?: boolean; locked?: boolean } = {}
+      if (input.name !== undefined) patch.name = input.name
+      if (input.hidden !== undefined) patch.hidden = input.hidden
+      if (input.locked !== undefined) patch.locked = input.locked
+      if (Object.keys(patch).length === 0) throw new Error('Chưa nêu thứ gì để đổi')
+
+      return {
+        tool,
+        description: `Đổi lane "${track.name}": ${Object.keys(patch).join(', ')}`,
+        commands: [{ type: 'track/update', trackId: track.id, patch }]
+      }
+    }
+
+    case 'set_clip_transform': {
+      const input = chatToolSchemas.set_clip_transform.parse(args)
+      const clipId = resolveClipId(context, input.clipId)
+      const clip = findClipById(document, clipId)
+      const current = clip?.transform ?? DEFAULT_CLIP_TRANSFORM
+
+      if (input.reset) {
+        return {
+          tool,
+          description: 'Đưa clip về vị trí và cỡ gốc',
+          commands: [
+            { type: 'clip/update', clipId, patch: { transform: { ...DEFAULT_CLIP_TRANSFORM } } }
+          ]
+        }
+      }
+
+      const transform = {
+        ...current,
+        ...(input.x !== undefined ? { x: input.x } : {}),
+        ...(input.y !== undefined ? { y: input.y } : {}),
+        ...(input.scale !== undefined ? { scale: input.scale } : {}),
+        ...(input.rotationDeg !== undefined ? { rotationDeg: input.rotationDeg } : {}),
+        ...(input.opacity !== undefined ? { opacity: input.opacity } : {})
+      }
+      // Gọi mà không nêu gì thì ghi đè bằng chính giá trị cũ — một bước hoàn tác
+      // rỗng, và agent tưởng mình vừa làm được việc.
+      if (
+        input.x === undefined &&
+        input.y === undefined &&
+        input.scale === undefined &&
+        input.rotationDeg === undefined &&
+        input.opacity === undefined
+      ) {
+        throw new Error('Chưa nêu thứ gì để đổi')
+      }
+
+      return {
+        tool,
+        description: `Đặt clip ở ${Math.round(transform.x * 100)}% · ${Math.round(transform.y * 100)}%, cỡ ${Math.round(transform.scale * 100)}%`,
+        commands: [{ type: 'clip/update', clipId, patch: { transform } }]
+      }
+    }
+
+    case 'update_text_overlay': {
+      const input = chatToolSchemas.update_text_overlay.parse(args)
+      const overlay = document.textOverlays.find((item) => item.id === input.overlayId)
+      if (!overlay) throw new Error(`Không tìm thấy chữ overlay "${input.overlayId}"`)
+
+      const startUs =
+        input.startSeconds !== undefined ? secondsToMicros(input.startSeconds) : undefined
+      const endUs = input.endSeconds !== undefined ? secondsToMicros(input.endSeconds) : undefined
+      const nextStart = startUs ?? overlay.startUs
+      const nextEnd = endUs ?? overlay.endUs
+      if (nextEnd <= nextStart) throw new Error('Thời điểm kết thúc phải sau thời điểm bắt đầu')
+
+      return {
+        tool,
+        description: `Sửa chữ "${input.text ?? overlay.text}"`,
+        commands: [
+          {
+            type: 'text/update',
+            overlayId: overlay.id,
+            ...(input.text !== undefined ? { text: input.text } : {}),
+            ...(startUs !== undefined ? { startUs } : {}),
+            ...(endUs !== undefined ? { endUs } : {}),
+            ...(input.animation !== undefined ? { animation: input.animation } : {}),
+            ...(input.exit !== undefined ? { exitAnimation: input.exit } : {}),
+            ...(input.glow !== undefined ? { glow: input.glow } : {})
+          }
+        ]
+      }
+    }
+
+    case 'update_subtitle_cue': {
+      const input = chatToolSchemas.update_subtitle_cue.parse(args)
+      const { cue } = locateCue(document, input.subtitleTrackId, input.cueId)
+
+      const startUs =
+        input.startSeconds !== undefined ? secondsToMicros(input.startSeconds) : undefined
+      const endUs = input.endSeconds !== undefined ? secondsToMicros(input.endSeconds) : undefined
+      if ((endUs ?? cue.endUs) <= (startUs ?? cue.startUs)) {
+        throw new Error('Thời điểm kết thúc phải sau thời điểm bắt đầu')
+      }
+
+      return {
+        tool,
+        description: `Sửa cue "${input.text ?? cue.text}"`,
+        commands: [
+          {
+            type: 'subtitle/update-cue',
+            trackId: input.subtitleTrackId,
+            cueId: input.cueId,
+            ...(input.text !== undefined ? { text: input.text } : {}),
+            ...(startUs !== undefined ? { startUs } : {}),
+            ...(endUs !== undefined ? { endUs } : {})
+          }
+        ]
+      }
+    }
+
+    case 'move_subtitle_cue': {
+      const input = chatToolSchemas.move_subtitle_cue.parse(args)
+      const { cue } = locateCue(document, input.subtitleTrackId, input.cueId)
+      const destination = document.subtitleTracks.find(
+        (item) => item.id === input.toSubtitleTrackId
+      )
+      if (!destination) {
+        throw new Error(`Không tìm thấy track phụ đề "${input.toSubtitleTrackId}"`)
+      }
+
+      return {
+        tool,
+        description: `Dời cue "${cue.text}" sang "${destination.name}"`,
+        commands: [
+          {
+            type: 'subtitle/move-cue',
+            fromTrackId: input.subtitleTrackId,
+            toTrackId: input.toSubtitleTrackId,
+            cueId: input.cueId
+          }
+        ]
+      }
+    }
+
+    case 'remove_subtitle_cue': {
+      const input = chatToolSchemas.remove_subtitle_cue.parse(args)
+      const { cue } = locateCue(document, input.subtitleTrackId, input.cueId)
+      return {
+        tool,
+        description: `Xoá cue "${cue.text}"`,
+        commands: [
+          {
+            type: 'subtitle/remove-cue',
+            trackId: input.subtitleTrackId,
+            cueId: input.cueId
+          }
+        ]
       }
     }
 

@@ -3,6 +3,8 @@ import { applyEditorCommand } from '../commands/editor-command-reducer'
 import { createEmptyProject } from '../domain/project-document-factory'
 import type { ProjectDocument } from '../domain/project-document-types'
 import { clipEndUs } from '../domain/timeline-track-types'
+import { chatToolSchemas } from './chat-tool-catalog'
+import { buildChatSystemPrompt } from './chat-context-builder'
 import { planChatToolCalls, secondsToMicros, type ChatEditContext } from './chat-tool-planner'
 
 /**
@@ -898,5 +900,209 @@ describe('công cụ đặt vị trí chữ', () => {
 
     expect(plan.steps).toEqual([])
     expect(plan.failures).toHaveLength(1)
+  })
+})
+
+describe('danh mục công cụ', () => {
+  it('lời nhắc hệ thống liệt kê ĐỦ mọi công cụ', () => {
+    // Công cụ không lọt vào lời nhắc là công cụ mô hình không biết có tồn tại —
+    // có mà như không. Bảng mô tả và bảng schema là hai bảng rời, và chúng chỉ
+    // khớp nhau khi còn được kiểm.
+    const prompt = buildChatSystemPrompt()
+    for (const name of Object.keys(chatToolSchemas)) {
+      expect(prompt).toContain(name)
+    }
+  })
+})
+
+describe('công cụ quản lý lane', () => {
+  const withTracks = (): ProjectDocument => {
+    const document = project()
+    for (const kind of ['text', 'image'] as const) {
+      const plan = planChatToolCalls(context(document), [
+        { name: 'add_track', arguments: { kind, name: `Lane ${kind}` } }
+      ])
+      expect(plan.failures).toEqual([])
+      for (const command of plan.steps.flatMap((step) => step.commands)) {
+        expect(applyEditorCommand(document, command).ok).toBe(true)
+      }
+    }
+    return document
+  }
+
+  it('thêm được lane chữ và lane ảnh, không chỉ hình với tiếng', () => {
+    const document = withTracks()
+    expect(document.tracks.map((track) => track.kind)).toContain('text')
+    expect(document.tracks.map((track) => track.kind)).toContain('image')
+  })
+
+  it('dời lane đổi thứ tự lớp', () => {
+    const document = withTracks()
+    const imageLane = document.tracks.find((track) => track.kind === 'image')!.id
+    const plan = planChatToolCalls(context(document), [
+      { name: 'reorder_track', arguments: { trackId: imageLane, toIndex: 0 } }
+    ])
+    expect(plan.failures).toEqual([])
+    for (const command of plan.steps.flatMap((step) => step.commands)) {
+      expect(applyEditorCommand(document, command).ok).toBe(true)
+    }
+    expect(document.tracks[0].id).toBe(imageLane)
+  })
+
+  it('dời tới chỗ nó đang đứng thì báo lỗi, không ghi bước rỗng', () => {
+    const document = withTracks()
+    const plan = planChatToolCalls(context(document), [
+      { name: 'reorder_track', arguments: { trackId: document.tracks[0].id, toIndex: 0 } }
+    ])
+    expect(plan.steps).toEqual([])
+    expect(plan.failures).toHaveLength(1)
+  })
+
+  it('dời ra ngoài danh sách thì báo lỗi thay vì kẹp im lặng', () => {
+    const document = withTracks()
+    const plan = planChatToolCalls(context(document), [
+      { name: 'reorder_track', arguments: { trackId: document.tracks[0].id, toIndex: 99 } }
+    ])
+    expect(plan.steps).toEqual([])
+    expect(plan.failures).toHaveLength(1)
+  })
+
+  it('xoá lane nói rõ sẽ mất bao nhiêu clip', () => {
+    const { document, trackId } = withClip()
+    const plan = planChatToolCalls(context(document), [
+      { name: 'remove_track', arguments: { trackId } }
+    ])
+    expect(plan.steps[0].description).toContain('1 clip')
+    for (const command of plan.steps.flatMap((step) => step.commands)) {
+      expect(applyEditorCommand(document, command).ok).toBe(true)
+    }
+    expect(document.tracks.some((track) => track.id === trackId)).toBe(false)
+  })
+
+  it('không xoá được lane đang khoá', () => {
+    const { document, trackId } = withClip()
+    applyEditorCommand(document, { type: 'track/update', trackId, patch: { locked: true } })
+    const plan = planChatToolCalls(context(document), [
+      { name: 'remove_track', arguments: { trackId } }
+    ])
+    expect(plan.steps).toEqual([])
+    expect(plan.failures).toHaveLength(1)
+  })
+
+  it('ẩn và khoá lane', () => {
+    const { document, trackId } = withClip()
+    const plan = planChatToolCalls(context(document), [
+      { name: 'set_track', arguments: { trackId, hidden: true, name: 'Lớp nền' } }
+    ])
+    for (const command of plan.steps.flatMap((step) => step.commands)) {
+      expect(applyEditorCommand(document, command).ok).toBe(true)
+    }
+    const track = document.tracks.find((item) => item.id === trackId)!
+    expect(track.hidden).toBe(true)
+    expect(track.name).toBe('Lớp nền')
+  })
+
+  it('gọi set_track mà không nêu gì thì báo lỗi', () => {
+    const { document, trackId } = withClip()
+    const plan = planChatToolCalls(context(document), [
+      { name: 'set_track', arguments: { trackId } }
+    ])
+    expect(plan.steps).toEqual([])
+    expect(plan.failures).toHaveLength(1)
+  })
+})
+
+describe('công cụ đặt clip trong khung hình', () => {
+  it('đặt vị trí, cỡ và góc xoay', () => {
+    const { document, clipId } = withClip()
+    const plan = planChatToolCalls({ ...context(document), selectedClipIds: [clipId] }, [
+      { name: 'set_clip_transform', arguments: { x: 0.5, y: -0.25, scale: 0.4, rotationDeg: 8 } }
+    ])
+    expect(plan.failures).toEqual([])
+    for (const command of plan.steps.flatMap((step) => step.commands)) {
+      expect(applyEditorCommand(document, command).ok).toBe(true)
+    }
+
+    const clip = document.tracks.flatMap((track) => track.clips)[0]
+    expect(clip.transform).toMatchObject({ x: 0.5, y: -0.25, scale: 0.4, rotationDeg: 8 })
+  })
+
+  it('chỉ nêu một trường thì giữ nguyên các trường còn lại', () => {
+    const { document, clipId } = withClip()
+    const ctx = { ...context(document), selectedClipIds: [clipId] }
+    for (const call of [
+      { name: 'set_clip_transform', arguments: { scale: 2 } },
+      { name: 'set_clip_transform', arguments: { x: 0.3 } }
+    ]) {
+      const plan = planChatToolCalls(ctx, [call])
+      for (const command of plan.steps.flatMap((step) => step.commands)) {
+        expect(applyEditorCommand(document, command).ok).toBe(true)
+      }
+    }
+
+    // Ghi đè cả bảng mà không đọc lại giá trị cũ thì lệnh sau xoá việc lệnh trước.
+    const clip = document.tracks.flatMap((track) => track.clips)[0]
+    expect(clip.transform).toMatchObject({ scale: 2, x: 0.3 })
+  })
+
+  it('reset đưa về giá trị gốc', () => {
+    const { document, clipId } = withClip()
+    const ctx = { ...context(document), selectedClipIds: [clipId] }
+    for (const call of [
+      { name: 'set_clip_transform', arguments: { scale: 2, rotationDeg: 20 } },
+      { name: 'set_clip_transform', arguments: { reset: true } }
+    ]) {
+      const plan = planChatToolCalls(ctx, [call])
+      for (const command of plan.steps.flatMap((step) => step.commands)) {
+        expect(applyEditorCommand(document, command).ok).toBe(true)
+      }
+    }
+    expect(document.tracks.flatMap((track) => track.clips)[0].transform).toMatchObject({
+      scale: 1,
+      rotationDeg: 0
+    })
+  })
+
+  it('gọi mà không nêu gì thì báo lỗi', () => {
+    const { document, clipId } = withClip()
+    const plan = planChatToolCalls({ ...context(document), selectedClipIds: [clipId] }, [
+      { name: 'set_clip_transform', arguments: {} }
+    ])
+    expect(plan.steps).toEqual([])
+    expect(plan.failures).toHaveLength(1)
+  })
+})
+
+describe('công cụ hiệu ứng ra của clip', () => {
+  it('đặt được hiệu ứng ở mép RA', () => {
+    const { document, clipId } = withClip()
+    const plan = planChatToolCalls({ ...context(document), selectedClipIds: [clipId] }, [
+      {
+        name: 'set_clip_transition',
+        arguments: { edge: 'out', kind: 'fade', durationSeconds: 0.4 }
+      }
+    ])
+    expect(plan.failures).toEqual([])
+    for (const command of plan.steps.flatMap((step) => step.commands)) {
+      expect(applyEditorCommand(document, command).ok).toBe(true)
+    }
+
+    const clip = document.tracks.flatMap((track) => track.clips)[0]
+    expect(clip.transitionOut?.kind).toBe('fade')
+    // Không được đụng tới mép vào.
+    expect(clip.transitionIn).toBeUndefined()
+  })
+
+  it('bỏ trống mép thì vẫn là mép VÀO như trước', () => {
+    const { document, clipId } = withClip()
+    const plan = planChatToolCalls({ ...context(document), selectedClipIds: [clipId] }, [
+      { name: 'set_clip_transition', arguments: { kind: 'zoom' } }
+    ])
+    for (const command of plan.steps.flatMap((step) => step.commands)) {
+      expect(applyEditorCommand(document, command).ok).toBe(true)
+    }
+    const clip = document.tracks.flatMap((track) => track.clips)[0]
+    expect(clip.transitionIn?.kind).toBe('zoom')
+    expect(clip.transitionOut).toBeUndefined()
   })
 })
