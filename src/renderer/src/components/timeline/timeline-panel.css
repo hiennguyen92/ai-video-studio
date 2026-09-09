@@ -12,13 +12,23 @@
   border-bottom: 1px solid var(--border-subtle);
 }
 
+/*
+  MỘT khung cuộn duy nhất cho cả hai chiều.
+  
+  Trước đây chiều ngang cuộn ở `.timeline__scroll` còn chiều dọc ở đây. Hỏng
+  nặng: `.timeline__scroll` là con của một flex container nên nó cao đúng bằng
+  khung nhìn, mà `overflow-y: hidden` thì CẮT mọi lane vượt quá chiều cao đó.
+  Đo được với năm track: hộp cao 282px, nội dung 474px, và clip ở track cuối
+  không hề được vẽ — `elementFromPoint` giữa clip trả về một panel khác.
+  
+  Cột đầu track dính lại bằng `position: sticky; left: 0`, đúng thứ CSS này vốn
+  đã viết sẵn nhưng chưa bao giờ có tác dụng vì chiều ngang cuộn ở chỗ khác.
+*/
 .timeline__body {
   flex: 1;
   min-height: 0;
   display: flex;
-  /* Cuộn dọc chung cho cả cột đầu track và vùng clip. */
-  overflow-y: auto;
-  overflow-x: hidden;
+  overflow: auto;
 }
 
 .timeline__heads {
@@ -32,17 +42,20 @@
   z-index: 3;
 }
 
+/* Ô trống trên đầu cột tên track, phải dính cùng lúc với thước thời gian —
+   thước dính ở trên còn ô này trôi đi thì hai cột lệch nhau ngay. */
 .timeline__heads-spacer {
   height: var(--timeline-ruler-height);
   border-bottom: 1px solid var(--border-subtle);
   background: var(--surface-raised);
+  position: sticky;
+  top: 0;
+  z-index: 4;
 }
 
+/* Không còn là khung cuộn: chỉ là cột lane, rộng và cao đúng bằng nội dung. */
 .timeline__scroll {
-  flex: 1;
-  min-width: 0;
-  overflow-x: auto;
-  overflow-y: hidden;
+  flex: 0 0 auto;
 }
 
 .timeline__content {

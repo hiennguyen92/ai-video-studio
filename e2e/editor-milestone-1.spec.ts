@@ -423,3 +423,45 @@ test('đổi cỡ lane làm mọi lane thấp xuống và thấy được nhiề
   await expect.poll(async () => (await laneHeights())[0]).toBe(40)
   await expect(timeline.getByLabel('Chiều cao track')).toHaveValue('small')
 })
+
+test('lane dưới cùng được VẼ RA thật, không chỉ nằm đúng chỗ trên giấy', async () => {
+  // Phép thử hình học không đủ: `getBoundingClientRect` trả về vị trí bố cục kể
+  // cả khi phần tử bị một khung cha cắt mất. Đo được: với khung cuộn cũ, lane
+  // thứ năm trở đi có toạ độ "nằm trong tầm nhìn" nhưng điểm giữa nó lại trả về
+  // nền của panel — tức là không có gì được vẽ ở đó.
+  const timeline = page.getByRole('region', { name: 'Timeline' })
+  for (let index = 0; index < 5; index++) {
+    await timeline.getByRole('button', { name: 'Thêm track video' }).click()
+  }
+
+  await page.evaluate(() => {
+    const body = document.querySelector('.timeline__body') as HTMLElement
+    body.scrollTop = body.scrollHeight
+  })
+  await page.waitForTimeout(200)
+
+  const rows = await page.evaluate(() => {
+    const body = document.querySelector('.timeline__body') as HTMLElement
+    const frame = body.getBoundingClientRect()
+    // Thước thời gian dính ở đỉnh và che lane nằm ngay dưới nó — đó là đúng, nên
+    // chỉ xét những lane nằm hẳn dưới thước.
+    const ruler = document.querySelector('.timeline__ruler-row')!.getBoundingClientRect()
+    return [...document.querySelectorAll('.timeline-lane')]
+      .map((lane, index) => {
+        const rect = lane.getBoundingClientRect()
+        if (rect.top < ruler.bottom || rect.bottom > frame.bottom + 1) return null
+        const hit = document.elementFromPoint(frame.left + 400, rect.top + rect.height / 2)
+        // Phải trúng CHÍNH lane đó hoặc thứ nằm trong nó. Trúng thẻ cha nghĩa là
+        // nhìn xuyên qua lane xuống nền — lane không được vẽ.
+        return {
+          index,
+          painted: Boolean(hit && lane.contains(hit)),
+          hit: hit ? hit.className.toString().split(' ')[0] : null
+        }
+      })
+      .filter((row): row is { index: number; painted: boolean; hit: string | null } => row !== null)
+  })
+
+  expect(rows.length).toBeGreaterThan(3)
+  expect(rows.every((row) => row.painted)).toBe(true)
+})

@@ -227,7 +227,7 @@ test('bấm vào khối chữ thì tua đầu phát tới đúng chữ đó', as
   // timeline thấp thì lane cuối rơi ngay dưới thước và không bấm tới được — cuộn
   // xuống đáy trước.
   await page
-    .locator('.timeline__scroll')
+    .locator('.timeline__body')
     .evaluate((element) => element.scrollTo({ top: element.scrollHeight }))
 
   await page.locator('.timeline-text-block--overlay').first().click()
@@ -248,7 +248,7 @@ test('bấm vào khối chữ thì panel thuộc tính hiện đúng khối đó
   await expect(inspector.getByText('Điểm vào nguồn')).toBeVisible()
 
   await page
-    .locator('.timeline__scroll')
+    .locator('.timeline__body')
     .evaluate((element) => element.scrollTo({ top: element.scrollHeight }))
   const block = page.locator('.timeline-text-block--overlay').first()
   await block.click()
@@ -313,7 +313,7 @@ test('chọn khối chữ rồi bấm Delete thì xoá đúng chữ đó', async
   await expect(blocks).toHaveCount(2)
 
   await page
-    .locator('.timeline__scroll')
+    .locator('.timeline__body')
     .evaluate((element) => element.scrollTo({ top: element.scrollHeight }))
   await blocks.filter({ hasText: 'Chữ sắp bị xoá' }).click()
   await page.keyboard.press('Delete')
@@ -339,7 +339,7 @@ test('chọn khối chữ rồi bấm Delete thì xoá đúng chữ đó', async
 
 test('kéo chữ trên khung xem trước thì dời chữ và ghim vị trí', async () => {
   await page
-    .locator('.timeline__scroll')
+    .locator('.timeline__body')
     .evaluate((element) => element.scrollTo({ top: element.scrollHeight }))
   await page.locator('.timeline-text-block--overlay').first().click()
 

@@ -60,7 +60,7 @@ export function TimelinePanel(): JSX.Element {
   const run = useEditorStore((state) => state.run)
 
   const lanesRef = useRef<HTMLDivElement>(null)
-  const scrollRef = useRef<HTMLDivElement>(null)
+  const headsRef = useRef<HTMLDivElement>(null)
   const bodyRef = useRef<HTMLDivElement>(null)
   const trackRowRefs = useRef(new Map<string, HTMLDivElement>())
 
@@ -167,10 +167,23 @@ export function TimelinePanel(): JSX.Element {
     clearSelection()
   }, [removal, run, clearSelection])
 
+  /**
+   * Bề rộng NHÌN THẤY của vùng lane.
+   *
+   * Không đo bằng `.timeline__scroll` nữa: từ khi cả hai chiều cùng cuộn ở
+   * `.timeline__body`, cột lane rộng đúng bằng nội dung chứ không bằng khung
+   * nhìn — đo nó là đo chiều dài timeline, và "Vừa khung" sẽ phóng sai bét.
+   */
+  const laneViewportWidth = useCallback((): number => {
+    const body = bodyRef.current
+    if (!body) return 0
+    const headsWidth = headsRef.current?.offsetWidth ?? 0
+    return Math.max(0, body.clientWidth - headsWidth)
+  }, [])
+
   const handleZoomFit = useCallback(() => {
-    const width = scrollRef.current?.clientWidth ?? 0
-    setPixelsPerSecond(zoomToFit(durationUs, width))
-  }, [durationUs, setPixelsPerSecond])
+    setPixelsPerSecond(zoomToFit(durationUs, laneViewportWidth()))
+  }, [durationUs, laneViewportWidth, setPixelsPerSecond])
 
   const { trackHeightPx, heightPreset, setTrackHeight, addTrack } = useTimelineTracks({
     document,
@@ -180,14 +193,17 @@ export function TimelinePanel(): JSX.Element {
 
   // Giữ playhead luôn trong tầm nhìn khi nó chạy ra ngoài vùng cuộn.
   useLayoutEffect(() => {
-    const scroll = scrollRef.current
-    if (!scroll) return
+    const body = bodyRef.current
+    if (!body) return
+    const width = laneViewportWidth()
+    if (width <= 0) return
+
     const playheadX = usToPx(playheadUs, pixelsPerSecond)
-    const left = scroll.scrollLeft
-    const right = left + scroll.clientWidth
-    if (playheadX < left + 40) scroll.scrollLeft = Math.max(0, playheadX - 80)
-    else if (playheadX > right - 60) scroll.scrollLeft = playheadX - scroll.clientWidth + 120
-  }, [playheadUs, pixelsPerSecond])
+    const left = body.scrollLeft
+    const right = left + width
+    if (playheadX < left + 40) body.scrollLeft = Math.max(0, playheadX - 80)
+    else if (playheadX > right - 60) body.scrollLeft = playheadX - width + 120
+  }, [playheadUs, pixelsPerSecond, laneViewportWidth])
 
   if (!document) {
     return (
@@ -217,7 +233,7 @@ export function TimelinePanel(): JSX.Element {
       />
 
       <div className="timeline__body" ref={bodyRef}>
-        <div className="timeline__heads">
+        <div className="timeline__heads" ref={headsRef}>
           <div className="timeline__heads-spacer" />
           {document.tracks.map((track) => (
             <TimelineTrackHead key={track.id} track={track} />
@@ -234,7 +250,7 @@ export function TimelinePanel(): JSX.Element {
           )}
         </div>
 
-        <div className="timeline__scroll" ref={scrollRef}>
+        <div className="timeline__scroll">
           <div className="timeline__content" style={{ width: contentWidthPx }}>
             <div className="timeline__ruler-row" onPointerDown={handleScrub}>
               <TimelineRuler
