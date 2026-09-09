@@ -3,24 +3,53 @@
 import { _electron as electron } from '@playwright/test'
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
-import { mkdtemp, stat } from 'node:fs/promises'
+import { existsSync } from 'node:fs'
+import { mkdtemp, rm, stat } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { dirname, join } from 'node:path'
+import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 const execFileAsync = promisify(execFile)
 
+const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
+const builtApp = join(projectRoot, 'dist', 'mac-arm64', 'ai-video-studio.app')
+
+/**
+ * Chép bản đóng gói ra NGOÀI cây dự án rồi mới chạy.
+ *
+ * Chạy tại chỗ là xanh giả: Node giải gói bằng cách trèo ngược thư mục, nên từ
+ * `dist/…/app/node_modules` nó trèo tới `node_modules` của máy dev và tìm thấy
+ * cả những gói KHÔNG hề nằm trong gói cài. Bản cài thật ở /Applications không có
+ * tổ tiên nào như vậy, và lỗi thiếu gói chỉ lộ ra ở đó.
+ */
+async function stageOutsideProject() {
+  // Cùng ổ đĩa thì `cp -c` dùng clonefile của APFS: gần như tức thì, gần như
+  // không tốn chỗ. Khác ổ thì clonefile không làm được, phải chép thật.
+  const sameVolume = await mkdtemp(join(dirname(projectRoot), '.avs-smoke-app-'))
+  try {
+    await execFileAsync('cp', ['-Rc', builtApp, sameVolume])
+    return sameVolume
+  } catch {
+    await rm(sameVolume, { recursive: true, force: true })
+    const fallback = await mkdtemp(join(tmpdir(), 'avs-smoke-app-'))
+    await execFileAsync('cp', ['-R', builtApp, fallback])
+    return fallback
+  }
+}
+
+/** Chốt chặn: còn tổ tiên nào có node_modules thì phép thử lại vô nghĩa. */
+function assertNoAncestorModules(path) {
+  for (let dir = path; dir !== dirname(dir); dir = dirname(dir)) {
+    if (existsSync(join(dir, 'node_modules'))) {
+      throw new Error(`Chỗ chạy thử vẫn nằm dưới một node_modules: ${dir}`)
+    }
+  }
+}
+
+const stagedRoot = process.env.APP ? null : await stageOutsideProject()
+if (stagedRoot) assertNoAncestorModules(stagedRoot)
+
 const APP =
-  process.env.APP ??
-  join(
-    dirname(fileURLToPath(import.meta.url)),
-    '..',
-    'dist',
-    'mac-arm64',
-    'ai-video-studio.app',
-    'Contents',
-    'MacOS',
-    'ai-video-studio'
-  )
+  process.env.APP ?? join(stagedRoot, 'ai-video-studio.app', 'Contents', 'MacOS', 'ai-video-studio')
 const work = await mkdtemp(join(tmpdir(), 'avs-smoke-'))
 const userData = await mkdtemp(join(tmpdir(), 'avs-smoke-data-'))
 const media = join(work, 'canh-quay.mp4')
@@ -116,4 +145,5 @@ const { stdout } = await execFileAsync(ffprobe.path, [
 console.log('thời lượng file xuất:', stdout.trim())
 
 await app.close()
+if (stagedRoot) await rm(stagedRoot, { recursive: true, force: true })
 console.log('SMOKE OK')

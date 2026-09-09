@@ -59,9 +59,7 @@ npmRebuild: false
 # Không khai báo `publish`.
 #
 # Cấu hình scaffold để lại một địa chỉ example.com vô nghĩa, và chính nó kéo
-# electron-builder chạy nhánh dựng thông tin cập nhật vi sai. Nhánh đó ngã vì
-# app-builder-lib 26.15.3 gọi `@noble/hashes` bằng require() trong khi gói này
-# chỉ còn ESM — lỗi nằm trong chính electron-builder, và 26.15.3 đã là bản mới
-# nhất nên không có bản vá để nâng lên.
+# electron-builder chạy nhánh dựng thông tin cập nhật vi sai — công sức đổ vào
+# một máy chủ cập nhật không tồn tại.
 #
 # Khi nào thật sự làm tự động cập nhật thì mới khai báo lại, kèm một địa chỉ thật.
