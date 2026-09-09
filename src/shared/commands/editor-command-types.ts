@@ -65,7 +65,14 @@ const addTrack = z.object({
   role: z.enum(['dialogue', 'voiceover', 'music', 'sfx']).optional(),
   subtitleTrackId: z.string().optional(),
   /** Chèn vào vị trí này; bỏ trống thì thêm vào cuối. */
-  index: z.number().int().min(0).optional()
+  index: z.number().int().min(0).optional(),
+  /**
+   * Chiều cao lane. Bỏ trống thì dùng mặc định.
+   *
+   * Có mặt ở đây để track thêm sau khớp cỡ lane người dùng đang chọn; thiếu nó
+   * thì chọn lane nhỏ xong thêm track mới lại ra một lane cao ngất giữa đám.
+   */
+  height: z.number().int().min(24).max(200).optional()
 })
 
 const removeTrack = z.object({

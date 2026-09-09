@@ -368,3 +368,58 @@ test('mở lại dự án KHÔNG tự cuộn timeline, lane đầu vẫn ở tr�
   })
   expect(firstVisible).toBe(true)
 })
+
+test('đổi cỡ lane làm mọi lane thấp xuống và thấy được nhiều lane hơn', async () => {
+  const timeline = page.getByRole('region', { name: 'Timeline' })
+  const laneHeights = async (): Promise<number[]> =>
+    page.evaluate(() =>
+      [...document.querySelectorAll('.timeline-lane')].map((node) =>
+        Math.round(node.getBoundingClientRect().height)
+      )
+    )
+  const fullyVisible = async (): Promise<number> =>
+    page.evaluate(() => {
+      const body = document.querySelector('.timeline__body') as HTMLElement
+      const frame = body.getBoundingClientRect()
+      return [...document.querySelectorAll('.timeline-lane')].filter((node) => {
+        const rect = node.getBoundingClientRect()
+        return rect.top >= frame.top - 1 && rect.bottom <= frame.bottom + 1
+      }).length
+    })
+
+  // Thêm vài track để vùng lane thật sự tràn ra ngoài khung.
+  for (let index = 0; index < 4; index++) {
+    await timeline.getByRole('button', { name: 'Thêm track video' }).click()
+  }
+  const before = await fullyVisible()
+
+  await timeline.getByLabel('Chiều cao track').selectOption('small')
+  await expect.poll(async () => (await laneHeights())[0]).toBe(40)
+
+  // MỌI lane cùng đổi, không phải mỗi lane đầu. Dự án này chưa có chữ overlay
+  // nên không có lane ảo, mọi lane đều là track.
+  const heights = await laneHeights()
+  expect(heights.length).toBeGreaterThan(3)
+  expect(heights.every((value) => value === 40)).toBe(true)
+
+  // Và đó là mục đích: thấy nhiều lane hơn cùng lúc.
+  expect(await fullyVisible()).toBeGreaterThan(before)
+
+  // Một lần chọn là MỘT bước hoàn tác, dù đổi cả chục track.
+  await page.keyboard.press('ControlOrMeta+z')
+  await expect.poll(async () => (await laneHeights())[0]).toBe(64)
+  await timeline.getByLabel('Chiều cao track').selectOption('small')
+  await expect.poll(async () => (await laneHeights())[0]).toBe(40)
+
+  // Track thêm sau phải khớp cỡ đang chọn, không quay về cỡ mặc định.
+  await timeline.getByRole('button', { name: 'Thêm track video' }).click()
+  await expect.poll(async () => (await laneHeights()).at(-1)).toBe(40)
+
+  // Cỡ đã chọn sống sót qua lần mở lại dự án.
+  await expect(page.locator('.top-bar__status')).toHaveText('Đã lưu', { timeout: 15_000 })
+  await page.getByRole('button', { name: 'Về danh sách dự án' }).click()
+  await page.locator('.project-card__open', { hasText: 'Dự án kiểm thử' }).click()
+  await timeline.waitFor()
+  await expect.poll(async () => (await laneHeights())[0]).toBe(40)
+  await expect(timeline.getByLabel('Chiều cao track')).toHaveValue('small')
+})

@@ -414,3 +414,14 @@
   pointer-events: none;
   z-index: 3;
 }
+
+/* Ô chọn cỡ lane: gọn như một nút trên thanh công cụ, không phải một ô nhập to. */
+.timeline__height-select {
+  height: 26px;
+  padding: 0 var(--space-1);
+  font-size: var(--text-xs);
+  background: transparent;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+}

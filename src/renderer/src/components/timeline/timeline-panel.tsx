@@ -8,7 +8,14 @@ import {
   type JSX,
   type PointerEvent as ReactPointerEvent
 } from 'react'
-import type { Track } from '../../../../shared/domain/timeline-track-types'
+import {
+  DEFAULT_TRACK_HEIGHT,
+  TRACK_HEIGHT_PRESETS,
+  looseLaneHeight,
+  trackHeightPresetOf,
+  type Track,
+  type TrackHeightPreset
+} from '../../../../shared/domain/timeline-track-types'
 import { previewSeekUs } from '../../../../shared/domain/preview-seek'
 import type { TextBlockRef } from '../../../../shared/domain/text-block-drag'
 import type { TextOverlay } from '../../../../shared/domain/text-overlay-types'
@@ -313,6 +320,36 @@ export function TimelinePanel(): JSX.Element {
     setPixelsPerSecond(zoomToFit(durationUs, width))
   }, [durationUs, setPixelsPerSecond])
 
+  /**
+   * Cỡ lane đang dùng, đọc từ chính track đầu tiên.
+   *
+   * Không giữ thành một trường riêng trong dự án: chiều cao vốn đã nằm ở từng
+   * track và được lưu sẵn, thêm một chỗ nữa là mở đường cho hai con số lệch nhau.
+   */
+  const trackHeightPx = document?.tracks[0]?.height ?? DEFAULT_TRACK_HEIGHT
+  const heightPreset = trackHeightPresetOf(trackHeightPx)
+
+  const setTrackHeight = useCallback(
+    (preset: TrackHeightPreset) => {
+      const next = TRACK_HEIGHT_PRESETS.find((item) => item.id === preset)
+      if (!document || !next) return
+      // Đổi cả loạt trong MỘT lệnh: một lần chọn cỡ là một bước hoàn tác, không
+      // phải một bước cho mỗi track.
+      run(
+        document.tracks.map(
+          (track) =>
+            ({
+              type: 'track/update',
+              trackId: track.id,
+              patch: { height: next.px }
+            }) as EditorCommand
+        ),
+        t.timeline.trackHeight
+      )
+    },
+    [document, run, t.timeline.trackHeight]
+  )
+
   const addTrack = useCallback(
     (kind: 'video' | 'audio' | 'text') => {
       if (!document) return
@@ -329,13 +366,22 @@ export function TimelinePanel(): JSX.Element {
             type: 'track/add',
             kind,
             name: names[kind],
-            role: kind === 'audio' ? 'dialogue' : undefined
+            role: kind === 'audio' ? 'dialogue' : undefined,
+            // Khớp cỡ lane đang chọn, nếu không lane mới cao chênh giữa đám.
+            height: trackHeightPx
           }
         ],
         labels[kind]
       )
     },
-    [document, run, t.timeline.addVideoTrack, t.timeline.addAudioTrack, t.timeline.addTextTrack]
+    [
+      document,
+      run,
+      trackHeightPx,
+      t.timeline.addVideoTrack,
+      t.timeline.addAudioTrack,
+      t.timeline.addTextTrack
+    ]
   )
 
   /**
@@ -449,6 +495,18 @@ export function TimelinePanel(): JSX.Element {
           onClick={() => addTrack('text')}
         />
 
+        <select
+          className="timeline__height-select"
+          value={heightPreset}
+          aria-label={t.timeline.trackHeight}
+          title={t.timeline.trackHeight}
+          onChange={(event) => setTrackHeight(event.target.value as TrackHeightPreset)}
+        >
+          <option value="small">{t.timeline.trackHeightSmall}</option>
+          <option value="medium">{t.timeline.trackHeightMedium}</option>
+          <option value="large">{t.timeline.trackHeightLarge}</option>
+        </select>
+
         <div className="top-bar__spacer" />
 
         <ToolButton
@@ -477,7 +535,7 @@ export function TimelinePanel(): JSX.Element {
           {/* Đầu của lane ảo. Chiều cao phải KHỚP với lane, nếu không mọi hàng
               phía dưới lệch nhau. */}
           {looseOverlays.length > 0 && (
-            <div className="track-head" style={{ height: 44 }}>
+            <div className="track-head" style={{ height: looseLaneHeight(trackHeightPx) }}>
               <div className="track-head__title">
                 <span className="track-head__name">{t.timeline.textLane}</span>
                 <span className="track-head__count">{looseOverlays.length}</span>
@@ -620,7 +678,10 @@ export function TimelinePanel(): JSX.Element {
                 một lớp hình nào. Nên đây là một lane ảo, chỉ hiện khi có chữ.
               */}
               {looseOverlays.length > 0 && (
-                <div className="timeline-lane timeline-lane--overlay" style={{ height: 44 }}>
+                <div
+                  className="timeline-lane timeline-lane--overlay"
+                  style={{ height: looseLaneHeight(trackHeightPx) }}
+                >
                   {overlaysOnLane(null).map((overlay) => renderTextBlock(overlay, null))}
                 </div>
               )}

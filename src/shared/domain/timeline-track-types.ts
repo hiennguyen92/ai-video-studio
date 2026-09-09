@@ -143,6 +143,44 @@ export interface Track {
 
 export const DEFAULT_TRACK_HEIGHT = 64
 
+/**
+ * Ba cỡ lane cho timeline.
+ *
+ * Có cỡ nhỏ vì khung timeline ở chiều cao mặc định chỉ vừa khoảng bốn lane 64px,
+ * mà một dự án có hình, tiếng, phụ đề và vài lane chữ là đã vượt xa con số đó —
+ * lúc nào cũng phải cuộn thì không nhìn được tổng thể.
+ *
+ * Ba nấc chứ không phải ô nhập số: cỡ lane là chuyện nhìn cho vừa mắt, không ai
+ * cần lane cao đúng 57 pixel.
+ */
+export const TRACK_HEIGHT_PRESETS = [
+  { id: 'small', px: 40 },
+  { id: 'medium', px: DEFAULT_TRACK_HEIGHT },
+  { id: 'large', px: 96 }
+] as const
+
+export type TrackHeightPreset = (typeof TRACK_HEIGHT_PRESETS)[number]['id']
+
+/**
+ * Cỡ gần nhất với chiều cao đang dùng.
+ *
+ * Cần vì chiều cao lưu trong dự án là một con số, và dự án cũ (hoặc dự án do
+ * agent sửa) có thể mang giá trị không trùng nấc nào. Trả về nấc gần nhất để ô
+ * chọn luôn hiện một giá trị, thay vì rỗng trơ ra.
+ */
+export function trackHeightPresetOf(px: number): TrackHeightPreset {
+  let best: { id: TrackHeightPreset; px: number } = TRACK_HEIGHT_PRESETS[0]
+  for (const preset of TRACK_HEIGHT_PRESETS) {
+    if (Math.abs(preset.px - px) < Math.abs(best.px - px)) best = preset
+  }
+  return best.id
+}
+
+/** Chiều cao của lane ảo chứa chữ chưa thuộc lane nào, co theo cỡ đang chọn. */
+export function looseLaneHeight(trackHeightPx: number): number {
+  return Math.round(trackHeightPx * 0.7)
+}
+
 /** Kết thúc của clip trên timeline. */
 export function clipEndUs(clip: Clip): Micros {
   return clip.startUs + clip.durationUs

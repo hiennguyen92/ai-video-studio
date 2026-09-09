@@ -181,7 +181,10 @@ export const dictionaryVi = {
     lock: 'Khoá',
     unlock: 'Mở khoá',
     empty: 'Kéo media từ thư viện vào đây để bắt đầu.',
-    trackHeight: 'Chiều cao track'
+    trackHeight: 'Chiều cao track',
+    trackHeightSmall: 'Lane nhỏ',
+    trackHeightMedium: 'Lane vừa',
+    trackHeightLarge: 'Lane lớn'
   },
   projects: {
     title: 'Dự án',

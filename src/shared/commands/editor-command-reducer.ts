@@ -91,7 +91,7 @@ export function applyEditorCommand(doc: ProjectDocument, command: EditorCommand)
         solo: false,
         locked: false,
         volume: 1,
-        height: DEFAULT_TRACK_HEIGHT,
+        height: command.height ?? DEFAULT_TRACK_HEIGHT,
         subtitleTrackId: command.subtitleTrackId,
         clips: []
       })

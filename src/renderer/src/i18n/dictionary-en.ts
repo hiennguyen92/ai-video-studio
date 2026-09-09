@@ -179,7 +179,10 @@ export const dictionaryEn: Dictionary = {
     lock: 'Lock',
     unlock: 'Unlock',
     empty: 'Drag media from the library here to start.',
-    trackHeight: 'Track height'
+    trackHeight: 'Track height',
+    trackHeightSmall: 'Short lanes',
+    trackHeightMedium: 'Medium lanes',
+    trackHeightLarge: 'Tall lanes'
   },
   projects: {
     title: 'Projects',
