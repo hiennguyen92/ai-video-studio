@@ -4,6 +4,8 @@ import {
   type Clip,
   type TransitionKind
 } from '../../../../shared/domain/timeline-track-types'
+import { clipEndUs } from '../../../../shared/domain/timeline-track-types'
+import { frameOfMicros } from '../../../../shared/domain/time-units'
 import { resolveTransitionFrames } from '../../../../shared/domain/remotion-render-plan'
 import { frameRateToNumber, type FrameRate } from '../../../../shared/domain/time-units'
 import { interpolate, useT } from '../../i18n/use-translation'
@@ -37,30 +39,43 @@ const KINDS: Array<{ value: TransitionKind; labelKey: string }> = [
 export function ClipTransitionControls({
   clip,
   frameRate,
+  edge = 'in',
   onChange
 }: {
   clip: Clip
   frameRate: FrameRate
+  /** Mép nào của clip — vào hay ra. */
+  edge?: 'in' | 'out'
   onChange(transition: { kind: TransitionKind; durationUs: number } | undefined): void
 }): JSX.Element {
   const t = useT()
-  const current = clip.transitionIn
+  const current = edge === 'out' ? clip.transitionOut : clip.transitionIn
+  const title = edge === 'out' ? t.inspector.exitTransition : t.inspector.transition
 
-  // Tính bằng đúng hàm mà lớp dựng khung hình dùng, nên con số hiện ra là con số thật.
-  const usableFrames = resolveTransitionFrames(clip, frameRate)
+  // Tính bằng đúng hàm mà lớp dựng khung hình dùng, nên con số hiện ra là con số
+  // thật. Hiệu ứng RA không tiêu thụ phần nguồn nào nên chỉ bị kẹp theo nửa clip.
+  const usableFrames =
+    edge === 'out'
+      ? Math.min(
+          frameOfMicros(current?.durationUs ?? 0, frameRate),
+          Math.floor(
+            (frameOfMicros(clipEndUs(clip), frameRate) - frameOfMicros(clip.startUs, frameRate)) / 2
+          )
+        )
+      : resolveTransitionFrames(clip, frameRate)
   const usableSeconds = usableFrames / frameRateToNumber(frameRate)
   const wantedSeconds = (current?.durationUs ?? 0) / 1_000_000
   const clamped = Boolean(current) && usableSeconds + 0.001 < wantedSeconds
 
   return (
     <>
-      <p className="field-group__title">{t.inspector.transition}</p>
+      <p className="field-group__title">{title}</p>
 
       <div className="field-row">
-        <span className="field-row__label">{t.inspector.transition}</span>
+        <span className="field-row__label">{title}</span>
         <select
           value={current?.kind ?? ''}
-          aria-label={t.inspector.transition}
+          aria-label={title}
           onChange={(event) => {
             const kind = event.target.value as TransitionKind | ''
             onChange(
@@ -88,7 +103,7 @@ export function ClipTransitionControls({
             max={3}
             step={0.1}
             value={wantedSeconds}
-            aria-label={t.inspector.transitionDuration}
+            aria-label={`${title} — ${t.inspector.transitionDuration}`}
             onChange={(event) => {
               const seconds = Number(event.target.value)
               if (!Number.isFinite(seconds) || seconds <= 0) return
@@ -104,7 +119,7 @@ export function ClipTransitionControls({
           {interpolate(t.inspector.transitionClamped, { seconds: usableSeconds.toFixed(2) })}
         </p>
       )}
-      <p className="inspector__hint">{t.inspector.transitionHint}</p>
+      {edge === 'in' && <p className="inspector__hint">{t.inspector.transitionHint}</p>}
     </>
   )
 }

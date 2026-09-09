@@ -442,3 +442,113 @@ describe('lane ảnh', () => {
     expect(requiresRemotionRenderer(document)).toBe(true)
   })
 })
+
+describe('hiệu ứng ra của clip', () => {
+  it('kẹp theo NỬA clip, không theo phần nguồn phía trước', () => {
+    const document = project()
+    addClip(document, videoTrack(document), 0, 2_000_000)
+    const clipId = document.tracks[0].clips[0].id
+    expect(
+      applyEditorCommand(document, {
+        type: 'clip/set-transition',
+        clipId,
+        edge: 'out',
+        transition: { kind: 'fade', durationUs: 5_000_000 }
+      }).ok
+    ).toBe(true)
+
+    // Clip 2 giây ở 30fps là 60 khung; hiệu ứng ra nhiều nhất 30 khung. Chiếm
+    // trọn thì clip không bao giờ đứng yên ở trạng thái nhìn được.
+    expect(buildRenderPlan(document).video[0].exitTransition).toEqual({ kind: 'fade', frames: 30 })
+  })
+
+  it('KHÔNG bị kẹp bởi `sourceInUs` như hiệu ứng vào', () => {
+    const document = project()
+    // Clip bắt đầu ở 0 và điểm vào nguồn cũng 0: hiệu ứng VÀO sẽ bị kẹp về 0.
+    addClip(document, videoTrack(document), 0, 4_000_000, 0)
+    const clipId = document.tracks[0].clips[0].id
+    applyEditorCommand(document, {
+      type: 'clip/set-transition',
+      clipId,
+      transition: { kind: 'fade', durationUs: 500_000 }
+    })
+    applyEditorCommand(document, {
+      type: 'clip/set-transition',
+      clipId,
+      edge: 'out',
+      transition: { kind: 'fade', durationUs: 500_000 }
+    })
+
+    const [clip] = buildRenderPlan(document).video
+    // Hiệu ứng ra không kéo clip bắt đầu sớm hơn nên chẳng tiêu thụ nguồn nào.
+    expect(clip.transition).toBeUndefined()
+    expect(clip.exitTransition?.frames).toBe(15)
+  })
+
+  it('đặt mép ra không đụng tới mép vào', () => {
+    const document = project()
+    addClip(document, videoTrack(document), 2_000_000, 4_000_000, 3_000_000)
+    const clipId = document.tracks[0].clips[0].id
+    applyEditorCommand(document, {
+      type: 'clip/set-transition',
+      clipId,
+      transition: { kind: 'zoom', durationUs: 300_000 }
+    })
+    applyEditorCommand(document, {
+      type: 'clip/set-transition',
+      clipId,
+      edge: 'out',
+      transition: { kind: 'blur', durationUs: 300_000 }
+    })
+
+    const [clip] = buildRenderPlan(document).video
+    expect(clip.transition?.kind).toBe('zoom')
+    expect(clip.exitTransition?.kind).toBe('blur')
+  })
+
+  it('gỡ hiệu ứng ra thì kế hoạch không còn nó', () => {
+    const document = project()
+    addClip(document, videoTrack(document), 0, 4_000_000)
+    const clipId = document.tracks[0].clips[0].id
+    applyEditorCommand(document, {
+      type: 'clip/set-transition',
+      clipId,
+      edge: 'out',
+      transition: { kind: 'fade', durationUs: 500_000 }
+    })
+    applyEditorCommand(document, { type: 'clip/set-transition', clipId, edge: 'out' })
+    expect(buildRenderPlan(document).video[0].exitTransition).toBeUndefined()
+  })
+})
+
+describe('kích thước gốc của ảnh', () => {
+  it('kế hoạch mang theo kích thước gốc để lớp vẽ đặt ảnh đúng chỗ nó chiếm', () => {
+    const document = project()
+    document.assets.push({
+      ...document.assets[0],
+      id: 'asset_anh',
+      kind: 'image',
+      name: 'logo.png',
+      probe: { durationUs: 0, hasVideo: true, hasAudio: false, width: 800, height: 600 }
+    })
+    const before = new Set(document.tracks.map((track) => track.id))
+    applyEditorCommand(document, { type: 'track/add', kind: 'image', name: 'Hình ảnh 1' }, makeId)
+    const laneId = document.tracks.find((track) => !before.has(track.id))!.id
+    expect(
+      applyEditorCommand(
+        document,
+        {
+          type: 'clip/insert',
+          trackId: laneId,
+          assetId: 'asset_anh',
+          startUs: 0,
+          durationUs: 3_000_000,
+          sourceInUs: 0
+        },
+        makeId
+      ).ok
+    ).toBe(true)
+
+    expect(buildRenderPlan(document).video[0].natural).toEqual({ width: 800, height: 600 })
+  })
+})

@@ -253,7 +253,9 @@ export function applyEditorCommand(doc: ProjectDocument, command: EditorCommand)
       if (!isVisualTrack(track)) return fail('Chỉ đặt được chuyển cảnh cho clip hình')
 
       const clip = track.clips[found.clipIndex]
-      clip.transitionIn = command.transition ? { ...command.transition } : undefined
+      const next = command.transition ? { ...command.transition } : undefined
+      if (command.edge === 'out') clip.transitionOut = next
+      else clip.transitionIn = next
       return OK
     }
 

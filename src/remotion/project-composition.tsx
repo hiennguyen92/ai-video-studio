@@ -21,6 +21,12 @@ import {
   vignetteBackgroundCss
 } from '../shared/domain/clip-color-grade'
 import { motionTransformAt, motionTransformCss } from '../shared/domain/clip-motion-types'
+import { clipOffsetPx, fitInsideFrame } from '../shared/domain/clip-frame-fit'
+import {
+  combineTransitionStyles,
+  transitionStyleAt,
+  type TransitionStyle
+} from '../shared/domain/clip-transition-style'
 import { wrapSubtitleText } from '../shared/domain/subtitle-types'
 import {
   alignmentToFlex,
@@ -89,92 +95,64 @@ function useFadeGain(
  * có phép trộn hai luồng, nên chúng chạy được bằng CSS thuần và giống hệt nhau ở
  * preview lẫn lúc xuất.
  */
-function useTransitionStyle(transition: RenderPlanVideoClip['transition']): {
-  opacity: number
-  transform?: string
-  clipPath?: string
-  filter?: string
-} {
+/** Kiểu của hiệu ứng VÀO ở khung hiện tại. */
+function useEnterStyle(transition: RenderPlanVideoClip['transition']): TransitionStyle {
   const frame = useCurrentFrame()
   if (!transition) return { opacity: 1 }
-
   // 0 ở đầu chuyển cảnh, 1 khi đã hiện hẳn.
   const progress = interpolate(frame, [0, transition.frames], [0, 1], {
     extrapolateLeft: 'clamp',
     extrapolateRight: 'clamp'
   })
-  const offset = (1 - progress) * 100
-
-  switch (transition.kind) {
-    case 'fade':
-      return { opacity: progress }
-    case 'slide-left':
-      return { opacity: 1, transform: `translateX(${offset}%)` }
-    case 'slide-right':
-      return { opacity: 1, transform: `translateX(${-offset}%)` }
-    case 'slide-up':
-      return { opacity: 1, transform: `translateY(${offset}%)` }
-    case 'slide-down':
-      return { opacity: 1, transform: `translateY(${-offset}%)` }
-    case 'wipe-left':
-      // Lộ dần từ mép phải sang trái; phần chưa lộ bị cắt đi chứ không mờ.
-      return { opacity: 1, clipPath: `inset(0 0 0 ${offset}%)` }
-    case 'wipe-right':
-      return { opacity: 1, clipPath: `inset(0 ${offset}% 0 0)` }
-    case 'zoom':
-      return { opacity: progress, transform: `scale(${1 + (1 - progress) * 0.25})` }
-
-    // Lia vụt: trượt nhanh hơn hẳn slide và kèm mờ chuyển động. Không có phần mờ
-    // thì nó chỉ là một cú trượt nhanh, mất hẳn cảm giác "vụt".
-    case 'whip-left':
-      return {
-        opacity: 1,
-        transform: `translateX(${offset * 1.4}%)`,
-        filter: `blur(${(1 - progress) * 14}px)`
-      }
-    case 'whip-right':
-      return {
-        opacity: 1,
-        transform: `translateX(${-offset * 1.4}%)`,
-        filter: `blur(${(1 - progress) * 14}px)`
-      }
-
-    case 'blur':
-      return { opacity: progress, filter: `blur(${(1 - progress) * 26}px)` }
-
-    case 'glitch': {
-      // Giật ngang theo khung hình chứ không theo tiến độ: nhiễu phải rời rạc,
-      // nội suy mượt sẽ thành một cú trượt chứ không phải nhiễu.
-      const jitter = Math.sin(frame * 13.7) * (1 - progress) * 4
-      return {
-        opacity: 1,
-        transform: `translateX(${jitter}%)`,
-        filter: `hue-rotate(${Math.sin(frame * 7.3) * (1 - progress) * 90}deg) saturate(${1 + (1 - progress) * 2})`
-      }
-    }
-
-    case 'spin':
-      return {
-        opacity: progress,
-        transform: `rotate(${(1 - progress) * -14}deg) scale(${1 + (1 - progress) * 0.35})`
-      }
-
-    case 'flash':
-      // Loé rồi tắt nhanh: dùng luỹ thừa để phần sáng chỉ chiếm đoạn đầu, không
-      // kéo trắng suốt cả chuyển cảnh.
-      return { opacity: 1, filter: `brightness(${1 + (1 - progress) ** 2 * 6})` }
-  }
+  return transitionStyleAt(transition.kind, progress, frame)
 }
 
-function VideoClip({ clip, url }: { clip: RenderPlanVideoClip; url: string }): JSX.Element {
+/**
+ * Kiểu của hiệu ứng RA ở khung hiện tại.
+ *
+ * Chạy NGƯỢC hiệu ứng vào: tiến độ đi từ 1 về 0 trong mấy khung cuối. Nhờ dùng
+ * chung một bảng kiểu nên mười bốn kiểu chuyển cảnh đều có chiều ra, không phải
+ * viết lại cái nào.
+ */
+function useExitStyle(
+  transition: RenderPlanVideoClip['exitTransition'],
+  durationInFrames: number
+): TransitionStyle | null {
+  const frame = useCurrentFrame()
+  if (!transition || transition.frames <= 0) return null
+  const progress = interpolate(
+    frame,
+    [durationInFrames - transition.frames, durationInFrames - 1],
+    [1, 0],
+    { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
+  )
+  return transitionStyleAt(transition.kind, progress, frame)
+}
+
+function VideoClip({
+  clip,
+  url,
+  frame: frameSize
+}: {
+  clip: RenderPlanVideoClip
+  url: string
+  frame: { width: number; height: number }
+}): JSX.Element {
   const frame = useCurrentFrame()
   const fade = useFadeGain(clip.durationInFrames, clip.fadeInFrames, clip.fadeOutFrames)
-  const enter = useTransitionStyle(clip.transition)
+  const enter = combineTransitionStyles(
+    useEnterStyle(clip.transition),
+    useExitStyle(clip.exitTransition, clip.durationInFrames)
+  )
   const { transform } = clip
 
   // Chuyển động trong clip đi SAU biến đổi tĩnh: nó là chuyển động của khung hình
   // đã đặt đúng chỗ, không phải một cách đặt chỗ khác.
   const motion = motionTransformCss(motionTransformAt(clip.motion, frame, clip.durationInFrames))
+  const offset = clipOffsetPx(transform, frameSize)
+  // Ảnh vẽ đúng bằng chỗ nó chiếm, không căng ra cả khung: khung điều khiển trên
+  // bản xem trước đo theo thẻ này.
+  const fitted = clip.media === 'image' ? fitInsideFrame(clip.natural, frameSize) : frameSize
 
   // Ám màu và tối góc nằm TRONG khung bao nên chúng đi theo chuyển động của clip.
   // Đó là hành vi đúng cho hiệu ứng gắn với clip: chỉnh màu là chỉnh chính hình
@@ -187,10 +165,17 @@ function VideoClip({ clip, url }: { clip: RenderPlanVideoClip; url: string }): J
       // Biến đổi của chuyển cảnh đi TRƯỚC biến đổi của clip: hiệu ứng vào phải
       // tác động lên khung hình đã đặt đúng vị trí, không phải ngược lại.
       style={{
+        // Ảnh vẽ đúng cỡ của nó nên phải canh giữa; `AbsoluteFill` là flex cột,
+        // để mặc định thì ảnh dính góc trên-trái.
+        justifyContent: 'center',
+        alignItems: 'center',
         opacity: transform.opacity * fade * enter.opacity,
         clipPath: enter.clipPath,
         filter: enter.filter,
-        transform: `${enter.transform ?? ''} translate(${transform.x}px, ${transform.y}px) scale(${transform.scale}) rotate(${transform.rotationDeg}deg) ${motion}`
+        // Dịch chuyển tính theo TỈ LỆ khung hình, không phải pixel: một đơn vị
+        // là nửa khung. Dùng thẳng con số làm pixel thì kéo hết thanh trượt chỉ
+        // dịch được một pixel, và ô chỉnh coi như không có tác dụng.
+        transform: `${enter.transform ?? ''} translate(${offset.width}px, ${offset.height}px) scale(${transform.scale}) rotate(${transform.rotationDeg}deg) ${motion}`
       }}
     >
       {/*
@@ -205,9 +190,10 @@ function VideoClip({ clip, url }: { clip: RenderPlanVideoClip; url: string }): J
       {clip.media === 'image' ? (
         <Img
           src={url}
+          data-clip-id={clip.key}
           style={{
-            width: '100%',
-            height: '100%',
+            width: fitted.width,
+            height: fitted.height,
             objectFit: 'contain',
             filter: colorGradeFilterCss(clip.colorGrade)
           }}
@@ -215,6 +201,7 @@ function VideoClip({ clip, url }: { clip: RenderPlanVideoClip; url: string }): J
       ) : (
         <OffthreadVideo
           src={url}
+          data-clip-id={clip.key}
           startFrom={clip.sourceFromFrame}
           playbackRate={clip.playbackRate}
           volume={clip.muted ? 0 : clip.volume * fade}
@@ -544,7 +531,7 @@ export function ProjectComposition({ plan, mediaUrls }: ProjectCompositionProps)
         if (!url) return null
         return (
           <Sequence key={clip.key} from={clip.fromFrame} durationInFrames={clip.durationInFrames}>
-            <VideoClip clip={clip} url={url} />
+            <VideoClip clip={clip} url={url} frame={{ width: plan.width, height: plan.height }} />
           </Sequence>
         )
       })}

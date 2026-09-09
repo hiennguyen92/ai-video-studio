@@ -98,34 +98,29 @@
   background: color-mix(in srgb, var(--accent) 12%, transparent);
 }
 
-/* Tay nắm xoay, treo phía trên khung và nối bằng một đoạn thẳng. */
+/*
+  Tay nắm xoay nằm TRONG khung, góc trên-trái.
+  
+  Treo phía trên khung thì với clip phủ kín khung hình nó luôn rơi ra ngoài vùng
+  xem trước và không bao giờ bấm tới được — đo được: thanh tiêu đề của app chặn
+  luôn cú bấm. Nằm trong khung thì hễ khung còn thấy là tay nắm còn bấm được.
+*/
 .preview-gizmo__rotate {
   position: absolute;
-  left: 50%;
-  top: -26px;
+  left: 4px;
+  top: 4px;
   width: 12px;
   height: 12px;
-  margin-left: -6px;
   border-radius: 50%;
   background: var(--accent);
   cursor: grab;
-}
-
-.preview-gizmo__rotate::before {
-  content: '';
-  position: absolute;
-  left: 50%;
-  top: 12px;
-  width: 1px;
-  height: 14px;
-  background: var(--accent);
 }
 
 /* Số đọc trong lúc kéo: không có nó thì không biết mình đang đặt chữ ở đâu. */
 .preview-gizmo__readout {
   position: absolute;
   left: 50%;
-  bottom: -26px;
+  bottom: 4px;
   transform: translateX(-50%);
   padding: 1px 6px;
   border-radius: 4px;
@@ -133,4 +128,16 @@
   color: #fff;
   font-size: var(--text-xs);
   white-space: nowrap;
+}
+
+/* Tay nắm đổi cỡ ở góc dưới-phải, cũng nằm trong khung vì cùng lý do. */
+.preview-gizmo__resize {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  background: var(--accent);
+  cursor: nwse-resize;
 }

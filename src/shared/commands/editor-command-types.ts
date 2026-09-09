@@ -180,6 +180,11 @@ const duplicateClip = z.object({
 const setClipTransition = z.object({
   type: z.literal('clip/set-transition'),
   clipId: z.string(),
+  /**
+   * Mép nào của clip. Bỏ trống là mép VÀO, giữ nguyên ý nghĩa cũ của lệnh này
+   * nên dự án và lịch sử hoàn tác cũ không đổi nghĩa.
+   */
+  edge: z.enum(['in', 'out']).optional(),
   /** Bỏ trống nghĩa là gỡ chuyển cảnh. */
   transition: z
     .object({

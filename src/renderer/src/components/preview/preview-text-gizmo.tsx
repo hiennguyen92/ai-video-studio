@@ -1,7 +1,5 @@
 import { useCallback, useLayoutEffect, useRef, useState, type JSX, type PointerEvent } from 'react'
 import type { ProjectDocument } from '../../../../shared/domain/project-document-types'
-import type { SubtitleStyle } from '../../../../shared/domain/subtitle-types'
-import type { TextBlockRef } from '../../../../shared/domain/text-block-drag'
 import {
   dragTextPosition,
   pointerRotationDeg,
@@ -9,27 +7,31 @@ import {
 } from '../../../../shared/domain/text-placement'
 import { useEditorStore } from '../../state/editor-store'
 import { useT } from '../../i18n/use-translation'
+import { resolveGizmoTarget } from './use-gizmo-target'
 
 /**
- * Khung điều khiển vẽ ĐÈ lên khung xem trước cho khối chữ đang chọn.
+ * Khung điều khiển vẽ ĐÈ lên khung xem trước cho thứ đang chọn.
  *
- * Kéo trong khung để dời chữ, kéo tay nắm phía trên để xoay. Đây là cách duy
- * nhất đặt chữ vào một chỗ bất kỳ: chín ô alignment cộng ba con số lề không tả
- * được "ngay trên vai người trong hình".
+ * Kéo trong khung để dời, kéo tay nắm tròn phía trên để xoay, kéo góc dưới-phải
+ * để đổi cỡ. Dùng cho cả chữ lẫn clip hình/ảnh — hai loại nằm hai chỗ trong tài
+ * liệu và ghi bằng hai lệnh khác nhau, nhưng thao tác chuột thì y hệt nhau.
  *
  * Hai điều đáng nói:
  *
- *   - Trong lúc kéo, chỉ KHUNG chạy theo chuột, chữ đứng yên rồi nhảy tới lúc
- *     thả. Đổi document theo từng sự kiện chuột sẽ nhồi hàng trăm bước vào lịch
- *     sử hoàn tác — cùng lối đã dùng cho kéo clip và kéo khối chữ trên timeline.
- *   - Kéo hay xoay đều GHIM chữ vào một vị trí tự do, kể cả khi chỉ xoay. Có ghim
- *     thì tâm xoay mới là tâm khối, đúng thứ tay nắm gợi ý; không ghim thì ASS
- *     xoay quanh điểm neo alignment và chữ văng đi một quãng.
+ *   - Trong lúc kéo, chỉ KHUNG chạy theo chuột, nội dung đứng yên rồi nhảy tới
+ *     lúc thả. Đổi document theo từng sự kiện chuột sẽ nhồi hàng trăm bước vào
+ *     lịch sử hoàn tác — cùng lối đã dùng cho kéo clip trên timeline.
+ *   - Với CHỮ, kéo hay xoay đều ghim vào một vị trí tự do, kể cả khi chỉ xoay. Có
+ *     ghim thì tâm xoay mới là tâm khối, đúng thứ tay nắm gợi ý; không ghim thì
+ *     ASS xoay quanh điểm neo alignment và chữ văng đi một quãng.
  */
 
+const MIN_SCALE = 0.1
+const MAX_SCALE = 4
+
 interface GizmoBox {
-  /** Khối đã đo. Đổi khối mà chưa đo lại thì số cũ không được đem ra vẽ. */
-  blockId: string
+  /** Bộ chọn đã đo. Đổi thứ đang chọn mà chưa đo lại thì số cũ không được vẽ. */
+  selector: string
   centerXPx: number
   centerYPx: number
   widthPx: number
@@ -42,6 +44,7 @@ interface GizmoBox {
 /** Lệch dưới nửa pixel thì coi như không đổi — đủ để không dựng lại mỗi khung. */
 function sameBox(left: GizmoBox, right: GizmoBox): boolean {
   return (
+    left.selector === right.selector &&
     Math.abs(left.centerXPx - right.centerXPx) < 0.5 &&
     Math.abs(left.centerYPx - right.centerYPx) < 0.5 &&
     Math.abs(left.widthPx - right.widthPx) < 0.5 &&
@@ -51,79 +54,53 @@ function sameBox(left: GizmoBox, right: GizmoBox): boolean {
   )
 }
 
+type DragMode = 'move' | 'rotate' | 'resize'
+
 interface DragState {
-  mode: 'move' | 'rotate'
+  mode: DragMode
   pointerStartX: number
   pointerStartY: number
+  /** Khoảng cách từ tâm tới con trỏ lúc bắt đầu kéo góc. */
+  grabRadiusPx: number
+  startScale: number
   startPosition: TextPosition
   position: TextPosition
   rotationDeg: number
+  scale: number
 }
 
-/** Kiểu và lệnh ghi cho khối chữ đang chọn — hai loại đi hai đường khác nhau. */
-function resolveBlock(
-  document: ProjectDocument,
-  block: TextBlockRef
-): { id: string; style: SubtitleStyle; write(style: SubtitleStyle, label: string): void } | null {
-  const run = useEditorStore.getState().run
-
-  if (block.kind === 'overlay') {
-    const overlay = document.textOverlays.find((item) => item.id === block.overlayId)
-    if (!overlay) return null
-    return {
-      id: overlay.id,
-      style: overlay.style,
-      write: (style, label) =>
-        void run([{ type: 'text/set-style', overlayId: overlay.id, style }], label)
-    }
-  }
-
-  const track = document.subtitleTracks.find((item) => item.id === block.subtitleTrackId)
-  const cue = track?.cues.find((item) => item.id === block.cueId)
-  if (!track || !cue) return null
-  return {
-    id: cue.id,
-    style: track.style,
-    // Kiểu chữ phụ đề thuộc về CẢ track, nên kéo một câu là dời mọi câu. Panel
-    // thuộc tính nói rõ điều đó ngay bên cạnh.
-    write: (style, label) =>
-      void run([{ type: 'subtitle/set-style', trackId: track.id, style }], label)
-  }
-}
-
-export function PreviewTextGizmo({ document }: { document: ProjectDocument }): JSX.Element | null {
+export function PreviewTextGizmo({ document }: { document: ProjectDocument }): JSX.Element {
   const t = useT()
   const rootRef = useRef<HTMLDivElement>(null)
-  const selectedBlock = useEditorStore((state) => state.selection.text)
+  const selection = useEditorStore((state) => state.selection)
   const isPlaying = useEditorStore((state) => state.isPlaying)
 
   const [box, setBox] = useState<GizmoBox | null>(null)
   const [drag, setDrag] = useState<DragState | null>(null)
 
-  const target = selectedBlock ? resolveBlock(document, selectedBlock) : null
-  const blockId = target?.id
+  const target = resolveGizmoTarget(document, selection)
+  const selector = target?.selector
 
-  // Số đo phải là của ĐÚNG khối đang chọn và phải còn hiệu lực (không đang phát),
-  // nếu không khung điều khiển sẽ loé lên ở chỗ của khối trước đó.
-  const measured = box && box.blockId === blockId && !isPlaying ? box : null
+  // Số đo phải là của ĐÚNG thứ đang chọn và phải còn hiệu lực (không đang phát),
+  // nếu không khung điều khiển sẽ loé lên ở chỗ của thứ trước đó.
+  const measured = box && box.selector === selector && !isPlaying ? box : null
 
-  // Đo khối chữ THẬT trên màn hình thay vì tự tính lại chỗ của nó: chỗ đó là kết
-  // quả của alignment, lề, ngắt dòng, cỡ chữ và cả phông đang dùng — tính lại là
-  // dựng một bản sao của trình bày, và bản sao sẽ trôi khỏi bản gốc.
-  //
-  // Đo theo TỪNG KHUNG HÌNH chứ không đo một lần mỗi khi state đổi. Player vẽ
-  // lại theo nhịp riêng của nó, nên ngay sau một lần sửa, khối chữ có thể chưa
-  // có mặt trong DOM — đo đúng lúc đó là kết luận "không có gì để kéo" rồi khung
-  // điều khiển biến mất hẳn, vì không còn gì kích hoạt một lần đo nữa.
-  //
-  // Chỉ gọi setState khi số đo THẬT SỰ đổi, nếu không mỗi khung hình là một lần
-  // dựng lại vô ích.
-  //
-  // Không xoá số đo cũ khi dừng đo: xoá tức là gọi setState thẳng trong thân
-  // hiệu ứng, và mỗi lượt dựng lại kéo theo một lượt nữa. Thay vào đó, số đo mang
-  // theo id khối của chính nó và lúc vẽ chỉ dùng khi id còn khớp.
+  /**
+   * Đo phần tử THẬT trên màn hình thay vì tự tính lại chỗ của nó: chỗ đó là kết
+   * quả của bố cục, cỡ chữ, tỉ lệ ảnh và mức phóng của Player — tính lại là dựng
+   * một bản sao của trình bày, và bản sao sẽ trôi khỏi bản gốc.
+   *
+   * Đo theo TỪNG KHUNG HÌNH chứ không đo một lần mỗi khi state đổi. Player vẽ
+   * lại theo nhịp riêng, nên ngay sau một lần sửa, phần tử có thể chưa có mặt
+   * trong DOM — đo đúng lúc đó là kết luận "không có gì để kéo" rồi khung điều
+   * khiển biến mất hẳn, vì không còn gì kích hoạt một lần đo nữa.
+   *
+   * Không xoá số đo cũ khi dừng đo: xoá tức là gọi setState thẳng trong thân hiệu
+   * ứng, và mỗi lượt dựng lại kéo theo một lượt nữa. Thay vào đó, số đo mang theo
+   * bộ chọn của chính nó và lúc vẽ chỉ dùng khi còn khớp.
+   */
   useLayoutEffect(() => {
-    if (!blockId || isPlaying) return
+    if (!selector || isPlaying) return
 
     let frame = 0
     const measure = (): void => {
@@ -132,25 +109,23 @@ export function PreviewTextGizmo({ document }: { document: ProjectDocument }): J
       const root = rootRef.current
       if (!root) return
       const stage = root.getBoundingClientRect()
-      const node = root.parentElement?.querySelector<HTMLElement>(
-        `[data-block-id="${blockId}"] .text-block`
-      )
-      // Chữ không nằm trong khoảng thời gian đang xem — không có gì để kéo.
+      const node = root.parentElement?.querySelector<HTMLElement>(selector)
+      // Không nằm trong khoảng thời gian đang xem — không có gì để kéo.
       if (!node || stage.width === 0) {
         setBox((current) => (current === null ? current : null))
         return
       }
 
       const rect = node.getBoundingClientRect()
-      // Player co cả composition lại cho vừa khung, nên bề rộng bố cục của khối
-      // (`offsetWidth`) tính bằng pixel của composition, không phải pixel màn hình.
       const scale = stage.width / document.settings.width
       const next: GizmoBox = {
-        blockId,
-        // Tâm hộp bao ngoài chính là tâm khối sau khi xoay: xoay một hình chữ
+        selector,
+        // Tâm hộp bao ngoài chính là tâm phần tử sau khi xoay: xoay một hình chữ
         // nhật quanh điểm nào thì hộp bao của nó vẫn nhận tâm hình đó làm tâm.
         centerXPx: rect.left + rect.width / 2 - stage.left,
         centerYPx: rect.top + rect.height / 2 - stage.top,
+        // Bề rộng bố cục nhân mức phóng của Player, không lấy thẳng hộp bao: hộp
+        // bao của một phần tử đã xoay to hơn chính nó.
         widthPx: node.offsetWidth * scale,
         heightPx: node.offsetHeight * scale,
         stageWidthPx: stage.width,
@@ -161,10 +136,10 @@ export function PreviewTextGizmo({ document }: { document: ProjectDocument }): J
 
     frame = requestAnimationFrame(measure)
     return () => cancelAnimationFrame(frame)
-  }, [blockId, isPlaying, document.settings.width])
+  }, [selector, isPlaying, document.settings.width])
 
   const beginDrag = useCallback(
-    (event: PointerEvent<HTMLElement>, mode: 'move' | 'rotate') => {
+    (event: PointerEvent<HTMLElement>, mode: DragMode) => {
       const root = rootRef.current
       if (!root || !measured || !target) return
       event.preventDefault()
@@ -172,20 +147,25 @@ export function PreviewTextGizmo({ document }: { document: ProjectDocument }): J
       event.currentTarget.setPointerCapture(event.pointerId)
 
       const stage = root.getBoundingClientRect()
-      // Chưa ghim bao giờ thì lấy chính chỗ chữ đang đứng làm điểm xuất phát, để
-      // cú kéo đầu tiên không làm chữ nhảy đi đâu cả.
-      const startPosition = target.style.position ?? {
+      // Chưa đặt vị trí bao giờ thì lấy chính chỗ nó đang đứng làm điểm xuất
+      // phát, để cú kéo đầu tiên không làm nó nhảy đi đâu cả.
+      const startPosition = target.position ?? {
         xPct: measured.centerXPx / stage.width,
         yPct: measured.centerYPx / stage.height
       }
+      const dx = event.clientX - (stage.left + measured.centerXPx)
+      const dy = event.clientY - (stage.top + measured.centerYPx)
 
       setDrag({
         mode,
         pointerStartX: event.clientX,
         pointerStartY: event.clientY,
+        grabRadiusPx: Math.max(1, Math.hypot(dx, dy)),
+        startScale: target.scale ?? 1,
         startPosition,
         position: startPosition,
-        rotationDeg: target.style.rotationDeg ?? 0
+        rotationDeg: target.rotationDeg,
+        scale: target.scale ?? 1
       })
     },
     [measured, target]
@@ -196,6 +176,8 @@ export function PreviewTextGizmo({ document }: { document: ProjectDocument }): J
       const root = rootRef.current
       if (!drag || !root || !measured) return
       const stage = root.getBoundingClientRect()
+      const centerX = stage.left + measured.centerXPx
+      const centerY = stage.top + measured.centerYPx
 
       if (drag.mode === 'move') {
         setDrag({
@@ -211,14 +193,18 @@ export function PreviewTextGizmo({ document }: { document: ProjectDocument }): J
         return
       }
 
+      if (drag.mode === 'resize') {
+        // Tỉ lệ khoảng cách tới tâm: kéo ra xa gấp đôi thì to gấp đôi. Đo theo
+        // khoảng cách chứ không theo trục ngang, để còn đúng khi đang xoay.
+        const radius = Math.hypot(event.clientX - centerX, event.clientY - centerY)
+        const next = (drag.startScale * radius) / drag.grabRadiusPx
+        setDrag({ ...drag, scale: Math.min(MAX_SCALE, Math.max(MIN_SCALE, next)) })
+        return
+      }
+
       setDrag({
         ...drag,
-        rotationDeg: pointerRotationDeg(
-          stage.left + measured.centerXPx,
-          stage.top + measured.centerYPx,
-          event.clientX,
-          event.clientY
-        )
+        rotationDeg: pointerRotationDeg(centerX, centerY, event.clientX, event.clientY)
       })
     },
     [drag, measured]
@@ -227,24 +213,72 @@ export function PreviewTextGizmo({ document }: { document: ProjectDocument }): J
   const endDrag = useCallback(() => {
     if (!drag || !target) return
     setDrag(null)
+    const labels: Record<DragMode, string> = {
+      move: t.preview.moveText,
+      rotate: t.preview.rotateText,
+      resize: t.preview.resizeText
+    }
     target.write(
-      { ...target.style, position: drag.position, rotationDeg: drag.rotationDeg },
-      drag.mode === 'move' ? 'Dời chữ' : 'Xoay chữ'
+      { position: drag.position, rotationDeg: drag.rotationDeg, scale: drag.scale },
+      labels[drag.mode]
     )
-  }, [drag, target])
+  }, [drag, target, t.preview])
+
+  /**
+   * Kẹp khung điều khiển vào trong khung xem trước.
+   *
+   * Nội dung to hơn khung hình thì hộp bao của nó thò ra ngoài, và tay nắm nằm ở
+   * góc hộp sẽ rơi ra ngoài vùng xem trước — đo được: thanh tiêu đề của app chặn
+   * luôn cú bấm, không tài nào xoay hay đổi cỡ được nữa.
+   *
+   * Kẹp lại thì khung ôm đúng phần NHÌN THẤY, và mọi tay nắm luôn bấm tới được.
+   */
+  const clampToStage = (value: GizmoBox): GizmoBox => {
+    const left = Math.max(0, value.centerXPx - value.widthPx / 2)
+    const top = Math.max(0, value.centerYPx - value.heightPx / 2)
+    const right = Math.min(value.stageWidthPx, value.centerXPx + value.widthPx / 2)
+    const bottom = Math.min(value.stageHeightPx, value.centerYPx + value.heightPx / 2)
+    if (right <= left || bottom <= top) return value
+    return {
+      ...value,
+      centerXPx: (left + right) / 2,
+      centerYPx: (top + bottom) / 2,
+      widthPx: right - left,
+      heightPx: bottom - top
+    }
+  }
+
+  const shown = !measured
+    ? null
+    : clampToStage(
+        drag
+          ? {
+              ...measured,
+              centerXPx: drag.position.xPct * measured.stageWidthPx,
+              centerYPx: drag.position.yPct * measured.stageHeightPx,
+              widthPx: (measured.widthPx * drag.scale) / (target?.scale ?? 1),
+              heightPx: (measured.heightPx * drag.scale) / (target?.scale ?? 1)
+            }
+          : measured
+      )
+  const rotation = drag?.rotationDeg ?? target?.rotationDeg ?? 0
+
+  const readout = drag
+    ? drag.mode === 'move'
+      ? `${Math.round(drag.position.xPct * 100)}% · ${Math.round(drag.position.yPct * 100)}%`
+      : drag.mode === 'resize'
+        ? `${Math.round(drag.scale * 100)}%`
+        : `${drag.rotationDeg}°`
+    : null
+
+  const handlers = {
+    onPointerMove: moveDrag,
+    onPointerUp: endDrag,
+    onPointerCancel: endDrag
+  }
 
   // Vẫn phải dựng thẻ gốc kể cả khi không có gì để vẽ: hiệu ứng đo ở trên cần nó
   // để biết khung xem trước rộng bao nhiêu.
-  const shown =
-    measured && drag
-      ? {
-          ...measured,
-          centerXPx: drag.position.xPct * measured.stageWidthPx,
-          centerYPx: drag.position.yPct * measured.stageHeightPx
-        }
-      : measured
-  const rotation = drag?.rotationDeg ?? target?.style.rotationDeg ?? 0
-
   return (
     <div ref={rootRef} className="preview-gizmo-layer">
       {shown && target && (
@@ -262,9 +296,7 @@ export function PreviewTextGizmo({ document }: { document: ProjectDocument }): J
           aria-label={t.preview.moveText}
           title={t.preview.moveTextHint}
           onPointerDown={(event) => beginDrag(event, 'move')}
-          onPointerMove={moveDrag}
-          onPointerUp={endDrag}
-          onPointerCancel={endDrag}
+          {...handlers}
         >
           <span
             className="preview-gizmo__rotate"
@@ -272,17 +304,23 @@ export function PreviewTextGizmo({ document }: { document: ProjectDocument }): J
             tabIndex={0}
             aria-label={t.preview.rotateText}
             onPointerDown={(event) => beginDrag(event, 'rotate')}
-            onPointerMove={moveDrag}
-            onPointerUp={endDrag}
-            onPointerCancel={endDrag}
+            {...handlers}
           />
-          {drag && (
-            <span className="preview-gizmo__readout">
-              {drag.mode === 'move'
-                ? `${Math.round(drag.position.xPct * 100)}% · ${Math.round(drag.position.yPct * 100)}%`
-                : `${drag.rotationDeg}°`}
-            </span>
+
+          {/* Chữ đổi cỡ bằng cỡ phông chứ không bằng kéo góc, nên không có tay
+              nắm này — bày ra một tay nắm không làm gì là tệ hơn không có. */}
+          {target.scale !== null && (
+            <span
+              className="preview-gizmo__resize"
+              role="button"
+              tabIndex={0}
+              aria-label={t.preview.resizeText}
+              onPointerDown={(event) => beginDrag(event, 'resize')}
+              {...handlers}
+            />
           )}
+
+          {readout && <span className="preview-gizmo__readout">{readout}</span>}
         </div>
       )}
     </div>

@@ -35,6 +35,14 @@ export interface RenderPlanVideoClip {
    * gì cả — và không có lỗi nào, chỉ là một ô trống.
    */
   media: 'video' | 'image'
+  /**
+   * Kích thước gốc của ảnh, để lớp vẽ đặt thẻ đúng bằng phần ảnh CHIẾM chỗ.
+   *
+   * Chỉ có với ảnh: một tấm ảnh vẽ `object-fit: contain` thì thẻ to bằng cả
+   * khung hình còn ảnh chỉ nằm giữa, và khung điều khiển đo theo thẻ sẽ bao trọn
+   * khung hình thay vì bao tấm ảnh.
+   */
+  natural?: { width: number; height: number }
   fromFrame: number
   durationInFrames: number
   /** Khung bắt đầu bên trong file nguồn. */
@@ -57,6 +65,8 @@ export interface RenderPlanVideoClip {
    * dùng thẳng, không phải kiểm lại.
    */
   transition?: { kind: TransitionKind; frames: number }
+  /** Hiệu ứng ra, đã kẹp theo độ dài clip. */
+  exitTransition?: { kind: TransitionKind; frames: number }
 }
 
 export interface RenderPlanAudioClip {
@@ -173,6 +183,36 @@ export function requiresRemotionRenderer(document: ProjectDocument): boolean {
   )
 }
 
+/**
+ * Số khung của hiệu ứng RA.
+ *
+ * Chỉ kẹp theo độ dài clip, không kẹp theo phần nguồn: hiệu ứng ra không kéo clip
+ * bắt đầu sớm hơn nên chẳng tiêu thụ nguồn nào cả. Kẹp thêm NỬA clip để hiệu ứng
+ * vào và ra không chiếm trọn thời lượng — chiếm trọn thì clip không bao giờ đứng
+ * yên ở trạng thái nhìn được.
+ */
+function resolveExitTransition(
+  clip: Clip,
+  fps: FrameRate,
+  durationInFrames: number
+): { kind: TransitionKind; frames: number } | undefined {
+  if (!clip.transitionOut) return undefined
+  const wanted = frameOfMicros(clip.transitionOut.durationUs, fps)
+  const frames = Math.min(wanted, Math.floor(durationInFrames / 2))
+  if (frames <= 0) return undefined
+  return { kind: clip.transitionOut.kind, frames }
+}
+
+/** Kích thước gốc của một asset, nếu probe đọc được. */
+function naturalSizeOf(
+  document: ProjectDocument,
+  assetId: string
+): { width: number; height: number } | undefined {
+  const probe = document.assets.find((item) => item.id === assetId)?.probe
+  if (!probe?.width || !probe.height) return undefined
+  return { width: probe.width, height: probe.height }
+}
+
 /** Track có phát ra tiếng không, xét cả solo lẫn mute (giống lớp preview hiện có). */
 function audioTrackAudible(track: ProjectDocument['tracks'][number], anySolo: boolean): boolean {
   if (track.muted) return false
@@ -210,6 +250,7 @@ export function buildRenderPlan(document: ProjectDocument): RenderPlan {
           key: clip.id,
           assetId: clip.assetId,
           media: isImageTrack ? 'image' : 'video',
+          natural: isImageTrack ? naturalSizeOf(document, clip.assetId) : undefined,
           fromFrame,
           durationInFrames,
           // Ảnh không có trục thời gian nguồn; đọc từ khung 0 là đủ.
@@ -223,6 +264,7 @@ export function buildRenderPlan(document: ProjectDocument): RenderPlan {
             transitionFrames > 0 && clip.transitionIn
               ? { kind: clip.transitionIn.kind, frames: transitionFrames }
               : undefined,
+          exitTransition: resolveExitTransition(clip, fps, durationInFrames),
           playbackRate: clip.speed,
           volume: clip.volume * track.volume,
           fadeInFrames: frameOfMicros(clip.fadeInUs, fps),

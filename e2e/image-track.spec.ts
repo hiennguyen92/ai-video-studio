@@ -167,6 +167,122 @@ test('ảnh HIỆN RA trên preview, không phải một ô trống', async () =
   expect(hong).toBeGreaterThan(500)
 })
 
+/** Đọc biến đổi của clip ảnh từ chính file dự án đã lưu. */
+async function savedImageTransform(): Promise<{
+  x: number
+  y: number
+  scale: number
+  rotationDeg: number
+}> {
+  const { readFile, readdir } = await import('node:fs/promises')
+  const projectsRoot = join(userDataDir, 'projects')
+  const [projectId] = await readdir(projectsRoot)
+  const doc = JSON.parse(await readFile(join(projectsRoot, projectId, 'project.json'), 'utf8')) as {
+    tracks: Array<{
+      kind: string
+      clips: Array<{ transform?: { x: number; y: number; scale: number; rotationDeg: number } }>
+    }>
+  }
+  return doc.tracks.find((track) => track.kind === 'image')!.clips[0].transform!
+}
+
+test('kéo ảnh trên khung xem trước thì ảnh dời theo', async () => {
+  await page.locator('.timeline-lane--image .timeline-clip').first().click()
+
+  const gizmo = page.locator('.preview-gizmo')
+  await expect(gizmo).toBeVisible()
+
+  const image = page.locator('.preview__stage img[data-clip-id]').first()
+  const before = await image.boundingBox()
+
+  await gizmo.hover()
+  const box = await gizmo.boundingBox()
+  await page.mouse.down()
+  await page.mouse.move(box!.x + box!.width / 2 + 70, box!.y + box!.height / 2 - 40, { steps: 8 })
+  await page.mouse.up()
+
+  await expect.poll(async () => (await image.boundingBox())!.x).toBeGreaterThan(before!.x + 20)
+
+  await expect(page.locator('.top-bar__status')).toHaveText('Đã lưu', { timeout: 15_000 })
+  const transform = await savedImageTransform()
+  // Đơn vị là TỈ LỆ khung hình (-1..1), không phải pixel: kéo 70px trên khung xem
+  // trước phải ra một phân số nhỏ, không phải con số 70.
+  expect(transform.x).toBeGreaterThan(0)
+  expect(transform.x).toBeLessThan(1)
+})
+
+test('kéo góc thì đổi cỡ ảnh', async () => {
+  await page.locator('.timeline-lane--image .timeline-clip').first().click()
+  const gizmo = page.locator('.preview-gizmo')
+  await expect(gizmo).toBeVisible()
+
+  const image = page.locator('.preview__stage img[data-clip-id]').first()
+  const before = await image.boundingBox()
+  const beforeScale = (await savedImageTransform()).scale
+
+  const handle = page.locator('.preview-gizmo__resize')
+  await handle.hover()
+  const box = await gizmo.boundingBox()
+  await page.mouse.down()
+  // Kéo ra xa tâm: ảnh phải to lên.
+  await page.mouse.move(box!.x + box!.width + 80, box!.y + box!.height + 80, { steps: 8 })
+  await page.mouse.up()
+
+  await expect
+    .poll(async () => (await image.boundingBox())!.width)
+    .toBeGreaterThan(before!.width + 10)
+
+  await expect(page.locator('.top-bar__status')).toHaveText('Đã lưu', { timeout: 15_000 })
+  expect((await savedImageTransform()).scale).toBeGreaterThan(beforeScale)
+})
+
+test('kéo tay nắm tròn thì xoay ảnh', async () => {
+  await page.locator('.timeline-lane--image .timeline-clip').first().click()
+  const gizmo = page.locator('.preview-gizmo')
+  await expect(gizmo).toBeVisible()
+
+  const handle = page.locator('.preview-gizmo__rotate')
+  await handle.hover()
+  const box = await gizmo.boundingBox()
+  await page.mouse.down()
+  await page.mouse.move(box!.x + box!.width / 2 + 90, box!.y - 30, { steps: 8 })
+  await page.mouse.up()
+
+  await expect(page.locator('.top-bar__status')).toHaveText('Đã lưu', { timeout: 15_000 })
+  expect((await savedImageTransform()).rotationDeg).toBeGreaterThan(0)
+})
+
+test('hiệu ứng ra làm ảnh mờ dần ở cuối, không tắt phụt', async () => {
+  await page.locator('.timeline-lane--image .timeline-clip').first().click()
+  const inspector = page.getByRole('region', { name: 'Thuộc tính' })
+  await inspector.getByLabel('Hiệu ứng ra', { exact: true }).selectOption('fade')
+
+  const opacityAt = async (): Promise<number> => {
+    const wrapper = page.locator('.preview__stage img[data-clip-id]').first()
+    return Number(
+      await wrapper.evaluate((node) => {
+        const parent = node.parentElement as HTMLElement
+        return getComputedStyle(parent).opacity
+      })
+    )
+  }
+
+  const ruler = page.locator('.timeline__ruler-row')
+  const box = await ruler.boundingBox()
+  // Giữa clip: rõ hẳn.
+  await page.mouse.click(box!.x + 60, box!.y + 12)
+  await page.waitForTimeout(500)
+  const giua = await opacityAt()
+
+  // Sát cuối clip: phải mờ hơn hẳn.
+  await page.mouse.click(box!.x + 285, box!.y + 12)
+  await page.waitForTimeout(500)
+  const cuoi = await opacityAt()
+
+  expect(giua).toBeGreaterThan(0.9)
+  expect(cuoi).toBeLessThan(giua - 0.2)
+})
+
 test('ảnh đi tới file xuất ra, không chỉ sống trong preview', async () => {
   await page.getByRole('button', { name: 'Xuất video' }).click()
   await page.getByRole('button', { name: 'Chọn nơi lưu…' }).click()

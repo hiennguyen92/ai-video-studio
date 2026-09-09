@@ -164,6 +164,27 @@ export function InspectorPanel(): JSX.Element {
               />
             )}
 
+            {isVisualTrack && document && (
+              <ClipTransitionControls
+                edge="out"
+                clip={found.clip}
+                frameRate={document.settings.frameRate}
+                onChange={(transition) =>
+                  run(
+                    [
+                      {
+                        type: 'clip/set-transition',
+                        clipId: found.clip.id,
+                        edge: 'out',
+                        transition
+                      }
+                    ],
+                    'Đổi hiệu ứng ra'
+                  )
+                }
+              />
+            )}
+
             {isVisualTrack && (
               <ClipMotionControls
                 clip={found.clip}

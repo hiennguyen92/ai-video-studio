@@ -120,6 +120,14 @@ export interface Clip {
    * chứ không kéo clip đi chỗ khác.
    */
   transitionIn?: ClipTransition
+  /**
+   * Hiệu ứng RA, chạy ở mấy khung cuối của clip.
+   *
+   * Khác `transitionIn` ở một điểm cốt lõi: nó KHÔNG kéo clip bắt đầu sớm hơn và
+   * không tiêu thụ phần nguồn nào, nên không bị kẹp theo `sourceInUs`. Chỉ là
+   * chính clip mờ/trượt/thu lại ở đoạn cuối.
+   */
+  transitionOut?: ClipTransition
   /** Clip video và audio tách từ cùng một file di chuyển cùng nhau. */
   linkGroupId?: string
   label?: string

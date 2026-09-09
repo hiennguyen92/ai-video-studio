@@ -80,7 +80,8 @@ export const dictionaryEn: Dictionary = {
     aspectRatio: 'Aspect ratio',
     moveText: 'Move text',
     moveTextHint: 'Drag to move the text; drag the dot above it to rotate.',
-    rotateText: 'Rotate text'
+    rotateText: 'Rotate text',
+    resizeText: 'Resize'
   },
   inspector: {
     transition: 'Transition',
@@ -100,6 +101,7 @@ export const dictionaryEn: Dictionary = {
     transitionSpin: 'Spin in',
     transitionFlash: 'Flash',
     transitionDuration: 'Duration (seconds)',
+    exitTransition: 'Exit effect',
     transitionHint:
       'A transition uses source material before the clip in point. When there is not enough it shortens itself, and the first clip on the timeline gets none.',
     transitionClamped:

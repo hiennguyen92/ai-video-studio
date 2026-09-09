@@ -84,7 +84,8 @@ export const dictionaryVi = {
     aspectRatio: 'Tỷ lệ khung hình',
     moveText: 'Dời chữ',
     moveTextHint: 'Kéo để dời chữ, kéo chấm tròn phía trên để xoay.',
-    rotateText: 'Xoay chữ'
+    rotateText: 'Xoay chữ',
+    resizeText: 'Đổi cỡ'
   },
   inspector: {
     transition: 'Chuyển cảnh',
@@ -104,6 +105,7 @@ export const dictionaryVi = {
     transitionSpin: 'Xoay vào',
     transitionFlash: 'Loé trắng',
     transitionDuration: 'Thời lượng (giây)',
+    exitTransition: 'Hiệu ứng ra',
     transitionHint:
       'Chuyển cảnh lấy phần nguồn nằm trước điểm vào của clip. Không đủ thì nó tự ngắn lại, và clip đầu timeline không có chuyển cảnh.',
     transitionClamped: 'Chỉ dùng được {seconds}s vì clip không còn đủ phần nguồn phía trước.',
