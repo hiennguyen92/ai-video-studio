@@ -1,4 +1,5 @@
 import type { Micros } from './time-units'
+import type { TextPosition } from './text-placement'
 
 /**
  * Phụ đề là DỮ LIỆU chỉnh sửa được, không phải hình đã nung vào video
@@ -46,6 +47,14 @@ export interface SubtitleStyle {
    * preview nghiêng một đằng, bản nung nghiêng một nẻo.
    */
   rotationDeg?: number
+  /**
+   * Tâm khối chữ, theo phần khung hình (0..1). Có thì BỎ QUA `alignment` và lề.
+   *
+   * Đặt được bằng cách kéo chữ ngay trên khung xem trước. Lúc nung, nó thành thẻ
+   * `\an5\pos(x,y)` ở đầu dòng Dialogue — thẻ đó cũng ghi đè alignment, nên hai
+   * bên bỏ qua cùng những thứ như nhau.
+   */
+  position?: TextPosition
   alignment: SubtitleAlignment
   marginLeftPx: number
   marginRightPx: number

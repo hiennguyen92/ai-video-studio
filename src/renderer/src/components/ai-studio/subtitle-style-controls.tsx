@@ -6,6 +6,7 @@ import {
 } from '../../../../shared/domain/subtitle-types'
 import { useT } from '../../i18n/use-translation'
 import { FontFamilySelect } from './font-family-select'
+import { TextPositionRow } from './text-position-row'
 
 /**
  * Ô điều khiển kiểu chữ phụ đề.
@@ -40,6 +41,8 @@ export function SubtitleStyleControls({
 
   return (
     <div className="subtitle-style">
+      <TextPositionRow style={style} onChange={onChange} />
+
       <div className="field-row">
         <span className="field-row__label">{t.subtitles.rotation}</span>
         <input

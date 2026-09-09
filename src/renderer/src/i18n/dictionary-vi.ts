@@ -81,7 +81,10 @@ export const dictionaryVi = {
     nextFrame: 'Tiến một frame',
     goToStart: 'Về đầu',
     goToEnd: 'Tới cuối',
-    aspectRatio: 'Tỷ lệ khung hình'
+    aspectRatio: 'Tỷ lệ khung hình',
+    moveText: 'Dời chữ',
+    moveTextHint: 'Kéo để dời chữ, kéo chấm tròn phía trên để xoay.',
+    rotateText: 'Xoay chữ'
   },
   inspector: {
     transition: 'Chuyển cảnh',
@@ -371,6 +374,8 @@ export const dictionaryVi = {
     styleSection: 'Kiểu chữ',
     preset: 'Mẫu có sẵn',
     rotation: 'Góc xoay',
+    pinnedPosition: 'Vị trí đã ghim',
+    unpinPosition: 'Bỏ ghim',
     fontFamily: 'Phông chữ',
     fontStyle: 'Kiểu chữ',
     fontLoading: 'Đang đọc danh sách phông…',

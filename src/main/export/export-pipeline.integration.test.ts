@@ -461,6 +461,101 @@ describe('góc xoay phụ đề khi nung thật', () => {
   }, 60_000)
 })
 
+describe('vị trí tự do khi nung thật', () => {
+  /**
+   * Ghim chữ vào một điểm rồi ĐO xem nó rơi đúng chỗ đó trong khung hình không.
+   *
+   * Đây là chỗ preview và bản xuất dễ trôi khỏi nhau nhất: preview đặt chữ bằng
+   * `left/top` theo phần trăm, còn bản nung đặt bằng thẻ `\pos` theo pixel của
+   * PlayRes. Sai một trong hai thì file xuất ra vẫn hợp lệ, chỉ là chữ nằm chỗ
+   * khác — không có gì báo lỗi.
+   */
+  const WIDTH = 600
+  const HEIGHT = 400
+
+  async function textCentroid(position?: {
+    xPct: number
+    yPct: number
+  }): Promise<{ x: number; y: number }> {
+    const assPath = join(workDir, `ghim-${position?.xPct ?? 'khong'}.ass`)
+    const track: SubtitleTrack = {
+      id: 'sub_ghim',
+      name: 'Ghim',
+      language: 'vi',
+      source: { kind: 'manual' },
+      style: {
+        ...DEFAULT_SUBTITLE_STYLE,
+        fontFamily: 'Arial',
+        fontSizePx: 40,
+        outlineWidthPx: 0,
+        marginLeftPx: 0,
+        marginRightPx: 0,
+        marginVerticalPx: 0,
+        position
+      },
+      cues: [{ id: 'c1', startUs: 0, endUs: 2_000_000, text: 'HHHH', edited: false }]
+    }
+    await writeAssFile(track, WIDTH, HEIGHT, assPath)
+
+    const { ffmpegPath } = resolveFfmpegBinaries()
+    const { stdout } = await execFileAsync(
+      ffmpegPath,
+      [
+        '-hide_banner',
+        '-loglevel',
+        'error',
+        '-f',
+        'lavfi',
+        '-i',
+        `color=black:s=${WIDTH}x${HEIGHT}:d=0.1:r=1`,
+        '-vf',
+        `ass=${assPath}`,
+        '-frames:v',
+        '1',
+        '-pix_fmt',
+        'gray',
+        '-f',
+        'rawvideo',
+        '-'
+      ],
+      { encoding: 'buffer', maxBuffer: 1 << 28 }
+    )
+
+    let sumX = 0
+    let sumY = 0
+    let count = 0
+    for (let y = 0; y < HEIGHT; y++) {
+      for (let x = 0; x < WIDTH; x++) {
+        if (stdout[y * WIDTH + x] < 128) continue
+        sumX += x
+        sumY += y
+        count++
+      }
+    }
+    expect(count).toBeGreaterThan(50)
+    return { x: sumX / count, y: sumY / count }
+  }
+
+  it('chữ rơi đúng điểm đã ghim', async () => {
+    const centroid = await textCentroid({ xPct: 0.25, yPct: 0.3 })
+    // 25% của 600 = 150; 30% của 400 = 120. Cho lệch vài pixel vì trọng tâm nét
+    // chữ không trùng tuyệt đối với tâm hộp chữ.
+    expect(centroid.x).toBeGreaterThan(140)
+    expect(centroid.x).toBeLessThan(160)
+    expect(centroid.y).toBeGreaterThan(110)
+    expect(centroid.y).toBeLessThan(130)
+  }, 60_000)
+
+  it('không ghim thì vẫn nằm dưới đáy theo alignment như cũ', async () => {
+    // Mặc định alignment 2 = giữa-dưới. Đây là chốt chặn cho dự án cũ: thêm chỗ
+    // ghim không được làm xê dịch phụ đề của những dự án chưa từng ghim.
+    const centroid = await textCentroid(undefined)
+    expect(centroid.x).toBeGreaterThan(280)
+    expect(centroid.x).toBeLessThan(320)
+    expect(centroid.y).toBeGreaterThan(HEIGHT * 0.8)
+  }, 60_000)
+})
+
 describe('phông chữ khi nung phụ đề', () => {
   it('chỉ thẳng cho ffmpeg thư mục font khi có', async () => {
     const doc = await buildSampleProject()

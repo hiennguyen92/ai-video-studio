@@ -277,6 +277,17 @@ export const chatToolSchemas = {
     subtitleTrackId: z.string().min(1).max(120).optional()
   }),
 
+  set_text_position: z.object({
+    // Tỉ lệ chứ không phải pixel: agent không biết dự án đang ở độ phân giải nào,
+    // và tỉ lệ thì đúng ở mọi độ phân giải.
+    xPct: z.number().min(0).max(1).optional(),
+    yPct: z.number().min(0).max(1).optional(),
+    /** Bỏ ghim, trả chữ về cho alignment và lề. */
+    clear: z.boolean().optional(),
+    overlayId: z.string().min(1).max(120).optional(),
+    subtitleTrackId: z.string().min(1).max(120).optional()
+  }),
+
   auto_duck_music: z.object({
     duckVolume: gain.optional(),
     baseVolume: gain.optional(),
@@ -334,6 +345,8 @@ export const chatToolDescriptions: Record<ChatToolName, string> = {
     'Remove one asset from the media library. Refuses if any clip on the timeline still uses it; pass removeClips to delete those clips as well. The file on disk is never touched.',
   set_text_rotation:
     'Tilt text by an angle, clockwise, from -45 to 45 degrees. Works in the preview and in the exported file alike. With no overlayId and no subtitleTrackId it applies to every text overlay.',
+  set_text_position:
+    'Pin text to an exact spot on the frame. xPct/yPct are fractions of frame width and height (0..1) for the CENTER of the text block, so 0.5/0.5 is dead centre and 0.5/0.85 sits low. Overrides the alignment and margins in both the preview and the exported file. Pass clear:true to unpin and go back to alignment. With no overlayId and no subtitleTrackId it applies to every text overlay.',
   set_text_font:
     'Change the font of text overlays or a subtitle track. Call list_fonts first and use a family name from it — a font that is not installed silently falls back to the default. Pass fontPostScriptName to pick a specific weight or width within the family; the family name alone cannot select a face. With no overlayId and no subtitleTrackId it applies to every text overlay.'
 }
@@ -374,6 +387,8 @@ export const chatToolParameterHints: Record<ChatToolName, string> = {
   remove_media: '{ assetId: string, removeClips?: boolean }',
   set_text_font:
     '{ fontFamily: string, fontPostScriptName?: string, overlayId?: string, subtitleTrackId?: string }',
+  set_text_position:
+    '{ xPct?: number, yPct?: number, clear?: boolean, overlayId?: string, subtitleTrackId?: string }',
   set_text_rotation: '{ rotationDeg: number, overlayId?: string, subtitleTrackId?: string }'
 }
 

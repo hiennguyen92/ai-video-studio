@@ -4,7 +4,11 @@ import { countAssetUsages, findClip } from '../domain/project-document-types'
 import { DEFAULT_MOTION_INTENSITY } from '../domain/clip-motion-types'
 import { clipEndUs, type Clip } from '../domain/timeline-track-types'
 import { buildSubtitleCues } from '../domain/subtitle-cue-builder'
-import { DEFAULT_SUBTITLE_STYLE, type SubtitleTrack } from '../domain/subtitle-types'
+import {
+  DEFAULT_SUBTITLE_STYLE,
+  type SubtitleStyle,
+  type SubtitleTrack
+} from '../domain/subtitle-types'
 import {
   DEFAULT_TEXT_ANIMATION_DURATION_US,
   applyTextOverlayBox,
@@ -668,6 +672,70 @@ function planOne(context: ChatEditContext, tool: ChatToolName, args: unknown): P
             ? `Xoá media "${asset.name}" và ${usages} clip đang dùng nó`
             : `Xoá media "${asset.name}"`,
         commands: [{ type: 'asset/remove', assetId: input.assetId, removeUsages: usages > 0 }]
+      }
+    }
+
+    case 'set_text_position': {
+      const input = chatToolSchemas.set_text_position.parse(args)
+
+      // Phải nói rõ định làm gì: không có toạ độ mà cũng không bảo bỏ ghim thì
+      // lệnh này chẳng có nghĩa nào, và im lặng bỏ qua là để agent tưởng đã xong.
+      if (!input.clear && (input.xPct === undefined || input.yPct === undefined)) {
+        throw new Error('Cần cả xPct và yPct, hoặc clear=true để bỏ ghim')
+      }
+
+      const applyPosition = (style: SubtitleStyle): SubtitleStyle => {
+        if (input.clear) {
+          const next = { ...style }
+          delete next.position
+          return next
+        }
+        return { ...style, position: { xPct: input.xPct as number, yPct: input.yPct as number } }
+      }
+
+      const where = input.clear
+        ? 'về vị trí mặc định'
+        : `tới ${Math.round((input.xPct as number) * 100)}% · ${Math.round((input.yPct as number) * 100)}%`
+
+      if (input.subtitleTrackId) {
+        const subtitleTrack = document.subtitleTracks.find(
+          (item) => item.id === input.subtitleTrackId
+        )
+        if (!subtitleTrack) {
+          throw new Error(`Không tìm thấy track phụ đề "${input.subtitleTrackId}"`)
+        }
+        return {
+          tool,
+          description: `Dời phụ đề "${subtitleTrack.name}" ${where}`,
+          commands: [
+            {
+              type: 'subtitle/set-style',
+              trackId: subtitleTrack.id,
+              style: applyPosition(subtitleTrack.style)
+            }
+          ]
+        }
+      }
+
+      const targets = input.overlayId
+        ? document.textOverlays.filter((item) => item.id === input.overlayId)
+        : document.textOverlays
+      if (targets.length === 0) {
+        throw new Error(
+          input.overlayId
+            ? `Không tìm thấy chữ overlay "${input.overlayId}"`
+            : 'Dự án chưa có chữ overlay nào'
+        )
+      }
+
+      return {
+        tool,
+        description: `Dời ${targets.length} chữ ${where}`,
+        commands: targets.map((overlay) => ({
+          type: 'text/set-style' as const,
+          overlayId: overlay.id,
+          style: applyPosition(overlay.style)
+        }))
       }
     }
 

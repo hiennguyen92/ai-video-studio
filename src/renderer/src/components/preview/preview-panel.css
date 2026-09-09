@@ -72,3 +72,65 @@
 .preview__timecode-total {
   color: var(--text-muted);
 }
+
+/* Lớp phủ chứa khung điều khiển chữ. Trong suốt với chuột ở mọi chỗ trừ chính
+   khung — nếu không nó nuốt mọi cú bấm vào khung xem trước. */
+.preview-gizmo-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.preview-gizmo {
+  position: absolute;
+  pointer-events: auto;
+  cursor: move;
+  border: 1px dashed var(--accent);
+  /* Nới ra một chút để viền không đè lên chính chữ. */
+  outline: 4px solid transparent;
+  box-sizing: content-box;
+  padding: 4px;
+  margin: -5px;
+}
+
+.preview-gizmo--dragging {
+  border-style: solid;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+/* Tay nắm xoay, treo phía trên khung và nối bằng một đoạn thẳng. */
+.preview-gizmo__rotate {
+  position: absolute;
+  left: 50%;
+  top: -26px;
+  width: 12px;
+  height: 12px;
+  margin-left: -6px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: grab;
+}
+
+.preview-gizmo__rotate::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 12px;
+  width: 1px;
+  height: 14px;
+  background: var(--accent);
+}
+
+/* Số đọc trong lúc kéo: không có nó thì không biết mình đang đặt chữ ở đâu. */
+.preview-gizmo__readout {
+  position: absolute;
+  left: 50%;
+  bottom: -26px;
+  transform: translateX(-50%);
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--accent);
+  color: #fff;
+  font-size: var(--text-xs);
+  white-space: nowrap;
+}

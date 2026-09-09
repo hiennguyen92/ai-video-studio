@@ -110,3 +110,38 @@ describe('renderAss — nền hộp', () => {
     expect(ass).toContain('PlayResY: 1920')
   })
 })
+
+describe('renderAss — vị trí tự do', () => {
+  function dialogueLines(ass: string): string[] {
+    return ass.split('\n').filter((line) => line.startsWith('Dialogue:'))
+  }
+
+  it('không ghim thì dòng Dialogue không có thẻ ghi đè nào', () => {
+    const [line] = dialogueLines(renderAss(trackWith({}), 1080, 1920))
+    expect(line).not.toContain('\\pos')
+    expect(line.endsWith('Xin chào các bạn')).toBe(true)
+  })
+
+  it('ghim thì thêm \\an5\\pos tính theo PlayRes', () => {
+    const ass = renderAss(trackWith({ position: { xPct: 0.25, yPct: 0.8 } }), 1080, 1920)
+    // PlayRes bằng đúng độ phân giải xuất, nên 25% của 1080 là 270.
+    expect(ass).toContain('PlayResX: 1080')
+    expect(dialogueLines(ass)[0]).toContain('{\\an5\\pos(270,1536)}')
+  })
+
+  it('thẻ đứng TRƯỚC nội dung, nếu không libass coi nó là chữ', () => {
+    const [line] = dialogueLines(
+      renderAss(trackWith({ position: { xPct: 0.5, yPct: 0.5 } }), 1000, 1000)
+    )
+    const body = line.slice(line.indexOf(',,0,0,0,,') + ',,0,0,0,,'.length)
+    expect(body).toBe('{\\an5\\pos(500,500)}Xin chào các bạn')
+  })
+
+  it('dòng phụ đề thứ hai cũng được ghim theo', () => {
+    const track = trackWith({ position: { xPct: 0.5, yPct: 0.5 } })
+    track.cues[0].textSecondary = 'Second line'
+    const lines = dialogueLines(renderAss(track, 1000, 1000))
+    expect(lines).toHaveLength(2)
+    expect(lines[1]).toContain('{\\an5\\pos(500,500)}')
+  })
+})

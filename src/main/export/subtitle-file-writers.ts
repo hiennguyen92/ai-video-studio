@@ -2,6 +2,7 @@ import { writeFile } from 'node:fs/promises'
 import type { Micros } from '../../shared/domain/time-units'
 import type { SubtitleStyle, SubtitleTrack } from '../../shared/domain/subtitle-types'
 import { wrapSubtitleText } from '../../shared/domain/subtitle-types'
+import { assPositionTag } from '../../shared/domain/text-placement'
 
 /**
  * Ghi phụ đề ra file SRT (xuất riêng) và ASS (để nung vào hình).
@@ -113,6 +114,12 @@ export function renderAss(track: SubtitleTrack, videoWidth: number, videoHeight:
     'Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text'
   ]
 
+  // Vị trí tự do là thuộc tính của dòng Dialogue, không phải của dòng Style: ASS
+  // không có trường toạ độ trong Style. Thẻ này ghi đè cả alignment lẫn lề, đúng
+  // như bản xem trước bỏ qua chúng khi có vị trí tự do.
+  const primaryTag = assPositionTag(track.style.position, videoWidth, videoHeight)
+  const secondaryTag = assPositionTag(secondaryStyle.position, videoWidth, videoHeight)
+
   const events = track.cues.flatMap((cue) => {
     const start = formatAssTime(cue.startUs)
     const end = formatAssTime(cue.endUs)
@@ -120,7 +127,7 @@ export function renderAss(track: SubtitleTrack, videoWidth: number, videoHeight:
 
     const primary = wrapSubtitleText(cue.text, track.style.maxCharsPerLine).join('\\N')
     if (primary) {
-      lines.push(`Dialogue: 0,${start},${end},Chinh,,0,0,0,,${escapeAssText(primary)}`)
+      lines.push(`Dialogue: 0,${start},${end},Chinh,,0,0,0,,${primaryTag}${escapeAssText(primary)}`)
     }
 
     if (cue.textSecondary) {
@@ -128,7 +135,9 @@ export function renderAss(track: SubtitleTrack, videoWidth: number, videoHeight:
         '\\N'
       )
       // Layer 1 để dòng thứ hai vẽ chồng lên dòng chính khi hai bên trùng vị trí.
-      lines.push(`Dialogue: 1,${start},${end},Phu,,0,0,0,,${escapeAssText(secondary)}`)
+      lines.push(
+        `Dialogue: 1,${start},${end},Phu,,0,0,0,,${secondaryTag}${escapeAssText(secondary)}`
+      )
     }
 
     return lines

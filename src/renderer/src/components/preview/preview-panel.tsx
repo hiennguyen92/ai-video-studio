@@ -6,6 +6,7 @@ import { EmptyState } from '../ui/empty-state'
 import { ToolButton } from '../ui/tool-button'
 import { IconPause, IconPlay, IconStepBack, IconStepForward } from '../ui/icons'
 import { RemotionPreviewStage } from './remotion-preview-stage'
+import { PreviewTextGizmo } from './preview-text-gizmo'
 import './preview-panel.css'
 
 /**
@@ -69,6 +70,8 @@ export function PreviewPanel(): JSX.Element {
             }}
           >
             <RemotionPreviewStage document={document} />
+            {/* Sau Player để nằm ĐÈ lên khung hình; đặt trước thì Player phủ mất. */}
+            <PreviewTextGizmo document={document} />
           </div>
         )}
       </div>

@@ -302,6 +302,40 @@ test('chọn câu phụ đề rồi bấm Delete thì xoá đúng câu đó', as
   await expect(cues).toHaveCount(2)
 })
 
+test('kéo câu phụ đề trên khung xem trước thì ghim CẢ track', async () => {
+  // Nhánh phụ đề của khung điều khiển ghi bằng `subtitle/set-style` chứ không
+  // phải `text/set-style`, và kiểu chữ là của cả track — nên phải kiểm riêng.
+  await page.locator('.timeline-text-block--subtitle').first().click()
+
+  const gizmo = page.locator('.preview-gizmo')
+  await expect(gizmo).toBeVisible()
+  const before = await page.locator('.subtitle-cue .text-block').boundingBox()
+
+  const box = await gizmo.boundingBox()
+  await page.mouse.move(box!.x + box!.width / 2, box!.y + box!.height / 2)
+  await page.mouse.down()
+  await page.mouse.move(box!.x + box!.width / 2, box!.y + box!.height / 2 - 90, { steps: 8 })
+  await page.mouse.up()
+
+  await expect
+    .poll(async () => (await page.locator('.subtitle-cue .text-block').boundingBox())!.y)
+    .toBeLessThan(before!.y - 40)
+
+  await expect(page.locator('.top-bar__status')).toHaveText('Đã lưu', { timeout: 15_000 })
+  const projectsRoot = join(userDataDir, 'projects')
+  const [projectId] = await readdir(projectsRoot)
+  const document = JSON.parse(
+    await readFile(join(projectsRoot, projectId, 'project.json'), 'utf8')
+  ) as { subtitleTracks: Array<{ style: { position?: { xPct: number; yPct: number } } }> }
+  expect(document.subtitleTracks[0].style.position).toBeDefined()
+
+  // Trả lại nguyên trạng: bỏ ghim để các phép thử sau vẫn thấy phụ đề ở đáy.
+  await page.getByRole('button', { name: 'Bỏ ghim' }).first().click()
+  await expect
+    .poll(async () => (await page.locator('.subtitle-cue .text-block').boundingBox())!.y)
+    .toBeGreaterThan(before!.y - 10)
+})
+
 /** Đọc giờ của cue đầu tiên từ chính file dự án đã lưu. */
 async function savedCueRange(): Promise<{ startUs: number; endUs: number }> {
   const projectsRoot = join(userDataDir, 'projects')

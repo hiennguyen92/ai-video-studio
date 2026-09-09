@@ -11,6 +11,7 @@ import type { SubtitleAlignment } from '../../../../shared/domain/subtitle-types
 import { useEditorStore } from '../../state/editor-store'
 import { useT } from '../../i18n/use-translation'
 import { FontFamilySelect } from './font-family-select'
+import { TextPositionRow } from './text-position-row'
 
 /**
  * Các ô chỉnh kiểu cho MỘT dòng chữ đè hình.
@@ -69,6 +70,8 @@ export function TextOverlayStyleFields({
 
   return (
     <>
+      <TextPositionRow style={overlay.style} onChange={(style) => setStyle(style, 'Bỏ ghim chữ')} />
+
       <div className="field-row">
         <span className="field-row__label">{t.subtitles.rotation}</span>
         <input

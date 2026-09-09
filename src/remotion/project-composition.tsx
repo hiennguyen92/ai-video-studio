@@ -1,4 +1,4 @@
-import type { JSX } from 'react'
+import type { CSSProperties, JSX } from 'react'
 import {
   AbsoluteFill,
   Audio,
@@ -21,6 +21,11 @@ import {
 } from '../shared/domain/clip-color-grade'
 import { motionTransformAt, motionTransformCss } from '../shared/domain/clip-motion-types'
 import { wrapSubtitleText } from '../shared/domain/subtitle-types'
+import {
+  alignmentToFlex,
+  textTransformOrigin,
+  type TextPosition
+} from '../shared/domain/text-placement'
 
 /**
  * Composition vẽ lại một bản dựng.
@@ -231,6 +236,47 @@ function AudioClip({ clip, url }: { clip: RenderPlanAudioClip; url: string }): J
   )
 }
 
+/**
+ * Đặt khối chữ vào đúng một điểm khi người dùng đã kéo nó đi.
+ *
+ * Không có vị trí tự do thì trả về rỗng, để khung ngoài canh theo alignment như
+ * cũ — dự án cũ mở lên không đổi một li nào.
+ */
+function freePlacementCss(position: TextPosition | undefined): CSSProperties {
+  if (!position) return {}
+  return {
+    position: 'absolute',
+    left: `${position.xPct * 100}%`,
+    top: `${position.yPct * 100}%`
+  }
+}
+
+/**
+ * Ghép chuỗi transform của khối chữ, ĐÚNG THỨ TỰ.
+ *
+ * CSS áp dụng từ PHẢI sang TRÁI, nên thứ tự ở đây là có chủ ý:
+ *
+ *   - `translate(-50%,-50%)` ngoài cùng, để đưa TÂM khối về đúng toạ độ đã chỉ.
+ *     Đặt nó vào trong thì phép dời nửa khối bị xoay theo và chữ lệch đi.
+ *   - transform của hiệu ứng vào/ra ở giữa, nên nó trượt theo trục màn hình.
+ *   - `rotate` trong cùng, tức chạy trước mọi thứ, quanh `transform-origin`.
+ *
+ * Đo trong Chromium: `rotate(90deg) translateX(100px)` cho ra (0,100), còn
+ * `translateX(100px) rotate(90deg)` cho ra (100,0).
+ */
+function composeTextTransform(
+  position: TextPosition | undefined,
+  animation: string | undefined,
+  rotationDeg: number | undefined
+): string | undefined {
+  const parts = [
+    position ? 'translate(-50%, -50%)' : '',
+    animation ?? '',
+    rotationDeg ? `rotate(${rotationDeg}deg)` : ''
+  ].filter(Boolean)
+  return parts.length > 0 ? parts.join(' ') : undefined
+}
+
 function SubtitleCue({ cue, height }: { cue: RenderPlanSubtitleCue; height: number }): JSX.Element {
   const { style } = cue
   // Ngắt dòng bằng đúng hàm mà lớp ghi file ASS dùng, để preview và bản nung
@@ -240,11 +286,8 @@ function SubtitleCue({ cue, height }: { cue: RenderPlanSubtitleCue; height: numb
     ? wrapSubtitleText(cue.textSecondary, style.maxCharsPerLine)
     : []
 
-  // Alignment kiểu bàn phím số của ASS: 1–3 dưới, 4–6 giữa, 7–9 trên.
-  const vertical =
-    style.alignment >= 7 ? 'flex-start' : style.alignment >= 4 ? 'center' : 'flex-end'
-  const horizontal =
-    style.alignment % 3 === 1 ? 'flex-start' : style.alignment % 3 === 2 ? 'center' : 'flex-end'
+  const { vertical, horizontal } = alignmentToFlex(style.alignment)
+  const placement = freePlacementCss(style.position)
 
   const textStyle = {
     fontFamily: style.fontPostScriptName ?? style.fontFamily,
@@ -268,25 +311,37 @@ function SubtitleCue({ cue, height }: { cue: RenderPlanSubtitleCue; height: numb
     <AbsoluteFill
       // Class ổn định để gỡ lỗi và để kiểm thử bám vào; Remotion không tự đặt.
       className="subtitle-cue"
-      style={{
-        justifyContent: vertical,
-        alignItems: horizontal,
-        paddingLeft: style.marginLeftPx,
-        paddingRight: style.marginRightPx,
-        paddingTop: vertical === 'flex-start' ? style.marginVerticalPx : 0,
-        paddingBottom: vertical === 'flex-end' ? style.marginVerticalPx : 0
-      }}
+      // Id của cue, để khung điều khiển trên preview biết đo đúng khối nào khi
+      // màn hình đang có nhiều khối chữ cùng lúc.
+      data-block-id={cue.key}
+      style={
+        // Thả tự do thì lề và alignment không còn nghĩa gì — chính khối chữ tự
+        // đặt chỗ. Lúc nung, thẻ `\an5\pos` cũng ghi đè đúng những thứ đó.
+        style.position
+          ? undefined
+          : {
+              justifyContent: vertical,
+              alignItems: horizontal,
+              paddingLeft: style.marginLeftPx,
+              paddingRight: style.marginRightPx,
+              paddingTop: vertical === 'flex-start' ? style.marginVerticalPx : 0,
+              paddingBottom: vertical === 'flex-end' ? style.marginVerticalPx : 0
+            }
+      }
     >
       <div
+        className="text-block"
         style={{
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
           gap: style.lineSpacingPx,
           textAlign: 'center',
+          ...placement,
           // Xoay CẢ KHỐI chứ không xoay từng dòng: xoay từng dòng thì các dòng
           // trượt khỏi nhau và khối chữ vỡ ra.
-          transform: style.rotationDeg ? `rotate(${style.rotationDeg}deg)` : undefined,
+          transformOrigin: textTransformOrigin(style.alignment, style.position),
+          transform: composeTextTransform(style.position, undefined, style.rotationDeg),
           backgroundColor:
             style.boxOpacity > 0 ? hexToRgba(style.boxColor, style.boxOpacity) : undefined,
           padding: style.boxOpacity > 0 ? height * 0.008 : 0
@@ -386,42 +441,38 @@ function TextOverlayLayer({ overlay }: { overlay: RenderPlanTextOverlay }): JSX.
   }
 
   const lines = wrapSubtitleText(visibleText, style.maxCharsPerLine)
-  const vertical =
-    style.alignment >= 7 ? 'flex-start' : style.alignment >= 4 ? 'center' : 'flex-end'
-  const horizontal =
-    style.alignment % 3 === 1 ? 'flex-start' : style.alignment % 3 === 2 ? 'center' : 'flex-end'
+  const { vertical, horizontal } = alignmentToFlex(style.alignment)
+  const placement = freePlacementCss(style.position)
 
   return (
     <AbsoluteFill
       className="text-overlay"
-      style={{
-        justifyContent: vertical,
-        alignItems: horizontal,
-        paddingLeft: style.marginLeftPx,
-        paddingRight: style.marginRightPx,
-        paddingTop: vertical === 'flex-start' ? style.marginVerticalPx : 0,
-        paddingBottom: vertical === 'flex-end' ? style.marginVerticalPx : 0,
-        opacity
-      }}
+      data-block-id={overlay.key}
+      style={
+        style.position
+          ? { opacity }
+          : {
+              justifyContent: vertical,
+              alignItems: horizontal,
+              paddingLeft: style.marginLeftPx,
+              paddingRight: style.marginRightPx,
+              paddingTop: vertical === 'flex-start' ? style.marginVerticalPx : 0,
+              paddingBottom: vertical === 'flex-end' ? style.marginVerticalPx : 0,
+              opacity
+            }
+      }
     >
       <div
+        className="text-block"
         style={{
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
           gap: style.lineSpacingPx,
           textAlign: 'center',
-          // Transform của hiệu ứng đi TRƯỚC góc xoay. CSS áp dụng từ PHẢI sang
-          // TRÁI, nên để `rotate` ở cuối nghĩa là xoay trước rồi mới dịch chuyển
-          // — hiệu ứng vào/ra vẫn trượt theo trục màn hình. Đảo lại thì phép
-          // trượt bị xoay theo và chữ bay vào chéo góc.
-          // Đo trong Chromium: `rotate(90deg) translateX(100px)` cho ra (0,100),
-          // còn `translateX(100px) rotate(90deg)` cho ra (100,0).
-          transform:
-            [transform ?? '', style.rotationDeg ? `rotate(${style.rotationDeg}deg)` : '']
-              .filter(Boolean)
-              .join(' ')
-              .trim() || undefined,
+          ...placement,
+          transformOrigin: textTransformOrigin(style.alignment, style.position),
+          transform: composeTextTransform(style.position, transform, style.rotationDeg),
           backgroundColor:
             style.boxOpacity > 0 ? hexToRgba(style.boxColor, style.boxOpacity) : undefined,
           padding: style.boxOpacity > 0 ? style.fontSizePx * 0.25 : 0,

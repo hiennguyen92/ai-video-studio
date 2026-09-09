@@ -77,7 +77,10 @@ export const dictionaryEn: Dictionary = {
     nextFrame: 'Next frame',
     goToStart: 'Go to start',
     goToEnd: 'Go to end',
-    aspectRatio: 'Aspect ratio'
+    aspectRatio: 'Aspect ratio',
+    moveText: 'Move text',
+    moveTextHint: 'Drag to move the text; drag the dot above it to rotate.',
+    rotateText: 'Rotate text'
   },
   inspector: {
     transition: 'Transition',
@@ -371,6 +374,8 @@ export const dictionaryEn: Dictionary = {
     styleSection: 'Text style',
     preset: 'Preset',
     rotation: 'Rotation',
+    pinnedPosition: 'Pinned position',
+    unpinPosition: 'Unpin',
     fontFamily: 'Font',
     fontStyle: 'Style',
     fontLoading: 'Reading installed fonts…',

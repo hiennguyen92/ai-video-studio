@@ -797,3 +797,106 @@ describe('công cụ xoay chữ', () => {
     expect(plan.failures).toHaveLength(1)
   })
 })
+
+describe('công cụ đặt vị trí chữ', () => {
+  const withOverlays = (): ProjectDocument => {
+    const document = project()
+    const plan = planChatToolCalls(context(document), [
+      { name: 'add_text_overlay', arguments: { text: 'Hook', startSeconds: 0, endSeconds: 2 } }
+    ])
+    for (const command of plan.steps.flatMap((step) => step.commands)) {
+      expect(applyEditorCommand(document, command).ok).toBe(true)
+    }
+    return document
+  }
+
+  it('ghim chữ vào một điểm theo tỉ lệ khung hình', () => {
+    const document = withOverlays()
+    const plan = planChatToolCalls(context(document), [
+      { name: 'set_text_position', arguments: { xPct: 0.5, yPct: 0.85 } }
+    ])
+
+    expect(plan.failures).toEqual([])
+    for (const command of plan.steps.flatMap((step) => step.commands)) {
+      expect(applyEditorCommand(document, command).ok).toBe(true)
+    }
+    expect(document.textOverlays[0].style.position).toEqual({ xPct: 0.5, yPct: 0.85 })
+  })
+
+  it('clear=true XOÁ HẲN trường vị trí, không đặt về giữa khung', () => {
+    const document = withOverlays()
+    for (const call of [
+      { name: 'set_text_position', arguments: { xPct: 0.2, yPct: 0.2 } },
+      { name: 'set_text_position', arguments: { clear: true } }
+    ]) {
+      const plan = planChatToolCalls(context(document), [call])
+      for (const command of plan.steps.flatMap((step) => step.commands)) {
+        expect(applyEditorCommand(document, command).ok).toBe(true)
+      }
+    }
+
+    // Còn sót trường vị trí thì alignment và lề vẫn bị bỏ qua, và người dùng
+    // chỉnh lề mãi mà chữ không nhúc nhích.
+    expect('position' in document.textOverlays[0].style).toBe(false)
+  })
+
+  it('thiếu một trong hai toạ độ thì báo lỗi thay vì đoán', () => {
+    const plan = planChatToolCalls(context(withOverlays()), [
+      { name: 'set_text_position', arguments: { xPct: 0.5 } }
+    ])
+
+    expect(plan.steps).toEqual([])
+    expect(plan.failures).toHaveLength(1)
+  })
+
+  it('toạ độ ngoài khung thì báo lỗi, không kẹp cho vừa', () => {
+    const plan = planChatToolCalls(context(withOverlays()), [
+      { name: 'set_text_position', arguments: { xPct: 1.4, yPct: 0.5 } }
+    ])
+
+    expect(plan.steps).toEqual([])
+    expect(plan.failures).toHaveLength(1)
+  })
+
+  it('ghim được cả track phụ đề', () => {
+    const { document } = withClip()
+    document.transcripts.push({
+      id: 'tr_1',
+      assetId: 'asset_1',
+      language: 'vi',
+      languageAutoDetected: false,
+      providerId: 'whisper-cpp',
+      model: 'ggml',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      segments: [{ id: 's1', startUs: 1_000_000, endUs: 2_000_000, text: 'Hi', edited: false }]
+    })
+    const create = planChatToolCalls(context(document), [
+      { name: 'create_subtitle_track', arguments: {} }
+    ])
+    for (const command of create.steps.flatMap((step) => step.commands)) {
+      expect(applyEditorCommand(document, command).ok).toBe(true)
+    }
+
+    const plan = planChatToolCalls(context(document), [
+      {
+        name: 'set_text_position',
+        arguments: { xPct: 0.5, yPct: 0.1, subtitleTrackId: document.subtitleTracks[0].id }
+      }
+    ])
+    expect(plan.failures).toEqual([])
+    for (const command of plan.steps.flatMap((step) => step.commands)) {
+      expect(applyEditorCommand(document, command).ok).toBe(true)
+    }
+
+    expect(document.subtitleTracks[0].style.position).toEqual({ xPct: 0.5, yPct: 0.1 })
+  })
+
+  it('dự án chưa có chữ nào thì báo lỗi, không im lặng thành công', () => {
+    const plan = planChatToolCalls(context(project()), [
+      { name: 'set_text_position', arguments: { xPct: 0.5, yPct: 0.5 } }
+    ])
+
+    expect(plan.steps).toEqual([])
+    expect(plan.failures).toHaveLength(1)
+  })
+})

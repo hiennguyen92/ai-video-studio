@@ -109,6 +109,57 @@ async function overlayOpacity(): Promise<number> {
   )
 }
 
+/**
+ * Đếm số ĐIỂM ẢNH khác nhau giữa hai ảnh chụp, thay vì so từng byte.
+ *
+ * So byte quá chặt cho việc cần chứng minh ở đây: khử răng cưa của GPU làm vài
+ * điểm trên nét chữ lệch một hai mức giữa hai lần chụp cùng một khung hình. Đo
+ * thật trên hai ảnh 1444×812 của cùng một khung: 2 điểm lệch, mức lệch tối đa 2.
+ * Còn một vệt sáng sót lại quanh chữ thì thắp lên hàng trăm điểm.
+ */
+async function differingPixels(left: Buffer, right: Buffer): Promise<number> {
+  const { writeFile } = await import('node:fs/promises')
+  const { default: ffmpegStatic } = await import('ffmpeg-static')
+  const paths = [join(workDir, 'diff-a.png'), join(workDir, 'diff-b.png')]
+  await writeFile(paths[0], left)
+  await writeFile(paths[1], right)
+
+  const width = left.readUInt32BE(16)
+  const height = left.readUInt32BE(20)
+  const decode = async (path: string): Promise<Buffer> => {
+    const { stdout } = await execFileAsync(
+      String(ffmpegStatic),
+      [
+        '-hide_banner',
+        '-loglevel',
+        'error',
+        '-i',
+        path,
+        '-pix_fmt',
+        'rgb24',
+        '-f',
+        'rawvideo',
+        '-'
+      ],
+      { encoding: 'buffer', maxBuffer: 1 << 28 }
+    )
+    return stdout
+  }
+
+  const [a, b] = await Promise.all(paths.map(decode))
+  let count = 0
+  for (let index = 0; index < width * height * 3; index += 3) {
+    if (
+      Math.abs(a[index] - b[index]) > 2 ||
+      Math.abs(a[index + 1] - b[index + 1]) > 2 ||
+      Math.abs(a[index + 2] - b[index + 2]) > 2
+    ) {
+      count++
+    }
+  }
+  return count
+}
+
 test('thêm chữ được ngay cả khi chưa có bản phiên âm nào', async () => {
   await studio().getByRole('tab', { name: 'Phụ đề' }).click()
 
@@ -285,6 +336,98 @@ test('chọn khối chữ rồi bấm Delete thì xoá đúng chữ đó', async
   await expect(blocks).toHaveCount(1)
   await expect(blocks.first()).toContainText('Bạn đang bỏ lỡ thứ này')
 })
+
+test('kéo chữ trên khung xem trước thì dời chữ và ghim vị trí', async () => {
+  await page
+    .locator('.timeline__scroll')
+    .evaluate((element) => element.scrollTo({ top: element.scrollHeight }))
+  await page.locator('.timeline-text-block--overlay').first().click()
+
+  // Khung điều khiển chỉ hiện khi có khối chữ đang chọn VÀ chữ đang trên hình.
+  const gizmo = page.locator('.preview-gizmo')
+  await expect(gizmo).toBeVisible()
+
+  const before = await page.locator('.text-overlay .text-block').boundingBox()
+  const box = await gizmo.boundingBox()
+
+  // Kéo lên trên và sang trái một quãng rõ ràng.
+  await page.mouse.move(box!.x + box!.width / 2, box!.y + box!.height / 2)
+  await page.mouse.down()
+  await page.mouse.move(box!.x + box!.width / 2 - 60, box!.y + box!.height / 2 - 50, { steps: 8 })
+  await page.mouse.up()
+
+  // Chữ THẬT phải dời theo, không chỉ cái khung.
+  await expect
+    .poll(async () => (await page.locator('.text-overlay .text-block').boundingBox())!.y)
+    .toBeLessThan(before!.y - 30)
+
+  // Và phải được ghim lại trong dự án, để bản xuất cũng đặt đúng chỗ đó.
+  await expect(page.locator('.top-bar__status')).toHaveText('Đã lưu', { timeout: 15_000 })
+  const position = await savedOverlayStyle()
+  expect(position.position).toBeDefined()
+  expect(position.position!.xPct).toBeGreaterThan(0)
+  expect(position.position!.xPct).toBeLessThan(1)
+
+  // Một lần kéo là MỘT bước hoàn tác, và hoàn tác trả chữ về chỗ cũ.
+  await expect(page.getByRole('button', { name: /Hoàn tác: Dời chữ/ })).toBeVisible()
+  await page.keyboard.press('ControlOrMeta+z')
+  await expect
+    .poll(async () => (await page.locator('.text-overlay .text-block').boundingBox())!.y)
+    .toBeGreaterThan(before!.y - 10)
+})
+
+test('kéo tay nắm tròn thì xoay chữ', async () => {
+  await page.locator('.timeline-text-block--overlay').first().click()
+  const gizmo = page.locator('.preview-gizmo')
+  await expect(gizmo).toBeVisible()
+
+  const rotationOf = async (): Promise<string> =>
+    page.locator('.text-overlay .text-block').evaluate((node) => getComputedStyle(node).transform)
+  const before = await rotationOf()
+
+  const box = await gizmo.boundingBox()
+  const handle = page.locator('.preview-gizmo__rotate')
+  const handleBox = await handle.boundingBox()
+
+  await page.mouse.move(handleBox!.x + handleBox!.width / 2, handleBox!.y + handleBox!.height / 2)
+  await page.mouse.down()
+  // Kéo tay nắm sang phải, tức xoay xuôi chiều kim đồng hồ.
+  await page.mouse.move(box!.x + box!.width / 2 + 90, box!.y - 30, { steps: 8 })
+  await page.mouse.up()
+
+  await expect.poll(rotationOf).not.toBe(before)
+
+  await expect(page.locator('.top-bar__status')).toHaveText('Đã lưu', { timeout: 15_000 })
+  const style = await savedOverlayStyle()
+  expect(style.rotationDeg).toBeGreaterThan(0)
+  // Xoay bằng tay nắm cũng ghim vị trí: có ghim thì tâm xoay mới là tâm khối,
+  // đúng thứ tay nắm gợi ý.
+  expect(style.position).toBeDefined()
+
+  // Dọn lại cho các phép thử sau: bỏ ghim và trả góc về 0.
+  await page.getByRole('button', { name: 'Bỏ ghim' }).first().click()
+  await studio()
+    .getByLabel(/Góc xoay/)
+    .fill('0')
+})
+
+/** Đọc kiểu chữ của chữ đầu tiên từ chính file dự án đã lưu. */
+async function savedOverlayStyle(): Promise<{
+  rotationDeg?: number
+  position?: { xPct: number; yPct: number }
+}> {
+  const { readFile, readdir } = await import('node:fs/promises')
+  const projectsRoot = join(userDataDir, 'projects')
+  const [projectId] = await readdir(projectsRoot)
+  const document = JSON.parse(
+    await readFile(join(projectsRoot, projectId, 'project.json'), 'utf8')
+  ) as {
+    textOverlays: Array<{
+      style: { rotationDeg?: number; position?: { xPct: number; yPct: number } }
+    }>
+  }
+  return document.textOverlays[0].style
+}
 
 /** Đọc giờ của chữ đầu tiên từ chính file dự án đã lưu. */
 async function savedOverlayRange(): Promise<{ startUs: number; endUs: number }> {
@@ -607,10 +750,10 @@ test('viền phát sáng làm đổi hình, ở cùng một thời điểm', asy
   await page.waitForTimeout(700)
   expect((await stage.screenshot()).equals(plain)).toBe(false)
 
-  // Tắt đi phải trả về ĐÚNG khung cũ; còn khác nghĩa là có phần vẽ thừa nằm lại.
+  // Tắt đi phải trả về đúng khung cũ; còn vệt sáng nào nằm lại là thấy ngay.
   await page.getByLabel('Viền phát sáng 1').uncheck()
   await page.waitForTimeout(700)
-  expect((await stage.screenshot()).equals(plain)).toBe(true)
+  expect(await differingPixels(await stage.screenshot(), plain)).toBeLessThan(20)
 })
 
 test('đổi vị trí đưa chữ xuống dưới khung hình', async () => {
