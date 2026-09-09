@@ -339,26 +339,45 @@ export function TimelinePanel(): JSX.Element {
   )
 
   /**
-   * Cuộn tới track vừa thêm.
+   * Đưa track vừa thêm vào tầm nhìn.
    *
    * Ở chiều cao mặc định của timeline chỉ vừa khoảng bốn lane, nên track thứ năm
    * trở đi được tạo ra NGOÀI tầm nhìn: bấm "Thêm track" xong màn hình không đổi
    * gì cả và trông y như cái nút không ăn.
    *
-   * `track/add` luôn nối vào cuối danh sách nên cuộn xuống đáy là tới đúng chỗ.
-   * Chỉ cuộn khi số track TĂNG, và bỏ qua lần đầu — mở một dự án có sẵn mười
-   * track mà nhảy thẳng xuống đáy thì không ai muốn.
+   * Cuộn VỪA ĐỦ (`block: 'nearest'`) chứ không nhảy xuống đáy: nhảy đáy thì
+   * những lane phía trên biến mất hết, và người dùng mất luôn chỗ dựa để nhận ra
+   * có gì vừa thêm.
+   *
+   * Mốc so sánh phải kèm id dự án. Lần đầu tài liệu về, số track nhảy từ 0 lên N
+   * — không phân biệt thì mở một dự án có sẵn năm track cũng bị cuộn, và hai
+   * lane đầu rơi khỏi màn hình ngay khi vừa mở.
    */
-  const trackCountRef = useRef<number | null>(null)
+  const projectIdRef = useRef<string | null>(null)
+  const trackCountRef = useRef(0)
+  const projectId = document?.id ?? null
   const trackCount = document?.tracks.length ?? 0
+  const lastTrackId = document?.tracks.at(-1)?.id
   useLayoutEffect(() => {
+    const sameProject = projectIdRef.current === projectId
     const previous = trackCountRef.current
+    projectIdRef.current = projectId
     trackCountRef.current = trackCount
-    if (previous === null || trackCount <= previous) return
+    if (!sameProject || trackCount <= previous) return
 
+    // Tự tính rồi cuộn CHÍNH `.timeline__body`, không dùng `scrollIntoView`.
+    // `scrollIntoView` cuộn khung cuộn gần nhất, mà khung đó là `.timeline__scroll`
+    // — nơi chỉ chứa cột lane, không chứa cột đầu track. Đo được: nó kéo lane đi
+    // còn đầu track đứng yên, và hai cột lệch hàng nhau.
+    const row = lastTrackId ? trackRowRefs.current.get(lastTrackId) : undefined
     const body = bodyRef.current
-    if (body) body.scrollTop = body.scrollHeight
-  }, [trackCount])
+    if (!row || !body) return
+
+    const rowRect = row.getBoundingClientRect()
+    const frame = body.getBoundingClientRect()
+    if (rowRect.bottom > frame.bottom) body.scrollTop += rowRect.bottom - frame.bottom
+    else if (rowRect.top < frame.top) body.scrollTop -= frame.top - rowRect.top
+  }, [projectId, trackCount, lastTrackId])
 
   // Giữ playhead luôn trong tầm nhìn khi nó chạy ra ngoài vùng cuộn.
   useLayoutEffect(() => {

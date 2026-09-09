@@ -330,8 +330,41 @@ test('thêm track thì cuộn tới lane mới, không để nó nằm ngoài t�
   })
   expect(aligned).toBe(true)
 
+  // Cuộn VỪA ĐỦ: lane trên cùng không được văng khỏi màn hình chỉ vì thêm một
+  // track ở dưới — mất hết chỗ dựa thì người dùng cũng không nhận ra vừa thêm gì.
+  const scrolled = await page.evaluate(() => {
+    const body = document.querySelector('.timeline__body') as HTMLElement
+    return body.scrollTop
+  })
+  expect(scrolled).toBeLessThan(overflow + 1)
+
   for (let index = 0; index < 5; index++) {
     await page.keyboard.press('ControlOrMeta+z')
   }
   await expect(lanes).toHaveCount(await lanes.count())
+})
+
+test('mở lại dự án KHÔNG tự cuộn timeline, lane đầu vẫn ở trên cùng', async () => {
+  // Lần đầu tài liệu về, số track nhảy từ 0 lên N. Nếu coi đó là "vừa thêm
+  // track" thì mở dự án nào cũng bị cuộn, và những lane đầu rơi khỏi màn hình
+  // ngay khi vừa mở — đúng cảm giác "timeline chỉ có mấy lane dưới".
+  await expect(page.locator('.top-bar__status')).toHaveText('Đã lưu', { timeout: 15_000 })
+  await page.getByRole('button', { name: 'Về danh sách dự án' }).click()
+  await page.locator('.project-card__open', { hasText: 'Dự án kiểm thử' }).click()
+  await page.getByRole('region', { name: 'Timeline' }).waitFor()
+
+  await expect
+    .poll(async () =>
+      page.evaluate(() => (document.querySelector('.timeline__body') as HTMLElement).scrollTop)
+    )
+    .toBe(0)
+
+  const firstVisible = await page.evaluate(() => {
+    const body = document.querySelector('.timeline__body') as HTMLElement
+    const first = document.querySelector('.timeline-lane') as HTMLElement
+    const frame = body.getBoundingClientRect()
+    const rect = first.getBoundingClientRect()
+    return rect.top >= frame.top - 1 && rect.bottom <= frame.bottom + 1
+  })
+  expect(firstVisible).toBe(true)
 })
