@@ -22,6 +22,13 @@ export default defineConfig(
     ]
   },
   tseslint.configs.recommended,
+  {
+    // Script build là JavaScript thuần: không viết được kiểu trả về, mà quy tắc
+    // này lại là quy tắc của TypeScript. Áp nó cho `.mjs` chỉ ép người viết bỏ
+    // hàm đi và viết một khối mã dài dằng dặc ở cấp cao nhất.
+    files: ['**/*.mjs', '**/*.cjs'],
+    rules: { '@typescript-eslint/explicit-function-return-type': 'off' }
+  },
   eslintPluginReact.configs.flat.recommended,
   eslintPluginReact.configs.flat['jsx-runtime'],
   {

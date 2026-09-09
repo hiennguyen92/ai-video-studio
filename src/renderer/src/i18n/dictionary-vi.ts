@@ -158,6 +158,14 @@ export const dictionaryVi = {
     missingTextBlockHint: 'Có lẽ nó vừa bị xoá. Chọn một khối khác trên timeline.',
     resetTransform: 'Đặt lại biến đổi'
   },
+  soundEffects: {
+    section: 'Hiệu ứng âm thanh',
+    hint: 'Có sẵn trong app: không cần mạng, không tính phí. Thêm vào là thành asset thật như file nhập tay.',
+    addToTimeline: 'Đặt vào timeline',
+    addToLibrary: 'Chỉ thêm vào thư viện',
+    needAudioTrack: 'Chưa có track tiếng nào để đặt hiệu ứng.',
+    missingLibrary: 'Bản cài này thiếu thư viện hiệu ứng âm thanh. Bản build đóng gói sai.'
+  },
   timeline: {
     title: 'Timeline',
     zoomIn: 'Phóng to',

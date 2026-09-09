@@ -24,6 +24,10 @@ extraResources:
   # ngã ngay: `src/` không nằm trong gói và Remotion không dựng được từ asar.
   - from: out/remotion-bundle
     to: remotion-bundle
+  # Thư viện hiệu ứng âm thanh, dựng bằng ffmpeg lúc build. Dự án lưu id chứ
+  # không lưu đường dẫn, và id được phân giải về đúng thư mục này.
+  - from: out/sound-effects
+    to: sound-effects
 win:
   executableName: ai-video-studio
 nsis:

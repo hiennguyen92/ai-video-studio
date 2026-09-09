@@ -18,6 +18,14 @@ export interface MediaSourceRef {
   path: string
   /** Đường dẫn tương đối khi file nằm trong thư mục project (giúp di chuyển project). */
   relativePath?: string
+  /**
+   * Hiệu ứng âm thanh dựng sẵn trong app, theo id trong danh mục.
+   *
+   * Có trường này thì `path` chỉ là kết quả phân giải của LẦN CHẠY NÀY, không
+   * phải dữ liệu bền: gỡ app, mở trên máy khác hay đổi bản cài đều làm nó sai.
+   * Lúc mở dự án, đường dẫn được trỏ lại từ id.
+   */
+  builtinId?: string
   /** Hash nội dung — dùng để chống trùng khi import và để liên kết lại media bị thiếu. */
   contentHash: string
   sizeBytes: number
@@ -80,7 +88,7 @@ export interface MediaAsset {
   source: MediaSourceRef
   probe: MediaProbe
   derived: MediaDerived
-  origin: 'import' | 'generated'
+  origin: 'import' | 'generated' | 'builtin'
   generated?: GeneratedOrigin
   /** Nhãn người dùng tự gán, dùng để lọc trong thư viện. */
   tags: string[]

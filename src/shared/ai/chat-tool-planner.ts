@@ -1,5 +1,7 @@
 import type { EditorCommand } from '../commands/editor-command-types'
+import type { MediaAsset } from '../domain/media-asset-types'
 import type { ProjectDocument } from '../domain/project-document-types'
+import { findSoundEffect } from '../domain/sound-effect-catalog'
 import { countAssetUsages, findClip } from '../domain/project-document-types'
 import { DEFAULT_MOTION_INTENSITY } from '../domain/clip-motion-types'
 import { DEFAULT_CLIP_TRANSFORM, clipEndUs, type Clip } from '../domain/timeline-track-types'
@@ -59,6 +61,13 @@ export interface ChatEditContext {
    * thống. Nơi gọi chép sẵn rồi đưa vào đây.
    */
   fontFiles?: Record<string, string>
+  /**
+   * Asset hiệu ứng âm thanh đã dựng sẵn, theo id trong danh mục.
+   *
+   * Cùng lý do như `fontFiles`: planner là hàm thuần, không probe được file để
+   * biết thời lượng thật hay hash nội dung. Nơi gọi dựng trước rồi đưa vào.
+   */
+  soundEffects?: Record<string, MediaAsset>
 }
 
 export interface PlannedToolCall {
@@ -874,6 +883,52 @@ function planOne(context: ChatEditContext, tool: ChatToolName, args: unknown): P
             cueId: input.cueId
           }
         ]
+      }
+    }
+
+    case 'add_sound_effect': {
+      const input = chatToolSchemas.add_sound_effect.parse(args)
+      const definition = findSoundEffect(input.soundEffectId)
+      if (!definition) {
+        throw new Error(`Không có hiệu ứng âm thanh "${input.soundEffectId}"`)
+      }
+
+      // Asset do tiến trình main dựng sẵn (probe thời lượng thật, hash nội dung)
+      // rồi đưa vào ngữ cảnh — planner là hàm thuần, không đọc file được. Cùng
+      // lối với đường dẫn phông chữ.
+      const asset = context.soundEffects?.[input.soundEffectId]
+      if (!asset) {
+        throw new Error(`Bản cài này không có file cho hiệu ứng "${input.soundEffectId}"`)
+      }
+
+      const commands: EditorCommand[] = [{ type: 'asset/add', asset }]
+
+      if (input.atSeconds !== undefined) {
+        const track = input.trackId
+          ? document.tracks.find((item) => item.id === input.trackId)
+          : document.tracks.find((item) => item.kind === 'audio' && !item.locked)
+        if (!track) throw new Error('Không tìm thấy track tiếng nào để đặt hiệu ứng')
+        if (track.kind !== 'audio') throw new Error(`Track "${track.name}" không phải track tiếng`)
+
+        commands.push({
+          type: 'clip/insert',
+          trackId: track.id,
+          assetId: asset.id,
+          startUs: secondsToMicros(input.atSeconds),
+          // Thời lượng lấy từ asset đã probe, không lấy con số khai trong danh
+          // mục: bộ mã hoá chèn thêm vài chục mili giây và đuôi tiếng sẽ bị cắt.
+          durationUs: asset.probe.durationUs,
+          sourceInUs: 0
+        })
+      }
+
+      return {
+        tool,
+        description:
+          input.atSeconds !== undefined
+            ? `Đặt hiệu ứng "${definition.nameVi}" ở ${formatSeconds(secondsToMicros(input.atSeconds))}`
+            : `Thêm hiệu ứng "${definition.nameVi}" vào thư viện`,
+        commands
       }
     }
 

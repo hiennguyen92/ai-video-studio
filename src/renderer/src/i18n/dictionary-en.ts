@@ -156,6 +156,14 @@ export const dictionaryEn: Dictionary = {
     missingTextBlockHint: 'It was probably just deleted. Pick another block on the timeline.',
     resetTransform: 'Reset transform'
   },
+  soundEffects: {
+    section: 'Sound effects',
+    hint: 'Bundled with the app: no network, no cost. Adding one makes a real asset, just like an imported file.',
+    addToTimeline: 'Add to timeline',
+    addToLibrary: 'Library only',
+    needAudioTrack: 'No audio lane to drop the effect on.',
+    missingLibrary: 'This install is missing the sound effect library. The build is packaged wrong.'
+  },
   timeline: {
     title: 'Timeline',
     zoomIn: 'Zoom in',

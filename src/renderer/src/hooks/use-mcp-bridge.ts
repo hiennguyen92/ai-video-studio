@@ -3,6 +3,7 @@ import type { McpApplyResult, McpBridgeRequest } from '../../../shared/ipc/ipc-c
 import { buildProjectContext } from '../../../shared/ai/chat-context-builder'
 import { planChatToolCalls } from '../../../shared/ai/chat-tool-planner'
 import { createId } from '../../../shared/domain/project-document-factory'
+import type { MediaAsset } from '../../../shared/domain/media-asset-types'
 import type { ProjectDocument } from '../../../shared/domain/project-document-types'
 import { useEditorStore } from '../state/editor-store'
 
@@ -114,6 +115,34 @@ async function listLocalFonts(family?: string): Promise<string> {
     for (const face of faces) lines.push(`- ${face.style} → ${face.postScriptName}`)
   }
   return lines.join('\n')
+}
+
+/**
+ * Dựng sẵn asset hiệu ứng âm thanh cho những lời gọi cần tới.
+ *
+ * Cùng lý do như phông chữ: planner là hàm thuần, không probe được thời lượng
+ * thật hay hash nội dung của file. Không dựng trước thì clip đặt ra dài không
+ * khớp tiếng, và đuôi âm thanh bị cắt.
+ */
+async function resolveSoundEffects(
+  calls: Array<{ name: string; arguments: unknown }>
+): Promise<Record<string, MediaAsset>> {
+  const wanted = new Set<string>()
+  for (const call of calls) {
+    if (call.name !== 'add_sound_effect') continue
+    const args = call.arguments as { soundEffectId?: string }
+    if (typeof args?.soundEffectId === 'string' && args.soundEffectId) {
+      wanted.add(args.soundEffectId)
+    }
+  }
+  if (wanted.size === 0) return {}
+
+  const resolved: Record<string, MediaAsset> = {}
+  for (const id of wanted) {
+    const built = await window.api.soundEffects.buildAsset(id)
+    if (built.ok) resolved[id] = built.data
+  }
+  return resolved
 }
 
 /**
@@ -264,42 +293,46 @@ export function useMcpBridge(): void {
 
             // Chép file phông TRƯỚC khi lập kế hoạch: planner là hàm thuần, chỉ
             // nhận đường dẫn có sẵn chứ không tự đọc byte phông được.
-            void resolveFontFiles(calls).then((fontFiles) => {
-              const plan = planChatToolCalls(
-                {
-                  document,
-                  selectedClipIds: state.selection.clipIds,
-                  playheadUs: state.playheadUs,
-                  makeId: (prefix) => createId(prefix ?? 'clip'),
-                  shots: Object.fromEntries(shotCache),
-                  fontFiles
-                },
-                calls
-              )
+            void Promise.all([resolveFontFiles(calls), resolveSoundEffects(calls)]).then(
+              ([fontFiles, soundEffects]) => {
+                const plan = planChatToolCalls(
+                  {
+                    document,
+                    selectedClipIds: state.selection.clipIds,
+                    playheadUs: state.playheadUs,
+                    makeId: (prefix) => createId(prefix ?? 'clip'),
+                    shots: Object.fromEntries(shotCache),
+                    fontFiles,
+                    soundEffects
+                  },
+                  calls
+                )
 
-              const commands = plan.steps.flatMap((step) => step.commands)
-              const applied =
-                commands.length > 0
-                  ? state.run(commands, `MCP: ${plan.steps.map((s) => s.description).join('; ')}`)
-                  : false
+                const commands = plan.steps.flatMap((step) => step.commands)
+                const applied =
+                  commands.length > 0
+                    ? state.run(commands, `MCP: ${plan.steps.map((s) => s.description).join('; ')}`)
+                    : false
 
-              const result: McpApplyResult = {
-                applied,
-                // Không báo là đã áp dụng khi reducer từ chối — agent sẽ dựng tiếp
-                // trên một trạng thái tưởng tượng.
-                steps: applied ? plan.steps.map((step) => step.description) : [],
-                failures: applied
-                  ? plan.failures
-                  : [
-                      ...plan.failures,
-                      ...(commands.length > 0
-                        ? [{ tool: 'apply', reason: 'Không áp dụng được lệnh nào' }]
-                        : [])
-                    ],
-                revision: useEditorStore.getState().session?.document.revision ?? document.revision
+                const result: McpApplyResult = {
+                  applied,
+                  // Không báo là đã áp dụng khi reducer từ chối — agent sẽ dựng tiếp
+                  // trên một trạng thái tưởng tượng.
+                  steps: applied ? plan.steps.map((step) => step.description) : [],
+                  failures: applied
+                    ? plan.failures
+                    : [
+                        ...plan.failures,
+                        ...(commands.length > 0
+                          ? [{ tool: 'apply', reason: 'Không áp dụng được lệnh nào' }]
+                          : [])
+                      ],
+                  revision:
+                    useEditorStore.getState().session?.document.revision ?? document.revision
+                }
+                respond(true, result)
               }
-              respond(true, result)
-            })
+            )
             return
           }
 

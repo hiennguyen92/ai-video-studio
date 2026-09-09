@@ -1,6 +1,7 @@
 import type { ProjectDocument } from '../domain/project-document-types'
 import { projectDurationUs } from '../domain/project-document-types'
 import { clipEndUs } from '../domain/timeline-track-types'
+import { SOUND_EFFECTS } from '../domain/sound-effect-catalog'
 import {
   chatToolDescriptions,
   chatToolParameterHints,
@@ -105,6 +106,15 @@ export function buildProjectContext(input: ChatContextInput): string {
   for (const overlay of document.textOverlays) {
     lines.push(
       `- id=${overlay.id} ${seconds(overlay.startUs)}s–${seconds(overlay.endUs)}s "${overlay.text}"`
+    )
+  }
+
+  // Danh mục hiệu ứng là HẰNG SỐ, không phụ thuộc dự án — nhưng agent không có
+  // cách nào biết nếu không nói. Mười hai dòng, đủ ngắn để in thẳng ra.
+  lines.push('', 'Built-in sound effects (use add_sound_effect with the id):')
+  for (const effect of SOUND_EFFECTS) {
+    lines.push(
+      `- id=${effect.id} "${effect.nameEn}" ${Math.round(effect.durationUs / 1000)}ms [${effect.tags.join(', ')}]`
     )
   }
 

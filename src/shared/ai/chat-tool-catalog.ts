@@ -168,6 +168,15 @@ export const chatToolSchemas = {
     cueId: z.string().min(1).max(120)
   }),
 
+  add_sound_effect: z.object({
+    /** Id trong danh mục dựng sẵn. Gọi `list_sound_effects` để biết có những gì. */
+    soundEffectId: z.string().min(1).max(120),
+    /** Đặt luôn lên timeline ở mốc này. Bỏ trống thì chỉ thêm vào thư viện. */
+    atSeconds: seconds.optional(),
+    trackId: z.string().min(1).max(120).optional(),
+    volume: z.number().min(0).max(2).optional()
+  }),
+
   remove_subtitle_cue: z.object({
     subtitleTrackId: z.string().min(1).max(120),
     cueId: z.string().min(1).max(120)
@@ -401,6 +410,8 @@ export const chatToolDescriptions: Record<ChatToolName, string> = {
   update_subtitle_cue: 'Change the words or the timing of one subtitle cue.',
   move_subtitle_cue: 'Move one cue to a different subtitle track. It keeps its words and timing.',
   remove_subtitle_cue: 'Delete one subtitle cue.',
+  add_sound_effect:
+    'Put a built-in sound effect into the project. These ship with the app: no network, no cost, no licence to worry about. The project overview lists every id with its name, tags and length. Pass atSeconds to drop it straight onto an audio lane, or leave it out to only add it to the media library.',
   build_cut_from_shots:
     'Assemble a cut from detected camera shots, laid end to end in the order given. Use this for footage with no speech, where there is no transcript to work from. Call list_shots first to see each shot and its still frame.',
   add_text_overlay:
@@ -456,6 +467,8 @@ export const chatToolParameterHints: Record<ChatToolName, string> = {
     '{ subtitleTrackId: string, cueId: string, text?: string, startSeconds?: number, endSeconds?: number }',
   move_subtitle_cue: '{ subtitleTrackId: string, toSubtitleTrackId: string, cueId: string }',
   remove_subtitle_cue: '{ subtitleTrackId: string, cueId: string }',
+  add_sound_effect:
+    '{ soundEffectId: string, atSeconds?: number, trackId?: string, volume?: number }',
   build_cut_from_shots:
     '{ assetId: string, shotIndexes: number[], trackId?: string, maxShotSeconds?: number }',
   add_text_overlay:

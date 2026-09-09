@@ -24,6 +24,11 @@ import {
   writeVersionSnapshot
 } from '../storage/project-storage'
 import { importMediaFile, relinkMediaAsset } from '../media/media-import-service'
+import {
+  availableSoundEffectIds,
+  buildSoundEffectAsset,
+  repairBuiltinAssetPaths
+} from '../media/sound-effect-library'
 import { cancelExport, detectExportCapabilities, runExport } from '../export/export-manager'
 import { defaultExportDir } from '../storage/workspace-paths'
 
@@ -89,7 +94,21 @@ export function registerIpcHandlers(): void {
   )
 
   ipcMain.handle(IPC.projectLoad, (_event, projectId: string) =>
-    guard(() => loadProjectDocument(projectId))
+    guard(async () => {
+      const document = await loadProjectDocument(projectId)
+      // Trỏ lại đường dẫn hiệu ứng dựng sẵn TRƯỚC khi renderer dò media thiếu.
+      // Dự án lưu id chứ không lưu đường dẫn, và đường dẫn cũ thuộc về bản cài
+      // trước — mở bản mới mà không trỏ lại thì báo thiếu media cho những thứ
+      // đang nằm ngay trong app.
+      repairBuiltinAssetPaths(document.assets)
+      return document
+    })
+  )
+
+  ipcMain.handle(IPC.soundEffectsList, () => guard(async () => availableSoundEffectIds()))
+
+  ipcMain.handle(IPC.soundEffectsBuildAsset, (_event, id: string) =>
+    guard(() => buildSoundEffectAsset(id))
   )
 
   ipcMain.handle(IPC.projectSave, (_event, document: ProjectDocument) =>

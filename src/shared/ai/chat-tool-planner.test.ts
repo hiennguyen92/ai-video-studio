@@ -4,7 +4,8 @@ import { createEmptyProject } from '../domain/project-document-factory'
 import type { ProjectDocument } from '../domain/project-document-types'
 import { clipEndUs } from '../domain/timeline-track-types'
 import { chatToolSchemas } from './chat-tool-catalog'
-import { buildChatSystemPrompt } from './chat-context-builder'
+import { buildChatSystemPrompt, buildProjectContext } from './chat-context-builder'
+import type { MediaAsset } from '../domain/media-asset-types'
 import { planChatToolCalls, secondsToMicros, type ChatEditContext } from './chat-tool-planner'
 
 /**
@@ -1104,5 +1105,106 @@ describe('công cụ hiệu ứng ra của clip', () => {
     const clip = document.tracks.flatMap((track) => track.clips)[0]
     expect(clip.transitionIn?.kind).toBe('zoom')
     expect(clip.transitionOut).toBeUndefined()
+  })
+})
+
+describe('công cụ hiệu ứng âm thanh dựng sẵn', () => {
+  const effectAsset = (id: string, durationUs = 440_000): MediaAsset => ({
+    id: `asset_${id}`,
+    kind: 'audio',
+    name: id,
+    source: {
+      path: `/App/Resources/sound-effects/${id}.mp3`,
+      contentHash: `hash-${id}`,
+      sizeBytes: 1234,
+      mtimeMs: 0,
+      builtinId: id
+    },
+    probe: { durationUs, hasVideo: false, hasAudio: true },
+    derived: {},
+    origin: 'builtin',
+    tags: [],
+    createdAt: '2026-01-01T00:00:00.000Z',
+    missing: false
+  })
+
+  it('thêm vào thư viện khi không nêu mốc thời gian', () => {
+    const { document } = withClip()
+    const plan = planChatToolCalls(
+      { ...context(document), soundEffects: { pop: effectAsset('pop') } },
+      [{ name: 'add_sound_effect', arguments: { soundEffectId: 'pop' } }]
+    )
+
+    expect(plan.failures).toEqual([])
+    for (const command of plan.steps.flatMap((step) => step.commands)) {
+      expect(applyEditorCommand(document, command).ok).toBe(true)
+    }
+    expect(document.assets.some((asset) => asset.source.builtinId === 'pop')).toBe(true)
+    // Không nêu mốc thì timeline không đổi.
+    expect(document.tracks.flatMap((track) => track.clips)).toHaveLength(1)
+  })
+
+  it('nêu mốc thì đặt luôn lên track tiếng, trong MỘT bước hoàn tác', () => {
+    const { document } = withClip()
+    const plan = planChatToolCalls(
+      { ...context(document), soundEffects: { ding: effectAsset('ding', 840_000) } },
+      [{ name: 'add_sound_effect', arguments: { soundEffectId: 'ding', atSeconds: 2 } }]
+    )
+
+    expect(plan.failures).toEqual([])
+    // Cả `asset/add` lẫn `clip/insert` nằm trong CÙNG một bước.
+    expect(plan.steps).toHaveLength(1)
+    expect(plan.steps[0].commands).toHaveLength(2)
+
+    for (const command of plan.steps[0].commands) {
+      expect(applyEditorCommand(document, command).ok).toBe(true)
+    }
+    const audioTrack = document.tracks.find((track) => track.kind === 'audio')!
+    expect(audioTrack.clips[0].startUs).toBe(2_000_000)
+    // Thời lượng lấy từ asset đã probe, không lấy con số khai trong danh mục —
+    // bộ mã hoá chèn thêm vài chục mili giây và đuôi tiếng sẽ bị cắt.
+    expect(audioTrack.clips[0].durationUs).toBe(840_000)
+  })
+
+  it('id lạ thì báo lỗi', () => {
+    const { document } = withClip()
+    const plan = planChatToolCalls(context(document), [
+      { name: 'add_sound_effect', arguments: { soundEffectId: 'khong-co' } }
+    ])
+    expect(plan.steps).toEqual([])
+    expect(plan.failures).toHaveLength(1)
+  })
+
+  it('id có thật nhưng bản cài thiếu file thì báo lỗi, không thêm asset hỏng', () => {
+    // Thiếu file là lỗi đóng gói. Thêm một asset trỏ vào hư không thì người dùng
+    // chỉ phát hiện lúc kéo lên timeline và không nghe thấy gì.
+    const { document } = withClip()
+    const plan = planChatToolCalls(context(document), [
+      { name: 'add_sound_effect', arguments: { soundEffectId: 'pop' } }
+    ])
+    expect(plan.steps).toEqual([])
+    expect(plan.failures[0].reason).toContain('pop')
+  })
+
+  it('không có track tiếng nào thì báo lỗi thay vì đặt bừa', () => {
+    const document = project()
+    document.tracks = document.tracks.filter((track) => track.kind !== 'audio')
+    const plan = planChatToolCalls(
+      { ...context(document), soundEffects: { pop: effectAsset('pop') } },
+      [{ name: 'add_sound_effect', arguments: { soundEffectId: 'pop', atSeconds: 1 } }]
+    )
+    expect(plan.steps).toEqual([])
+    expect(plan.failures).toHaveLength(1)
+  })
+
+  it('danh mục hiệu ứng có trong ngữ cảnh gửi cho agent', () => {
+    // Danh mục là hằng số; agent không có cách nào biết nếu ngữ cảnh không nói.
+    const overview = buildProjectContext({
+      document: project(),
+      selectedClipIds: [],
+      playheadUs: 0
+    })
+    expect(overview).toContain('add_sound_effect')
+    expect(overview).toContain('whoosh-fast')
   })
 })

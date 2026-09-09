@@ -34,6 +34,10 @@ const api: RendererApi = {
   fonts: {
     store: (family, bytes) => ipcRenderer.invoke(IPC.fontStore, family, bytes)
   },
+  soundEffects: {
+    list: () => ipcRenderer.invoke(IPC.soundEffectsList),
+    buildAsset: (id) => ipcRenderer.invoke(IPC.soundEffectsBuildAsset, id)
+  },
   media: {
     pickFiles: () => ipcRenderer.invoke(IPC.mediaPickFiles),
     import: (request) => ipcRenderer.invoke(IPC.mediaImport, request),

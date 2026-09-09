@@ -23,6 +23,8 @@ export const IPC = {
   projectLoad: 'project:load',
   projectSave: 'project:save',
   fontStore: 'font:store',
+  soundEffectsList: 'sound-effects:list',
+  soundEffectsBuildAsset: 'sound-effects:build-asset',
   projectScanGarbage: 'project:scan-garbage',
   projectRemoveGarbage: 'project:remove-garbage',
   projectDelete: 'project:delete',
@@ -415,6 +417,19 @@ export interface RendererApi {
      * cho im lặng.
      */
     store(family: string, bytes: Uint8Array): Promise<IpcResult<StoredFontDto>>
+  }
+  soundEffects: {
+    /**
+     * Id nào thật sự có file trên đĩa.
+     *
+     * Không trả cả danh mục: danh mục là hằng số dùng chung, renderer đọc thẳng.
+     * Thứ chỉ tiến trình main biết là bản cài này có ĐỦ file hay không — thiếu
+     * file là lỗi đóng gói, và giao diện phải nói ra chứ không bày một nút bấm
+     * vào thì lỗi.
+     */
+    list(): Promise<IpcResult<string[]>>
+    /** Dựng asset cho một hiệu ứng: probe thời lượng thật, hash nội dung. */
+    buildAsset(id: string): Promise<IpcResult<MediaAsset>>
   }
   media: {
     pickFiles(): Promise<IpcResult<string[]>>
