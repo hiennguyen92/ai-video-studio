@@ -142,6 +142,19 @@ export function soundEffectFileName(id: string): string {
   return `${id}.mp3`
 }
 
+export interface SoundEffectLibraryStatus {
+  /** Hiệu ứng thật sự có file, kèm đường dẫn để nghe thử. */
+  effects: Array<{ id: string; path: string }>
+  /**
+   * Đang chạy bản đóng gói hay bản dev.
+   *
+   * Thiếu file mang hai nghĩa hoàn toàn khác nhau: bản đóng gói thiếu là gói cài
+   * hỏng, còn bản dev thiếu chỉ là chưa chạy script dựng. Nói nhầm thì người dùng
+   * đi tìm một lỗi đóng gói không tồn tại.
+   */
+  packaged: boolean
+}
+
 export function findSoundEffect(id: string): SoundEffectDefinition | undefined {
   return SOUND_EFFECTS.find((effect) => effect.id === id)
 }

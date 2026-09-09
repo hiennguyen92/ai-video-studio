@@ -106,9 +106,57 @@ test('bản cài có ĐỦ file cho mọi hiệu ứng trong danh mục', async 
   // vẫn lọt, và người dùng bấm vào nó mới thấy lỗi.
   const available = await page.evaluate(async () => {
     const result = await window.api.soundEffects.list()
-    return result.ok ? result.data : []
+    return result.ok ? result.data.effects.map((effect) => effect.id) : []
   })
   expect([...available].sort()).toEqual(SOUND_EFFECTS.map((effect) => effect.id).sort())
+})
+
+test('nghe thử phát được tiếng thật trước khi thêm', async () => {
+  await page
+    .getByRole('region', { name: 'AI Studio' })
+    .getByRole('tab', { name: 'Nhạc nền' })
+    .click()
+
+  // Nút bật lên nghĩa là hàng đó đã có URL nghe thử — thiếu URL thì nút xám và
+  // người dùng không nghe được gì.
+  const previewButton = page.getByRole('button', { name: 'Nghe thử Keng' })
+  await expect(previewButton).toBeEnabled()
+
+  // ĐO byte trả về, không chỉ kiểm nút bấm được: một URL 404 cũng làm nút sáng
+  // y hệt, và tiếng chỉ im lặng không báo gì.
+  const served = await page.evaluate(async () => {
+    const listed = await window.api.soundEffects.list()
+    if (!listed.ok) return { status: 0, bytes: 0 }
+    const one = listed.data.effects.find((effect) => effect.id === 'ding')
+    if (!one) return { status: 0, bytes: 0 }
+    const registered = await window.api.media.registerLocal([{ id: one.id, path: one.path }])
+    if (!registered.ok) return { status: 0, bytes: 0 }
+    const response = await fetch(registered.data[one.id])
+    const body = await response.arrayBuffer()
+    return { status: response.status, bytes: body.byteLength }
+  })
+  expect(served.status).toBe(200)
+  expect(served.bytes).toBeGreaterThan(1000)
+
+  // Cài chốt TRƯỚC khi bấm: hiệu ứng dài 800ms rồi tự tắt, nên đọc thuộc tính
+  // sau đó là đua với chính nó — máy chậm một nhịp là đỏ oan.
+  await page.evaluate(() => {
+    const flags = window as unknown as { __sfxPressed?: boolean }
+    flags.__sfxPressed = false
+    new MutationObserver(() => {
+      if (document.querySelector('.sound-effect-item [aria-pressed="true"]')) {
+        flags.__sfxPressed = true
+      }
+    }).observe(document.body, {
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['aria-pressed']
+    })
+  })
+  await previewButton.click()
+  await expect
+    .poll(() => page.evaluate(() => (window as unknown as { __sfxPressed?: boolean }).__sfxPressed))
+    .toBe(true)
 })
 
 test('thêm hiệu ứng vào thư viện thì thành asset thật, giải theo id', async () => {

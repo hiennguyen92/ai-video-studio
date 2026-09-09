@@ -162,6 +162,9 @@ export const dictionaryEn: Dictionary = {
     addToTimeline: 'Add to timeline',
     addToLibrary: 'Library only',
     needAudioTrack: 'No audio lane to drop the effect on.',
+    preview: 'Preview',
+    notBuiltYet:
+      'Sound effect library not built yet. Run `node scripts/build-sound-effects.mjs`, then reopen the app.',
     missingLibrary: 'This install is missing the sound effect library. The build is packaged wrong.'
   },
   timeline: {

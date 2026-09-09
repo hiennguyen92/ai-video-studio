@@ -1,3 +1,4 @@
+import type { SoundEffectLibraryStatus } from '../domain/sound-effect-catalog'
 import type { MediaAsset } from '../domain/media-asset-types'
 import type { ProjectDocument } from '../domain/project-document-types'
 import type {
@@ -420,14 +421,13 @@ export interface RendererApi {
   }
   soundEffects: {
     /**
-     * Id nào thật sự có file trên đĩa.
+     * Hiệu ứng nào thật sự có file, kèm đường dẫn và trạng thái đóng gói.
      *
      * Không trả cả danh mục: danh mục là hằng số dùng chung, renderer đọc thẳng.
-     * Thứ chỉ tiến trình main biết là bản cài này có ĐỦ file hay không — thiếu
-     * file là lỗi đóng gói, và giao diện phải nói ra chứ không bày một nút bấm
-     * vào thì lỗi.
+     * Thứ chỉ tiến trình main biết là bản cài này có ĐỦ file hay không, file nằm
+     * ở đâu để nghe thử, và đang chạy bản đóng gói hay bản dev.
      */
-    list(): Promise<IpcResult<string[]>>
+    list(): Promise<IpcResult<SoundEffectLibraryStatus>>
     /** Dựng asset cho một hiệu ứng: probe thời lượng thật, hash nội dung. */
     buildAsset(id: string): Promise<IpcResult<MediaAsset>>
   }

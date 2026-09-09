@@ -164,6 +164,9 @@ export const dictionaryVi = {
     addToTimeline: 'Đặt vào timeline',
     addToLibrary: 'Chỉ thêm vào thư viện',
     needAudioTrack: 'Chưa có track tiếng nào để đặt hiệu ứng.',
+    preview: 'Nghe thử',
+    notBuiltYet:
+      'Chưa dựng thư viện hiệu ứng. Chạy `node scripts/build-sound-effects.mjs` rồi mở lại app.',
     missingLibrary: 'Bản cài này thiếu thư viện hiệu ứng âm thanh. Bản build đóng gói sai.'
   },
   timeline: {

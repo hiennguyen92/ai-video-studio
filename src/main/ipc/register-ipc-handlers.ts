@@ -25,9 +25,9 @@ import {
 } from '../storage/project-storage'
 import { importMediaFile, relinkMediaAsset } from '../media/media-import-service'
 import {
-  availableSoundEffectIds,
   buildSoundEffectAsset,
-  repairBuiltinAssetPaths
+  repairBuiltinAssetPaths,
+  soundEffectLibraryStatus
 } from '../media/sound-effect-library'
 import { cancelExport, detectExportCapabilities, runExport } from '../export/export-manager'
 import { defaultExportDir } from '../storage/workspace-paths'
@@ -105,7 +105,7 @@ export function registerIpcHandlers(): void {
     })
   )
 
-  ipcMain.handle(IPC.soundEffectsList, () => guard(async () => availableSoundEffectIds()))
+  ipcMain.handle(IPC.soundEffectsList, () => guard(async () => soundEffectLibraryStatus()))
 
   ipcMain.handle(IPC.soundEffectsBuildAsset, (_event, id: string) =>
     guard(() => buildSoundEffectAsset(id))

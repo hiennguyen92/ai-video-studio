@@ -1,10 +1,15 @@
-import { useEffect, useState, type JSX } from 'react'
-import { SOUND_EFFECTS } from '../../../../shared/domain/sound-effect-catalog'
+import { useEffect, useRef, useState, type JSX } from 'react'
+import {
+  SOUND_EFFECTS,
+  type SoundEffectDefinition,
+  type SoundEffectLibraryStatus
+} from '../../../../shared/domain/sound-effect-catalog'
 import { findFreeSlot } from '../../../../shared/commands/timeline-mutations'
 import type { EditorCommand } from '../../../../shared/commands/editor-command-types'
 import { selectDocument, useEditorStore } from '../../state/editor-store'
-import { useT } from '../../i18n/use-translation'
+import { useLocale } from '../../i18n/use-translation'
 import { ToolButton } from '../ui/tool-button'
+import { IconPlay } from '../ui/icons'
 
 /**
  * Hiệu ứng âm thanh dựng sẵn trong app.
@@ -17,25 +22,68 @@ import { ToolButton } from '../ui/tool-button'
  * thấy đúng một danh sách.
  */
 
+/** Tên theo ngôn ngữ đang chọn. Danh mục mang sẵn cả hai; lấy cứng một cái là bỏ phí. */
+function displayName(effect: SoundEffectDefinition, locale: string): string {
+  return locale === 'en' ? effect.nameEn : effect.nameVi
+}
+
 export function SoundEffectSection(): JSX.Element {
-  const t = useT()
+  const { t, locale } = useLocale()
   const document = useEditorStore(selectDocument)
   const run = useEditorStore((state) => state.run)
   const playheadUs = useEditorStore((state) => state.playheadUs)
-  const [available, setAvailable] = useState<string[] | null>(null)
+
+  const [status, setStatus] = useState<SoundEffectLibraryStatus | null>(null)
+  const [previewUrls, setPreviewUrls] = useState<Record<string, string>>({})
+  const [playingId, setPlayingId] = useState<string | null>(null)
   const [busyId, setBusyId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const audioRef = useRef<HTMLAudioElement | null>(null)
 
   useEffect(() => {
     let cancelled = false
-    void window.api.soundEffects.list().then((result) => {
-      if (cancelled) return
-      setAvailable(result.ok ? result.data : [])
-    })
+
+    void (async () => {
+      const listed = await window.api.soundEffects.list()
+      if (cancelled || !listed.ok) return
+      setStatus(listed.data)
+      if (listed.data.effects.length === 0) return
+
+      // Đăng ký với máy chủ cục bộ để nghe thử: thẻ `<audio>` không đọc được
+      // đường dẫn đĩa, đúng lý do mà preview của Remotion cũng phải đi qua đây.
+      const registered = await window.api.media.registerLocal(
+        listed.data.effects.map((effect) => ({ id: effect.id, path: effect.path }))
+      )
+      if (!cancelled && registered.ok) setPreviewUrls(registered.data)
+    })()
+
     return () => {
       cancelled = true
     }
   }, [])
+
+  // Rời panel giữa lúc đang nghe thì tiếng phải tắt theo.
+  useEffect(() => {
+    return () => {
+      audioRef.current?.pause()
+    }
+  }, [])
+
+  const preview = (id: string): void => {
+    const url = previewUrls[id]
+    if (!url) return
+
+    // Một thẻ audio dùng lại cho mọi hiệu ứng: bấm cái thứ hai thì cái đầu im,
+    // không chồng tiếng lên nhau.
+    audioRef.current?.pause()
+    const audio = new Audio(url)
+    audioRef.current = audio
+    setPlayingId(id)
+    audio.addEventListener('ended', () =>
+      setPlayingId((current) => (current === id ? null : current))
+    )
+    void audio.play().catch(() => setPlayingId(null))
+  }
 
   const add = async (id: string, toTimeline: boolean): Promise<void> => {
     if (!document) return
@@ -75,15 +123,19 @@ export function SoundEffectSection(): JSX.Element {
     }
   }
 
+  const available = status?.effects.map((effect) => effect.id) ?? null
+
   return (
     <div className="sound-effect-section">
       <p className="field-group__title">{t.soundEffects.section}</p>
       <p className="subtitles-panel__hint">{t.soundEffects.hint}</p>
 
-      {available !== null && available.length === 0 && (
-        // Thiếu file là lỗi ĐÓNG GÓI, không phải lỗi dữ liệu. Nói ra thay vì bày
-        // một danh sách nút bấm vào thì lỗi.
-        <div className="notice">{t.soundEffects.missingLibrary}</div>
+      {status !== null && status.effects.length === 0 && (
+        // Thiếu file mang hai nghĩa khác hẳn nhau. Nói nhầm thì người dùng đi tìm
+        // một lỗi đóng gói không hề tồn tại.
+        <div className="notice">
+          {status.packaged ? t.soundEffects.missingLibrary : t.soundEffects.notBuiltYet}
+        </div>
       )}
 
       {error && <div className="notice">{error}</div>}
@@ -92,8 +144,16 @@ export function SoundEffectSection(): JSX.Element {
         {SOUND_EFFECTS.filter((effect) => available === null || available.includes(effect.id)).map(
           (effect) => (
             <article key={effect.id} className="sound-effect-item">
+              <ToolButton
+                label={`${t.soundEffects.preview} ${displayName(effect, locale)}`}
+                icon={<IconPlay />}
+                iconOnly
+                active={playingId === effect.id}
+                disabled={!previewUrls[effect.id]}
+                onClick={() => preview(effect.id)}
+              />
               <div className="sound-effect-item__body">
-                <span className="sound-effect-item__name">{effect.nameVi}</span>
+                <span className="sound-effect-item__name">{displayName(effect, locale)}</span>
                 <span className="sound-effect-item__meta">
                   {Math.round(effect.durationUs / 1000)}ms · {effect.tags.slice(0, 2).join(', ')}
                 </span>

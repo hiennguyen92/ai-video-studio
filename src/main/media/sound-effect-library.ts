@@ -6,7 +6,8 @@ import type { MediaAsset } from '../../shared/domain/media-asset-types'
 import {
   SOUND_EFFECTS,
   findSoundEffect,
-  soundEffectFileName
+  soundEffectFileName,
+  type SoundEffectLibraryStatus
 } from '../../shared/domain/sound-effect-catalog'
 import { createId } from '../../shared/domain/project-document-factory'
 import { computeMediaContentHash } from './media-content-hash'
@@ -40,11 +41,13 @@ export function soundEffectPath(id: string): string | null {
   return existsSync(path) ? path : null
 }
 
-/** Id nào thật sự có file trên đĩa. Thiếu file là lỗi đóng gói, không phải lỗi dữ liệu. */
-export function availableSoundEffectIds(): string[] {
-  return SOUND_EFFECTS.filter((effect) => soundEffectPath(effect.id) !== null).map(
-    (effect) => effect.id
-  )
+export function soundEffectLibraryStatus(): SoundEffectLibraryStatus {
+  const effects: Array<{ id: string; path: string }> = []
+  for (const effect of SOUND_EFFECTS) {
+    const path = soundEffectPath(effect.id)
+    if (path) effects.push({ id: effect.id, path })
+  }
+  return { effects, packaged: app.isPackaged }
 }
 
 /**
