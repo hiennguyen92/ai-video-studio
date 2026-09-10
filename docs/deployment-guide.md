@@ -39,9 +39,14 @@ thử thì cả ba đi thẳng tới tay người dùng.
 | App tắt ngay khi mở, `Cannot find module 'react'`                              | Tiến trình main nạp tĩnh `@remotion/bundler`; chuỗi phụ thuộc của nó kéo tới `react`, thứ chỉ là devDependency nên không có trong gói             | Nạp bộ đóng gói bằng import động, chỉ ở nhánh dev              |
 | Xuất video chết, `Hardware encoder "h264_videotoolbox" is not available`       | Phần dò năng lực hỏi ffmpeg ĐI KÈM, còn Remotion dựng bằng FFmpeg RIÊNG của nó. Trên macOS bản đi kèm có videotoolbox, bản của Remotion thì không | `hardwareAcceleration: 'if-possible'`, không dùng `'required'` |
 | Xuất video chết, `ENOTDIR: chmod .../app.asar/@remotion/compositor-.../ffmpeg` | Remotion tự `chmod` file nhị phân theo đường dẫn nó phân giải, và đường đó trỏ vào asar — một kho ảo, không phải thư mục thật                     | `asar: false`                                                  |
+| Xuất video chết, `mkdir '/.remotion'`                                          | Thiếu Chrome Headless Shell nên Remotion đi tải, và chỗ tải nó suy ra bằng cách trèo ngược từ thư mục làm việc. Mở từ Finder thì thư mục đó là `/`                | Đóng gói sẵn Chrome, truyền `browserExecutable`                |
 
-`npm run smoke:packaged` bắt cả ba: nó mở chính bản đã đóng gói, nhập media (đường
+`npm run smoke:packaged` bắt cả bốn: nó mở chính bản đã đóng gói, nhập media (đường
 ffmpeg/ffprobe), rồi xuất một clip có chuyển động (đường Remotion).
+
+Nó chạy app với thư mục làm việc `/`, không phải thư mục dự án. Chạy bằng cwd của
+terminal là xanh giả: mọi đường dẫn tương đối đều rơi vào gốc dự án đang ghi được,
+còn ở máy người dùng thì rơi vào `/` và ngã.
 
 ## Vì sao bundle Remotion dựng sẵn lúc build
 
@@ -53,6 +58,26 @@ Bản đóng gói không dựng lúc chạy được: `src/` bị loại khỏi 
 
 Khi thiếu thư mục đó, ứng dụng báo lỗi nói thẳng là bản build đóng gói sai, thay
 vì để Remotion ngã với một lỗi mạng khó hiểu.
+
+## Vì sao Chrome Headless Shell đóng gói sẵn
+
+Remotion cần Chrome Headless Shell để dựng khung hình. Thiếu thì nó tự tải về một
+thư mục cache mà nó suy ra bằng cách TRÈO NGƯỢC từ thư mục làm việc để tìm
+`package.json`. Mở app từ Finder thì thư mục làm việc là `/`, không có
+`package.json` nào ở trên, nên nó rơi về `/.remotion` — thư mục gốc chỉ đọc.
+
+`scripts/bundle-chrome-headless-shell.mjs` để CHÍNH Remotion tải (`ensureBrowser`)
+rồi chép vào `Resources/chrome-headless-shell`, kèm `binary-path.json` ghi đường
+dẫn tương đối tới file nhị phân — lúc chạy khỏi phải đoán tên thư mục theo nền
+tảng, đoán sai thì lỗi chỉ lộ ra ở lần xuất đầu tiên trên máy người dùng. Script
+còn chạy thử `--version` để chép thiếu quyền thực thi thì hỏng ngay lúc build.
+
+Không tự dựng URL tải: bản Chrome mà Remotion ghim nằm trong mã của nó, và bản
+khác cho kết quả dựng khác.
+
+Lúc chạy phải truyền `browserExecutable` cho CẢ `selectComposition` lẫn
+`renderMedia`. Để trống một trong hai là bước đó lại đi tìm bản tải sẵn theo thư
+mục làm việc.
 
 ## Không khai báo `publish`
 
@@ -69,9 +94,10 @@ bật công chứng — chưa làm.
 
 ## Kích thước
 
-DMG 476 MB, thư mục ứng dụng 1,0 GB. Phần lớn là Remotion: nó kéo theo Chrome
-Headless Shell, esbuild và rspack. Bỏ asar làm thư mục cài phình thêm nhưng không
-đổi mấy dung lượng DMG vì nén bù lại.
+DMG 476 MB, thư mục ứng dụng 1,0 GB — đo TRƯỚC khi đóng gói kèm Chrome Headless
+Shell; bản kèm Chrome cộng thêm khoảng 200 MB chưa nén, chưa đo lại DMG. Phần lớn
+dung lượng là Remotion: Chrome Headless Shell, esbuild và rspack. Bỏ asar làm thư
+mục cài phình thêm nhưng không đổi mấy dung lượng DMG vì nén bù lại.
 
 ## Chưa làm
 
