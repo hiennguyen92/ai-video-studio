@@ -555,6 +555,36 @@ describe('khung nền chữ qua đường AI', () => {
   })
 })
 
+describe('công cụ đổi tốc độ clip', () => {
+  it('agent đổi được tốc độ, và lệnh chạy qua reducer thật', () => {
+    const { document, clipId } = withClip()
+    const plan = planChatToolCalls(context(document), [
+      { name: 'set_clip_speed', arguments: { clipId, speed: 2 } }
+    ])
+
+    expect(plan.failures).toEqual([])
+    for (const command of plan.steps.flatMap((step) => step.commands)) {
+      expect(applyEditorCommand(document, command).ok).toBe(true)
+    }
+    expect(document.tracks[0].clips[0].speed).toBe(2)
+  })
+
+  it('từ chối tốc độ ngoài khoảng dùng được', () => {
+    // Ngoài 0,25–4 thì tiếng nát tới mức không dùng được, chặn ngay ở schema.
+    const { document, clipId } = withClip()
+    const plan = planChatToolCalls(context(document), [
+      { name: 'set_clip_speed', arguments: { clipId, speed: 50 } }
+    ])
+
+    expect(plan.steps).toEqual([])
+    expect(plan.failures).toHaveLength(1)
+  })
+
+  it('chuỗi gợi ý tham số có set_clip_speed', () => {
+    expect(chatToolParameterHints.set_clip_speed).toContain('speed')
+  })
+})
+
 describe('công cụ chuyển động trong clip', () => {
   it('đặt được chuyển động kèm cường độ', () => {
     const { document, clipId } = withClip()

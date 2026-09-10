@@ -636,6 +636,21 @@ function planOne(context: ChatEditContext, tool: ChatToolName, args: unknown): P
       }
     }
 
+    case 'set_clip_speed': {
+      const input = chatToolSchemas.set_clip_speed.parse(args)
+      return {
+        tool,
+        description: `Đổi tốc độ clip sang ${input.speed}×`,
+        commands: [
+          {
+            type: 'clip/set-speed',
+            clipId: resolveClipId(context, input.clipId),
+            speed: input.speed
+          }
+        ]
+      }
+    }
+
     case 'set_clip_motion': {
       const input = chatToolSchemas.set_clip_motion.parse(args)
       const clipId = resolveClipId(context, input.clipId)

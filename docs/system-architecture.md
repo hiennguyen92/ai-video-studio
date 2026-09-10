@@ -377,6 +377,25 @@ không hiểu vì sao.
 Hệ quả: **clip đầu timeline không bao giờ có chuyển cảnh** — không có gì phía trước
 để lấy, và cũng không có gì để phủ lên.
 
+### Tốc độ phát clip
+
+Đổi tốc độ **giữ nguyên khoảng nguồn** và đổi độ dài trên timeline: tốc độ 2× làm
+clip ngắn đi một nửa, vẫn đúng đoạn phim đó. Làm ngược lại — giữ độ dài, đổi
+khoảng nguồn — thì tăng tốc sẽ đòi nhiều phim hơn số đang có và bất biến
+`sourceInUs + durationUs * speed <= thời lượng asset` vỡ ngay.
+
+Vì thế `clip/set-speed` là lệnh riêng chứ không đi qua `clip/update`: nó không chỉ
+ghi một trường mà còn đổi độ dài, và clip dài ra có thể lấn clip bên cạnh. Nó đi
+qua `placeClip` như trim và move, nên theo đúng chính sách ghi đè có sẵn.
+
+Chỉ áp cho clip hình và clip tiếng. Ảnh tĩnh không có trục thời gian nguồn, nên
+"phát nhanh gấp đôi" vô nghĩa — kéo dài ngắn một tấm ảnh là việc của cắt mép.
+
+**Một khác biệt giữa hai đường dựng, có sẵn từ trước:** ffmpeg đổi tốc độ tiếng
+bằng `atempo` nên GIỮ cao độ, còn Remotion dùng `playbackRate` nên cao độ ĐỔI
+theo. Xem trước và bản xuất Remotion sẽ nghe cao giọng hơn bản xuất ffmpeg ở cùng
+một clip tăng tốc.
+
 ### Chữ đè lên hình
 
 `TextOverlay` là dữ liệu RIÊNG, không phải phụ đề — dù nhìn qua đều là chữ trên

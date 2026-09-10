@@ -306,6 +306,12 @@ export const chatToolSchemas = {
    * Đây là hiệu ứng có tác động lớn nhất trên footage gần như tĩnh: một cú đẩy
    * chậm làm khung hình thôi bị coi là ảnh chết. `none` để gỡ.
    */
+  set_clip_speed: z.object({
+    clipId: z.string().min(1).max(120).optional(),
+    /** 1 = tốc độ gốc, 2 = nhanh gấp đôi, 0.5 = chậm một nửa. */
+    speed: z.number().min(0.25).max(4)
+  }),
+
   set_clip_motion: z.object({
     clipId: z.string().min(1).max(120).optional(),
     kind: z.enum([
@@ -451,6 +457,8 @@ export const chatToolDescriptions: Record<ChatToolName, string> = {
     'Set the project canvas shape. Use 9:16 for TikTok, Reels and Shorts, 16:9 for YouTube, 1:1 for square. Do this before laying out text, because it changes where text sits in frame.',
   set_clip_transition:
     'Put an effect on one edge of a clip. edge "in" (the default) blends it out of the clip before it and needs footage before the cut to play over; edge "out" plays the same effect in reverse over the last frames and needs no extra footage. Use kind "none" to remove one.',
+  set_clip_speed:
+    'Change how fast a clip plays. The clip keeps the same stretch of source footage, so speeding it up makes it SHORTER on the timeline and slowing it down makes it longer — a longer clip pushes into whatever sits next to it. Use it to tighten a slow take or to stretch a moment out. Audio pitch shifts in the preview but is corrected in the exported file.',
   set_clip_motion:
     'Move the frame over the whole length of a clip: a slow push in or out, a slow pan, a punch in at the cut, or a shake. Use this on footage that barely moves — a still product shot with a slow push reads as edited, the same shot held still reads as a frozen photo. Use "none" to remove it.',
   set_clip_color:
@@ -507,6 +515,7 @@ export const chatToolParameterHints: Record<ChatToolName, string> = {
   set_canvas: "{ aspect: '16:9' | '9:16' | '1:1', longEdgePx?: number }",
   set_clip_transition:
     "{ clipId?: string, edge?: 'in' | 'out', kind: 'none' | 'fade' | 'slide-left' | 'slide-right' | 'slide-up' | 'slide-down' | 'wipe-left' | 'wipe-right' | 'zoom' | 'whip-left' | 'whip-right' | 'blur' | 'glitch' | 'spin' | 'flash', durationSeconds?: number }",
+  set_clip_speed: '{ clipId?: string, speed: number }',
   set_clip_motion:
     "{ clipId?: string, kind: 'none' | 'zoom-in' | 'zoom-out' | 'pan-left' | 'pan-right' | 'pan-up' | 'pan-down' | 'punch-in' | 'shake', intensity?: number }",
   set_clip_color:

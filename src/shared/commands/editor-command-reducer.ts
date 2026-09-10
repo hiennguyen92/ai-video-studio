@@ -7,6 +7,7 @@ import {
   DEFAULT_CLIP_TRANSFORM,
   DEFAULT_TRACK_HEIGHT,
   clipEndUs,
+  clipSourceSpanUs,
   type Clip
 } from '../domain/timeline-track-types'
 import { createId } from '../domain/project-document-factory'
@@ -256,6 +257,35 @@ export function applyEditorCommand(doc: ProjectDocument, command: EditorCommand)
       const next = command.transition ? { ...command.transition } : undefined
       if (command.edge === 'out') clip.transitionOut = next
       else clip.transitionIn = next
+      return OK
+    }
+
+    case 'clip/set-speed': {
+      const found = locateClip(doc, command.clipId)
+      if (!found) return fail(`Không tìm thấy clip ${command.clipId}`)
+      const track = doc.tracks[found.trackIndex]
+      if (track.locked) return fail(`Track "${track.name}" đang bị khoá`)
+      // Ảnh tĩnh không có trục thời gian riêng, nên "phát nhanh gấp đôi" vô nghĩa
+      // — kéo dài ngắn một tấm ảnh là việc của cắt mép.
+      if (track.kind !== 'video' && track.kind !== 'audio') {
+        return fail('Chỉ đổi được tốc độ của clip hình hoặc clip tiếng')
+      }
+
+      const clip = snapshot(track.clips[found.clipIndex])
+      // GIỮ NGUYÊN khoảng nguồn, đổi độ dài trên timeline. Hai cái lợi: nó khớp
+      // thứ người dùng mong đợi ("cùng đoạn phim đó, phát nhanh hơn"), và nó
+      // không bao giờ phá được bất biến nguồn — phần nguồn tiêu thụ không đổi thì
+      // `sourceInUs + span` cũng không đổi.
+      const span = clipSourceSpanUs(clip)
+      const nextDuration = Math.round(span / command.speed)
+      if (nextDuration < MIN_CLIP_DURATION_US) return fail('Tốc độ này làm clip ngắn quá')
+
+      const others = snapshot(track.clips).filter((item) => item.id !== clip.id)
+      track.clips = placeClip(
+        { ...track, clips: others },
+        { ...clip, speed: command.speed, durationUs: nextDuration },
+        () => createId('clip')
+      )
       return OK
     }
 

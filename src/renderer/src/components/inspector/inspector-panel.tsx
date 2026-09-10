@@ -74,6 +74,10 @@ export function InspectorPanel(): JSX.Element {
   // chuyển động, màu và biến đổi. Khác nhau ở chỗ ảnh không có tiếng.
   const isVisualTrack = found?.track.kind === 'video' || found?.track.kind === 'image'
   const hasAudio = found?.track.kind === 'video' || found?.track.kind === 'audio'
+  // Trùng điều kiện với `hasAudio` nhưng vì lý do khác: ảnh tĩnh không có trục
+  // thời gian nguồn để mà phát nhanh hay chậm. Suy ra từ nó thay vì chép lại, để
+  // hai chỗ không lệch nhau nếu điều kiện đổi.
+  const canSetSpeed = hasAudio
   const transform = found?.clip.transform ?? DEFAULT_CLIP_TRANSFORM
 
   return (
@@ -211,6 +215,29 @@ export function InspectorPanel(): JSX.Element {
 
             {/* Ảnh không có tiếng: bày ô âm lượng ở đó là bày một tuỳ chọn
                 không có tác dụng nào. */}
+            {/* Tốc độ áp cho cả clip hình lẫn clip tiếng, nên nằm ngoài nhóm âm
+                lượng. Ảnh tĩnh thì không: một tấm ảnh không có trục thời gian
+                riêng để mà phát nhanh hay chậm. */}
+            {canSetSpeed && (
+              <>
+                <p className="field-group__title">{t.inspector.speed}</p>
+                <SliderRow
+                  label={t.inspector.speed}
+                  value={found.clip.speed}
+                  min={0.25}
+                  max={4}
+                  step={0.05}
+                  format={(value) => `${value.toFixed(2)}×`}
+                  onCommit={(value) =>
+                    run(
+                      [{ type: 'clip/set-speed', clipId: found.clip.id, speed: value }],
+                      t.inspector.speed
+                    )
+                  }
+                />
+              </>
+            )}
+
             {hasAudio && (
               <>
                 <p className="field-group__title">{t.inspector.volume}</p>

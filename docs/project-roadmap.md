@@ -131,6 +131,10 @@ giao diện chỉ lộ ra khi chuyển tab với dữ liệu thật.
       trí góc. Vẽ bằng SVG sinh ra trong mã chứ không gom file ảnh — không giấy
       phép nào phải kiểm, không blob nào vào git, và bề mặt đóng gói bằng không.
       Khung co theo chữ bằng `border-image` chín ô nên góc không méo.
+- [x] Tốc độ phát clip: mô hình dữ liệu và cả hai đường dựng đã cài đặt từ trước
+      nhưng không có ô nào bật được — nay có ô trên panel Thuộc tính và công cụ
+      `set_clip_speed` cho agent. Đổi tốc độ giữ nguyên khoảng nguồn và đổi độ dài
+      trên timeline, nên không bao giờ đòi nhiều phim hơn số đang có.
 - [ ] Đổi mặc định xuất sang Remotion khi các tính năng trên đủ chín — hiện mặc
       định vẫn là ffmpeg, chỉ tự chuyển sang Remotion khi dự án có chuyển cảnh
       hoặc chữ overlay

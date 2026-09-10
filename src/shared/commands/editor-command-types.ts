@@ -215,6 +215,23 @@ const setClipTransition = z.object({
 })
 
 /**
+ * Đổi tốc độ phát của một clip.
+ *
+ * Tách khỏi `clip/update` vì nó KHÔNG chỉ ghi một trường: đổi tốc độ thì độ dài
+ * clip trên timeline phải đổi theo, và clip dài ra có thể lấn sang clip bên cạnh.
+ * `clip/update` chỉ gán thẳng vào clip nên đi qua nó sẽ phá vỡ bất biến "clip
+ * trong cùng track không chồng lấn".
+ *
+ * Khoảng 0,25–4 lần: ffmpeg ghép nhiều tầng `atempo` nên chịu được rộng hơn,
+ * nhưng ngoài khoảng này thì tiếng nát tới mức không dùng được.
+ */
+const setClipSpeed = z.object({
+  type: z.literal('clip/set-speed'),
+  clipId: z.string(),
+  speed: z.number().min(0.25).max(4)
+})
+
+/**
  * Đặt hoặc gỡ chuyển động chạy suốt clip.
  *
  * Tách khỏi `clip/update` cùng lý do như chuyển cảnh: `transform` trong đó là một
@@ -635,6 +652,7 @@ export const editorCommandSchema = z.discriminatedUnion('type', [
   updateClip,
   setClipTransition,
   setClipMotion,
+  setClipSpeed,
   setClipColorGrade,
   addTranscript,
   removeTranscript,
