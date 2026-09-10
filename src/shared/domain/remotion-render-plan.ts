@@ -10,8 +10,16 @@ import {
 import { isNeutralColorGrade, type ClipColorGrade } from './clip-color-grade'
 import type { ClipMotion } from './clip-motion-types'
 import type { SubtitleStyle } from './subtitle-types'
-import type { TextAnimation, TextExitAnimation } from './text-overlay-types'
+import type { TextAnimation, TextExitAnimation, TextOverlay } from './text-overlay-types'
 import { frameOfMicros, type FrameRate } from './time-units'
+import {
+  findTextFrameDecor,
+  findTextFramePalette,
+  findTextFrameStyle,
+  type TextFrameDecor,
+  type TextFramePalette,
+  type TextFrameStyle
+} from './text-frame-catalog'
 
 /**
  * Đổi `ProjectDocument` (micro giây) sang kế hoạch render theo KHUNG HÌNH.
@@ -107,6 +115,24 @@ export interface RenderPlanTextOverlay {
   /** Số khung của hiệu ứng ra, cũng đã kẹp. */
   exitFrames: number
   glow: boolean
+  /**
+   * Khung nền ĐÃ TRA XONG, hoặc `null` nếu không có khung.
+   *
+   * Tra danh mục ở tầng kế hoạch chứ không tra lúc vẽ: một `styleId` lạ không
+   * được phép làm chết bản xuất. Id lạ đến từ ba đường thật — project dựng bởi
+   * bản app mới hơn, một id ta bỏ đi ở bản sau, hoặc agent MCP gõ sai tên. Hạ về
+   * `null` thì chữ vẫn hiện, chỉ mất khung. Tra trong lúc vẽ mà ném lỗi thì hỏng
+   * cả video.
+   */
+  frame: ResolvedTextFrame | null
+}
+
+/** Khung sau khi tra danh mục: lớp vẽ cứ dùng thẳng, không tra cứu, không quyết. */
+export interface ResolvedTextFrame {
+  style: TextFrameStyle
+  palette: TextFramePalette
+  /** Thiếu trang trí không làm mất khung — chỉ mất mỗi điểm trang trí. */
+  decor?: TextFrameDecor
 }
 
 export interface RenderPlan {
@@ -221,6 +247,24 @@ function naturalSizeOf(
 function audioTrackAudible(track: ProjectDocument['tracks'][number], anySolo: boolean): boolean {
   if (track.muted) return false
   return anySolo ? Boolean(track.solo) : true
+}
+
+/**
+ * Tra khung của một overlay về dạng dùng được, hoặc `null`.
+ *
+ * Kiểu khung HOẶC bộ màu lạ đều hạ cả khung về `null`: một khung không có bộ màu
+ * thì không tô được, và một bộ màu không có hình thì không có gì để tô lên. Riêng
+ * trang trí lạ chỉ bỏ mỗi trang trí — khung vẫn còn nguyên giá trị.
+ */
+function resolveTextFrame(overlay: TextOverlay): ResolvedTextFrame | null {
+  if (!overlay.frame) return null
+
+  const style = findTextFrameStyle(overlay.frame.styleId)
+  const palette = findTextFramePalette(overlay.frame.paletteId)
+  if (!style || !palette) return null
+
+  const decor = overlay.frame.decorId ? findTextFrameDecor(overlay.frame.decorId) : undefined
+  return decor ? { style, palette, decor } : { style, palette }
 }
 
 export function buildRenderPlan(document: ProjectDocument): RenderPlan {
@@ -395,7 +439,8 @@ export function buildRenderPlan(document: ProjectDocument): RenderPlan {
               Math.floor(durationInFrames / 2)
             )
           : 0,
-      glow: overlay.glow ?? false
+      glow: overlay.glow ?? false,
+      frame: resolveTextFrame(overlay)
     })
   }
 

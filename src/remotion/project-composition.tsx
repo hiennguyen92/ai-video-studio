@@ -1,4 +1,6 @@
 import type { CSSProperties, JSX } from 'react'
+import { TextOverlayFrameParts } from './text-overlay-frame'
+import { frameBoxCss } from './text-overlay-frame-css'
 import {
   AbsoluteFill,
   Audio,
@@ -482,9 +484,17 @@ function TextOverlayLayer({ overlay }: { overlay: RenderPlanTextOverlay }): JSX.
           backgroundColor:
             style.boxOpacity > 0 ? hexToRgba(style.boxColor, style.boxOpacity) : undefined,
           padding: style.boxOpacity > 0 ? style.fontSizePx * 0.25 : 0,
-          borderRadius: style.boxOpacity > 0 ? style.fontSizePx * 0.12 : 0
+          borderRadius: style.boxOpacity > 0 ? style.fontSizePx * 0.12 : 0,
+          // Có khung thì khung NUỐT nền hộp phẳng, không cộng thêm vào nó. Hai
+          // thứ vẽ chồng lên nhau ra một hình chữ nhật xám nằm chèn trong khung
+          // mây. Giao diện chỉ cho chọn một trong hai, nhưng đường MCP đặt được
+          // cả hai bằng hai lệnh rời — nên lớp vẽ phải tự chốt lấy.
+          ...(overlay.frame ? frameBoxCss(overlay.frame, style.fontSizePx) : {})
         }}
       >
+        {overlay.frame && (
+          <TextOverlayFrameParts frame={overlay.frame} fontSizePx={style.fontSizePx} />
+        )}
         {lines.map((line, index) => (
           <span
             key={index}

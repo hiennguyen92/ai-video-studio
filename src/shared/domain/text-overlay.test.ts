@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { applyEditorCommand } from '../commands/editor-command-reducer'
+import { createSessionState, runCommands, undo } from '../commands/command-history'
 import { planChatToolCalls } from '../ai/chat-tool-planner'
 import { createEmptyProject } from './project-document-factory'
 import { migrateProjectDocument } from './project-document-migrations'
@@ -122,6 +123,147 @@ describe('ảnh hưởng tới thời lượng video', () => {
 
     // Không tính vào đây thì CTA đặt cuối video sẽ bị cắt mất khi xuất.
     expect(projectDurationUs(document)).toBe(12_000_000)
+  })
+})
+
+/**
+ * Khung nền có BA trạng thái, không phải hai — và đó là chỗ dễ hỏng nhất.
+ *
+ * `undefined` nghĩa là "giữ nguyên", nên "bỏ khung" phải nói bằng `null`. Bê mẫu
+ * một dòng của `glow` sang đây thì nút tắt khung không tắt được, mà lỗi ấy lọt
+ * qua cả typecheck lẫn review — chỉ lộ ra khi bấm tay.
+ */
+describe('khung nền của chữ overlay', () => {
+  const KHUNG = { styleId: 'may', paletteId: 'hong-phan', decorId: 'ngoi-sao' }
+
+  function coKhung(): ProjectDocument {
+    const document = project()
+    applyEditorCommand(document, { type: 'text/add', overlay: overlay() })
+    applyEditorCommand(document, { type: 'text/update', overlayId: 'text_1', frame: KHUNG })
+    return document
+  }
+
+  it('đặt được khung qua lệnh', () => {
+    expect(coKhung().textOverlays[0].frame).toEqual(KHUNG)
+  })
+
+  it('đổi khung thì ra giá trị mới, không trộn với giá trị cũ', () => {
+    const document = coKhung()
+    applyEditorCommand(document, {
+      type: 'text/update',
+      overlayId: 'text_1',
+      frame: { styleId: 'giay-xe', paletteId: 'xanh-mint' }
+    })
+
+    // Không còn `decorId` của lần trước: khung là một cụm, không phải ba trường
+    // rời để trộn vào nhau.
+    expect(document.textOverlays[0].frame).toEqual({
+      styleId: 'giay-xe',
+      paletteId: 'xanh-mint'
+    })
+  })
+
+  it('bỏ khung bằng null thì trường biến mất hẳn', () => {
+    const document = coKhung()
+    applyEditorCommand(document, { type: 'text/update', overlayId: 'text_1', frame: null })
+
+    expect(document.textOverlays[0].frame).toBeUndefined()
+  })
+
+  it('sửa chữ mà không nhắc tới khung thì khung còn nguyên', () => {
+    const document = coKhung()
+    applyEditorCommand(document, { type: 'text/update', overlayId: 'text_1', text: 'Đổi lời' })
+
+    expect(document.textOverlays[0].text).toBe('Đổi lời')
+    expect(document.textOverlays[0].frame).toEqual(KHUNG)
+  })
+
+  it('thêm chữ kèm sẵn khung thì khung đi qua được', () => {
+    const document = project()
+    applyEditorCommand(document, { type: 'text/add', overlay: overlay({ frame: KHUNG }) })
+
+    expect(document.textOverlays[0].frame).toEqual(KHUNG)
+  })
+
+  it('đặt khung rồi hoàn tác thì về đúng lúc chưa có khung', () => {
+    let state = createSessionState(project())
+    const them = runCommands(state, [{ type: 'text/add', overlay: overlay() }], 'Thêm chữ')
+    if (!them.ok) throw new Error(them.error)
+
+    // Chọn khung ghi vào HAI chỗ: `frame` trên overlay và màu chữ trong `style`.
+    // Hai lệnh trong một giao dịch phải gộp thành MỘT bước hoàn tác, nếu không
+    // người dùng phải nhấn Cmd+Z hai lần mới bỏ được khung — nhìn ra như lỗi.
+    const dat = runCommands(
+      them.state,
+      [
+        { type: 'text/update', overlayId: 'text_1', frame: KHUNG },
+        {
+          type: 'text/set-style',
+          overlayId: 'text_1',
+          style: { ...createDefaultTextOverlayStyle(), color: '#7A2E4E' }
+        }
+      ],
+      'Đặt khung'
+    )
+    if (!dat.ok) throw new Error(dat.error)
+    expect(dat.state.document.textOverlays[0].frame).toEqual(KHUNG)
+
+    state = undo(dat.state)
+    expect(state.document.textOverlays[0].frame).toBeUndefined()
+    expect(state.document.textOverlays[0].style.color).not.toBe('#7A2E4E')
+  })
+})
+
+/**
+ * Tra danh mục nằm ở tầng KẾ HOẠCH, không nằm ở lúc vẽ.
+ *
+ * Một id lạ không được phép làm chết bản xuất. Id lạ đến từ ba đường thật: project
+ * dựng bởi bản app mới hơn, một id ta bỏ đi ở bản sau, hoặc agent MCP gõ sai tên.
+ */
+describe('tra khung khi dựng kế hoạch', () => {
+  function planWith(frame: TextOverlay['frame']): ReturnType<typeof buildRenderPlan> {
+    const document = project()
+    applyEditorCommand(document, { type: 'text/add', overlay: overlay({ frame }) })
+    return buildRenderPlan(document)
+  }
+
+  it('khung hợp lệ thì tới lớp vẽ đã tra xong', () => {
+    const plan = planWith({ styleId: 'may', paletteId: 'hong-phan', decorId: 'trai-tim' })
+    const resolved = plan.textOverlays[0].frame
+
+    expect(resolved?.style.id).toBe('may')
+    expect(resolved?.palette.fill).toBe('#FFE3EF')
+    expect(resolved?.decor?.id).toBe('trai-tim')
+  })
+
+  it('kiểu khung lạ thì mất khung chứ không ném lỗi', () => {
+    const plan = planWith({ styleId: 'khong-co-that', paletteId: 'hong-phan' })
+
+    expect(plan.textOverlays[0].frame).toBeNull()
+    // Chữ vẫn phải còn: hỏng nhẹ, không phải hỏng cả video.
+    expect(plan.textOverlays[0].text).toBe('Chốt đơn ngay')
+  })
+
+  it('bộ màu lạ cũng mất khung', () => {
+    // Khung không có bộ màu thì không tô được, nên không giữ lại nửa vời.
+    expect(
+      planWith({ styleId: 'may', paletteId: 'khong-co-that' }).textOverlays[0].frame
+    ).toBeNull()
+  })
+
+  it('trang trí lạ chỉ mất trang trí, khung vẫn còn', () => {
+    const resolved = planWith({
+      styleId: 'may',
+      paletteId: 'hong-phan',
+      decorId: 'khong-co-that'
+    }).textOverlays[0].frame
+
+    expect(resolved?.style.id).toBe('may')
+    expect(resolved?.decor).toBeUndefined()
+  })
+
+  it('chữ không có khung thì trả null', () => {
+    expect(planWith(undefined).textOverlays[0].frame).toBeNull()
   })
 })
 

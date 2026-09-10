@@ -575,6 +575,17 @@ const removeTextOverlay = z.object({
   overlayId: z.string()
 })
 
+/**
+ * Khung nền chữ trong lệnh. Chỉ kiểm HÌNH DẠNG ở đây, không kiểm id có thật hay
+ * không: id lạ đã được hạ về "không khung" ở tầng dựng kế hoạch, nên nó làm mất
+ * cái khung chứ không làm chết bản xuất.
+ */
+const textOverlayFrameSchema = z.object({
+  styleId: z.string(),
+  paletteId: z.string(),
+  decorId: z.string().optional()
+})
+
 const updateTextOverlay = z.object({
   type: z.literal('text/update'),
   overlayId: z.string(),
@@ -586,7 +597,16 @@ const updateTextOverlay = z.object({
   animation: textAnimationSchema.optional(),
   animationDurationUs: nonNegativeMicros.optional(),
   exitAnimation: z.enum(['none', 'fade', 'shrink', 'slide-down']).optional(),
-  glow: z.boolean().optional()
+  glow: z.boolean().optional(),
+  /**
+   * Khung nền, BA trạng thái chứ không phải hai.
+   *
+   * `undefined` = giữ nguyên khung đang có · đối tượng = đặt/đổi · `null` = BỎ
+   * khung. Phải có `null` vì `undefined` đã mang nghĩa "giữ nguyên" — thiếu nó
+   * thì không có cách nào diễn đạt "bỏ khung đi", và nút tắt khung sẽ không tắt
+   * được. Khác `glow`: boolean không cần trạng thái xoá vì `false` đã là tắt.
+   */
+  frame: z.union([textOverlayFrameSchema, z.null()]).optional()
 })
 
 /** Thay cả bảng style; giao diện luôn sửa theo cụm nên hoàn tác cũng theo cụm. */

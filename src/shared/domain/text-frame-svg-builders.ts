@@ -105,8 +105,9 @@ export function buildFrameImageUri(
  */
 export function buildBubbleTailImageUri(palette: TextFramePalette): string {
   const svg =
-    `<svg xmlns="http://www.w3.org/2000/svg" width="48" height="40" viewBox="0 0 48 40">` +
-    `<path d="M6,3L26,36L42,3" fill="${palette.fill}" stroke="${palette.stroke}" ` +
+    // Cao hơn bề ngang: đuôi thoại bè ra nhìn như cái nêm, không ra cái đuôi.
+    `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="56" viewBox="0 0 40 56">` +
+    `<path d="M5,3L18,52L35,3" fill="${palette.fill}" stroke="${palette.stroke}" ` +
     `stroke-width="5" stroke-linejoin="round"/></svg>`
   return toCssUrl(svg)
 }

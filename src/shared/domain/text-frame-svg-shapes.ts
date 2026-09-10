@@ -96,10 +96,14 @@ export const tornPath =
 /**
  * Nét vẽ tay: cạnh run nhẹ, góc vẫn là cung tròn.
  *
- * Biên độ nhỏ và ĐỔI DẤU — nét vẽ tay lệch qua lệch lại quanh đường thẳng, chứ
- * không nhô hẳn ra một phía như răng giấy xé.
+ * Biên độ đổi DẤU — nét vẽ tay lệch qua lệch lại quanh đường thẳng, chứ không nhô
+ * hẳn ra một phía như răng giấy xé.
+ *
+ * Và ÍT bước thôi. Một viên gạch mép chỉ rộng đúng bằng bề dày viền, nên sáu bước
+ * nhồi vào đó ra bước sóng chừng 4px — mắt đọc thành gợn sóng lăn tăn, gần giống
+ * giấy xé chứ không giống nét vẽ tay. Ba bước cho bước sóng dài gấp đôi.
  */
-const RUN = [3.2, -2.6, 3.6, -2, 2.6, 0]
+const RUN = [3.6, -3, 0]
 
 export function wobblyRect(inset: number, radius: number): string {
   const far = TEXT_FRAME_VIEWBOX - inset

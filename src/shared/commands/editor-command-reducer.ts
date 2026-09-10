@@ -483,6 +483,13 @@ export function applyEditorCommand(doc: ProjectDocument, command: EditorCommand)
       if (command.animation !== undefined) overlay.animation = command.animation
       if (command.exitAnimation !== undefined) overlay.exitAnimation = command.exitAnimation
       if (command.glow !== undefined) overlay.glow = command.glow
+      // Ba nhánh, không phải hai: `undefined` giữ nguyên, `null` XOÁ, còn lại thì
+      // gán. Dùng mẫu một dòng như `glow` ngay trên thì `null` sẽ được gán thẳng
+      // vào trường và lớp vẽ nhận một khung rỗng thay vì không có khung nào.
+      if (command.frame !== undefined) {
+        if (command.frame === null) delete overlay.frame
+        else overlay.frame = command.frame
+      }
       if (command.animationDurationUs !== undefined) {
         overlay.animationDurationUs = command.animationDurationUs
       }
