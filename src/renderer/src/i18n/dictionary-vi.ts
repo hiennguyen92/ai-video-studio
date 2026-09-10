@@ -555,6 +555,8 @@ export const dictionaryVi = {
     frameColor: 'Màu khung',
     frameDecor: 'Trang trí góc',
     frameDecorNone: 'Không',
+    color: 'Màu chữ',
+    outlineColor: 'Màu viền',
     fontSize: 'Cỡ chữ',
     remove: 'Xoá chữ',
     seek: 'Tua tới đây'

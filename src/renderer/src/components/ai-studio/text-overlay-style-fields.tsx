@@ -181,6 +181,38 @@ export function TextOverlayStyleFields({
 
         <TextOverlayFrameFields overlay={overlay} label={label} />
 
+        {/*
+          Đặt SAU ô nền chữ là có chủ ý: chọn khung hay hộp sẽ ghi đè màu chữ cho
+          hợp bộ, nên thứ tự đọc từ trên xuống đúng bằng thứ tự nên thao tác —
+          chọn nền trước, chỉnh màu sau.
+        */}
+        <label>
+          <span className="field-row__label">{t.textOverlay.color}</span>
+          <input
+            type="color"
+            value={overlay.style.color}
+            aria-label={label(t.textOverlay.color)}
+            onChange={(event) =>
+              setStyle({ ...overlay.style, color: event.target.value.toUpperCase() }, 'Đổi màu chữ')
+            }
+          />
+        </label>
+
+        <label>
+          <span className="field-row__label">{t.textOverlay.outlineColor}</span>
+          <input
+            type="color"
+            value={overlay.style.outlineColor}
+            aria-label={label(t.textOverlay.outlineColor)}
+            onChange={(event) =>
+              setStyle(
+                { ...overlay.style, outlineColor: event.target.value.toUpperCase() },
+                'Đổi màu viền'
+              )
+            }
+          />
+        </label>
+
         <label>
           <span className="field-row__label">{t.textOverlay.fontSize}</span>
           <input

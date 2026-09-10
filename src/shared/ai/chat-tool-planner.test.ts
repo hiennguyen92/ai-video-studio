@@ -555,6 +555,85 @@ describe('khung nền chữ qua đường AI', () => {
   })
 })
 
+describe('công cụ đổi màu chữ', () => {
+  const themChu = (): { document: ProjectDocument; overlayId: string } => {
+    const document = project()
+    const plan = planChatToolCalls(context(document), [
+      { name: 'add_text_overlay', arguments: { text: 'Hook', startSeconds: 0, endSeconds: 2 } }
+    ])
+    for (const command of plan.steps.flatMap((step) => step.commands)) {
+      applyEditorCommand(document, command)
+    }
+    return { document, overlayId: document.textOverlays[0].id }
+  }
+
+  const chay = (
+    document: ProjectDocument,
+    args: Record<string, unknown>
+  ): ReturnType<typeof planChatToolCalls> =>
+    planChatToolCalls(context(document), [{ name: 'set_text_color', arguments: args }])
+
+  it('đổi màu chữ và áp được qua reducer thật', () => {
+    const { document, overlayId } = themChu()
+    const plan = chay(document, { color: '#FF00AA', overlayId })
+
+    expect(plan.failures).toEqual([])
+    for (const command of plan.steps.flatMap((step) => step.commands)) {
+      expect(applyEditorCommand(document, command).ok).toBe(true)
+    }
+    expect(document.textOverlays[0].style.color).toBe('#FF00AA')
+  })
+
+  it('không nêu màu viền thì GIỮ NGUYÊN viền đang có', () => {
+    // Xoá viền âm thầm làm chữ mất hút trên footage sáng.
+    const { document, overlayId } = themChu()
+    const truoc = document.textOverlays[0].style.outlineColor
+    const plan = chay(document, { color: '#FF00AA', overlayId })
+
+    for (const command of plan.steps.flatMap((step) => step.commands)) {
+      applyEditorCommand(document, command)
+    }
+    expect(document.textOverlays[0].style.outlineColor).toBe(truoc)
+  })
+
+  it('nêu màu viền thì đổi cả hai', () => {
+    const { document, overlayId } = themChu()
+    const plan = chay(document, { color: '#FF00AA', outlineColor: '#001122', overlayId })
+
+    for (const command of plan.steps.flatMap((step) => step.commands)) {
+      applyEditorCommand(document, command)
+    }
+    expect(document.textOverlays[0].style.outlineColor).toBe('#001122')
+  })
+
+  it('từ chối màu sai cú pháp', () => {
+    // Màu sai cú pháp không làm CSS lỗi — nó làm chữ biến mất, và đó là kiểu hỏng
+    // chỉ lộ ra khi đã nhìn video.
+    const { document } = themChu()
+    for (const color of ['đỏ', 'red', '#FFF', 'FF00AA']) {
+      expect(chay(document, { color }).failures).toHaveLength(1)
+    }
+  })
+
+  it('không nêu mục tiêu thì áp cho MỌI chữ overlay', () => {
+    const { document } = themChu()
+    const them = planChatToolCalls(context(document), [
+      { name: 'add_text_overlay', arguments: { text: 'CTA', startSeconds: 3, endSeconds: 5 } }
+    ])
+    for (const command of them.steps.flatMap((step) => step.commands)) {
+      applyEditorCommand(document, command)
+    }
+
+    const plan = chay(document, { color: '#123456' })
+    expect(plan.steps[0].commands).toHaveLength(2)
+  })
+
+  it('có trong danh mục và chuỗi gợi ý', () => {
+    expect('set_text_color' in chatToolSchemas).toBe(true)
+    expect(chatToolParameterHints.set_text_color).toContain('outlineColor')
+  })
+})
+
 describe('đặt ảnh lên timeline', () => {
   /**
    * Ảnh KHÔNG có thời lượng nguồn — `probe.durationUs` của nó bằng 0. Áp phép

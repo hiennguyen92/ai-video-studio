@@ -1090,6 +1090,56 @@ function planOne(context: ChatEditContext, tool: ChatToolName, args: unknown): P
       }
     }
 
+    case 'set_text_color': {
+      const input = chatToolSchemas.set_text_color.parse(args)
+      // Chỉ ghi đè viền khi agent NÊU: bỏ trống nghĩa là giữ nguyên, và một cái
+      // viền bị xoá âm thầm làm chữ mất hút trên footage sáng.
+      const patch = input.outlineColor
+        ? { color: input.color, outlineColor: input.outlineColor }
+        : { color: input.color }
+
+      if (input.subtitleTrackId) {
+        const subtitleTrack = document.subtitleTracks.find(
+          (item) => item.id === input.subtitleTrackId
+        )
+        if (!subtitleTrack) {
+          throw new Error(`Không tìm thấy track phụ đề "${input.subtitleTrackId}"`)
+        }
+        return {
+          tool,
+          description: `Đổi màu phụ đề "${subtitleTrack.name}" sang ${input.color}`,
+          commands: [
+            {
+              type: 'subtitle/set-style',
+              trackId: subtitleTrack.id,
+              style: { ...subtitleTrack.style, ...patch }
+            }
+          ]
+        }
+      }
+
+      const targets = input.overlayId
+        ? document.textOverlays.filter((item) => item.id === input.overlayId)
+        : document.textOverlays
+      if (targets.length === 0) {
+        throw new Error(
+          input.overlayId
+            ? `Không tìm thấy chữ overlay "${input.overlayId}"`
+            : 'Dự án chưa có chữ overlay nào'
+        )
+      }
+
+      return {
+        tool,
+        description: `Đổi màu ${targets.length} chữ sang ${input.color}`,
+        commands: targets.map((overlay) => ({
+          type: 'text/set-style' as const,
+          overlayId: overlay.id,
+          style: { ...overlay.style, ...patch }
+        }))
+      }
+    }
+
     case 'set_text_rotation': {
       const input = chatToolSchemas.set_text_rotation.parse(args)
 

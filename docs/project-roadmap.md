@@ -141,6 +141,9 @@ giao diện chỉ lộ ra khi chuyển tab với dữ liệu thật.
 - [x] Agent đặt được ảnh lên timeline (`insert_image`), và sửa lỗi `insert_clip`
       không bao giờ đặt được ảnh — ảnh có thời lượng nguồn bằng 0 nên phép kiểm
       biên của video làm nó chết trước khi nhìn tới thời lượng đã nêu.
+- [x] Chọn màu chữ và màu viền cho chữ overlay, trên giao diện lẫn qua
+      `set_text_color` — trước đó màu chữ chỉ đổi được gián tiếp bằng cách chọn
+      nền hộp hoặc khung.
 - [ ] Đổi mặc định xuất sang Remotion khi các tính năng trên đủ chín — hiện mặc
       định vẫn là ffmpeg, chỉ tự chuyển sang Remotion khi dự án có chuyển cảnh
       hoặc chữ overlay

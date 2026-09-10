@@ -391,6 +391,18 @@ export const chatToolSchemas = {
   }),
 
   /** Xoay chữ đã có. Bỏ trống cả hai id thì áp cho MỌI chữ overlay. */
+  set_text_color: z.object({
+    /** Mã màu `#RRGGBB`. Kiểm ngay ở đây vì màu sai cú pháp làm chữ biến mất. */
+    color: z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Màu phải có dạng #RRGGBB'),
+    /** Màu viền quanh chữ. Bỏ trống thì giữ nguyên viền đang có. */
+    outlineColor: z
+      .string()
+      .regex(/^#[0-9a-fA-F]{6}$/, 'Màu phải có dạng #RRGGBB')
+      .optional(),
+    overlayId: z.string().min(1).max(120).optional(),
+    subtitleTrackId: z.string().min(1).max(120).optional()
+  }),
+
   set_text_rotation: z.object({
     rotationDeg: z.number().min(-45).max(45),
     overlayId: z.string().min(1).max(120).optional(),
@@ -486,6 +498,8 @@ export const chatToolDescriptions: Record<ChatToolName, string> = {
     'Import files from disk into the media pool so they can be placed on the timeline. Paths must be ABSOLUTE. The reply gives the id of each imported asset — pass those to insert_clip. A file already in the project is reported as a duplicate with the id of the existing asset instead of being imported twice. This only fills the media pool; it does not put anything on the timeline.',
   remove_media:
     'Remove one asset from the media library. Refuses if any clip on the timeline still uses it; pass removeClips to delete those clips as well. The file on disk is never touched.',
+  set_text_color:
+    'Set the colour of text overlays or a subtitle track, as #RRGGBB. Pass outlineColor too when the text sits on busy footage — the outline is what keeps it readable, and a fill colour alone can disappear into the picture. With no overlayId and no subtitleTrackId it applies to every text overlay. Note that choosing a cute frame or a box background sets its own matching colours, so set the colour AFTER those, not before.',
   set_text_rotation:
     'Tilt text by an angle, clockwise, from -45 to 45 degrees. Works in the preview and in the exported file alike. With no overlayId and no subtitleTrackId it applies to every text overlay.',
   set_text_position:
@@ -549,6 +563,8 @@ export const chatToolParameterHints: Record<ChatToolName, string> = {
     '{ fontFamily: string, fontPostScriptName?: string, overlayId?: string, subtitleTrackId?: string }',
   set_text_position:
     '{ xPct?: number, yPct?: number, clear?: boolean, overlayId?: string, subtitleTrackId?: string }',
+  set_text_color:
+    '{ color: string, outlineColor?: string, overlayId?: string, subtitleTrackId?: string }',
   set_text_rotation: '{ rotationDeg: number, overlayId?: string, subtitleTrackId?: string }'
 }
 

@@ -502,6 +502,19 @@ Overlay vẽ **sau cùng**, trên cả phụ đề: hook mà bị phụ đề ch
 Nó cũng tính vào `projectDurationUs`, nếu không một CTA đặt sau clip cuối sẽ bị cắt
 mất khi xuất.
 
+#### Màu chữ
+
+Ô "Màu chữ" và "Màu viền" nằm **sau** ô chọn nền, và thứ tự đó có chủ ý: chọn
+khung hay hộp sẽ ghi đè màu chữ cho hợp bộ (`applyTextOverlayFrame`,
+`applyTextOverlayBox`), nên thứ tự đọc từ trên xuống đúng bằng thứ tự nên thao
+tác — chọn nền trước, chỉnh màu sau. Mô tả của công cụ MCP cũng nói đúng điều đó.
+
+`set_text_color` kiểm cú pháp `#RRGGBB` ngay ở schema: màu sai không làm CSS báo
+lỗi, nó làm **chữ biến mất**, và đó là kiểu hỏng chỉ lộ ra khi đã nhìn video.
+
+Bỏ trống `outlineColor` thì **giữ nguyên** viền đang có. Xoá viền âm thầm làm chữ
+mất hút trên footage sáng — đúng lý do nền hộp và khung đều tự quản viền.
+
 #### Khung nền dễ thương
 
 Hai cạm bẫy đã cắn, cả hai đều chỉ lộ ở XEM TRƯỚC chứ không lộ ở bản xuất — vì

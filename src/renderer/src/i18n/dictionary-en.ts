@@ -556,6 +556,8 @@ export const dictionaryEn: Dictionary = {
     frameColor: 'Frame colour',
     frameDecor: 'Corner accent',
     frameDecorNone: 'None',
+    color: 'Text colour',
+    outlineColor: 'Outline colour',
     fontSize: 'Font size',
     remove: 'Remove text',
     seek: 'Seek here'
