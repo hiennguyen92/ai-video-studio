@@ -48,7 +48,16 @@ export function frameBoxCss(frame: ResolvedTextFrame, fontSizePx: number): CSSPr
 
   return {
     position: 'relative',
-    border: `${frameBorderPx(frame, fontSizePx)}px solid transparent`,
+    // KHÔNG dùng shorthand `border`: theo đặc tả, `border` ĐẶT LẠI `border-image`
+    // về mặc định. Đổi khung là bề dày viền đổi, React ghi lại `border`, và nó
+    // kéo `border-image-slice` về `100%` — trong khi chuỗi slice không đổi nên
+    // React không ghi lại. Kết quả: khung mất sạch nét, chỉ còn nền phẳng.
+    //
+    // Bản xuất dựng DOM mới mỗi lần nên không dính; chỉ xem trước mới lộ, và chỉ
+    // khi ĐỔI từ khung này sang khung khác.
+    borderWidth: frameBorderPx(frame, fontSizePx),
+    borderStyle: 'solid',
+    borderColor: 'transparent',
     borderImageSource: source,
     borderImageSlice: `${TEXT_FRAME_SLICE_PERCENT}% fill`,
     borderImageRepeat: frame.style.repeat,
@@ -57,10 +66,9 @@ export function frameBoxCss(frame: ResolvedTextFrame, fontSizePx: number): CSSPr
      * Nền cùng màu ruột khung, cắt theo hộp đệm.
      *
      * Không phải để trang trí — để BỊT MỐI NỐI. `border-image` vẽ chín ô rời
-     * nhau; khi cả khối bị thu nhỏ theo tỉ lệ LẺ, mép các ô rơi vào giữa pixel và
-     * chừa lại vệt kẻ mảnh cho nền phía sau lọt qua. Bản xuất vẽ 1:1 nên sạch,
-     * còn xem trước thì luôn thu composition cho vừa khung — nên vệt kẻ chỉ hiện
-     * ở xem trước, và hiện thành một cái lưới chạy ngang qua chữ.
+     * nhau; khi cả khối rơi vào nửa pixel thì mép các ô chừa lại vệt kẻ mảnh cho
+     * nền phía sau lọt qua. Xảy ra ở hai đường: xem trước thu composition theo
+     * tỉ lệ lẻ, và chữ ghim vị trí thì dời bằng `translate(-50%,-50%)`.
      *
      * `padding-box` là phần bắt buộc: cắt theo `border-box` thì nền tràn ra cả
      * dải viền và ló ra thành hình chữ nhật phía sau mép mây.

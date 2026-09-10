@@ -504,6 +504,20 @@ mất khi xuất.
 
 #### Khung nền dễ thương
 
+Hai cạm bẫy đã cắn, cả hai đều chỉ lộ ở XEM TRƯỚC chứ không lộ ở bản xuất — vì
+bản xuất dựng DOM mới mỗi lần, còn xem trước thì React sửa tại chỗ.
+
+**1. Shorthand `border` xoá mất `border-image`.** Theo đặc tả CSS, `border` đặt
+lại `border-image` về mặc định. React chỉ ghi những thuộc tính ĐỔI, nên đổi khung
+làm bề dày viền đổi → `border` được ghi lại → `border-image-slice` về `100%`,
+trong khi chuỗi slice không đổi nên React không ghi lại. Khung mất sạch nét, chỉ
+còn nền phẳng. Dùng longhand `borderWidth`/`borderStyle`/`borderColor`.
+
+**2. Thứ tự ghép style quyết định chữ đã ghim có ôm sát chữ không.** Khung đặt
+`position: relative` để đuôi và trang trí có chỗ bám; chữ ghim vị trí cần
+`position: absolute`. Để phần khung ghi SAU thì chữ đã ghim rơi lại vào luồng
+flex, giãn hết chiều ngang và nằm sai chỗ. Phần đặt vị trí phải ghi sau cùng.
+
 Trường `frame` nằm trên `TextOverlay`, **không** nằm trong `SubtitleStyle` — cùng
 lý do đã giới hạn `glow`: bản nung phụ đề đi qua ASS, mà ASS chỉ vẽ được nền đặc
 một màu (`BorderStyle 3`), nên đặt ở đó là đẻ ra một ô điều khiển chết cho phụ đề.

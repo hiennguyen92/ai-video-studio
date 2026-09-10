@@ -478,7 +478,6 @@ function TextOverlayLayer({ overlay }: { overlay: RenderPlanTextOverlay }): JSX.
           alignItems: 'center',
           gap: style.lineSpacingPx,
           textAlign: 'center',
-          ...placement,
           transformOrigin: textTransformOrigin(style.alignment, style.position),
           transform: composeTextTransform(style.position, transform, style.rotationDeg),
           backgroundColor:
@@ -489,7 +488,15 @@ function TextOverlayLayer({ overlay }: { overlay: RenderPlanTextOverlay }): JSX.
           // thứ vẽ chồng lên nhau ra một hình chữ nhật xám nằm chèn trong khung
           // mây. Giao diện chỉ cho chọn một trong hai, nhưng đường MCP đặt được
           // cả hai bằng hai lệnh rời — nên lớp vẽ phải tự chốt lấy.
-          ...(overlay.frame ? frameBoxCss(overlay.frame, style.fontSizePx) : {})
+          ...(overlay.frame ? frameBoxCss(overlay.frame, style.fontSizePx) : {}),
+          // ĐẶT VỊ TRÍ SAU CÙNG, và đây là thứ tự có chủ ý. Khung đặt
+          // `position: relative` để đuôi và trang trí có chỗ bám; ghim vị trí thì
+          // cần `position: absolute`. Để khung ghi sau thì chữ đã ghim rơi lại
+          // vào luồng flex, giãn hết chiều ngang và nằm sai chỗ.
+          //
+          // Cả `relative` lẫn `absolute` đều làm gốc bám cho phần tử con đặt
+          // tuyệt đối, nên nhường quyền cho phần đặt vị trí không mất gì.
+          ...placement
         }}
       >
         {overlay.frame && (
