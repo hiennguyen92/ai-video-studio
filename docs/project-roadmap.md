@@ -127,6 +127,10 @@ giao diện chỉ lộ ra khi chuyển tab với dữ liệu thật.
       đẩy từng khung qua shader, tức thêm một đường vẽ và một cái giá về tốc độ
       render chưa đo.
 - [x] Hiệu ứng ra và viền phát sáng cho chữ overlay
+- [x] Khung nền dễ thương cho chữ overlay: năm kiểu, sáu bộ màu, ba điểm trang
+      trí góc. Vẽ bằng SVG sinh ra trong mã chứ không gom file ảnh — không giấy
+      phép nào phải kiểm, không blob nào vào git, và bề mặt đóng gói bằng không.
+      Khung co theo chữ bằng `border-image` chín ô nên góc không méo.
 - [ ] Đổi mặc định xuất sang Remotion khi các tính năng trên đủ chín — hiện mặc
       định vẫn là ffmpeg, chỉ tự chuyển sang Remotion khi dự án có chuyển cảnh
       hoặc chữ overlay

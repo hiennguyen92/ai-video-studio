@@ -160,6 +160,90 @@ async function differingPixels(left: Buffer, right: Buffer): Promise<number> {
   return count
 }
 
+/**
+ * So HÌNH DẠNG hai ô góc, sau khi trượt thử để căn gốc.
+ *
+ * Khối chữ căn giữa khung hình, nên đổi độ dài chữ là mép trái rơi vào một nửa
+ * pixel khác — cả đường cong góc dịch đi chưa tới 1px và so thẳng từng pixel sẽ
+ * báo hàng trăm điểm lệch dù góc không hề méo. Trượt thử mọi độ lệch rồi lấy cái
+ * khớp nhất; phần dư mới là méo thật.
+ *
+ * Ô so phải HẸP HƠN bề dày viền. Rộng hơn là lấn sang vùng mép, mà mép thì lát
+ * gạch co theo bề rộng chữ nên khác nhau là ĐÚNG — so cả vùng đó thì phép thử
+ * luôn đỏ dù góc hoàn toàn lành.
+ */
+async function cornerShapeDiff(left: Buffer, right: Buffer, size = 22): Promise<number> {
+  const [a, b] = await Promise.all([decodeRgb(left, size), decodeRgb(right, size)])
+  let best = Number.MAX_SAFE_INTEGER
+  for (let dy = -2; dy <= 2; dy++) {
+    for (let dx = -2; dx <= 2; dx++) {
+      let count = 0
+      for (let y = 3; y < size - 3; y++) {
+        for (let x = 3; x < size - 3; x++) {
+          const i = (y * size + x) * 3
+          const j = ((y + dy) * size + (x + dx)) * 3
+          if (
+            Math.abs(a[i] - b[j]) > 6 ||
+            Math.abs(a[i + 1] - b[j + 1]) > 6 ||
+            Math.abs(a[i + 2] - b[j + 2]) > 6
+          ) {
+            count++
+          }
+        }
+      }
+      best = Math.min(best, count)
+    }
+  }
+  return best
+}
+
+/** Giải một ảnh PNG đã cắt thành mảng RGB thô. */
+async function decodeRgb(png: Buffer, size: number): Promise<Buffer> {
+  const { writeFile } = await import('node:fs/promises')
+  const { default: ffmpegStatic } = await import('ffmpeg-static')
+  const src = join(workDir, `raw-${Math.random().toString(36).slice(2)}.png`)
+  await writeFile(src, png)
+  const { stdout } = await execFileAsync(
+    String(ffmpegStatic),
+    [
+      '-v',
+      'error',
+      '-i',
+      src,
+      '-vf',
+      `scale=${size}:${size}`,
+      '-pix_fmt',
+      'rgb24',
+      '-f',
+      'rawvideo',
+      '-'
+    ],
+    { encoding: 'buffer', maxBuffer: 1 << 26 }
+  )
+  return stdout
+}
+
+/** Cắt ô góc trên-trái của một ảnh PNG, để so hình dạng góc giữa hai bề rộng. */
+async function cropTopLeft(png: Buffer, size = 22): Promise<Buffer> {
+  const { writeFile } = await import('node:fs/promises')
+  const { default: ffmpegStatic } = await import('ffmpeg-static')
+  const src = join(workDir, 'goc-src.png')
+  const out = join(workDir, `goc-${Math.random().toString(36).slice(2)}.png`)
+  await writeFile(src, png)
+  await execFileAsync(String(ffmpegStatic), [
+    '-v',
+    'error',
+    '-y',
+    '-i',
+    src,
+    '-vf',
+    `crop=${size}:${size}:0:0`,
+    out
+  ])
+  const { readFile } = await import('node:fs/promises')
+  return readFile(out)
+}
+
 test('thêm chữ được ngay cả khi chưa có bản phiên âm nào', async () => {
   await studio().getByRole('tab', { name: 'Phụ đề' }).click()
 
@@ -894,6 +978,148 @@ test('đổi vị trí đưa chữ xuống dưới khung hình', async () => {
   const bottom = await stage.screenshot()
 
   expect(bottom.equals(middle)).toBe(false)
+})
+
+/**
+ * Khung nền dễ thương.
+ *
+ * Điều đắt nhất phải chứng minh là vế TẮT: chọn khung rồi bỏ khung phải trả về
+ * đúng khung hình cũ. Đường ghi của khung có ba trạng thái, và nếu `null` bị nuốt
+ * ở bất cứ tầng nào — schema, planner, reducer — thì khung nằm lại trên hình mà
+ * mọi phép thử "bật lên có đổi hình" vẫn xanh.
+ */
+test('năm khung cho năm hình khác nhau', async () => {
+  const stage = page.locator('.preview__stage')
+  await page.getByLabel('Hiệu ứng 1').selectOption('none')
+  await page.getByLabel('Hiệu ứng ra 1').selectOption('none')
+  await page.getByLabel('Bắt đầu (giây) 1').fill('1')
+  await page.getByLabel('Kết thúc (giây) 1').fill('4')
+  await page.getByRole('button', { name: 'Tua tới đây' }).click()
+  await page.waitForTimeout(700)
+
+  const shots = new Map<string, Buffer>()
+  for (const id of ['bong-bong-thoai', 'may', 'giay-xe', 'vien-lap-lanh', 'net-ve-tay']) {
+    await page.getByLabel('Nền chữ 1').selectOption(id)
+    await page.waitForTimeout(700)
+    shots.set(id, await stage.screenshot())
+  }
+
+  // Năm ô chọn khác nhau phải ra năm hình khác nhau: trùng nhau nghĩa là ô ghi
+  // được dữ liệu mà lớp vẽ không đọc tới.
+  expect(new Set(shots.values()).size).toBe(shots.size)
+
+  await page.getByLabel('Nền chữ 1').selectOption('none')
+})
+
+test('bỏ khung trả về đúng khung hình cũ', async () => {
+  const stage = page.locator('.preview__stage')
+  await page.getByRole('button', { name: 'Tua tới đây' }).click()
+  await page.waitForTimeout(700)
+  const plain = await stage.screenshot()
+
+  await page.getByLabel('Nền chữ 1').selectOption('may')
+  await page.waitForTimeout(700)
+  expect((await stage.screenshot()).equals(plain)).toBe(false)
+
+  // Vế đắt: còn sót lại mảng khung nào là thấy ngay ở đây.
+  await page.getByLabel('Nền chữ 1').selectOption('none')
+  await page.waitForTimeout(700)
+  expect(await differingPixels(await stage.screenshot(), plain)).toBeLessThan(20)
+})
+
+test('đổi bộ màu và trang trí góc đều làm đổi hình', async () => {
+  const stage = page.locator('.preview__stage')
+  await page.getByLabel('Nền chữ 1').selectOption('may')
+  await page.waitForTimeout(700)
+  const hong = await stage.screenshot()
+
+  await page.getByLabel('Màu khung 1').selectOption('xanh-mint')
+  await page.waitForTimeout(700)
+  const mint = await stage.screenshot()
+  expect(mint.equals(hong)).toBe(false)
+
+  await page.getByLabel('Trang trí góc 1').selectOption('ngoi-sao')
+  await page.waitForTimeout(700)
+  expect((await stage.screenshot()).equals(mint)).toBe(false)
+
+  await page.getByLabel('Trang trí góc 1').selectOption('')
+  await page.getByLabel('Nền chữ 1').selectOption('none')
+})
+
+test('hai ô của khung không tồn tại khi chưa chọn khung', async () => {
+  // KHÔNG TỒN TẠI, không phải bị làm mờ: một ô "Màu khung" khi không có khung là
+  // một ô không có tác dụng.
+  await expect(page.getByLabel('Màu khung 1')).toHaveCount(0)
+
+  await page.getByLabel('Nền chữ 1').selectOption('may')
+  await expect(page.getByLabel('Màu khung 1')).toHaveCount(1)
+
+  await page.getByLabel('Nền chữ 1').selectOption('none')
+  await expect(page.getByLabel('Màu khung 1')).toHaveCount(0)
+})
+
+test('góc khung không méo khi chữ dài ra', async () => {
+  const block = page.locator('.text-block')
+  await page.getByLabel('Nền chữ 1').selectOption('may')
+  await page.getByLabel('Nội dung 1').fill('Sale')
+  await page.waitForTimeout(700)
+  const ngan = await block.screenshot()
+
+  await page.getByLabel('Nội dung 1').fill('Ba dong chu dai hon nua de xuong dong o day nhe')
+  await page.waitForTimeout(700)
+  const dai = await block.screenshot()
+
+  expect(dai.equals(ngan)).toBe(false)
+  // Góc vẽ đúng bằng bề dày viền nên KHÔNG được co giãn theo chữ. Ô góc trên-trái
+  // phải giống hệt nhau; khác đi nghĩa là hình bị kéo méo — đúng thứ mà cách vẽ
+  // chín ô sinh ra để tránh.
+  const lech = await cornerShapeDiff(await cropTopLeft(ngan), await cropTopLeft(dai))
+  expect(lech, `góc lệch ${lech} điểm`).toBeLessThan(30)
+
+  await page.getByLabel('Nội dung 1').fill('Chốt đơn ngay')
+  await page.getByLabel('Nền chữ 1').selectOption('none')
+})
+
+test('khung đi tới file xuất ra, không chỉ sống trong preview', async () => {
+  await page.getByLabel('Nền chữ 1').selectOption('may')
+  await page.waitForTimeout(300)
+
+  await page.getByRole('button', { name: 'Xuất video' }).click()
+  const dialog = page.getByRole('dialog', { name: 'Xuất video' })
+  await dialog.getByRole('button', { name: 'Chọn nơi lưu…' }).click()
+  await dialog.getByRole('button', { name: 'Bắt đầu xuất' }).click()
+  await expect(dialog.getByText('Xuất xong')).toBeVisible({ timeout: 600_000 })
+
+  // Nguồn là màn hình xám trơn. Khung phủ nhiều pixel hơn hẳn chữ trần, nên khung
+  // hình trong khoảng có chữ nén ra lớn hơn nhiều so với khung hình ngoài khoảng.
+  const { default: ffmpegStatic } = await import('ffmpeg-static')
+  const sizes: number[] = []
+  for (const [name, at] of [
+    ['co-khung', '2.5'],
+    ['khong-chu', '6.5']
+  ] as const) {
+    const framePath = join(workDir, `khung-${name}.png`)
+    await execFileAsync(String(ffmpegStatic), [
+      '-v',
+      'error',
+      '-y',
+      '-ss',
+      at,
+      '-i',
+      outputPath,
+      '-frames:v',
+      '1',
+      framePath
+    ])
+    sizes.push((await stat(framePath)).size)
+  }
+
+  expect(sizes[0]).toBeGreaterThan(sizes[1] * 1.5)
+
+  // Đóng hộp thoại lại: file này chạy tuần tự trên MỘT cửa sổ, và một hộp thoại
+  // để mở sẽ chặn mọi cú bấm của phép thử sau.
+  await dialog.getByRole('button', { name: 'Đóng' }).click()
+  await page.getByLabel('Nền chữ 1').selectOption('none')
 })
 
 test('chữ đi tới file xuất ra, không chỉ sống trong preview', async () => {

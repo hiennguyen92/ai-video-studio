@@ -79,12 +79,13 @@ export function TextOverlayFrameParts({
           aria-hidden
           style={{
             ...chung,
-            // Cưỡi lên nét khung ở góc trên-phải, không nép hẳn ra ngoài: nép ra
-            // ngoài thì nó rời khỏi khung và nhìn như bị cắt.
-            top: -border * 0.8,
-            right: -border * 0.25,
-            width: border,
-            height: border,
+            // Nằm HẲN trên khung ở góc trên-phải, chỉ ló một phần lên dải viền.
+            // Đặt lệch ra ngoài thì nửa trên rơi vào nền và nhìn như bị cắt —
+            // mép khung không phải đường thẳng nên không có chỗ nào để nó tựa.
+            top: -border * 0.4,
+            right: -border * 0.05,
+            width: border * 0.8,
+            height: border * 0.8,
             backgroundImage: decor
           }}
         />

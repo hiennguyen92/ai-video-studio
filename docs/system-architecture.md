@@ -392,6 +392,35 @@ Overlay vẽ **sau cùng**, trên cả phụ đề: hook mà bị phụ đề ch
 Nó cũng tính vào `projectDurationUs`, nếu không một CTA đặt sau clip cuối sẽ bị cắt
 mất khi xuất.
 
+#### Khung nền dễ thương
+
+Trường `frame` nằm trên `TextOverlay`, **không** nằm trong `SubtitleStyle` — cùng
+lý do đã giới hạn `glow`: bản nung phụ đề đi qua ASS, mà ASS chỉ vẽ được nền đặc
+một màu (`BorderStyle 3`), nên đặt ở đó là đẻ ra một ô điều khiển chết cho phụ đề.
+
+Dự án lưu **id bền** (`styleId`, `paletteId`, `decorId`), không lưu SVG và không
+lưu màu: hình vẽ với bảng màu là mã nguồn, sửa được và dựng lại được; chép chúng
+vào file project là đóng băng một bản cũ.
+
+Khung co theo chữ bằng `border-image` chín ô: góc vẽ đúng bằng bề dày viền nên
+**không méo** dù chữ dài hay ngắn, mép thì lát gạch. Đuôi bong bóng và trang trí
+góc không đi qua cơ chế đó được — nó lát mép nên thứ gì cần nằm đúng một chỗ sẽ bị
+nhân lên thành cả hàng — nên chúng là phần tử đặt tuyệt đối.
+
+Tra danh mục nằm ở **tầng dựng kế hoạch**, không nằm lúc vẽ. Id lạ (project của bản
+app mới hơn, id đã bỏ, agent gõ sai) hạ về "không khung": chữ vẫn hiện, chỉ mất
+khung. Ném lỗi lúc vẽ thì hỏng cả video. Ngược lại, **công cụ AI thì ném lỗi** kèm
+danh sách id hợp lệ — bản dựng phải chịu đựng dữ liệu xấu, còn công cụ phải nói ra
+để agent sửa được.
+
+Khung và nền hộp phẳng **loại trừ nhau**, và lớp vẽ tự chốt điều đó chứ không dựa
+vào lời dặn: giao diện chỉ cho chọn một trong hai, nhưng đường MCP đặt được cả hai
+bằng hai lệnh rời.
+
+Lệnh đặt khung có **ba** trạng thái: bỏ trống là giữ nguyên, đối tượng là đặt,
+`null` là bỏ khung. Mẫu một dòng dùng cho `glow` không đủ ở đây — boolean không cần
+trạng thái xoá vì `false` đã là tắt.
+
 Công cụ AI nhận vị trí bằng chữ (`top`/`middle`/`bottom`) chứ không bắt mô hình
 đoán số bàn phím 1–9 của ASS — đó là loại giá trị mô hình rất hay điền sai.
 
