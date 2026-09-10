@@ -14,19 +14,13 @@ import { ToolButton } from '../ui/tool-button'
  */
 
 function configSnippet(status: McpServerStatus): string {
-  return JSON.stringify(
-    {
-      mcpServers: {
-        'ai-video-studio': {
-          type: 'http',
-          url: status.url,
-          headers: { 'x-avs-token': status.token }
-        }
-      }
-    },
-    null,
-    2
-  )
+  // Tắt khoá thì BỎ HẲN `headers` khỏi cấu hình, không để lại một header rỗng:
+  // client nào cũng chép nguyên đoạn này, và một header thừa là thứ người ta sẽ
+  // đi dò xem tại sao nó ở đó.
+  const server = status.requireToken
+    ? { type: 'http', url: status.url, headers: { 'x-avs-token': status.token } }
+    : { type: 'http', url: status.url }
+  return JSON.stringify({ mcpServers: { 'ai-video-studio': server } }, null, 2)
 }
 
 export function McpConnectionSection(): JSX.Element {
@@ -68,10 +62,32 @@ export function McpConnectionSection(): JSX.Element {
             <input type="text" readOnly value={status.url ?? ''} aria-label={t.mcp.address} />
           </div>
 
-          <div className="field-row">
-            <span className="field-row__label">{t.mcp.token}</span>
-            <input type="text" readOnly value={status.token ?? ''} aria-label={t.mcp.token} />
-          </div>
+          <label className="mcp-section__toggle">
+            <input
+              type="checkbox"
+              checked={status.requireToken !== false}
+              aria-label={t.mcp.requireToken}
+              onChange={(event) => {
+                void (async () => {
+                  const result = await window.api.mcp.setTokenRequired(event.target.checked)
+                  if (result.ok) setStatus(result.data)
+                })()
+              }}
+            />
+            <span className="field-row__label">{t.mcp.requireToken}</span>
+          </label>
+          <p className="mcp-section__hint">{t.mcp.requireTokenHint}</p>
+
+          {/* Khoá vẫn được sinh ra khi tắt, nhưng không bày ra: bày một ô khoá
+              không có tác dụng chỉ làm người dùng tưởng nó vẫn đang bảo vệ. */}
+          {status.requireToken !== false ? (
+            <div className="field-row">
+              <span className="field-row__label">{t.mcp.token}</span>
+              <input type="text" readOnly value={status.token ?? ''} aria-label={t.mcp.token} />
+            </div>
+          ) : (
+            <div className="notice">{t.mcp.tokenOff}</div>
+          )}
 
           <div className="mcp-section__actions">
             <ToolButton

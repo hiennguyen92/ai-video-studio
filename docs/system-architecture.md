@@ -377,6 +377,28 @@ không hiểu vì sao.
 Hệ quả: **clip đầu timeline không bao giờ có chuyển cảnh** — không có gì phía trước
 để lấy, và cũng không có gì để phủ lên.
 
+### Khoá truy cập của máy chủ MCP
+
+Khoá sinh mới mỗi lần mở app, chỉ nghe trên `127.0.0.1`. **Tắt được**, vì có
+client MCP không gửi được header tuỳ ý — nhưng tắt nghĩa là mọi tiến trình trên
+máy đều sửa được dự án đang mở, nên giao diện nói thẳng điều đó bằng một khối cảnh
+báo chứ không giấu trong tài liệu.
+
+Ba điều đáng ghi:
+
+- **Kiểm ở từng yêu cầu**, không chốt lúc khởi động. Bật tắt có hiệu lực ngay,
+  không phải mở lại app.
+- **Không dựng lại máy chủ khi bật tắt.** Khoá vẫn sinh ra và vẫn giữ nguyên, chỉ
+  là chốt kiểm bỏ qua nó — nên bật lại là dùng đúng khoá cũ, client đang nối không
+  phải cấu hình lại. Đổi lại: khi đang tắt thì ô khoá **không hiện**, vì bày một
+  ô khoá không có tác dụng sẽ làm người dùng tưởng nó vẫn đang bảo vệ.
+- **Hỏng về phía đóng.** File cấu hình rác, thiếu trường, hay bị sửa bậy đều rơi
+  về BẬT. Chỉ đúng giá trị `false` mới tắt — `"false"` hay `0` là file hỏng chứ
+  không phải ý định tắt, và đoán bừa theo hướng tắt là mở cửa ngoài ý muốn.
+
+Cấu hình lưu theo MÁY (`mcp-config.json` trong userData), không theo dự án: máy
+chủ cục bộ là chuyện của máy này.
+
 ### Tốc độ phát clip
 
 Đổi tốc độ **giữ nguyên khoảng nguồn** và đổi độ dài trên timeline: tốc độ 2× làm

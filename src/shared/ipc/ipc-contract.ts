@@ -58,6 +58,7 @@ export const IPC = {
   mediaDetectShots: 'media:detect-shots',
   mcpRespond: 'mcp:respond',
   mcpStatus: 'mcp:status',
+  mcpSetTokenRequired: 'mcp:set-token-required',
   chatSend: 'chat:send',
   chatReadHistory: 'chat:read-history',
   chatWriteHistory: 'chat:write-history',
@@ -317,6 +318,8 @@ export interface McpServerStatus {
   running: boolean
   url?: string
   token?: string
+  /** Có bắt buộc token ở header không. Tắt thì mọi tiến trình trên máy đều gọi được. */
+  requireToken?: boolean
   error?: string
 }
 
@@ -483,6 +486,7 @@ export interface RendererApi {
     respond(response: McpBridgeResponse): void
     onRequest(listener: (request: McpBridgeRequest) => void): () => void
     status(): Promise<IpcResult<McpServerStatus>>
+    setTokenRequired(requireToken: boolean): Promise<IpcResult<McpServerStatus>>
   }
   chat: {
     send(request: ChatSendRequest): Promise<IpcResult<ChatSendResponse>>

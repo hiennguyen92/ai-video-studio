@@ -511,6 +511,11 @@ export const dictionaryEn: Dictionary = {
     stopped: 'Not running',
     address: 'Address',
     token: 'Access token',
+    requireToken: 'Require access token',
+    requireTokenHint:
+      'Turn this off when your MCP client cannot send custom headers. Turning it back on keeps the same token, so nothing needs reconfiguring.',
+    tokenOff:
+      'Token is OFF: any program running on this machine can edit the open project without knowing the token. Only do this if you trust everything running here.',
     copyConfig: 'Copy config',
     copied: 'Copied',
     configHint: 'Paste this into the Claude Code MCP configuration.',

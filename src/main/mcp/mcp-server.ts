@@ -7,6 +7,7 @@ import { chatToolDescriptions, chatToolSchemas } from '../../shared/ai/chat-tool
 import type { ChatToolName } from '../../shared/ai/chat-tool-catalog'
 import type { McpApplyResult, McpServerStatus } from '../../shared/ipc/ipc-contract'
 import { isRendererAvailable, requestFromRenderer } from './mcp-renderer-bridge'
+import { loadMcpConfig, mcpConfig, setMcpRequireToken } from './mcp-config-store'
 
 /**
  * Máy chủ MCP để agent bên ngoài (Claude Code, Codex…) dựng phim trong app này.
@@ -178,6 +179,7 @@ export async function startMcpServer(): Promise<McpServerStatus> {
   if (httpServer) return status
 
   const token = randomBytes(24).toString('hex')
+  await loadMcpConfig()
 
   // Không giữ phiên: mỗi yêu cầu dựng server + transport RIÊNG. Một `McpServer`
   // chỉ nối được với đúng một transport, nên dùng lại một instance cho nhiều
@@ -189,7 +191,9 @@ export async function startMcpServer(): Promise<McpServerStatus> {
         response.writeHead(404).end('Not found')
         return
       }
-      if (tokenFrom(request) !== token) {
+      // Kiểm ở TỪNG yêu cầu chứ không chốt lúc khởi động: người dùng bật tắt
+      // được ngay, không phải mở lại app.
+      if (mcpConfig().requireToken && tokenFrom(request) !== token) {
         // Cổng cục bộ vẫn phải có khoá: mọi tiến trình trên máy đều gọi được nó.
         response.writeHead(401, { 'Content-Type': 'text/plain' }).end('Unauthorized')
         return
@@ -224,8 +228,22 @@ export async function startMcpServer(): Promise<McpServerStatus> {
   status = {
     running: true,
     url: `http://127.0.0.1:${listener.port}${MCP_PATH}`,
-    token
+    token,
+    requireToken: mcpConfig().requireToken
   }
+  return status
+}
+
+/**
+ * Bật tắt việc bắt buộc token.
+ *
+ * Không dựng lại máy chủ: token vẫn sinh ra và vẫn nằm trong trạng thái, chỉ là
+ * chốt kiểm bỏ qua nó. Nhờ vậy bật lại là có hiệu lực ngay với đúng khoá cũ,
+ * client đang nối không phải cấu hình lại.
+ */
+export async function setMcpTokenRequired(requireToken: boolean): Promise<McpServerStatus> {
+  await setMcpRequireToken(requireToken)
+  if (status.running) status = { ...status, requireToken }
   return status
 }
 

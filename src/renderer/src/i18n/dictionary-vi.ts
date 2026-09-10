@@ -510,6 +510,11 @@ export const dictionaryVi = {
     stopped: 'Chưa chạy',
     address: 'Địa chỉ',
     token: 'Khoá truy cập',
+    requireToken: 'Bắt buộc khoá truy cập',
+    requireTokenHint:
+      'Tắt khi client MCP của bạn không gửi được header tuỳ ý. Bật lại thì vẫn dùng đúng khoá cũ, không phải cấu hình lại.',
+    tokenOff:
+      'Đang TẮT khoá: mọi chương trình chạy trên máy này đều sửa được dự án đang mở, không cần biết khoá. Chỉ tắt khi bạn tin mọi thứ đang chạy trên máy.',
     copyConfig: 'Chép cấu hình',
     copied: 'Đã chép',
     configHint: 'Dán vào cấu hình MCP của Claude Code.',

@@ -77,7 +77,9 @@ const api: RendererApi = {
       ipcRenderer.on(IPC_EVENT.mcpRequest, handler)
       return () => ipcRenderer.removeListener(IPC_EVENT.mcpRequest, handler)
     },
-    status: () => ipcRenderer.invoke(IPC.mcpStatus)
+    status: () => ipcRenderer.invoke(IPC.mcpStatus),
+    setTokenRequired: (requireToken: boolean) =>
+      ipcRenderer.invoke(IPC.mcpSetTokenRequired, requireToken)
   },
   chat: {
     send: (request) => ipcRenderer.invoke(IPC.chatSend, request),

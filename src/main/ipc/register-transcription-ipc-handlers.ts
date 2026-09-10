@@ -17,7 +17,7 @@ import { enqueueTranslation, readTranslationResult } from '../ai/translation-ser
 import { runChatTurn } from '../ai/chat-service'
 import { enqueueMusicGeneration } from '../ai/music-generation-service'
 import { resolveRendererResponse } from '../mcp/mcp-renderer-bridge'
-import { mcpStatus } from '../mcp/mcp-server'
+import { mcpStatus, setMcpTokenRequired } from '../mcp/mcp-server'
 import { localMediaUrl, registerMediaFiles } from '../media/local-media-server'
 import { detectShotsForAsset } from '../media/shot-detection-service'
 import { clearChatHistory, readChatHistory, writeChatHistory } from '../storage/chat-history-store'
@@ -79,6 +79,9 @@ export function registerTranscriptionIpcHandlers(): void {
   )
 
   ipcMain.handle(IPC.mcpStatus, () => guard(async () => mcpStatus()))
+  ipcMain.handle(IPC.mcpSetTokenRequired, (_event, requireToken: boolean) =>
+    guard(async () => setMcpTokenRequired(Boolean(requireToken)))
+  )
 
   // Renderer báo danh sách media của dự án đang mở rồi nhận lại URL http. Máy chủ
   // chỉ phục vụ đúng những id này, không nhận đường dẫn từ URL.
