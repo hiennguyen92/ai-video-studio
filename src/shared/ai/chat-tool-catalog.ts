@@ -151,7 +151,22 @@ export const chatToolSchemas = {
     endSeconds: seconds.optional(),
     animation: z.enum(['none', 'fade', 'pop', 'slide-up', 'typewriter']).optional(),
     exit: z.enum(['none', 'fade', 'shrink', 'slide-down']).optional(),
-    glow: z.boolean().optional()
+    glow: z.boolean().optional(),
+    /**
+     * Khung nền dễ thương sau chữ, gọi bằng id trong danh mục.
+     *
+     * `null` nghĩa là BỎ khung; bỏ trống nghĩa là giữ nguyên khung đang có.
+     */
+    frame: z
+      .union([
+        z.object({
+          styleId: z.string().min(1).max(60),
+          paletteId: z.string().min(1).max(60),
+          decorId: z.string().min(1).max(60).optional()
+        }),
+        z.null()
+      ])
+      .optional()
   }),
 
   update_subtitle_cue: z.object({
@@ -219,7 +234,22 @@ export const chatToolSchemas = {
     /** Viền phát sáng quanh chữ. */
     glow: z.boolean().optional(),
     /** Góc xoay, tính bằng độ theo chiều kim đồng hồ. */
-    rotationDeg: z.number().min(-45).max(45).optional()
+    rotationDeg: z.number().min(-45).max(45).optional(),
+    /**
+     * Khung nền dễ thương sau chữ, gọi bằng id trong danh mục.
+     *
+     * `null` nghĩa là BỎ khung; bỏ trống nghĩa là giữ nguyên khung đang có.
+     */
+    frame: z
+      .union([
+        z.object({
+          styleId: z.string().min(1).max(60),
+          paletteId: z.string().min(1).max(60),
+          decorId: z.string().min(1).max(60).optional()
+        }),
+        z.null()
+      ])
+      .optional()
   }),
 
   remove_text_overlay: z.object({
@@ -415,7 +445,7 @@ export const chatToolDescriptions: Record<ChatToolName, string> = {
   build_cut_from_shots:
     'Assemble a cut from detected camera shots, laid end to end in the order given. Use this for footage with no speech, where there is no transcript to work from. Call list_shots first to see each shot and its still frame.',
   add_text_overlay:
-    'Put text on top of the video for a stretch of time — a hook, a price, a call to action. Separate from subtitles, which come from speech. Set box to "dark" or "light" when the footage behind the text is bright or busy — an outline alone is not enough to keep it readable. Set exit so the text leaves instead of snapping off, and glow to make it carry over busy footage.',
+    'Put text on top of the video for a stretch of time — a hook, a price, a call to action. Separate from subtitles, which come from speech. Set box to "dark" or "light" when the footage behind the text is bright or busy — an outline alone is not enough to keep it readable. Set exit so the text leaves instead of snapping off, and glow to make it carry over busy footage. For a playful look pass frame with a styleId and paletteId from the project overview — a cute frame replaces the plain box, so do not set both.',
   remove_text_overlay: 'Remove a text overlay.',
   set_canvas:
     'Set the project canvas shape. Use 9:16 for TikTok, Reels and Shorts, 16:9 for YouTube, 1:1 for square. Do this before laying out text, because it changes where text sits in frame.',
@@ -462,7 +492,7 @@ export const chatToolParameterHints: Record<ChatToolName, string> = {
   set_clip_transform:
     '{ clipId?: string, x?: number, y?: number, scale?: number, rotationDeg?: number, opacity?: number, reset?: boolean }',
   update_text_overlay:
-    "{ overlayId: string, text?: string, startSeconds?: number, endSeconds?: number, animation?: 'none' | 'fade' | 'pop' | 'slide-up' | 'typewriter', exit?: 'none' | 'fade' | 'shrink' | 'slide-down', glow?: boolean }",
+    "{ overlayId: string, text?: string, startSeconds?: number, endSeconds?: number, animation?: 'none' | 'fade' | 'pop' | 'slide-up' | 'typewriter', exit?: 'none' | 'fade' | 'shrink' | 'slide-down', glow?: boolean, frame?: { styleId: string, paletteId: string, decorId?: string } | null }",
   update_subtitle_cue:
     '{ subtitleTrackId: string, cueId: string, text?: string, startSeconds?: number, endSeconds?: number }',
   move_subtitle_cue: '{ subtitleTrackId: string, toSubtitleTrackId: string, cueId: string }',
@@ -472,7 +502,7 @@ export const chatToolParameterHints: Record<ChatToolName, string> = {
   build_cut_from_shots:
     '{ assetId: string, shotIndexes: number[], trackId?: string, maxShotSeconds?: number }',
   add_text_overlay:
-    "{ text: string, startSeconds: number, endSeconds: number, animation?: 'none' | 'fade' | 'pop' | 'slide-up' | 'typewriter', position?: 'bottom' | 'middle' | 'top', fontSizePx?: number, box?: 'none' | 'dark' | 'light', exit?: 'none' | 'fade' | 'shrink' | 'slide-down', glow?: boolean, rotationDeg?: number }",
+    "{ text: string, startSeconds: number, endSeconds: number, animation?: 'none' | 'fade' | 'pop' | 'slide-up' | 'typewriter', position?: 'bottom' | 'middle' | 'top', fontSizePx?: number, box?: 'none' | 'dark' | 'light', exit?: 'none' | 'fade' | 'shrink' | 'slide-down', glow?: boolean, rotationDeg?: number, frame?: { styleId: string, paletteId: string, decorId?: string } | null }",
   remove_text_overlay: '{ overlayId: string }',
   set_canvas: "{ aspect: '16:9' | '9:16' | '1:1', longEdgePx?: number }",
   set_clip_transition:

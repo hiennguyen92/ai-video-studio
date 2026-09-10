@@ -546,6 +546,10 @@ export const dictionaryVi = {
     boxNone: 'Không',
     boxDark: 'Hộp tối',
     boxLight: 'Hộp sáng',
+    frameGroup: 'Khung dễ thương',
+    frameColor: 'Màu khung',
+    frameDecor: 'Trang trí góc',
+    frameDecorNone: 'Không',
     fontSize: 'Cỡ chữ',
     remove: 'Xoá chữ',
     seek: 'Tua tới đây'

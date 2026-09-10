@@ -547,6 +547,10 @@ export const dictionaryEn: Dictionary = {
     boxNone: 'None',
     boxDark: 'Dark box',
     boxLight: 'Light box',
+    frameGroup: 'Cute frames',
+    frameColor: 'Frame colour',
+    frameDecor: 'Corner accent',
+    frameDecorNone: 'None',
     fontSize: 'Font size',
     remove: 'Remove text',
     seek: 'Seek here'

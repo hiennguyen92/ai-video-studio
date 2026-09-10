@@ -3,7 +3,7 @@ import { applyEditorCommand } from '../commands/editor-command-reducer'
 import { createEmptyProject } from '../domain/project-document-factory'
 import type { ProjectDocument } from '../domain/project-document-types'
 import { clipEndUs } from '../domain/timeline-track-types'
-import { chatToolSchemas } from './chat-tool-catalog'
+import { chatToolParameterHints, chatToolSchemas } from './chat-tool-catalog'
 import { buildChatSystemPrompt, buildProjectContext } from './chat-context-builder'
 import type { MediaAsset } from '../domain/media-asset-types'
 import { planChatToolCalls, secondsToMicros, type ChatEditContext } from './chat-tool-planner'
@@ -419,6 +419,113 @@ describe('nền hộp cho chữ overlay', () => {
     ])
     expect(plan.steps).toEqual([])
     expect(plan.failures).toHaveLength(1)
+  })
+})
+
+describe('khung nền chữ qua đường AI', () => {
+  const KHUNG = { styleId: 'may', paletteId: 'hong-phan' }
+
+  const chay = (
+    calls: Array<{ name: string; arguments: Record<string, unknown> }>
+  ): ProjectDocument => {
+    const document = project()
+    const plan = planChatToolCalls(context(document), calls)
+    expect(plan.failures).toEqual([])
+    for (const command of plan.steps.flatMap((step) => step.commands)) {
+      expect(applyEditorCommand(document, command).ok).toBe(true)
+    }
+    return document
+  }
+
+  it('thêm chữ kèm khung thì khung vào tới tài liệu', () => {
+    const document = chay([
+      {
+        name: 'add_text_overlay',
+        arguments: { text: 'Hook', startSeconds: 0, endSeconds: 2, frame: KHUNG }
+      }
+    ])
+    expect(document.textOverlays[0].frame).toEqual(KHUNG)
+  })
+
+  it('đổi khung của chữ đã có', () => {
+    const document = chay([
+      { name: 'add_text_overlay', arguments: { text: 'Hook', startSeconds: 0, endSeconds: 2 } }
+    ])
+    const plan = planChatToolCalls(context(document), [
+      {
+        name: 'update_text_overlay',
+        arguments: { overlayId: document.textOverlays[0].id, frame: KHUNG }
+      }
+    ])
+    expect(plan.failures).toEqual([])
+    for (const command of plan.steps.flatMap((step) => step.commands)) {
+      expect(applyEditorCommand(document, command).ok).toBe(true)
+    }
+    expect(document.textOverlays[0].frame).toEqual(KHUNG)
+  })
+
+  it('bỏ khung bằng null — null KHÔNG được bị mẫu spread nuốt mất', () => {
+    const document = chay([
+      {
+        name: 'add_text_overlay',
+        arguments: { text: 'Hook', startSeconds: 0, endSeconds: 2, frame: KHUNG }
+      }
+    ])
+    const plan = planChatToolCalls(context(document), [
+      {
+        name: 'update_text_overlay',
+        arguments: { overlayId: document.textOverlays[0].id, frame: null }
+      }
+    ])
+    // Kiểm ngay ở lệnh, không chỉ ở kết quả: kiểm truthy thay vì `!== undefined`
+    // sẽ làm khoá `frame` biến mất khỏi lệnh và nút tắt khung im lặng không làm gì.
+    expect(plan.steps[0].commands[0]).toMatchObject({ frame: null })
+    for (const command of plan.steps.flatMap((step) => step.commands)) {
+      expect(applyEditorCommand(document, command).ok).toBe(true)
+    }
+    expect(document.textOverlays[0].frame).toBeUndefined()
+  })
+
+  it('không nhắc tới khung thì lệnh không mang khoá frame', () => {
+    const document = chay([
+      {
+        name: 'add_text_overlay',
+        arguments: { text: 'Hook', startSeconds: 0, endSeconds: 2, frame: KHUNG }
+      }
+    ])
+    const plan = planChatToolCalls(context(document), [
+      {
+        name: 'update_text_overlay',
+        arguments: { overlayId: document.textOverlays[0].id, text: 'Đổi lời' }
+      }
+    ])
+    expect(plan.steps[0].commands[0]).not.toHaveProperty('frame')
+  })
+
+  it('id khung bịa ra thì báo lỗi kèm danh sách id hợp lệ', () => {
+    const document = project()
+    const plan = planChatToolCalls(context(document), [
+      {
+        name: 'add_text_overlay',
+        arguments: {
+          text: 'Hook',
+          startSeconds: 0,
+          endSeconds: 2,
+          frame: { styleId: 'cau-vong', paletteId: 'hong-phan' }
+        }
+      }
+    ])
+    expect(plan.steps).toEqual([])
+    // Liệt kê id ra để agent tự sửa ở lượt sau, thay vì đoán tiếp.
+    expect(plan.failures[0].reason).toContain('may')
+  })
+
+  it('chuỗi gợi ý tham số phải nhắc tới frame', () => {
+    // `chatToolParameterHints` là chuỗi VIẾT TAY chép lại hình dạng zod, không có
+    // gì đối chiếu hai bên. Quên nó thì agent đọc được một chữ ký thiếu trường và
+    // không bao giờ dùng tới khung — mà mọi phép thử khác vẫn xanh.
+    expect(chatToolParameterHints.add_text_overlay).toContain('frame')
+    expect(chatToolParameterHints.update_text_overlay).toContain('frame')
   })
 })
 

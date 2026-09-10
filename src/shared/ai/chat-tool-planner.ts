@@ -19,6 +19,14 @@ import {
   defaultTextTrackId,
   type TextOverlay
 } from '../domain/text-overlay-types'
+import {
+  TEXT_FRAME_DECORS,
+  TEXT_FRAME_PALETTES,
+  TEXT_FRAME_STYLES,
+  findTextFrameDecor,
+  findTextFramePalette,
+  findTextFrameStyle
+} from '../domain/text-frame-catalog'
 import { guessDuckingTracks, planAutoDucking } from '../domain/auto-ducking-planner'
 import { roundHalfUp } from '../domain/time-units'
 import { chatToolSchemas, isChatToolName, type ChatToolName } from './chat-tool-catalog'
@@ -550,7 +558,8 @@ function planOne(context: ChatEditContext, tool: ChatToolName, args: unknown): P
         animation: input.animation ?? 'pop',
         animationDurationUs: DEFAULT_TEXT_ANIMATION_DURATION_US,
         exitAnimation: input.exit,
-        glow: input.glow
+        glow: input.glow,
+        frame: checkedFrame(input.frame) ?? undefined
       }
 
       return {
@@ -829,7 +838,11 @@ function planOne(context: ChatEditContext, tool: ChatToolName, args: unknown): P
             ...(endUs !== undefined ? { endUs } : {}),
             ...(input.animation !== undefined ? { animation: input.animation } : {}),
             ...(input.exit !== undefined ? { exitAnimation: input.exit } : {}),
-            ...(input.glow !== undefined ? { glow: input.glow } : {})
+            ...(input.glow !== undefined ? { glow: input.glow } : {}),
+            // `!== undefined` chứ KHÔNG phải kiểm truthy: `null` là lệnh bỏ khung
+            // và phải đi lọt tới reducer. Kiểm truthy sẽ nuốt mất nó, và nút tắt
+            // khung im lặng không làm gì.
+            ...(input.frame !== undefined ? { frame: checkedFrame(input.frame) ?? null } : {})
           }
         ]
       }
@@ -1143,6 +1156,36 @@ function planOne(context: ChatEditContext, tool: ChatToolName, args: unknown): P
  * Bước nào hỏng thì bị bỏ RIÊNG và ghi lý do, các bước còn lại vẫn dựng được.
  * Ném cả loạt đi chỉ vì một tham số sai sẽ khiến người dùng phải gõ lại từ đầu.
  */
+/**
+ * Kiểm id khung do agent gửi lên, NÉM LỖI kèm danh sách id hợp lệ.
+ *
+ * Khác hẳn tầng dựng kế hoạch, chỗ đó hạ id lạ về "không khung" một cách lặng lẽ:
+ * bản dựng phải chịu đựng dữ liệu xấu để không làm chết cả video, còn công cụ thì
+ * phải NÓI RA để agent sửa được ở lượt sau. Hai tầng, hai cách xử, cả hai đều cố ý.
+ */
+function checkedFrame(
+  frame: { styleId: string; paletteId: string; decorId?: string } | null | undefined
+): { styleId: string; paletteId: string; decorId?: string } | null | undefined {
+  if (!frame) return frame
+
+  if (!findTextFrameStyle(frame.styleId)) {
+    throw new Error(
+      `Không có kiểu khung "${frame.styleId}". Chọn một trong: ${TEXT_FRAME_STYLES.map((item) => item.id).join(', ')}`
+    )
+  }
+  if (!findTextFramePalette(frame.paletteId)) {
+    throw new Error(
+      `Không có bộ màu khung "${frame.paletteId}". Chọn một trong: ${TEXT_FRAME_PALETTES.map((item) => item.id).join(', ')}`
+    )
+  }
+  if (frame.decorId && !findTextFrameDecor(frame.decorId)) {
+    throw new Error(
+      `Không có trang trí "${frame.decorId}". Chọn một trong: ${TEXT_FRAME_DECORS.map((item) => item.id).join(', ')}`
+    )
+  }
+  return frame
+}
+
 export function planChatToolCalls(
   context: ChatEditContext,
   calls: Array<{ name: string; arguments: unknown }>

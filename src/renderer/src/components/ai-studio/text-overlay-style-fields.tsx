@@ -1,17 +1,15 @@
 import type { JSX } from 'react'
 import {
-  applyTextOverlayBox,
-  readTextOverlayBox,
   type TextAnimation,
   type TextExitAnimation,
-  type TextOverlay,
-  type TextOverlayBox
+  type TextOverlay
 } from '../../../../shared/domain/text-overlay-types'
 import type { SubtitleAlignment } from '../../../../shared/domain/subtitle-types'
 import { useEditorStore } from '../../state/editor-store'
 import { useT } from '../../i18n/use-translation'
 import { FontFamilySelect } from './font-family-select'
 import { TextPositionRow } from './text-position-row'
+import { TextOverlayFrameFields } from './text-overlay-frame-fields'
 
 /**
  * Các ô chỉnh kiểu cho MỘT dòng chữ đè hình.
@@ -34,12 +32,6 @@ const EXITS: Array<{ value: TextExitAnimation; labelKey: string }> = [
   { value: 'fade', labelKey: 'exitFade' },
   { value: 'shrink', labelKey: 'exitShrink' },
   { value: 'slide-down', labelKey: 'exitSlideDown' }
-]
-
-const BOXES: Array<{ value: TextOverlayBox; labelKey: string }> = [
-  { value: 'none', labelKey: 'boxNone' },
-  { value: 'dark', labelKey: 'boxDark' },
-  { value: 'light', labelKey: 'boxLight' }
 ]
 
 /** Vị trí theo hệ số bàn phím số của ASS, gói lại thành ba lựa chọn dễ hiểu. */
@@ -187,25 +179,7 @@ export function TextOverlayStyleFields({
           <span className="field-row__label">{t.textOverlay.glow}</span>
         </label>
 
-        <label>
-          <span className="field-row__label">{t.textOverlay.box}</span>
-          <select
-            value={readTextOverlayBox(overlay.style)}
-            aria-label={label(t.textOverlay.box)}
-            onChange={(event) =>
-              setStyle(
-                applyTextOverlayBox(overlay.style, event.target.value as TextOverlayBox),
-                'Đổi nền chữ'
-              )
-            }
-          >
-            {BOXES.map((option) => (
-              <option key={option.value} value={option.value}>
-                {t.textOverlay[option.labelKey as keyof typeof t.textOverlay] as string}
-              </option>
-            ))}
-          </select>
-        </label>
+        <TextOverlayFrameFields overlay={overlay} label={label} />
 
         <label>
           <span className="field-row__label">{t.textOverlay.fontSize}</span>
