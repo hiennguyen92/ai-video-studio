@@ -3,7 +3,7 @@ import { applyEditorCommand } from '../commands/editor-command-reducer'
 import { createEmptyProject } from '../domain/project-document-factory'
 import type { ProjectDocument } from '../domain/project-document-types'
 import { clipEndUs } from '../domain/timeline-track-types'
-import { chatToolParameterHints, chatToolSchemas } from './chat-tool-catalog'
+import { chatToolDescriptions, chatToolParameterHints, chatToolSchemas } from './chat-tool-catalog'
 import { buildChatSystemPrompt, buildProjectContext } from './chat-context-builder'
 import type { MediaAsset } from '../domain/media-asset-types'
 import { planChatToolCalls, secondsToMicros, type ChatEditContext } from './chat-tool-planner'
@@ -605,22 +605,34 @@ describe('đặt ảnh lên timeline', () => {
     expect(plan.steps[0].commands[0]).toMatchObject({ durationUs: 12_000_000 })
   })
 
-  it('insert_clip cũng đặt được ảnh — đây là lỗi cũ', () => {
-    // Trước đây nhánh này tính `remainingUs = 0 - 0` rồi ném "Điểm vào nằm ngoài"
-    // TRƯỚC khi nhìn tới thời lượng, nên agent không tài nào đặt được ảnh.
+  it('insert_clip TỪ CHỐI ảnh và chỉ sang insert_image', () => {
+    // Hai công cụ chia đôi theo loại media. Nhận bừa thì agent không bao giờ biết
+    // mình gọi nhầm, và tấm ảnh đặt qua đường video mang theo một `sourceInSeconds`
+    // vô nghĩa.
     const { document, assetId } = withImage()
     const plan = chay(document, 'insert_clip', { assetId, startSeconds: 0, durationSeconds: 3 })
+
+    expect(plan.steps).toEqual([])
+    expect(plan.failures[0].reason).toContain('insert_image')
+  })
+
+  it('lỗi cũ vẫn không được quay lại: nhánh chung phải giữ ngoại lệ cho ảnh', () => {
+    // Ảnh có thời lượng nguồn bằng 0. Nếu ai đó khôi phục phép kiểm biên nguồn
+    // cho ảnh thì `insert_image` cũng chết theo, đúng như lỗi ban đầu.
+    const { document, assetId } = withImage()
+    const plan = chay(document, 'insert_image', { assetId, startSeconds: 0, durationSeconds: 3 })
 
     expect(plan.failures).toEqual([])
     expect(plan.steps[0].commands[0]).toMatchObject({ durationUs: 3_000_000 })
   })
 
-  it('insert_clip đặt ảnh không nêu thời lượng cũng ra 5 giây, không ra 0', () => {
-    const { document, assetId } = withImage()
-    const plan = chay(document, 'insert_clip', { assetId, startSeconds: 0 })
-
-    expect(plan.failures).toEqual([])
-    expect(plan.steps[0].commands[0]).toMatchObject({ durationUs: 5_000_000 })
+  it('mô tả của cả hai công cụ nói rõ loại media và chỉ sang công cụ kia', () => {
+    // Agent đọc mô tả để chọn công cụ. Không nói rõ thì nó đoán, và đoán sai là
+    // một lượt hỏng vô ích.
+    expect(chatToolDescriptions.insert_clip).toContain('insert_image')
+    expect(chatToolDescriptions.insert_image).toContain('insert_clip')
+    expect(chatToolDescriptions.insert_clip).toContain('VIDEO')
+    expect(chatToolDescriptions.insert_image).toContain('STILL IMAGE')
   })
 
   it('insert_image từ chối video, nói rõ dùng công cụ nào', () => {

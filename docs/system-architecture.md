@@ -384,9 +384,22 @@ chỗ nào đặt ảnh cũng phải tự chọn một con số. `IMAGE_DEFAULT_
 `shared/domain` để kéo-thả trên timeline và công cụ AI cho ra cùng kết quả; trước
 đây nó nằm trong một file component của renderer nên đường agent không thấy.
 
-`insert_clip` và `insert_image` dùng **chung một nhánh** (`planInsertOnTimeline`).
-Chép làm hai bản thì phần chọn track và phần kẹp biên sẽ lệch nhau, và lệch ở đây
-nghĩa là cùng một asset cho hai kết quả khác nhau tuỳ agent gọi công cụ nào.
+**Hai công cụ chia đôi theo loại media, và mỗi bên từ chối phần của bên kia:**
+
+| Công cụ | Nhận | Từ chối |
+|---|---|---|
+| `insert_clip` | video, audio | ảnh → chỉ sang `insert_image` |
+| `insert_image` | ảnh | video, audio → chỉ sang `insert_clip` |
+
+Nhận bừa thì agent không bao giờ biết mình gọi nhầm, và một tấm ảnh đặt qua đường
+video sẽ mang theo `sourceInSeconds` vô nghĩa. Mô tả của **cả hai** nói rõ nhận
+loại nào và chỉ sang công cụ kia — có kiểm thử khẳng định, vì mô tả là thứ agent
+đọc để chọn công cụ, và đoán sai là một lượt hỏng vô ích.
+
+Dù tách đôi ở ngoài, bên trong chúng dùng **chung một nhánh**
+(`planInsertOnTimeline`). Chép làm hai bản thì phần chọn track và phần kẹp biên
+sẽ lệch nhau, và lệch ở đây nghĩa là cùng một asset cho hai kết quả khác nhau tuỳ
+agent gọi công cụ nào.
 
 Trong nhánh đó, **ảnh là ngoại lệ** đúng như bất biến của domain đã ghi:
 
@@ -395,8 +408,11 @@ Trong nhánh đó, **ảnh là ngoại lệ** đúng như bất biến của dom
 - `sourceInUs` ép về 0 — ảnh không có gì để tua vào
 
 Vì thế `insert_image` **không bày** tham số `sourceInSeconds`: một ô không có tác
-dụng thì không nên có mặt. Nó cũng từ chối thẳng khi được gọi cho video, kèm tên
-công cụ đúng — im lặng làm thay thì agent không học được là nó gọi nhầm.
+dụng thì không nên có mặt.
+
+Nhánh chung vẫn giữ ngoại lệ cho ảnh dù `insert_clip` đã chặn ảnh từ trước đó —
+vì đó là luật của **domain**, không phải luật của một công cụ. Đổi công cụ không
+được làm luật đó biến mất, và có kiểm thử canh đúng điều này.
 
 ### Nhập media qua MCP
 

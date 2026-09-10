@@ -354,14 +354,19 @@ function planOne(context: ChatEditContext, tool: ChatToolName, args: unknown): P
 
     case 'insert_clip': {
       const input = chatToolSchemas.insert_clip.parse(args)
+      const asset = document.assets.find((item) => item.id === input.assetId)
+      // Hai công cụ chia đôi theo loại media, và mỗi bên từ chối phần của bên
+      // kia. Nhận bừa thì agent không bao giờ biết mình đang gọi nhầm, và một
+      // tấm ảnh đặt qua đường video sẽ mang theo `sourceInSeconds` vô nghĩa.
+      if (asset?.kind === 'image') {
+        throw new Error(`"${asset.name}" là ảnh — dùng insert_image để đặt ảnh lên timeline`)
+      }
       return planInsertOnTimeline(tool, context, input)
     }
 
     case 'insert_image': {
       const input = chatToolSchemas.insert_image.parse(args)
       const asset = document.assets.find((item) => item.id === input.assetId)
-      // Chặn ở đây chứ không để nhánh chung tự xoay: gọi công cụ ảnh cho một
-      // đoạn phim là agent hiểu sai, và im lặng làm thay nó thì nó không học được.
       if (asset && asset.kind !== 'image') {
         throw new Error(`"${asset.name}" không phải ảnh — dùng insert_clip cho video và tiếng`)
       }
@@ -1257,6 +1262,10 @@ function checkedFrame(
  * lượng nguồn (`probe.durationUs` bằng 0) nên kéo dài bao lâu cũng được. Áp phép
  * kiểm biên nguồn của video lên ảnh thì `remainingUs` luôn bằng 0 và KHÔNG BAO
  * GIỜ đặt được ảnh — kể cả khi đã nêu thời lượng.
+ *
+ * Ảnh chỉ tới được nhánh này qua `insert_image`; `insert_clip` từ chối ảnh từ
+ * trước đó. Nhánh vẫn giữ ngoại lệ vì nó là luật của DOMAIN, không phải luật của
+ * một công cụ — đổi công cụ không được làm luật đó biến mất.
  */
 function planInsertOnTimeline(
   tool: ChatToolName,

@@ -442,9 +442,10 @@ export const chatToolDescriptions: Record<ChatToolName, string> = {
     'Build a subtitle track from an existing transcript, optionally using a translation, optionally bilingual. Requires a transcript to already exist.',
   auto_duck_music:
     'Lower music volume wherever there is speech, by cutting the music at speech boundaries and setting a lower volume on those pieces.',
-  insert_clip: 'Place a media asset from the library onto a timeline track.',
+  insert_clip:
+    'Place a VIDEO or AUDIO asset from the library onto a timeline track. NOT for still images — use insert_image for those; this tool rejects them. Leave durationSeconds out to use the whole remaining source from sourceInSeconds onward; a duration longer than the source is clamped to it.',
   insert_image:
-    'Put a still image on the timeline for a stretch of time — a logo, a product shot, a title card. Unlike video an image has no length of its own, so durationSeconds decides how long it stays; leave it out for 5 seconds. There is no source-in point because there is nothing to seek into. Use insert_clip for video and audio.',
+    'Place a STILL IMAGE on the timeline for a stretch of time — a logo, a product shot, a title card. NOT for video or audio — use insert_clip for those; this tool rejects them. An image has no length of its own, so durationSeconds decides how long it stays on screen; leave it out for 5 seconds. There is no sourceInSeconds because there is nothing to seek into.',
   ripple_delete_range:
     'Cut a time range out of the timeline and pull everything after it back to close the gap. Applies to every track so picture and sound stay in sync.',
   build_cut_from_transcript:
