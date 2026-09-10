@@ -1,5 +1,5 @@
 appId: com.electron.app
-productName: ai-video-studio
+productName: AI Video Studio
 directories:
   buildResources: build
 files:

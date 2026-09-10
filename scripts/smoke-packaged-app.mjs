@@ -11,7 +11,7 @@ import { fileURLToPath } from 'node:url'
 const execFileAsync = promisify(execFile)
 
 const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
-const builtApp = join(projectRoot, 'dist', 'mac-arm64', 'ai-video-studio.app')
+const builtApp = join(projectRoot, 'dist', 'mac-arm64', 'AI Video Studio.app')
 
 /**
  * Chép bản đóng gói ra NGOÀI cây dự án rồi mới chạy.
@@ -49,7 +49,7 @@ const stagedRoot = process.env.APP ? null : await stageOutsideProject()
 if (stagedRoot) assertNoAncestorModules(stagedRoot)
 
 const APP =
-  process.env.APP ?? join(stagedRoot, 'ai-video-studio.app', 'Contents', 'MacOS', 'ai-video-studio')
+  process.env.APP ?? join(stagedRoot, 'AI Video Studio.app', 'Contents', 'MacOS', 'AI Video Studio')
 const work = await mkdtemp(join(tmpdir(), 'avs-smoke-'))
 const userData = await mkdtemp(join(tmpdir(), 'avs-smoke-data-'))
 const media = join(work, 'canh-quay.mp4')

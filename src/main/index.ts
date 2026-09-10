@@ -35,7 +35,22 @@ registerMediaProtocolScheme()
  * dự án thật của người dùng. Cũng tiện khi cần chạy song song nhiều bản dev.
  */
 const userDataOverride = process.env['AVS_USER_DATA_DIR']
-if (userDataOverride) app.setPath('userData', userDataOverride)
+if (userDataOverride) {
+  app.setPath('userData', userDataOverride)
+} else {
+  /**
+   * GHIM tên thư mục dữ liệu, không để nó chạy theo tên hiển thị.
+   *
+   * Mặc định Electron lấy thư mục dữ liệu theo tên app, mà tên app trong bản
+   * đóng gói chính là `productName`. Đổi tên hiển thị thành "AI Video Studio" sẽ
+   * kéo thư mục dữ liệu sang một chỗ mới và mọi dự án đã lưu biến mất khỏi app —
+   * chúng vẫn nằm trên đĩa, chỉ là app không nhìn vào đó nữa.
+   *
+   * Tên thư mục là chuyện của DỮ LIỆU, tên hiển thị là chuyện của giao diện. Hai
+   * thứ đó không nên buộc vào nhau.
+   */
+  app.setPath('userData', join(app.getPath('appData'), 'ai-video-studio'))
+}
 
 function createMainWindow(): BrowserWindow {
   const window = new BrowserWindow({

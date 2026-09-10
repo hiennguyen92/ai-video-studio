@@ -79,6 +79,24 @@ Lúc chạy phải truyền `browserExecutable` cho CẢ `selectComposition` l�
 `renderMedia`. Để trống một trong hai là bước đó lại đi tìm bản tải sẵn theo thư
 mục làm việc.
 
+## Tên hiển thị và tên thư mục dữ liệu tách rời nhau
+
+`productName` là **AI Video Studio** — đó là tên trong Finder, trên thanh menu
+macOS, và là tên file `.app` lẫn file DMG.
+
+Nhưng thư mục dữ liệu vẫn là `ai-video-studio`, ghim cứng bằng `app.setPath` ở
+`src/main/index.ts`. Mặc định Electron lấy thư mục dữ liệu theo tên app, mà tên
+app trong bản đóng gói chính là `productName` — nên đổi tên hiển thị sẽ lặng lẽ
+kéo thư mục dữ liệu sang chỗ mới và mọi dự án đã lưu biến mất khỏi app.
+
+Đã kiểm: `app.getName()` trả về một tên khác hẳn mà `app.getPath('userData')` vẫn
+trỏ đúng `ai-video-studio`, tức đường dẫn do lệnh ghim quyết định chứ không do tên
+app.
+
+Hệ quả kèm theo: tên `.app` và tên file nhị phân bên trong nó đổi theo
+`productName`, nên `scripts/smoke-packaged-app.mjs` phải biết tên mới. Đổi
+`productName` mà quên chỗ đó thì smoke test đỏ với lỗi không tìm thấy file.
+
 ## Không khai báo `publish`
 
 Cấu hình scaffold để lại `https://example.com/auto-updates`. Khi nào thật sự làm

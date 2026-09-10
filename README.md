@@ -62,6 +62,12 @@ npm run lint
 ```
 
 `<userData>` trên macOS là `~/Library/Application Support/ai-video-studio`.
+
+Tên thư mục này **cố ý khác** tên hiển thị của app ("AI Video Studio"). Mặc định
+Electron lấy thư mục dữ liệu theo tên app, nên đổi tên hiển thị sẽ kéo thư mục
+sang chỗ mới và mọi dự án đã lưu biến mất khỏi app — chúng vẫn nằm trên đĩa, chỉ
+là app không nhìn vào đó nữa. Tên thư mục là chuyện của dữ liệu, tên hiển thị là
+chuyện của giao diện; hai thứ đó được tách hẳn ra.
 Đặt biến `AVS_USER_DATA_DIR` để dùng thư mục khác (kiểm thử đầu-cuối dùng cơ chế này để chạy trên hồ sơ trống).
 
 **File nguồn không bao giờ bị sao chép hay sửa đổi.** Project chỉ giữ tham chiếu tới đường dẫn gốc,
