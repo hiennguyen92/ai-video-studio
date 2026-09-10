@@ -28,6 +28,11 @@ extraResources:
   # không lưu đường dẫn, và id được phân giải về đúng thư mục này.
   - from: out/sound-effects
     to: sound-effects
+  # Chrome Headless Shell cho Remotion (~193 MB). Không có nó thì lần xuất đầu
+  # tiên đi tải về một thư mục suy ra từ thư mục làm việc — mở app từ Finder thì
+  # thư mục đó là `/`, và cả lần xuất chết với "mkdir '/.remotion'".
+  - from: out/chrome-headless-shell
+    to: chrome-headless-shell
 win:
   executableName: ai-video-studio
 nsis:

@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { availableParallelism, totalmem } from 'node:os'
 import { app } from 'electron'
 import { join } from 'node:path'
@@ -73,6 +73,37 @@ function prebuiltBundleDir(): string | null {
   return app.isPackaged ? join(process.resourcesPath, 'remotion-bundle') : null
 }
 
+/**
+ * Chrome Headless Shell đi kèm bản cài.
+ *
+ * Thiếu nó thì Remotion tự đi tải, và chỗ tải là một thư mục nó suy ra bằng cách
+ * trèo ngược từ THƯ MỤC LÀM VIỆC để tìm `package.json`. Mở app từ Finder thì thư
+ * mục làm việc là `/`, không có `package.json` nào ở trên, nên nó rơi về
+ * `/.remotion` — thư mục gốc chỉ đọc, và lần xuất đầu tiên chết ngay.
+ *
+ * Trả `null` ở bản dev: lúc đó thư mục làm việc là gốc dự án, Remotion tự tìm
+ * thấy bản trong `node_modules/.remotion` như thường lệ.
+ */
+function packagedBrowserExecutable(): string | null {
+  if (!app.isPackaged) return null
+
+  const dir = join(process.resourcesPath, 'chrome-headless-shell')
+  const manifest = join(dir, 'binary-path.json')
+  if (!existsSync(manifest)) {
+    throw new Error(
+      `Bản cài thiếu Chrome Headless Shell tại "${dir}". Bản build này đóng gói sai; hãy build lại.`
+    )
+  }
+
+  // Đường dẫn do script lúc build ghi ra, không đoán theo nền tảng ở đây.
+  const { binary } = JSON.parse(readFileSync(manifest, 'utf8')) as { binary: string }
+  const path = join(dir, binary)
+  if (!existsSync(path)) {
+    throw new Error(`Bản cài thiếu file Chrome tại "${path}". Bản build này đóng gói sai.`)
+  }
+  return path
+}
+
 async function ensureBundle(): Promise<string> {
   const prebuilt = prebuiltBundleDir()
   if (prebuilt) {
@@ -133,11 +164,21 @@ export function startRemotionExport(
     const serveUrl = await ensureBundle()
     const inputProps = { plan: scaledPlan, mediaUrls }
 
-    const composition = await selectComposition({ serveUrl, id: 'project', inputProps })
+    // Cùng một trình duyệt cho cả bước chọn composition lẫn bước dựng: để trống
+    // một trong hai là nó lại đi tìm bản tải sẵn theo thư mục làm việc.
+    const browserExecutable = packagedBrowserExecutable()
+
+    const composition = await selectComposition({
+      serveUrl,
+      id: 'project',
+      inputProps,
+      browserExecutable
+    })
 
     await renderMedia({
       composition,
       serveUrl,
+      browserExecutable,
       codec: 'h264',
       outputLocation: settings.outputPath,
       inputProps,

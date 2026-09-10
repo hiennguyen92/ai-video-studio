@@ -78,6 +78,10 @@ await execFileAsync(String(ffmpegStatic), [
 const app = await electron.launch({
   executablePath: APP,
   args: [],
+  // Mở từ Finder thì thư mục làm việc là `/`, không phải thư mục dự án. Chạy thử
+  // với cwd của terminal là xanh giả: mọi đường dẫn TƯƠNG ĐỐI đều rơi vào thư mục
+  // dự án đang ghi được, còn ở máy người dùng thì rơi vào `/` và ngã.
+  cwd: '/',
   env: { ...process.env, AVS_USER_DATA_DIR: userData, NODE_ENV: 'production' }
 })
 // Bắt luôn stderr của tiến trình main: app tắt giữa chừng thì lỗi chỉ nằm ở đây.
