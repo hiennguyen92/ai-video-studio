@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react'
 import type { EditorCommand } from '../../../shared/commands/editor-command-types'
+import type { MediaAsset } from '../../../shared/domain/media-asset-types'
 import { useEditorStore } from '../state/editor-store'
 
 /**
@@ -14,6 +15,49 @@ export interface ImportOutcome {
   importedCount: number
   duplicateCount: number
   failures: Array<{ path: string; error: string }>
+  /** Asset vừa nhập. Đường MCP cần chúng để trả id về cho agent. */
+  assets: MediaAsset[]
+  duplicates: Array<{ path: string; existingAssetId: string }>
+}
+
+/**
+ * Nhập media, KHÔNG phải hook.
+ *
+ * Tách ra khỏi hook vì đường MCP cũng cần đúng việc này, mà chỗ đó không gọi
+ * được hook: nó nằm trong một listener đăng ký một lần. Chép làm hai bản là mời
+ * hai đường nhập media lệch nhau — một bên phát hiện trùng nội dung, bên kia thì
+ * không.
+ *
+ * Đọc trạng thái tại thời điểm gọi thay vì đóng gói sẵn, để dùng được từ cả
+ * listener sống lâu lẫn component.
+ */
+export async function importMediaPaths(filePaths: string[]): Promise<ImportOutcome | null> {
+  const document = useEditorStore.getState().session?.document
+  if (!document || filePaths.length === 0) return null
+
+  const result = await window.api.media.import({
+    projectId: document.id,
+    filePaths,
+    // Gửi kèm asset hiện có để main phát hiện trùng nội dung.
+    existing: document.assets
+  })
+  if (!result.ok) throw new Error(result.error)
+
+  const commands: EditorCommand[] = result.data.assets.map((asset) => ({
+    type: 'asset/add',
+    asset
+  }))
+  // Nhập nhiều file gộp thành MỘT bước undo: người dùng nghĩ về nó như một hành
+  // động duy nhất.
+  if (commands.length > 0) useEditorStore.getState().run(commands, 'Nhập media')
+
+  return {
+    importedCount: result.data.assets.length,
+    duplicateCount: result.data.duplicates.length,
+    failures: result.data.failures,
+    assets: result.data.assets,
+    duplicates: result.data.duplicates
+  }
 }
 
 export function useMediaImport(): {
@@ -22,44 +66,21 @@ export function useMediaImport(): {
   pickAndImport(): Promise<ImportOutcome | null>
 } {
   const [importing, setImporting] = useState(false)
-  const run = useEditorStore((state) => state.run)
   const setError = useEditorStore((state) => state.setError)
 
   const importPaths = useCallback(
     async (filePaths: string[]): Promise<ImportOutcome | null> => {
-      const document = useEditorStore.getState().session?.document
-      if (!document || filePaths.length === 0) return null
-
       setImporting(true)
       try {
-        const result = await window.api.media.import({
-          projectId: document.id,
-          filePaths,
-          // Gửi kèm asset hiện có để main phát hiện trùng nội dung.
-          existing: document.assets
-        })
-
-        if (!result.ok) {
-          setError(result.error)
-          return null
-        }
-
-        const commands: EditorCommand[] = result.data.assets.map((asset) => ({
-          type: 'asset/add',
-          asset
-        }))
-        if (commands.length > 0) run(commands, 'Nhập media')
-
-        return {
-          importedCount: result.data.assets.length,
-          duplicateCount: result.data.duplicates.length,
-          failures: result.data.failures
-        }
+        return await importMediaPaths(filePaths)
+      } catch (error) {
+        setError(error instanceof Error ? error.message : String(error))
+        return null
       } finally {
         setImporting(false)
       }
     },
-    [run, setError]
+    [setError]
   )
 
   const pickAndImport = useCallback(async (): Promise<ImportOutcome | null> => {

@@ -135,6 +135,9 @@ giao diện chỉ lộ ra khi chuyển tab với dữ liệu thật.
       nhưng không có ô nào bật được — nay có ô trên panel Thuộc tính và công cụ
       `set_clip_speed` cho agent. Đổi tốc độ giữ nguyên khoảng nguồn và đổi độ dài
       trên timeline, nên không bao giờ đòi nhiều phim hơn số đang có.
+- [x] Agent nhập được media vào thư viện qua MCP (`import_media`) — trước đó nó
+      xoá được media nhưng không thêm được, nên mọi phiên đều phải có người bấm
+      "Nhập media" trước.
 - [ ] Đổi mặc định xuất sang Remotion khi các tính năng trên đủ chín — hiện mặc
       định vẫn là ffmpeg, chỉ tự chuyển sang Remotion khi dự án có chuyển cảnh
       hoặc chữ overlay

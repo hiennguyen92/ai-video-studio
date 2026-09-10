@@ -1,5 +1,7 @@
 import { useEffect } from 'react'
 import type { McpApplyResult, McpBridgeRequest } from '../../../shared/ipc/ipc-contract'
+import { importMediaPaths } from './use-media-import'
+import { formatImportOutcome, relativePaths } from './mcp-import-media-reply'
 import { buildProjectContext } from '../../../shared/ai/chat-context-builder'
 import { planChatToolCalls } from '../../../shared/ai/chat-tool-planner'
 import { createId } from '../../../shared/domain/project-document-factory'
@@ -245,6 +247,23 @@ export function useMcpBridge(): void {
           case 'media':
             respond(true, formatMedia(document))
             return
+
+          case 'import-media': {
+            const payload = request.payload as { filePaths?: string[] }
+            const paths = payload?.filePaths ?? []
+            const relative = relativePaths(paths)
+            if (relative.length > 0) {
+              respond(false, undefined, `Đường dẫn phải là tuyệt đối: ${relative.join(', ')}`)
+              return
+            }
+
+            void importMediaPaths(paths)
+              .then((outcome) => respond(true, formatImportOutcome(outcome)))
+              .catch((error: unknown) =>
+                respond(false, undefined, error instanceof Error ? error.message : String(error))
+              )
+            return
+          }
 
           case 'fonts': {
             const payload = request.payload as { family?: string }

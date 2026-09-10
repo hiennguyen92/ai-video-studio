@@ -377,6 +377,28 @@ không hiểu vì sao.
 Hệ quả: **clip đầu timeline không bao giờ có chuyển cảnh** — không có gì phía trước
 để lấy, và cũng không có gì để phủ lên.
 
+### Nhập media qua MCP
+
+`import_media` là công cụ GHI nhưng **không** đi qua danh mục lệnh của AI Chat.
+Lý do: nhập media phải probe file, băm nội dung và dựng thumbnail — toàn việc bất
+đồng bộ, mà đường dựng lệnh của AI Chat là một hàm THUẦN và ĐỒNG BỘ. Nên nó đi
+lối của các công cụ đọc (`list_shots`, `list_fonts`), tức qua cầu xuống renderer.
+
+Renderer dùng lại **đúng hàm** mà nút "Nhập media" đang dùng
+(`importMediaPaths`), chứ không tự gọi IPC. Chép làm hai bản là mời hai đường
+nhập media lệch nhau — một bên phát hiện trùng nội dung, bên kia thì không.
+
+Hai chốt chặn:
+
+- **Đường dẫn phải TUYỆT ĐỐI.** Agent chạy ở thư mục của nó, tiến trình main lại
+  ở thư mục khác, nên đường dẫn tương đối không có nghĩa. Chặn sớm và nói rõ cái
+  nào sai, thay vì để nó thành lỗi "không tìm thấy file" mà agent sẽ đi sửa nhầm.
+- **File trùng báo kèm id của bản đã có**, không nhập hai lần. Im lặng bỏ qua thì
+  agent tưởng nhập hỏng và nhập lại mãi.
+
+Trả lời mang id của từng asset vừa nhập — không có nó thì agent phải gọi thêm
+`list_media` một lượt nữa mới đặt được clip lên timeline.
+
 ### Khoá truy cập của máy chủ MCP
 
 Khoá sinh mới mỗi lần mở app, chỉ nghe trên `127.0.0.1`. **Tắt được**, vì có
