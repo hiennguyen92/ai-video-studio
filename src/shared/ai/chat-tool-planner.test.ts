@@ -555,6 +555,88 @@ describe('khung nền chữ qua đường AI', () => {
   })
 })
 
+describe('công cụ nhập media', () => {
+  const asset = (id: string, path: string): MediaAsset => ({
+    id,
+    kind: 'video',
+    name: path.split('/').pop() ?? path,
+    source: { path, contentHash: 'h', sizeBytes: 1, mtimeMs: 0 },
+    probe: { durationUs: 5_000_000, hasVideo: true, hasAudio: true },
+    derived: {},
+    origin: 'import',
+    tags: [],
+    createdAt: '2026-01-01T00:00:00.000Z',
+    missing: false
+  })
+
+  it('nhập được và phát lệnh asset/add, kèm id trong mô tả', () => {
+    const document = project()
+    const plan = planChatToolCalls(
+      {
+        ...context(document),
+        importedMedia: { '/tmp/a.mp4': { asset: asset('asset_moi', '/tmp/a.mp4') } }
+      },
+      [{ name: 'import_media', arguments: { filePaths: ['/tmp/a.mp4'] } }]
+    )
+
+    expect(plan.failures).toEqual([])
+    expect(plan.steps[0].commands[0]).toMatchObject({ type: 'asset/add' })
+    // Id phải nằm trong MÔ TẢ: đó là thứ duy nhất agent đọc được sau khi áp dụng,
+    // và không có nó thì nó phải gọi thêm list_media mới đặt được clip.
+    expect(plan.steps[0].description).toContain('asset_moi')
+    expect(plan.steps[0].description).toContain('5.00s')
+
+    for (const command of plan.steps.flatMap((step) => step.commands)) {
+      expect(applyEditorCommand(document, command).ok).toBe(true)
+    }
+    expect(document.assets.some((item) => item.id === 'asset_moi')).toBe(true)
+  })
+
+  it('từ chối đường dẫn tương đối và nêu đúng cái sai', () => {
+    // Agent chạy ở thư mục của nó, app ở thư mục khác — đường dẫn tương đối để
+    // lọt sẽ thành lỗi "không tìm thấy file" mà agent đi sửa nhầm chỗ.
+    const plan = planChatToolCalls({ ...context(project()), importedMedia: {} }, [
+      { name: 'import_media', arguments: { filePaths: ['/tmp/a.mp4', 'b.mp4'] } }
+    ])
+
+    expect(plan.steps).toEqual([])
+    expect(plan.failures[0].reason).toContain('b.mp4')
+  })
+
+  it('file trùng thì KHÔNG thêm lần nữa nhưng vẫn báo id bản đã có', () => {
+    const plan = planChatToolCalls(
+      {
+        ...context(project()),
+        importedMedia: { '/tmp/a.mp4': { duplicateOf: 'asset_cu' } }
+      },
+      [{ name: 'import_media', arguments: { filePaths: ['/tmp/a.mp4'] } }]
+    )
+
+    expect(plan.failures).toEqual([])
+    expect(plan.steps[0].commands).toEqual([])
+    expect(plan.steps[0].description).toContain('asset_cu')
+  })
+
+  it('không nhập được gì thì BÁO LỖI, không báo thành công rỗng', () => {
+    // Báo thành công rỗng thì agent dựng tiếp trên một thư viện tưởng tượng.
+    const plan = planChatToolCalls(
+      {
+        ...context(project()),
+        importedMedia: { '/tmp/a.mp4': { error: 'ffprobe không đọc được' } }
+      },
+      [{ name: 'import_media', arguments: { filePaths: ['/tmp/a.mp4'] } }]
+    )
+
+    expect(plan.steps).toEqual([])
+    expect(plan.failures[0].reason).toContain('ffprobe không đọc được')
+  })
+
+  it('có mặt trong danh mục công cụ và trong chuỗi gợi ý', () => {
+    expect('import_media' in chatToolSchemas).toBe(true)
+    expect(chatToolParameterHints.import_media).toContain('filePaths')
+  })
+})
+
 describe('công cụ đổi tốc độ clip', () => {
   it('agent đổi được tốc độ, và lệnh chạy qua reducer thật', () => {
     const { document, clipId } = withClip()

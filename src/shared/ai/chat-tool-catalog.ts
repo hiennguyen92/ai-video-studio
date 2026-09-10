@@ -354,6 +354,14 @@ export const chatToolSchemas = {
    * timeline còn gì, và xoá nhầm sẽ kéo theo cả loạt clip biến mất. Muốn xoá
    * kèm thì phải nói rõ `removeClips`.
    */
+  import_media: z.object({
+    /**
+     * Đường dẫn TUYỆT ĐỐI. Tương đối không có nghĩa: agent chạy ở thư mục của
+     * nó, còn app chạy ở thư mục khác.
+     */
+    filePaths: z.array(z.string().min(1)).min(1).max(50)
+  }),
+
   remove_media: z.object({
     assetId: z.string().min(1).max(120),
     removeClips: z.boolean().optional()
@@ -463,6 +471,8 @@ export const chatToolDescriptions: Record<ChatToolName, string> = {
     'Move the frame over the whole length of a clip: a slow push in or out, a slow pan, a punch in at the cut, or a shake. Use this on footage that barely moves — a still product shot with a slow push reads as edited, the same shot held still reads as a frozen photo. Use "none" to remove it.',
   set_clip_color:
     'Grade one clip: brightness, contrast, saturation, warm/cool temperature, and a vignette. Fields are applied on top of what is already set, so changing one does not clear the others. Pass reset to put the clip back to its original colour. There is no LUT support.',
+  import_media:
+    'Import files from disk into the media pool so they can be placed on the timeline. Paths must be ABSOLUTE. The reply gives the id of each imported asset — pass those to insert_clip. A file already in the project is reported as a duplicate with the id of the existing asset instead of being imported twice. This only fills the media pool; it does not put anything on the timeline.',
   remove_media:
     'Remove one asset from the media library. Refuses if any clip on the timeline still uses it; pass removeClips to delete those clips as well. The file on disk is never touched.',
   set_text_rotation:
@@ -520,6 +530,7 @@ export const chatToolParameterHints: Record<ChatToolName, string> = {
     "{ clipId?: string, kind: 'none' | 'zoom-in' | 'zoom-out' | 'pan-left' | 'pan-right' | 'pan-up' | 'pan-down' | 'punch-in' | 'shake', intensity?: number }",
   set_clip_color:
     '{ clipId?: string, brightness?: number, contrast?: number, saturation?: number, temperature?: number, vignette?: number, reset?: boolean }',
+  import_media: '{ filePaths: string[] }',
   remove_media: '{ assetId: string, removeClips?: boolean }',
   set_text_font:
     '{ fontFamily: string, fontPostScriptName?: string, overlayId?: string, subtitleTrackId?: string }',

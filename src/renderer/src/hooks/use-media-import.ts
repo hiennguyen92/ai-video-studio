@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react'
 import type { EditorCommand } from '../../../shared/commands/editor-command-types'
 import type { MediaAsset } from '../../../shared/domain/media-asset-types'
+import type { ImportMediaResponse } from '../../../shared/ipc/ipc-contract'
 import { useEditorStore } from '../state/editor-store'
 
 /**
@@ -21,6 +22,14 @@ export interface ImportOutcome {
 }
 
 /**
+ * Dựng asset từ đường dẫn, KHÔNG ghi vào document.
+ *
+ * Tách khỏi `importMediaPaths` vì đường công cụ AI cần đúng nửa này: planner mới
+ * là nơi phát ra lệnh `asset/add`, nên chỗ chuẩn bị chỉ được probe file rồi trả
+ * asset về, không được tự ghi. Ghi ở cả hai nơi thì một lần nhập thành hai bước
+ * hoàn tác và asset vào document hai lần.
+ */
+/**
  * Nhập media, KHÔNG phải hook.
  *
  * Tách ra khỏi hook vì đường MCP cũng cần đúng việc này, mà chỗ đó không gọi
@@ -31,7 +40,7 @@ export interface ImportOutcome {
  * Đọc trạng thái tại thời điểm gọi thay vì đóng gói sẵn, để dùng được từ cả
  * listener sống lâu lẫn component.
  */
-export async function importMediaPaths(filePaths: string[]): Promise<ImportOutcome | null> {
+export async function prepareMediaImport(filePaths: string[]): Promise<ImportMediaResponse | null> {
   const document = useEditorStore.getState().session?.document
   if (!document || filePaths.length === 0) return null
 
@@ -42,8 +51,14 @@ export async function importMediaPaths(filePaths: string[]): Promise<ImportOutco
     existing: document.assets
   })
   if (!result.ok) throw new Error(result.error)
+  return result.data
+}
 
-  const commands: EditorCommand[] = result.data.assets.map((asset) => ({
+export async function importMediaPaths(filePaths: string[]): Promise<ImportOutcome | null> {
+  const data = await prepareMediaImport(filePaths)
+  if (!data) return null
+
+  const commands: EditorCommand[] = data.assets.map((asset) => ({
     type: 'asset/add',
     asset
   }))
@@ -52,11 +67,11 @@ export async function importMediaPaths(filePaths: string[]): Promise<ImportOutco
   if (commands.length > 0) useEditorStore.getState().run(commands, 'Nhập media')
 
   return {
-    importedCount: result.data.assets.length,
-    duplicateCount: result.data.duplicates.length,
-    failures: result.data.failures,
-    assets: result.data.assets,
-    duplicates: result.data.duplicates
+    importedCount: data.assets.length,
+    duplicateCount: data.duplicates.length,
+    failures: data.failures,
+    assets: data.assets,
+    duplicates: data.duplicates
   }
 }
 

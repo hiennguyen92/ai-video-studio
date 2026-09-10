@@ -1,9 +1,8 @@
 import { useEffect } from 'react'
 import type { McpApplyResult, McpBridgeRequest } from '../../../shared/ipc/ipc-contract'
-import { importMediaPaths } from './use-media-import'
-import { formatImportOutcome, relativePaths } from './mcp-import-media-reply'
+import { prepareMediaImport } from './use-media-import'
 import { buildProjectContext } from '../../../shared/ai/chat-context-builder'
-import { planChatToolCalls } from '../../../shared/ai/chat-tool-planner'
+import { planChatToolCalls, type ImportedMediaOutcome } from '../../../shared/ai/chat-tool-planner'
 import { createId } from '../../../shared/domain/project-document-factory'
 import type { MediaAsset } from '../../../shared/domain/media-asset-types'
 import type { ProjectDocument } from '../../../shared/domain/project-document-types'
@@ -148,6 +147,42 @@ async function resolveSoundEffects(
 }
 
 /**
+ * Nhập sẵn media cho những lời gọi `import_media`.
+ *
+ * Cùng lý do như hiệu ứng âm thanh: planner là hàm thuần, không probe được file
+ * và không dựng được thumbnail. Ở đây chỉ DỰNG asset chứ không ghi vào document
+ * — lệnh `asset/add` do planner phát ra, ghi ở cả hai nơi thì một lần nhập thành
+ * hai bước hoàn tác.
+ */
+async function resolveImportedMedia(
+  calls: Array<{ name: string; arguments: unknown }>
+): Promise<Record<string, ImportedMediaOutcome>> {
+  const wanted = new Set<string>()
+  for (const call of calls) {
+    if (call.name !== 'import_media') continue
+    const args = call.arguments as { filePaths?: string[] }
+    for (const path of args?.filePaths ?? []) {
+      // Bỏ qua đường dẫn tương đối ở đây; planner mới là nơi báo lỗi cho agent.
+      if (typeof path === 'string' && path.startsWith('/')) wanted.add(path)
+    }
+  }
+  if (wanted.size === 0) return {}
+
+  const resolved: Record<string, ImportedMediaOutcome> = {}
+  try {
+    const data = await prepareMediaImport([...wanted])
+    if (!data) return {}
+    for (const asset of data.assets) resolved[asset.source.path] = { asset }
+    for (const item of data.duplicates) resolved[item.path] = { duplicateOf: item.existingAssetId }
+    for (const item of data.failures) resolved[item.path] = { error: item.error }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    for (const path of wanted) resolved[path] = { error: message }
+  }
+  return resolved
+}
+
+/**
  * Chép sẵn file phông cho những lời gọi đổi phông.
  *
  * Planner là hàm thuần nên không đọc được byte phông; nó chỉ nhận đường dẫn đã
@@ -248,23 +283,6 @@ export function useMcpBridge(): void {
             respond(true, formatMedia(document))
             return
 
-          case 'import-media': {
-            const payload = request.payload as { filePaths?: string[] }
-            const paths = payload?.filePaths ?? []
-            const relative = relativePaths(paths)
-            if (relative.length > 0) {
-              respond(false, undefined, `Đường dẫn phải là tuyệt đối: ${relative.join(', ')}`)
-              return
-            }
-
-            void importMediaPaths(paths)
-              .then((outcome) => respond(true, formatImportOutcome(outcome)))
-              .catch((error: unknown) =>
-                respond(false, undefined, error instanceof Error ? error.message : String(error))
-              )
-            return
-          }
-
           case 'fonts': {
             const payload = request.payload as { family?: string }
             void listLocalFonts(payload?.family)
@@ -312,46 +330,52 @@ export function useMcpBridge(): void {
 
             // Chép file phông TRƯỚC khi lập kế hoạch: planner là hàm thuần, chỉ
             // nhận đường dẫn có sẵn chứ không tự đọc byte phông được.
-            void Promise.all([resolveFontFiles(calls), resolveSoundEffects(calls)]).then(
-              ([fontFiles, soundEffects]) => {
-                const plan = planChatToolCalls(
-                  {
-                    document,
-                    selectedClipIds: state.selection.clipIds,
-                    playheadUs: state.playheadUs,
-                    makeId: (prefix) => createId(prefix ?? 'clip'),
-                    shots: Object.fromEntries(shotCache),
-                    fontFiles,
-                    soundEffects
-                  },
-                  calls
-                )
+            void Promise.all([
+              resolveFontFiles(calls),
+              resolveSoundEffects(calls),
+              resolveImportedMedia(calls)
+            ]).then(([fontFiles, soundEffects, importedMedia]) => {
+              const plan = planChatToolCalls(
+                {
+                  document,
+                  selectedClipIds: state.selection.clipIds,
+                  playheadUs: state.playheadUs,
+                  makeId: (prefix) => createId(prefix ?? 'clip'),
+                  shots: Object.fromEntries(shotCache),
+                  fontFiles,
+                  soundEffects,
+                  importedMedia
+                },
+                calls
+              )
 
-                const commands = plan.steps.flatMap((step) => step.commands)
-                const applied =
-                  commands.length > 0
-                    ? state.run(commands, `MCP: ${plan.steps.map((s) => s.description).join('; ')}`)
-                    : false
+              const commands = plan.steps.flatMap((step) => step.commands)
+              // Không sinh lệnh nào KHÔNG có nghĩa là hỏng: một bước hợp lệ vẫn có
+              // thể chẳng phải sửa gì — nhập một file đã có sẵn chẳng hạn. Coi đó
+              // là thất bại thì mô tả của bước ấy bị nuốt, agent nhận một câu trả
+              // lời rỗng rồi gọi lại mãi.
+              const applied =
+                commands.length > 0
+                  ? state.run(commands, `MCP: ${plan.steps.map((s) => s.description).join('; ')}`)
+                  : plan.steps.length > 0
 
-                const result: McpApplyResult = {
-                  applied,
-                  // Không báo là đã áp dụng khi reducer từ chối — agent sẽ dựng tiếp
-                  // trên một trạng thái tưởng tượng.
-                  steps: applied ? plan.steps.map((step) => step.description) : [],
-                  failures: applied
-                    ? plan.failures
-                    : [
-                        ...plan.failures,
-                        ...(commands.length > 0
-                          ? [{ tool: 'apply', reason: 'Không áp dụng được lệnh nào' }]
-                          : [])
-                      ],
-                  revision:
-                    useEditorStore.getState().session?.document.revision ?? document.revision
-                }
-                respond(true, result)
+              const result: McpApplyResult = {
+                applied,
+                // Không báo là đã áp dụng khi reducer từ chối — agent sẽ dựng tiếp
+                // trên một trạng thái tưởng tượng.
+                steps: applied ? plan.steps.map((step) => step.description) : [],
+                failures: applied
+                  ? plan.failures
+                  : [
+                      ...plan.failures,
+                      ...(commands.length > 0
+                        ? [{ tool: 'apply', reason: 'Không áp dụng được lệnh nào' }]
+                        : [])
+                    ],
+                revision: useEditorStore.getState().session?.document.revision ?? document.revision
               }
-            )
+              respond(true, result)
+            })
             return
           }
 

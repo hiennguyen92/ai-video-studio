@@ -43,6 +43,14 @@ import { chatToolSchemas, isChatToolName, type ChatToolName } from './chat-tool-
  */
 
 /** Ngữ cảnh biên tập mà mô hình được biết. */
+/** Một đường dẫn sau khi nhập: thành asset, trùng với asset đã có, hoặc hỏng. */
+export interface ImportedMediaOutcome {
+  asset?: MediaAsset
+  /** Id của asset đã có trong dự án, khi file này trùng nội dung với nó. */
+  duplicateOf?: string
+  error?: string
+}
+
 export interface ChatEditContext {
   document: ProjectDocument
   selectedClipIds: string[]
@@ -61,6 +69,14 @@ export interface ChatEditContext {
    * nơi gọi nạp vào khi cần dựng theo hình.
    */
   shots?: Record<string, Array<{ startUs: number; endUs: number }>>
+  /**
+   * Kết quả nhập media, theo đường dẫn file, do nơi gọi dựng SẴN.
+   *
+   * Cùng lý do như hiệu ứng âm thanh và phông chữ: planner là hàm thuần, không
+   * probe được file, không băm được nội dung, không dựng được thumbnail. Nơi gọi
+   * làm phần nặng rồi đưa asset đã xong vào đây; planner chỉ phát lệnh `asset/add`.
+   */
+  importedMedia?: Record<string, ImportedMediaOutcome>
   /**
    * Đường dẫn file phông đã chép ra kho, theo tên PostScript (hoặc tên họ khi
    * không nêu kiểu).
@@ -704,6 +720,58 @@ function planOne(context: ChatEditContext, tool: ChatToolName, args: unknown): P
         description: `Chỉnh màu clip (${Object.keys(grade).join(', ')})`,
         commands: [{ type: 'clip/set-color-grade', clipId, grade }]
       }
+    }
+
+    case 'import_media': {
+      const input = chatToolSchemas.import_media.parse(args)
+
+      // Chặn đường dẫn tương đối ở ĐÂY chứ không ở nơi gọi: đây là hàm thuần nên
+      // luật này kiểm thử được, và nó áp cho mọi lối vào chứ không riêng MCP.
+      const relative = input.filePaths.filter((path) => !path.startsWith('/'))
+      if (relative.length > 0) {
+        throw new Error(`Đường dẫn phải là tuyệt đối: ${relative.join(', ')}`)
+      }
+
+      const prepared = context.importedMedia
+      if (!prepared) throw new Error('Chưa nhập được file nào — nơi gọi không dựng sẵn asset.')
+
+      const commands: EditorCommand[] = []
+      const parts: string[] = []
+      for (const path of input.filePaths) {
+        const outcome = prepared[path]
+        if (!outcome) {
+          parts.push(`hỏng: ${path} — không có kết quả nhập`)
+          continue
+        }
+        if (outcome.error) {
+          parts.push(`hỏng: ${path} — ${outcome.error}`)
+          continue
+        }
+        if (outcome.duplicateOf) {
+          // Trùng thì KHÔNG thêm lần nữa, nhưng phải nói ra kèm id bản đã có:
+          // im lặng bỏ qua thì agent tưởng nhập hỏng và đi nhập lại mãi.
+          parts.push(`đã có sẵn id=${outcome.duplicateOf}: ${path}`)
+          continue
+        }
+        if (!outcome.asset) continue
+
+        commands.push({ type: 'asset/add', asset: outcome.asset })
+        const seconds = outcome.asset.probe?.durationUs
+          ? ` ${(outcome.asset.probe.durationUs / 1_000_000).toFixed(2)}s`
+          : ''
+        const audio = outcome.asset.probe?.hasAudio ? ' +audio' : ''
+        parts.push(
+          `id=${outcome.asset.id} ${outcome.asset.kind} "${outcome.asset.name}"${seconds}${audio}`
+        )
+      }
+
+      // Không được gì cả thì BÁO LỖI thay vì báo thành công rỗng — agent sẽ dựng
+      // tiếp trên một thư viện tưởng tượng.
+      if (commands.length === 0 && !parts.some((part) => part.startsWith('đã có sẵn'))) {
+        throw new Error(`Không nhập được file nào. ${parts.join('; ')}`)
+      }
+
+      return { tool, description: `Nhập media — ${parts.join('; ')}`, commands }
     }
 
     case 'remove_media': {

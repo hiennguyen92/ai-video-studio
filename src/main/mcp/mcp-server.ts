@@ -112,24 +112,6 @@ function buildMcpServer(): McpServer {
     })
   )
 
-  // Công cụ GHI nhưng KHÔNG đi qua danh mục lệnh: nhập media phải probe file,
-  // băm nội dung, dựng thumbnail — toàn việc bất đồng bộ, mà đường dựng lệnh của
-  // AI Chat là một hàm THUẦN và ĐỒNG BỘ. Nên nó đi lối của các công cụ đọc, và
-  // renderer dùng lại đúng hàm mà nút "Nhập media" đang dùng.
-  server.registerTool(
-    'import_media',
-    {
-      description:
-        'Import files from disk into the media pool so they can be placed on the timeline. Paths must be ABSOLUTE. Returns the id of each imported asset — pass those to insert_clip. Files already in the project are reported as duplicates with the id of the existing asset instead of being imported twice. This only fills the media pool; it does not put anything on the timeline.',
-      inputSchema: { filePaths: z.array(z.string()).min(1).max(50) }
-    },
-    async ({ filePaths }) => ({
-      content: [
-        { type: 'text', text: await requestFromRenderer<string>('import-media', { filePaths }) }
-      ]
-    })
-  )
-
   server.registerTool(
     'list_shots',
     {

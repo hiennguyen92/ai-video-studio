@@ -379,14 +379,19 @@ Hệ quả: **clip đầu timeline không bao giờ có chuyển cảnh** — kh
 
 ### Nhập media qua MCP
 
-`import_media` là công cụ GHI nhưng **không** đi qua danh mục lệnh của AI Chat.
-Lý do: nhập media phải probe file, băm nội dung và dựng thumbnail — toàn việc bất
-đồng bộ, mà đường dựng lệnh của AI Chat là một hàm THUẦN và ĐỒNG BỘ. Nên nó đi
-lối của các công cụ đọc (`list_shots`, `list_fonts`), tức qua cầu xuống renderer.
+`import_media` là công cụ ghi **bình thường**, nằm trong `chatToolSchemas` như 37
+cái còn lại và đi qua đúng `chat-tool-planner`. Không có đường tắt riêng.
 
-Renderer dùng lại **đúng hàm** mà nút "Nhập media" đang dùng
-(`importMediaPaths`), chứ không tự gọi IPC. Chép làm hai bản là mời hai đường
-nhập media lệch nhau — một bên phát hiện trùng nội dung, bên kia thì không.
+Nhập media phải probe file, băm nội dung và dựng thumbnail — bất đồng bộ, mà
+planner là hàm THUẦN và ĐỒNG BỘ. Cách gỡ: nơi gọi **chuẩn bị trước**, đúng khuôn
+đã có sẵn cho hiệu ứng âm thanh (`resolveSoundEffects`) và phông chữ
+(`resolveFontFiles`). `resolveImportedMedia` dựng asset rồi đưa vào
+`ChatEditContext.importedMedia`, planner chỉ phát lệnh `asset/add`.
+
+Ranh giới quan trọng: hàm chuẩn bị **chỉ dựng asset, không ghi** vào document.
+Ghi ở cả hai nơi thì một lần nhập thành hai bước hoàn tác và asset vào document
+hai lần. Vì thế `use-media-import.ts` có hai tầng — `prepareMediaImport` (dựng)
+và `importMediaPaths` (dựng rồi ghi, cho nút bấm trên giao diện).
 
 Hai chốt chặn:
 
@@ -396,8 +401,13 @@ Hai chốt chặn:
 - **File trùng báo kèm id của bản đã có**, không nhập hai lần. Im lặng bỏ qua thì
   agent tưởng nhập hỏng và nhập lại mãi.
 
-Trả lời mang id của từng asset vừa nhập — không có nó thì agent phải gọi thêm
-`list_media` một lượt nữa mới đặt được clip lên timeline.
+Id của từng asset nằm trong **mô tả bước**, vì đó là thứ duy nhất agent đọc được
+sau khi áp dụng — không có nó thì nó phải gọi thêm `list_media` mới đặt được clip.
+
+Một hệ quả phải xử riêng: nhập một file **đã có sẵn** là bước hợp lệ nhưng không
+sinh lệnh nào. Cầu MCP trước đây coi "không có lệnh" là thất bại và nuốt luôn mô
+tả, nên agent nhận câu trả lời rỗng rồi gọi lại mãi. Nay bước không sinh lệnh vẫn
+được báo cáo.
 
 ### Khoá truy cập của máy chủ MCP
 
