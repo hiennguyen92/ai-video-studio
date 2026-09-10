@@ -138,6 +138,9 @@ giao diện chỉ lộ ra khi chuyển tab với dữ liệu thật.
 - [x] Agent nhập được media vào thư viện qua MCP (`import_media`) — trước đó nó
       xoá được media nhưng không thêm được, nên mọi phiên đều phải có người bấm
       "Nhập media" trước.
+- [x] Agent đặt được ảnh lên timeline (`insert_image`), và sửa lỗi `insert_clip`
+      không bao giờ đặt được ảnh — ảnh có thời lượng nguồn bằng 0 nên phép kiểm
+      biên của video làm nó chết trước khi nhìn tới thời lượng đã nêu.
 - [ ] Đổi mặc định xuất sang Remotion khi các tính năng trên đủ chín — hiện mặc
       định vẫn là ffmpeg, chỉ tự chuyển sang Remotion khi dự án có chuyển cảnh
       hoặc chữ overlay

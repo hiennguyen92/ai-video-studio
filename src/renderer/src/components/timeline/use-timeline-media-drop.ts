@@ -1,14 +1,16 @@
 import { useCallback, useState, type DragEvent } from 'react'
 import type { EditorCommand } from '../../../../shared/commands/editor-command-types'
 import type { ProjectDocument } from '../../../../shared/domain/project-document-types'
-import type { Track } from '../../../../shared/domain/timeline-track-types'
+import {
+  IMAGE_DEFAULT_DURATION_US,
+  type Track
+} from '../../../../shared/domain/timeline-track-types'
 import { useEditorStore } from '../../state/editor-store'
 import { useT } from '../../i18n/use-translation'
 import { MEDIA_DRAG_MIME } from '../ai-studio/media-library-panel'
 import { collectSnapTargets, snapTime } from './timeline-geometry'
 
 /** Ảnh không có thời lượng riêng; cho sẵn 5 giây rồi sửa lại bằng cách kéo mép. */
-const IMAGE_DEFAULT_DURATION_US = 5_000_000
 
 /**
  * Thả media từ thư viện xuống một track.

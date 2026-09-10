@@ -4,7 +4,12 @@ import type { ProjectDocument } from '../domain/project-document-types'
 import { findSoundEffect } from '../domain/sound-effect-catalog'
 import { countAssetUsages, findClip } from '../domain/project-document-types'
 import { DEFAULT_MOTION_INTENSITY } from '../domain/clip-motion-types'
-import { DEFAULT_CLIP_TRANSFORM, clipEndUs, type Clip } from '../domain/timeline-track-types'
+import {
+  IMAGE_DEFAULT_DURATION_US,
+  DEFAULT_CLIP_TRANSFORM,
+  clipEndUs,
+  type Clip
+} from '../domain/timeline-track-types'
 import { buildSubtitleCues } from '../domain/subtitle-cue-builder'
 import {
   DEFAULT_SUBTITLE_STYLE,
@@ -349,46 +354,18 @@ function planOne(context: ChatEditContext, tool: ChatToolName, args: unknown): P
 
     case 'insert_clip': {
       const input = chatToolSchemas.insert_clip.parse(args)
+      return planInsertOnTimeline(tool, context, input)
+    }
+
+    case 'insert_image': {
+      const input = chatToolSchemas.insert_image.parse(args)
       const asset = document.assets.find((item) => item.id === input.assetId)
-      if (!asset) throw new Error(`Không tìm thấy media "${input.assetId}"`)
-      if (asset.missing) throw new Error(`File của "${asset.name}" hiện không còn trên đĩa`)
-
-      // Không nêu track thì chọn track hợp kiểu media; ảnh cũng nằm trên track hình.
-      const wantedKind = asset.kind === 'audio' ? 'audio' : 'video'
-      const track = input.trackId
-        ? document.tracks.find((item) => item.id === input.trackId)
-        : document.tracks.find((item) => item.kind === wantedKind)
-      if (!track) throw new Error(`Không tìm thấy track phù hợp cho "${asset.name}"`)
-
-      const sourceInUs = secondsToMicros(input.sourceInSeconds ?? 0)
-      const remainingUs = asset.probe.durationUs - sourceInUs
-      if (remainingUs <= 0) {
-        throw new Error(`Điểm vào ${formatSeconds(sourceInUs)} nằm ngoài "${asset.name}"`)
+      // Chặn ở đây chứ không để nhánh chung tự xoay: gọi công cụ ảnh cho một
+      // đoạn phim là agent hiểu sai, và im lặng làm thay nó thì nó không học được.
+      if (asset && asset.kind !== 'image') {
+        throw new Error(`"${asset.name}" không phải ảnh — dùng insert_clip cho video và tiếng`)
       }
-
-      // Bỏ trống thời lượng thì lấy hết phần còn lại; nêu quá dài thì kẹp lại
-      // thay vì để reducer tạo clip đọc quá cuối file.
-      const durationUs = Math.min(
-        input.durationSeconds === undefined ? remainingUs : secondsToMicros(input.durationSeconds),
-        remainingUs
-      )
-      if (durationUs <= 0) throw new Error('Thời lượng phải lớn hơn 0')
-
-      return {
-        tool,
-        description: `Chèn "${asset.name}" vào ${track.name} tại ${formatSeconds(secondsToMicros(input.startSeconds))}`,
-        commands: [
-          {
-            type: 'clip/insert',
-            clipId: context.makeId(),
-            trackId: track.id,
-            assetId: asset.id,
-            startUs: secondsToMicros(input.startSeconds),
-            durationUs,
-            sourceInUs
-          }
-        ]
-      }
+      return planInsertOnTimeline(tool, context, input)
     }
 
     case 'ripple_delete_range': {
@@ -1267,6 +1244,85 @@ function checkedFrame(
     )
   }
   return frame
+}
+
+/**
+ * Đặt một asset lên timeline. Dùng chung cho `insert_clip` và `insert_image`.
+ *
+ * Hai công cụ, một nhánh: chép làm hai bản thì phần chọn track và phần kẹp biên
+ * sẽ lệch nhau, và lệch ở đây nghĩa là cùng một asset đặt ra hai kết quả khác
+ * nhau tuỳ agent gọi công cụ nào.
+ *
+ * ẢNH LÀ NGOẠI LỆ, đúng như bất biến của domain đã ghi: ảnh tĩnh không có thời
+ * lượng nguồn (`probe.durationUs` bằng 0) nên kéo dài bao lâu cũng được. Áp phép
+ * kiểm biên nguồn của video lên ảnh thì `remainingUs` luôn bằng 0 và KHÔNG BAO
+ * GIỜ đặt được ảnh — kể cả khi đã nêu thời lượng.
+ */
+function planInsertOnTimeline(
+  tool: ChatToolName,
+  context: ChatEditContext,
+  input: {
+    assetId: string
+    trackId?: string
+    startSeconds: number
+    sourceInSeconds?: number
+    durationSeconds?: number
+  }
+): PlannedToolCall {
+  const { document } = context
+  const asset = document.assets.find((item) => item.id === input.assetId)
+  if (!asset) throw new Error(`Không tìm thấy media "${input.assetId}"`)
+  if (asset.missing) throw new Error(`File của "${asset.name}" hiện không còn trên đĩa`)
+
+  // Không nêu track thì chọn track hợp kiểu media; ảnh cũng nằm trên track hình.
+  const wantedKind = asset.kind === 'audio' ? 'audio' : 'video'
+  const track = input.trackId
+    ? document.tracks.find((item) => item.id === input.trackId)
+    : document.tracks.find((item) => item.kind === wantedKind)
+  if (!track) throw new Error(`Không tìm thấy track phù hợp cho "${asset.name}"`)
+
+  const startUs = secondsToMicros(input.startSeconds)
+  let durationUs: number
+  let sourceInUs: number
+
+  if (asset.kind === 'image') {
+    // Ảnh không có trục thời gian nguồn nên điểm vào vô nghĩa; ép về 0 thay vì
+    // nhận bừa một con số rồi để nó nằm đó không có tác dụng.
+    sourceInUs = 0
+    durationUs =
+      input.durationSeconds === undefined
+        ? IMAGE_DEFAULT_DURATION_US
+        : secondsToMicros(input.durationSeconds)
+  } else {
+    sourceInUs = secondsToMicros(input.sourceInSeconds ?? 0)
+    const remainingUs = asset.probe.durationUs - sourceInUs
+    if (remainingUs <= 0) {
+      throw new Error(`Điểm vào ${formatSeconds(sourceInUs)} nằm ngoài "${asset.name}"`)
+    }
+    // Bỏ trống thời lượng thì lấy hết phần còn lại; nêu quá dài thì kẹp lại thay
+    // vì để reducer tạo clip đọc quá cuối file.
+    durationUs = Math.min(
+      input.durationSeconds === undefined ? remainingUs : secondsToMicros(input.durationSeconds),
+      remainingUs
+    )
+  }
+  if (durationUs <= 0) throw new Error('Thời lượng phải lớn hơn 0')
+
+  return {
+    tool,
+    description: `Chèn "${asset.name}" vào ${track.name} tại ${formatSeconds(startUs)}`,
+    commands: [
+      {
+        type: 'clip/insert',
+        clipId: context.makeId(),
+        trackId: track.id,
+        assetId: asset.id,
+        startUs,
+        durationUs,
+        sourceInUs
+      }
+    ]
+  }
 }
 
 export function planChatToolCalls(

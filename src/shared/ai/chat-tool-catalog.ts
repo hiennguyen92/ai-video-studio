@@ -93,6 +93,14 @@ export const chatToolSchemas = {
     durationSeconds: seconds.optional()
   }),
 
+  insert_image: z.object({
+    assetId: z.string().min(1).max(120),
+    trackId: z.string().min(1).max(120).optional(),
+    startSeconds: seconds,
+    /** Bỏ trống thì dùng mặc định 5 giây. Ảnh muốn dài bao lâu cũng được. */
+    durationSeconds: z.number().positive().max(3600).optional()
+  }),
+
   ripple_delete_range: z.object({
     fromSeconds: seconds,
     toSeconds: seconds
@@ -435,6 +443,8 @@ export const chatToolDescriptions: Record<ChatToolName, string> = {
   auto_duck_music:
     'Lower music volume wherever there is speech, by cutting the music at speech boundaries and setting a lower volume on those pieces.',
   insert_clip: 'Place a media asset from the library onto a timeline track.',
+  insert_image:
+    'Put a still image on the timeline for a stretch of time — a logo, a product shot, a title card. Unlike video an image has no length of its own, so durationSeconds decides how long it stays; leave it out for 5 seconds. There is no source-in point because there is nothing to seek into. Use insert_clip for video and audio.',
   ripple_delete_range:
     'Cut a time range out of the timeline and pull everything after it back to close the gap. Applies to every track so picture and sound stay in sync.',
   build_cut_from_transcript:
@@ -499,6 +509,8 @@ export const chatToolParameterHints: Record<ChatToolName, string> = {
   auto_duck_music: '{ duckVolume?: number, baseVolume?: number, paddingSeconds?: number }',
   insert_clip:
     '{ assetId: string, trackId?: string, startSeconds: number, sourceInSeconds?: number, durationSeconds?: number }',
+  insert_image:
+    '{ assetId: string, trackId?: string, startSeconds: number, durationSeconds?: number }',
   ripple_delete_range: '{ fromSeconds: number, toSeconds: number }',
   build_cut_from_transcript:
     '{ transcriptId?: string, keepSegmentIds: string[], trackId?: string }',

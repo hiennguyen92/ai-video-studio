@@ -194,6 +194,16 @@ export function looseLaneHeight(trackHeightPx: number): number {
   return Math.round(trackHeightPx * 0.7)
 }
 
+/**
+ * Ảnh tĩnh mặc định dài bao lâu khi đặt lên timeline.
+ *
+ * Ảnh không có thời lượng riêng — `probe.durationUs` của nó là 0 — nên chỗ nào
+ * đặt ảnh cũng phải tự chọn một con số. Để hằng số ở domain thay vì ở từng nơi
+ * gọi: kéo-thả trên timeline và công cụ AI phải cho ra cùng một kết quả, nếu
+ * không thì cùng một tấm ảnh dài ngắn khác nhau tuỳ đường vào.
+ */
+export const IMAGE_DEFAULT_DURATION_US = 5_000_000
+
 /** Kết thúc của clip trên timeline. */
 export function clipEndUs(clip: Clip): Micros {
   return clip.startUs + clip.durationUs

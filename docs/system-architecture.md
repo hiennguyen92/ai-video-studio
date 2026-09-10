@@ -377,6 +377,27 @@ không hiểu vì sao.
 Hệ quả: **clip đầu timeline không bao giờ có chuyển cảnh** — không có gì phía trước
 để lấy, và cũng không có gì để phủ lên.
 
+### Đặt ảnh lên timeline
+
+Ảnh tĩnh **không có thời lượng nguồn** — `probe.durationUs` của nó bằng 0 — nên
+chỗ nào đặt ảnh cũng phải tự chọn một con số. `IMAGE_DEFAULT_DURATION_US` nằm ở
+`shared/domain` để kéo-thả trên timeline và công cụ AI cho ra cùng kết quả; trước
+đây nó nằm trong một file component của renderer nên đường agent không thấy.
+
+`insert_clip` và `insert_image` dùng **chung một nhánh** (`planInsertOnTimeline`).
+Chép làm hai bản thì phần chọn track và phần kẹp biên sẽ lệch nhau, và lệch ở đây
+nghĩa là cùng một asset cho hai kết quả khác nhau tuỳ agent gọi công cụ nào.
+
+Trong nhánh đó, **ảnh là ngoại lệ** đúng như bất biến của domain đã ghi:
+
+- không kiểm biên nguồn — áp phép kiểm của video lên ảnh thì phần còn lại luôn
+  bằng 0 và **không bao giờ** đặt được ảnh, kể cả khi đã nêu thời lượng
+- `sourceInUs` ép về 0 — ảnh không có gì để tua vào
+
+Vì thế `insert_image` **không bày** tham số `sourceInSeconds`: một ô không có tác
+dụng thì không nên có mặt. Nó cũng từ chối thẳng khi được gọi cho video, kèm tên
+công cụ đúng — im lặng làm thay thì agent không học được là nó gọi nhầm.
+
 ### Nhập media qua MCP
 
 `import_media` là công cụ ghi **bình thường**, nằm trong `chatToolSchemas` như 37
