@@ -53,7 +53,20 @@ export function frameBoxCss(frame: ResolvedTextFrame, fontSizePx: number): CSSPr
     borderImageSlice: `${TEXT_FRAME_SLICE_PERCENT}% fill`,
     borderImageRepeat: frame.style.repeat,
     borderRadius: 0,
-    backgroundColor: undefined,
+    /**
+     * Nền cùng màu ruột khung, cắt theo hộp đệm.
+     *
+     * Không phải để trang trí — để BỊT MỐI NỐI. `border-image` vẽ chín ô rời
+     * nhau; khi cả khối bị thu nhỏ theo tỉ lệ LẺ, mép các ô rơi vào giữa pixel và
+     * chừa lại vệt kẻ mảnh cho nền phía sau lọt qua. Bản xuất vẽ 1:1 nên sạch,
+     * còn xem trước thì luôn thu composition cho vừa khung — nên vệt kẻ chỉ hiện
+     * ở xem trước, và hiện thành một cái lưới chạy ngang qua chữ.
+     *
+     * `padding-box` là phần bắt buộc: cắt theo `border-box` thì nền tràn ra cả
+     * dải viền và ló ra thành hình chữ nhật phía sau mép mây.
+     */
+    backgroundColor: frame.palette.fill,
+    backgroundClip: 'padding-box',
     // Vẫn cần đệm dù dải viền đã chừa chỗ: ruột khung phủ kín hộp đệm, nên chữ
     // đặt sát mép sẽ chạm ngay vào nét trong của khung. Cùng tỉ lệ với nền hộp
     // phẳng đang dùng.
