@@ -3,6 +3,11 @@ import { projectDurationUs } from '../domain/project-document-types'
 import { clipEndUs } from '../domain/timeline-track-types'
 import { SOUND_EFFECTS } from '../domain/sound-effect-catalog'
 import {
+  TEXT_FRAME_DECORS,
+  TEXT_FRAME_PALETTES,
+  TEXT_FRAME_STYLES
+} from '../domain/text-frame-catalog'
+import {
   chatToolDescriptions,
   chatToolParameterHints,
   chatUnsupportedRequests,
@@ -104,8 +109,15 @@ export function buildProjectContext(input: ChatContextInput): string {
   lines.push('', 'Text overlays:')
   if (document.textOverlays.length === 0) lines.push('- none')
   for (const overlay of document.textOverlays) {
+    // Kèm khung đang dùng: không có nó thì agent ĐẶT được khung nhưng không SỬA
+    // được, vì "đổi màu khung sang hồng" buộc phải đoán kiểu khung đang có.
+    const frame = overlay.frame
+      ? ` frame=${overlay.frame.styleId}/${overlay.frame.paletteId}${
+          overlay.frame.decorId ? `+${overlay.frame.decorId}` : ''
+        }`
+      : ''
     lines.push(
-      `- id=${overlay.id} ${seconds(overlay.startUs)}s–${seconds(overlay.endUs)}s "${overlay.text}"`
+      `- id=${overlay.id} ${seconds(overlay.startUs)}s–${seconds(overlay.endUs)}s "${overlay.text}"${frame}`
     )
   }
 
@@ -117,6 +129,21 @@ export function buildProjectContext(input: ChatContextInput): string {
       `- id=${effect.id} "${effect.nameEn}" ${Math.round(effect.durationUs / 1000)}ms [${effect.tags.join(', ')}]`
     )
   }
+
+  // Cùng lý do với danh mục hiệu ứng: khung là HẰNG SỐ, agent không có cách nào
+  // biết id nếu không nói ra. Không nói thì nó phải đoán, ăn một lỗi rồi mới sửa
+  // được ở lượt sau — mà mô tả của `add_text_overlay` lại bảo nó lấy id "from the
+  // project overview", tức là chính chỗ này.
+  lines.push('', 'Cute text frames (pass as frame on add_text_overlay/update_text_overlay):')
+  lines.push(
+    `- styleId: ${TEXT_FRAME_STYLES.map((item) => `${item.id} "${item.nameEn}"`).join(', ')}`
+  )
+  lines.push(
+    `- paletteId: ${TEXT_FRAME_PALETTES.map((item) => `${item.id} "${item.nameEn}"`).join(', ')}`
+  )
+  lines.push(
+    `- decorId (optional): ${TEXT_FRAME_DECORS.map((item) => `${item.id} "${item.nameEn}"`).join(', ')}`
+  )
 
   lines.push('', 'Subtitle tracks:')
   if (document.subtitleTracks.length === 0) lines.push('- none')

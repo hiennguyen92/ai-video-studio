@@ -520,6 +520,32 @@ describe('khung nền chữ qua đường AI', () => {
     expect(plan.failures[0].reason).toContain('may')
   })
 
+  it('danh mục khung có trong ngữ cảnh gửi cho agent', () => {
+    // Mô tả của `add_text_overlay` bảo agent lấy id "from the project overview".
+    // Không in danh mục ra đó thì lời hứa ấy là nói dối, và agent phải đoán id,
+    // ăn một lỗi, rồi mới sửa được ở lượt sau.
+    const overview = buildProjectContext({
+      document: project(),
+      selectedClipIds: [],
+      playheadUs: 0
+    })
+    expect(overview).toContain('may')
+    expect(overview).toContain('hong-phan')
+    expect(overview).toContain('ngoi-sao')
+  })
+
+  it('khung đang dùng có trong ngữ cảnh, để agent sửa được chứ không chỉ đặt được', () => {
+    const document = chay([
+      {
+        name: 'add_text_overlay',
+        arguments: { text: 'Hook', startSeconds: 0, endSeconds: 2, frame: KHUNG }
+      }
+    ])
+    const overview = buildProjectContext({ document, selectedClipIds: [], playheadUs: 0 })
+
+    expect(overview).toContain('frame=may/hong-phan')
+  })
+
   it('chuỗi gợi ý tham số phải nhắc tới frame', () => {
     // `chatToolParameterHints` là chuỗi VIẾT TAY chép lại hình dạng zod, không có
     // gì đối chiếu hai bên. Quên nó thì agent đọc được một chữ ký thiếu trường và
