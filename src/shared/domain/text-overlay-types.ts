@@ -1,5 +1,6 @@
 import type { Micros } from './time-units'
 import { DEFAULT_SUBTITLE_STYLE, type SubtitleStyle } from './subtitle-types'
+import type { TextFramePalette } from './text-frame-catalog'
 
 /**
  * Chữ đè lên hình: hook đầu video, giá, lời kêu gọi hành động.
@@ -54,6 +55,33 @@ export interface TextOverlay {
    * ASS không có khái niệm phát sáng — bày ra ở đó sẽ là một ô không có tác dụng.
    */
   glow?: boolean
+  /**
+   * Khung nền dễ thương sau chữ.
+   *
+   * Cũng như `glow`, chỉ áp cho chữ overlay chứ không áp cho phụ đề: bản nung phụ
+   * đề đi qua ASS, mà ASS chỉ vẽ được nền ĐẶC một màu (`BorderStyle 3`) — bày ra
+   * ở đó sẽ là một ô không có tác dụng.
+   */
+  frame?: TextOverlayFrame
+}
+
+/**
+ * Khung nền chữ, lưu bằng ID BỀN.
+ *
+ * Không lưu SVG và không lưu màu: hình vẽ với bảng màu là mã nguồn, sửa được và
+ * dựng lại được. Chép chúng vào file project là đóng băng một bản cũ, và mọi lần
+ * sửa nét vẽ về sau sẽ không với tới được dự án đã lưu.
+ *
+ * Trang trí LỒNG vào trong khung chứ không nằm cạnh nó, vì điểm trang trí đặt ở
+ * GÓC KHUNG nên nó vô nghĩa khi không có khung. Lồng vào thì trạng thái "có trang
+ * trí mà không có khung" không biểu diễn được. Và `frame === undefined` là đúng
+ * một phép thử cho cả "dự án cũ" lẫn "không dùng khung".
+ */
+export interface TextOverlayFrame {
+  styleId: string
+  paletteId: string
+  /** Điểm trang trí ở góc. Bỏ trống nghĩa là không có. */
+  decorId?: string
 }
 
 /** Hiệu ứng vào mặc định — đủ nhanh để không làm chậm nhịp video ngắn. */
@@ -106,6 +134,23 @@ export function applyTextOverlayBox(style: SubtitleStyle, box: TextOverlayBox): 
 export function readTextOverlayBox(style: SubtitleStyle): TextOverlayBox {
   if (style.boxOpacity <= 0) return 'none'
   return style.boxColor.toUpperCase() === '#FFFFFF' ? 'light' : 'dark'
+}
+
+/**
+ * Đặt màu chữ theo bộ màu của khung, và TẮT nền hộp phẳng.
+ *
+ * Cùng lý do tồn tại với `applyTextOverlayBox` ngay trên: đổi khung thì màu chữ
+ * phải đổi theo, chữ trắng nằm trên ruột khung màu kem là mất hút.
+ *
+ * `boxOpacity: 0` là phần bắt buộc, không phải dọn dẹp cho gọn: khung và nền hộp
+ * cũ vẽ chồng lên nhau, và cái hộp xám chữ nhật thò ra sau khung bo góc là thứ
+ * chỉ lộ ra khi đã xuất video.
+ */
+export function applyTextOverlayFrame(
+  style: SubtitleStyle,
+  palette: TextFramePalette
+): SubtitleStyle {
+  return { ...style, color: palette.text, outlineWidthPx: 0, boxOpacity: 0 }
 }
 
 /**
