@@ -3,6 +3,7 @@ import { CLIP_EFFECTS, findClipEffect } from '../domain/clip-effect-catalog'
 import {
   addClipEffectCommands,
   MAX_CLIP_EFFECTS,
+  moveClipEffectCommands,
   removeClipEffectCommands,
   updateClipEffectCommands
 } from '../domain/clip-effect-commands'
@@ -10,7 +11,7 @@ import type { EffectParamValue } from '../domain/clip-effect-types'
 import type { Clip } from '../domain/timeline-track-types'
 
 /**
- * Dịch ba công cụ effect của agent thành lệnh, dùng CHUNG hàm dựng lệnh với tab
+ * Dịch bốn công cụ effect của agent thành lệnh, dùng CHUNG hàm dựng lệnh với tab
  * Effects và Inspector. Lỗi ném kèm gợi ý sửa (danh sách kind, id đang có) để agent
  * tự sửa ở lượt sau.
  */
@@ -92,4 +93,30 @@ export function planRemoveClipEffect(clip: Clip, input: { effectId?: string }): 
     )
   }
   return { description: 'Gỡ effect khỏi clip', commands: planned.commands }
+}
+
+export function planMoveClipEffect(
+  clip: Clip,
+  input: { effectId: string; direction: 'up' | 'down' }
+): Planned {
+  const effects = clip.effects ?? []
+  const index = effects.findIndex((item) => item.id === input.effectId)
+  if (index < 0) {
+    throw new Error(
+      `Clip không có effect "${input.effectId}". Effect đang có: ${effectIdsOf(clip)}`
+    )
+  }
+  const planned = moveClipEffectCommands(clip, input.effectId, input.direction === 'up' ? -1 : 1)
+  if (!planned) {
+    throw new Error(
+      input.direction === 'up'
+        ? `Effect "${input.effectId}" đã ở đầu chồng effect`
+        : `Effect "${input.effectId}" đã ở cuối chồng effect`
+    )
+  }
+  const name = findClipEffect(effects[index].kind)?.nameVi ?? effects[index].kind
+  return {
+    description: `Dời effect ${name} ${input.direction === 'up' ? 'lên' : 'xuống'} một bậc`,
+    commands: planned.commands
+  }
 }

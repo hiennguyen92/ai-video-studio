@@ -126,10 +126,14 @@ giao diện chỉ lộ ra khi chuyển tab với dữ liệu thật.
 - [x] Tab Effects trong Library: 29 effect hình CHỒNG được trên một clip (phong
       cách, biến dạng, làm mờ, mặt nạ, tách nền, chỉnh màu), vẽ bằng bộ lọc SVG
       dùng chung cho preview, bản xuất và thẻ minh hoạ; chỉnh ở Inspector; agent
-      dùng `add_clip_effect` / `update_clip_effect` / `remove_clip_effect`
+      dùng `add_clip_effect` / `update_clip_effect` / `remove_clip_effect` / `move_clip_effect`
       **Không có LUT** — bộ lọc CSS không áp được bảng tra ba chiều, làm đúng phải
       đẩy từng khung qua shader, tức thêm một đường vẽ và một cái giá về tốc độ
       render chưa đo.
+- [x] Công cụ agent/MCP theo tên tab mới: `set_clip_filter` (Filters), `set_clip_adjust`
+      (Adjust), `set_clip_zoom` (Zoom); thêm `ripple_trim_clip`, `slip_clip`,
+      `rate_stretch_clip`. Tổng quan dự án in đoạn nguồn, tốc độ, fade, Adjust, filter, zoom
+      của từng clip.
 - [x] Hiệu ứng ra và viền phát sáng cho chữ overlay
 - [x] Khung nền dễ thương cho chữ overlay: năm kiểu, sáu bộ màu, ba điểm trang
       trí góc. Vẽ bằng SVG sinh ra trong mã chứ không gom file ảnh — không giấy

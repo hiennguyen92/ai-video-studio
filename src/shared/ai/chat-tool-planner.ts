@@ -46,9 +46,15 @@ import { CLIP_LOOKS, findClipLook } from '../domain/clip-look-catalog'
 import { chatToolSchemas, isChatToolName, type ChatToolName } from './chat-tool-catalog'
 import {
   planAddClipEffect,
+  planMoveClipEffect,
   planRemoveClipEffect,
   planUpdateClipEffect
 } from './chat-tool-clip-effects'
+import {
+  planRateStretchClip,
+  planRippleTrimClip,
+  planSlipClip
+} from './chat-tool-timeline-edit-modes'
 
 /**
  * Dịch lời gọi công cụ của AI thành LỆNH SỬA đã có sẵn của trình biên tập.
@@ -217,6 +223,22 @@ function planOne(context: ChatEditContext, tool: ChatToolName, args: unknown): P
         description: `Kéo mép ${input.edge === 'start' ? 'đầu' : 'cuối'} clip về ${formatSeconds(toUs)}`,
         commands: [{ type: 'clip/trim', clipId, edge: input.edge, toUs }]
       }
+    }
+
+    case 'ripple_trim_clip':
+    case 'slip_clip':
+    case 'rate_stretch_clip': {
+      const clipId = resolveClipId(context, (args as { clipId?: string } | null)?.clipId)
+      const located = findClip(document, clipId)!
+      const track = document.tracks.find((item) => item.id === located.trackId)!
+      const clip = track.clips[located.clipIndex]
+      const planned =
+        tool === 'ripple_trim_clip'
+          ? planRippleTrimClip(clip, chatToolSchemas.ripple_trim_clip.parse(args))
+          : tool === 'slip_clip'
+            ? planSlipClip(clip, track, chatToolSchemas.slip_clip.parse(args))
+            : planRateStretchClip(clip, track, chatToolSchemas.rate_stretch_clip.parse(args))
+      return { tool, ...planned }
     }
 
     case 'move_clip': {
@@ -677,11 +699,11 @@ function planOne(context: ChatEditContext, tool: ChatToolName, args: unknown): P
       }
     }
 
-    case 'set_clip_look': {
-      const input = chatToolSchemas.set_clip_look.parse(args)
+    case 'set_clip_filter': {
+      const input = chatToolSchemas.set_clip_filter.parse(args)
       const clipId = resolveClipId(context, input.clipId)
 
-      if (input.lookId === 'none') {
+      if (input.filterId === 'none') {
         return {
           tool,
           description: 'Gỡ filter của clip',
@@ -691,10 +713,10 @@ function planOne(context: ChatEditContext, tool: ChatToolName, args: unknown): P
 
       // Kiểm id ở đây và NÉM kèm danh sách: agent sửa được ở lượt sau. Lớp dựng hình
       // thì lặng lẽ bỏ id lạ để không làm chết bản xuất — hai tầng, hai cách xử.
-      const look = findClipLook(input.lookId)
+      const look = findClipLook(input.filterId)
       if (!look) {
         throw new Error(
-          `Không có look "${input.lookId}". Chọn một trong: ${CLIP_LOOKS.map((item) => item.id).join(', ')}`
+          `Không có filter "${input.filterId}". Chọn một trong: ${CLIP_LOOKS.map((item) => item.id).join(', ')}`
         )
       }
       const current = findClipById(document, clipId)?.look
@@ -713,7 +735,8 @@ function planOne(context: ChatEditContext, tool: ChatToolName, args: unknown): P
 
     case 'add_clip_effect':
     case 'update_clip_effect':
-    case 'remove_clip_effect': {
+    case 'remove_clip_effect':
+    case 'move_clip_effect': {
       const input = chatToolSchemas[tool].parse(args)
       const clipId = resolveClipId(context, input.clipId)
       const clip = findClipById(document, clipId)!
@@ -726,12 +749,14 @@ function planOne(context: ChatEditContext, tool: ChatToolName, args: unknown): P
             )
           : tool === 'update_clip_effect'
             ? planUpdateClipEffect(clip, chatToolSchemas.update_clip_effect.parse(args))
-            : planRemoveClipEffect(clip, chatToolSchemas.remove_clip_effect.parse(args))
+            : tool === 'remove_clip_effect'
+              ? planRemoveClipEffect(clip, chatToolSchemas.remove_clip_effect.parse(args))
+              : planMoveClipEffect(clip, chatToolSchemas.move_clip_effect.parse(args))
       return { tool, ...planned }
     }
 
-    case 'set_clip_motion': {
-      const input = chatToolSchemas.set_clip_motion.parse(args)
+    case 'set_clip_zoom': {
+      const input = chatToolSchemas.set_clip_zoom.parse(args)
       const clipId = resolveClipId(context, input.clipId)
 
       if (input.kind === 'none') {
@@ -755,8 +780,8 @@ function planOne(context: ChatEditContext, tool: ChatToolName, args: unknown): P
       }
     }
 
-    case 'set_clip_color': {
-      const input = chatToolSchemas.set_clip_color.parse(args)
+    case 'set_clip_adjust': {
+      const input = chatToolSchemas.set_clip_adjust.parse(args)
       const clipId = resolveClipId(context, input.clipId)
 
       if (input.reset) {

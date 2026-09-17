@@ -87,6 +87,25 @@ describe('công cụ effect của agent', () => {
     expect(document.tracks[0].clips[0].effects).toBeUndefined()
   })
 
+  it('dời effect lên/xuống trong chồng; chạm đầu/cuối hoặc id lạ thì báo lỗi', () => {
+    const document = withClip()
+    run(document, 'add_clip_effect', { kind: 'sepia' })
+    run(document, 'add_clip_effect', { kind: 'vignette' })
+    const kinds = (): string[] => document.tracks[0].clips[0].effects!.map((item) => item.kind)
+    const [sepiaId, vignetteId] = document.tracks[0].clips[0].effects!.map((item) => item.id)
+
+    expect(
+      run(document, 'move_clip_effect', { effectId: vignetteId, direction: 'up' }).failures
+    ).toEqual([])
+    expect(kinds()).toEqual(['vignette', 'sepia'])
+
+    const atEnd = run(document, 'move_clip_effect', { effectId: sepiaId, direction: 'down' })
+    expect(atEnd.failures[0].reason).toContain('cuối')
+    const unknown = run(document, 'move_clip_effect', { effectId: 'fx_nope', direction: 'up' })
+    expect(unknown.failures[0].reason).toContain(sepiaId)
+    expect(kinds()).toEqual(['vignette', 'sepia'])
+  })
+
   it('kind bịa, thông số bịa, id bịa đều bị chặn kèm gợi ý sửa', () => {
     const document = withClip()
     const badKind = run(document, 'add_clip_effect', { kind: 'hologram' })
@@ -111,7 +130,12 @@ describe('công cụ effect của agent', () => {
       'kind=magnifier "Magnifier" (distort) params: x 0..100% (default 50)'
     )
     expect(overview).toContain('kind=vignette "Vignette" (stylize) params: intensity 0..1')
-    for (const tool of ['add_clip_effect', 'update_clip_effect', 'remove_clip_effect'] as const) {
+    for (const tool of [
+      'add_clip_effect',
+      'update_clip_effect',
+      'remove_clip_effect',
+      'move_clip_effect'
+    ] as const) {
       expect(chatToolDescriptions[tool].length).toBeGreaterThan(20)
       expect(chatToolParameterHints[tool]).toContain('clipId')
     }

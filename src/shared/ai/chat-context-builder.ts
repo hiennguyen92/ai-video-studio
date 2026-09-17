@@ -2,7 +2,8 @@ import { CLIP_EFFECTS } from '../domain/clip-effect-catalog'
 import type { ClipEffect, EffectParamSpec } from '../domain/clip-effect-types'
 import type { ProjectDocument } from '../domain/project-document-types'
 import { projectDurationUs } from '../domain/project-document-types'
-import { clipEndUs } from '../domain/timeline-track-types'
+import { clipEndUs, clipSourceSpanUs, type Clip } from '../domain/timeline-track-types'
+import { NEUTRAL_COLOR_GRADE, type ClipColorGrade } from '../domain/clip-color-grade'
 import {
   cutTransitionDurationUs,
   findCutPoints,
@@ -98,8 +99,8 @@ export function buildProjectContext(input: ChatContextInput): string {
     const asset = document.assets.find((item) => item.id === clip.assetId)
     lines.push(
       `- id=${clip.id} track=${trackId} start=${seconds(clip.startUs)}s end=${seconds(clipEndUs(clip))}s` +
-        ` volume=${clip.volume}${clip.look ? ` look=${clip.look.id}@${clip.look.intensity}` : ''}` +
-        `${clip.effects?.length ? ` effects=[${clip.effects.map(describeEffect).join('; ')}]` : ''}` +
+        `${describeClipSource(clip, asset?.probe.durationUs)} volume=${clip.volume}` +
+        describeClipState(clip) +
         `${asset ? ` asset="${asset.name}"` : ''}`
     )
   }
@@ -159,15 +160,18 @@ export function buildProjectContext(input: ChatContextInput): string {
     )
   }
 
-  // Danh mục look cũng là hằng số: không in ra thì agent phải đoán id.
-  lines.push('', 'Colour looks (use set_clip_look with the id):')
+  // Danh mục filter cũng là hằng số: không in ra thì agent phải đoán id.
+  lines.push('', 'Filters (use set_clip_filter with the id):')
   for (const look of CLIP_LOOKS) {
     lines.push(`- id=${look.id} "${look.nameEn}" [${look.tags.join(', ')}]`)
   }
 
   // Danh mục effect hình kèm thông số và khoảng: thiếu khoảng thì agent gửi số ngoài
   // khoảng, bị kẹp lặng lẽ, và không hiểu vì sao hình không như nó muốn.
-  lines.push('', 'Visual effects (use add_clip_effect with the kind; effects stack in order):')
+  lines.push(
+    '',
+    'Effects (use add_clip_effect with the kind; effects stack in order, reorder with move_clip_effect):'
+  )
   for (const effect of CLIP_EFFECTS) {
     const params = effect.params.map(describeParamSpec)
     if (effect.usesIntensity) params.unshift('intensity 0..1')
@@ -266,6 +270,37 @@ export function buildChatSystemPrompt(): string {
 }
 
 /** Một effect trên clip, gọn một dòng: `id:kind@cường độ {thông số}`. */
+/**
+ * Đoạn nguồn clip đang phát — agent cần nó để slip. Ảnh tĩnh không có đoạn nguồn
+ * thì bỏ qua.
+ */
+function describeClipSource(clip: Clip, assetDurationUs: number | undefined): string {
+  if (assetDurationUs === undefined) return ''
+  return ` source=${seconds(clip.sourceInUs)}–${seconds(clip.sourceInUs + clipSourceSpanUs(clip))}s`
+}
+
+/**
+ * Những gì đang áp trên clip, chỉ in phần khác mặc định để dòng clip khỏi phình:
+ * tốc độ, fade, Adjust, filter, zoom, effect. Thiếu thì agent phải đoán trạng thái
+ * hiện tại trước khi sửa — ví dụ đổi zoom mà không biết clip đang có zoom gì.
+ */
+function describeClipState(clip: Clip): string {
+  const parts: string[] = []
+  if (clip.speed !== 1) parts.push(`speed=${clip.speed}`)
+  if (clip.fadeInUs > 0) parts.push(`fadeIn=${seconds(clip.fadeInUs)}s`)
+  if (clip.fadeOutUs > 0) parts.push(`fadeOut=${seconds(clip.fadeOutUs)}s`)
+  if (clip.colorGrade) {
+    const adjust = (Object.keys(NEUTRAL_COLOR_GRADE) as Array<keyof ClipColorGrade>)
+      .filter((key) => clip.colorGrade![key] !== NEUTRAL_COLOR_GRADE[key])
+      .map((key) => `${key}=${clip.colorGrade![key]}`)
+    if (adjust.length) parts.push(`adjust=[${adjust.join(', ')}]`)
+  }
+  if (clip.look) parts.push(`filter=${clip.look.id}@${clip.look.intensity}`)
+  if (clip.motion) parts.push(`zoom=${clip.motion.kind}@${clip.motion.intensity}`)
+  if (clip.effects?.length) parts.push(`effects=[${clip.effects.map(describeEffect).join('; ')}]`)
+  return parts.map((part) => ` ${part}`).join('')
+}
+
 function describeEffect(effect: ClipEffect): string {
   const params = Object.entries(effect.params)
     .map(([key, value]) => `${key}=${value}`)

@@ -40,6 +40,26 @@ export const chatToolSchemas = {
     toSeconds: seconds
   }),
 
+  /** Ripple trim: như trim_clip nhưng dời mọi clip phía sau trên track theo, không để khe. */
+  ripple_trim_clip: z.object({
+    clipId: optionalClipId,
+    edge: z.enum(['start', 'end']),
+    toSeconds: seconds
+  }),
+
+  /** Slip: đổi đoạn nguồn clip phát, giữ vị trí và độ dài trên timeline. */
+  slip_clip: z.object({
+    clipId: optionalClipId,
+    sourceInSeconds: seconds
+  }),
+
+  /** Rate stretch: kéo một mép đổi độ dài, giữ đoạn nguồn, tốc độ tự đổi cho vừa. */
+  rate_stretch_clip: z.object({
+    clipId: optionalClipId,
+    edge: z.enum(['start', 'end']),
+    toSeconds: seconds
+  }),
+
   move_clip: z.object({
     clipId: optionalClipId,
     toSeconds: seconds,
@@ -196,7 +216,7 @@ export const chatToolSchemas = {
   }),
 
   add_sound_effect: z.object({
-    /** Id trong danh mục dựng sẵn. Gọi `list_sound_effects` để biết có những gì. */
+    /** Id trong danh mục dựng sẵn — bản tổng quan dự án liệt kê đủ. */
     soundEffectId: z.string().min(1).max(120),
     /** Đặt luôn lên timeline ở mốc này. Bỏ trống thì chỉ thêm vào thư viện. */
     atSeconds: seconds.optional(),
@@ -316,12 +336,6 @@ export const chatToolSchemas = {
     durationSeconds: z.number().min(0.1).max(2).optional()
   }),
 
-  /**
-   * Chuyển động chạy suốt clip.
-   *
-   * Đây là hiệu ứng có tác động lớn nhất trên footage gần như tĩnh: một cú đẩy
-   * chậm làm khung hình thôi bị coi là ảnh chết. `none` để gỡ.
-   */
   set_clip_speed: z.object({
     clipId: z.string().min(1).max(120).optional(),
     /** 1 = tốc độ gốc, 2 = nhanh gấp đôi, 0.5 = chậm một nửa. */
@@ -329,13 +343,13 @@ export const chatToolSchemas = {
   }),
 
   /**
-   * Look màu dựng sẵn (tab LUT) cho clip hình. Id phải có trong danh mục look —
-   * bản tổng quan dự án liệt kê sẵn. `none` để gỡ.
+   * Filter màu dựng sẵn (tab Filters) cho clip hình. Id phải có trong danh mục
+   * filter — bản tổng quan dự án liệt kê sẵn. `none` để gỡ.
    */
-  set_clip_look: z.object({
+  set_clip_filter: z.object({
     clipId: z.string().min(1).max(120).optional(),
-    lookId: z.string().min(1).max(60),
-    /** 0–1, trộn với hình gốc. Bỏ trống thì giữ cường độ đang có (look mới: 1). */
+    filterId: z.string().min(1).max(60),
+    /** 0–1, trộn với hình gốc. Bỏ trống thì giữ cường độ đang có (filter mới: 1). */
     intensity: z.number().min(0).max(1).optional()
   }),
 
@@ -363,7 +377,20 @@ export const chatToolSchemas = {
     effectId: z.string().min(1).max(80).optional()
   }),
 
-  set_clip_motion: z.object({
+  /** Dời một effect lên (áp sớm hơn) hoặc xuống một bậc trong chồng effect. */
+  move_clip_effect: z.object({
+    clipId: z.string().min(1).max(120).optional(),
+    effectId: z.string().min(1).max(80),
+    direction: z.enum(['up', 'down'])
+  }),
+
+  /**
+   * Zoom (tab Zoom): chuyển động chạy suốt clip — đẩy vào/ra, lia, punch-in, rung.
+   *
+   * Đây là hiệu ứng có tác động lớn nhất trên footage gần như tĩnh: một cú đẩy
+   * chậm làm khung hình thôi bị coi là ảnh chết. `none` để gỡ.
+   */
+  set_clip_zoom: z.object({
     clipId: z.string().min(1).max(120).optional(),
     kind: z.enum([
       'none',
@@ -386,7 +413,7 @@ export const chatToolSchemas = {
    * Nhận từng phần, nên gọi lại để sửa một thông số không xoá mất thông số khác.
    * Bỏ trống mọi trường nghĩa là trả clip về màu gốc.
    */
-  set_clip_color: z.object({
+  set_clip_adjust: z.object({
     clipId: z.string().min(1).max(120).optional(),
     brightness: z.number().min(0.5).max(1.5).optional(),
     contrast: z.number().min(0.5).max(1.5).optional(),
@@ -487,6 +514,12 @@ export function isChatToolName(value: string): value is ChatToolName {
 export const chatToolDescriptions: Record<ChatToolName, string> = {
   split_clip: 'Split a clip in two at a time position, in seconds on the timeline.',
   trim_clip: 'Move one edge of a clip to a new timeline position, in seconds.',
+  ripple_trim_clip:
+    'Ripple trim: move one edge of a clip like trim_clip, and shift every later clip on the same track by the same amount so no gap opens and nothing is overwritten. Trimming the start keeps the clip where it begins and removes (or restores) footage from its head. toSeconds is the timeline position the edge is dragged to.',
+  slip_clip:
+    'Slip a video or audio clip: change which part of the source it plays while it keeps its place and length on the timeline. sourceInSeconds is the new point in the source file where the clip starts playing; it is clamped so the clip never runs past the end of the file. The clip line in the project overview shows source=in–out.',
+  rate_stretch_clip:
+    'Rate stretch a video or audio clip: drag one edge to change its length while it keeps the same stretch of source, so the speed changes to fit (longer plays slower, shorter plays faster, 0.25x to 4x). The other edge stays put. toSeconds is the timeline position the edge is dragged to.',
   move_clip: 'Move a clip to a new start position, optionally onto another track.',
   remove_clip: 'Delete a clip from the timeline.',
   duplicate_clip: 'Duplicate a clip in place.',
@@ -535,18 +568,20 @@ export const chatToolDescriptions: Record<ChatToolName, string> = {
     'Put a transition on the cut between two clips that sit back to back on the same visual track. fromClipId is the clip BEFORE the cut (defaults to the selected clip); the Cuts list in the project overview shows every cut and the transition on it. The end of that clip plays out and the start of the next clip plays in, with the same kind and duration. durationSeconds is 0.1 to 2 (keeps the current duration when left out, 0.5 for a new one). Use kind "none" to remove it.',
   set_clip_speed:
     'Change how fast a clip plays. The clip keeps the same stretch of source footage, so speeding it up makes it SHORTER on the timeline and slowing it down makes it longer — a longer clip pushes into whatever sits next to it. Use it to tighten a slow take or to stretch a moment out. Audio pitch shifts in the preview but is corrected in the exported file.',
-  set_clip_look:
-    'Give a visual clip a ready-made colour look (a LUT), such as a warm film, teal and orange, black and white, or a log-to-Rec.709 conversion for flat camera footage. Use a lookId from the Colour looks list in the project overview. intensity 0 to 1 blends it with the original (keeps the current one when left out, 1 for a new look). The look is applied after the clip colour grade. Use lookId "none" to remove it.',
+  set_clip_filter:
+    'Give a visual clip a ready-made colour filter (the Filters tab), such as a warm film, teal and orange, black and white, or a log-to-Rec.709 conversion for flat camera footage. Use a filterId from the Filters list in the project overview. intensity 0 to 1 blends it with the original (keeps the current one when left out, 1 for a new filter). The filter is applied after Adjust. Use filterId "none" to remove it.',
   add_clip_effect:
-    'Stack a visual effect on a clip: stylize (vignette, film grain, bloom, light leak, retro CRT, edge glow, posterize), distort (RGB split, glitch, mirror, pixelate, handheld shake, magnifier), blur (soft, motion, tilt-shift), masks (rectangle, circle, local mosaic to hide a face or plate), keys (luma key, green/blue screen chroma key) and colour (levels, HSL, colour wheels, clarity, shadows/highlights, duotone, sepia, invert). Effects STACK: each call adds one more at the end, applied after the colour grade and look, in order. Use a kind from the Visual effects list in the project overview, which also lists the params of each effect with their ranges; leave params out for sensible defaults. intensity 0 to 1 (default 0.7) only matters for effects that list it. The reply names the new effect id; the clip line in the project overview lists it too.',
+    'Stack a visual effect on a clip (the Effects tab): stylize (vignette, film grain, bloom, light leak, retro CRT, edge glow, posterize), distort (RGB split, glitch, mirror, pixelate, handheld shake, magnifier), blur (soft, motion, tilt-shift), masks (rectangle, circle, local mosaic to hide a face or plate), keys (luma key, green/blue screen chroma key) and colour (levels, HSL, colour wheels, clarity, shadows/highlights, duotone, sepia, invert). Effects STACK: each call adds one more at the end, applied after Adjust and the filter, in order. Use a kind from the Effects list in the project overview, which also lists the params of each effect with their ranges; leave params out for sensible defaults. intensity 0 to 1 (default 0.7) only matters for effects that list it. The reply names the new effect id; the clip line in the project overview lists it too.',
   update_clip_effect:
     'Change the intensity or some params of one effect already on a clip. effectId comes from the clip line in the project overview (effects=[id:kind…]). Params you leave out keep their value.',
   remove_clip_effect:
     'Remove one effect from a clip by effectId, or every effect on the clip when effectId is left out.',
-  set_clip_motion:
-    'Move the frame over the whole length of a clip: a slow push in or out, a slow pan, a punch in at the cut, or a shake. Use this on footage that barely moves — a still product shot with a slow push reads as edited, the same shot held still reads as a frozen photo. Use "none" to remove it.',
-  set_clip_color:
-    'Grade one clip: brightness, contrast, saturation, warm/cool temperature, and a vignette. Fields are applied on top of what is already set, so changing one does not clear the others. Pass reset to put the clip back to its original colour. For a ready-made look use set_clip_look.',
+  move_clip_effect:
+    'Move one effect a step up or down in the clip effect stack. Effects apply top to bottom, so order matters: a blur before a vignette softens the picture but keeps a sharp vignette edge, the other way round blurs the vignette too. "up" makes it apply earlier. effectId comes from the clip line in the project overview.',
+  set_clip_zoom:
+    'Zoom a clip (the Zoom tab): move the frame over the whole length of the clip — a slow push in or out, a slow pan, a punch in at the cut, or a shake. Use this on footage that barely moves — a still product shot with a slow push reads as edited, the same shot held still reads as a frozen photo. The clip line in the project overview shows the current zoom=kind@intensity. Use "none" to remove it.',
+  set_clip_adjust:
+    'Adjust one clip (the Adjust tab): brightness, contrast, saturation, warm/cool temperature, and a vignette. Fields are applied on top of what is already set, so changing one does not clear the others; the clip line in the project overview shows the current adjust=[…]. Pass reset to put the clip back to its original colour. For a ready-made colour style use set_clip_filter.',
   import_media:
     'Import files from disk into the media pool so they can be placed on the timeline. Paths must be ABSOLUTE. The reply gives the id of each imported asset — pass those to insert_clip. A file already in the project is reported as a duplicate with the id of the existing asset instead of being imported twice. This only fills the media pool; it does not put anything on the timeline.',
   remove_media:
@@ -565,6 +600,9 @@ export const chatToolDescriptions: Record<ChatToolName, string> = {
 export const chatToolParameterHints: Record<ChatToolName, string> = {
   split_clip: '{ clipId?: string, atSeconds: number }',
   trim_clip: "{ clipId?: string, edge: 'start' | 'end', toSeconds: number }",
+  ripple_trim_clip: "{ clipId?: string, edge: 'start' | 'end', toSeconds: number }",
+  slip_clip: '{ clipId?: string, sourceInSeconds: number }',
+  rate_stretch_clip: "{ clipId?: string, edge: 'start' | 'end', toSeconds: number }",
   move_clip: '{ clipId?: string, toSeconds: number, toTrackId?: string }',
   remove_clip: '{ clipId?: string }',
   duplicate_clip: '{ clipId?: string }',
@@ -606,15 +644,16 @@ export const chatToolParameterHints: Record<ChatToolName, string> = {
   set_cut_transition:
     "{ fromClipId?: string, kind: 'none' | 'fade' | 'slide-left' | 'slide-right' | 'slide-up' | 'slide-down' | 'wipe-left' | 'wipe-right' | 'zoom' | 'whip-left' | 'whip-right' | 'blur' | 'glitch' | 'spin' | 'flash', durationSeconds?: number }",
   set_clip_speed: '{ clipId?: string, speed: number }',
-  set_clip_look: '{ clipId?: string, lookId: string, intensity?: number }',
+  set_clip_filter: '{ clipId?: string, filterId: string, intensity?: number }',
   add_clip_effect:
     '{ clipId?: string, kind: string, intensity?: number, params?: Record<string, number | string> }',
   update_clip_effect:
     '{ clipId?: string, effectId: string, intensity?: number, params?: Record<string, number | string> }',
   remove_clip_effect: '{ clipId?: string, effectId?: string }',
-  set_clip_motion:
+  move_clip_effect: "{ clipId?: string, effectId: string, direction: 'up' | 'down' }",
+  set_clip_zoom:
     "{ clipId?: string, kind: 'none' | 'zoom-in' | 'zoom-out' | 'pan-left' | 'pan-right' | 'pan-up' | 'pan-down' | 'punch-in' | 'shake', intensity?: number }",
-  set_clip_color:
+  set_clip_adjust:
     '{ clipId?: string, brightness?: number, contrast?: number, saturation?: number, temperature?: number, vignette?: number, reset?: boolean }',
   import_media: '{ filePaths: string[] }',
   remove_media: '{ assetId: string, removeClips?: boolean }',

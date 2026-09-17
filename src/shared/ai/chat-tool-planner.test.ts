@@ -428,12 +428,12 @@ describe('công cụ chuyển cảnh ở chỗ nối', () => {
   })
 })
 
-describe('công cụ look màu', () => {
-  it('đặt look cho clip hình, gỡ bằng "none", giữ cường độ khi đổi look', () => {
+describe('công cụ Filters', () => {
+  it('đặt filter cho clip hình, gỡ bằng "none", giữ cường độ khi đổi filter', () => {
     const { document, clipId } = withClip()
     const apply = (args: Record<string, unknown>): void => {
       const plan = planChatToolCalls(context(document), [
-        { name: 'set_clip_look', arguments: args }
+        { name: 'set_clip_filter', arguments: args }
       ])
       expect(plan.failures).toEqual([])
       for (const command of plan.steps.flatMap((step) => step.commands)) {
@@ -442,26 +442,26 @@ describe('công cụ look màu', () => {
     }
     const clip = (): Clip => document.tracks[0].clips.find((item) => item.id === clipId)!
 
-    apply({ clipId, lookId: 'teal-orange', intensity: 0.6 })
+    apply({ clipId, filterId: 'teal-orange', intensity: 0.6 })
     expect(clip().look).toEqual({ id: 'teal-orange', intensity: 0.6 })
 
-    apply({ clipId, lookId: 'mono-film' })
+    apply({ clipId, filterId: 'mono-film' })
     expect(clip().look).toEqual({ id: 'mono-film', intensity: 0.6 })
 
-    apply({ clipId, lookId: 'none' })
+    apply({ clipId, filterId: 'none' })
     expect(clip().look).toBeUndefined()
   })
 
-  it('id look bịa ra thì báo lỗi kèm danh sách id hợp lệ', () => {
+  it('id filter bịa ra thì báo lỗi kèm danh sách id hợp lệ', () => {
     const { document, clipId } = withClip()
     const plan = planChatToolCalls(context(document), [
-      { name: 'set_clip_look', arguments: { clipId, lookId: 'hollywood-magic' } }
+      { name: 'set_clip_filter', arguments: { clipId, filterId: 'hollywood-magic' } }
     ])
     expect(plan.steps).toEqual([])
     expect(plan.failures[0].reason).toContain('teal-orange')
   })
 
-  it('danh mục look có trong tổng quan gửi agent', () => {
+  it('danh mục filter có trong tổng quan gửi agent', () => {
     const overview = buildProjectContext({
       document: project(),
       selectedClipIds: [],
@@ -1096,7 +1096,7 @@ describe('công cụ chuyển động trong clip', () => {
   it('đặt được chuyển động kèm cường độ', () => {
     const { document, clipId } = withClip()
     const plan = planChatToolCalls(context(document), [
-      { name: 'set_clip_motion', arguments: { clipId, kind: 'zoom-in', intensity: 0.8 } }
+      { name: 'set_clip_zoom', arguments: { clipId, kind: 'zoom-in', intensity: 0.8 } }
     ])
 
     for (const command of plan.steps.flatMap((step) => step.commands)) {
@@ -1109,7 +1109,7 @@ describe('công cụ chuyển động trong clip', () => {
   it('không nêu cường độ thì dùng mức mặc định, không phải 0', () => {
     const { document, clipId } = withClip()
     const plan = planChatToolCalls(context(document), [
-      { name: 'set_clip_motion', arguments: { clipId, kind: 'pan-left' } }
+      { name: 'set_clip_zoom', arguments: { clipId, kind: 'pan-left' } }
     ])
     for (const command of plan.steps.flatMap((step) => step.commands)) {
       expect(applyEditorCommand(document, command).ok).toBe(true)
@@ -1123,8 +1123,8 @@ describe('công cụ chuyển động trong clip', () => {
   it('"none" gỡ chuyển động đã đặt', () => {
     const { document, clipId } = withClip()
     for (const call of [
-      { name: 'set_clip_motion', arguments: { clipId, kind: 'shake' } },
-      { name: 'set_clip_motion', arguments: { clipId, kind: 'none' } }
+      { name: 'set_clip_zoom', arguments: { clipId, kind: 'shake' } },
+      { name: 'set_clip_zoom', arguments: { clipId, kind: 'none' } }
     ]) {
       const plan = planChatToolCalls(context(document), [call])
       expect(plan.failures).toEqual([])
@@ -1141,13 +1141,13 @@ describe('công cụ chuyển động trong clip', () => {
 
     expect(
       planChatToolCalls(context(document), [
-        { name: 'set_clip_motion', arguments: { clipId, kind: 'barrel-roll' } }
+        { name: 'set_clip_zoom', arguments: { clipId, kind: 'barrel-roll' } }
       ]).failures
     ).toHaveLength(1)
 
     expect(
       planChatToolCalls(context(document), [
-        { name: 'set_clip_motion', arguments: { clipId, kind: 'zoom-in', intensity: 5 } }
+        { name: 'set_clip_zoom', arguments: { clipId, kind: 'zoom-in', intensity: 5 } }
       ]).failures
     ).toHaveLength(1)
   })
@@ -1162,7 +1162,7 @@ describe('công cụ chỉnh màu clip', () => {
       { clipId, temperature: 0.6 }
     ]) {
       const plan = planChatToolCalls(context(document), [
-        { name: 'set_clip_color', arguments: args }
+        { name: 'set_clip_adjust', arguments: args }
       ])
       expect(plan.failures).toEqual([])
       for (const command of plan.steps.flatMap((step) => step.commands)) {
@@ -1184,7 +1184,7 @@ describe('công cụ chỉnh màu clip', () => {
       { clipId, reset: true }
     ]) {
       const plan = planChatToolCalls(context(document), [
-        { name: 'set_clip_color', arguments: args }
+        { name: 'set_clip_adjust', arguments: args }
       ])
       for (const command of plan.steps.flatMap((step) => step.commands)) {
         expect(applyEditorCommand(document, command).ok).toBe(true)
@@ -1197,7 +1197,7 @@ describe('công cụ chỉnh màu clip', () => {
   it('gọi mà không nêu thông số nào thì báo lỗi, không im lặng bỏ qua', () => {
     const { document, clipId } = withClip()
     const plan = planChatToolCalls(context(document), [
-      { name: 'set_clip_color', arguments: { clipId } }
+      { name: 'set_clip_adjust', arguments: { clipId } }
     ])
 
     expect(plan.steps).toEqual([])
@@ -1208,7 +1208,7 @@ describe('công cụ chỉnh màu clip', () => {
     const { document, clipId } = withClip()
     expect(
       planChatToolCalls(context(document), [
-        { name: 'set_clip_color', arguments: { clipId, brightness: 9 } }
+        { name: 'set_clip_adjust', arguments: { clipId, brightness: 9 } }
       ]).failures
     ).toHaveLength(1)
   })
