@@ -8,6 +8,7 @@ import type { ChatToolName } from '../../shared/ai/chat-tool-catalog'
 import type { McpApplyResult, McpServerStatus } from '../../shared/ipc/ipc-contract'
 import { isRendererAvailable, requestFromRenderer } from './mcp-renderer-bridge'
 import { loadMcpConfig, mcpConfig, setMcpRequireToken } from './mcp-config-store'
+import { registerMcpExportTools } from './mcp-export-tools'
 
 /**
  * Máy chủ MCP để agent bên ngoài (Claude Code, Codex…) dựng phim trong app này.
@@ -101,6 +102,20 @@ function buildMcpServer(): McpServer {
   )
 
   server.registerTool(
+    'get_translation',
+    {
+      description:
+        'Read a translation in full: its glossary, then every segment with its id, the time range and original words of the transcript segment it translates, and the translated text. Use the segment ids with update_translation_segment.',
+      inputSchema: { translationId: z.string().optional() }
+    },
+    async ({ translationId }) => ({
+      content: [
+        { type: 'text', text: await requestFromRenderer<string>('translation', { translationId }) }
+      ]
+    })
+  )
+
+  server.registerTool(
     'list_media',
     {
       description:
@@ -135,6 +150,38 @@ function buildMcpServer(): McpServer {
       content: [{ type: 'text', text: await requestFromRenderer<string>('fonts', { family }) }]
     })
   )
+
+  // ── Hoàn tác ─────────────────────────────────────────────────
+  // Riêng MCP, không nằm trong danh mục chung: AI Chat đã có nút hoàn tác trên
+  // giao diện, còn agent bên ngoài thì không — thiếu hai công cụ này nó không tự
+  // gỡ được một bước dựng sai.
+
+  server.registerTool(
+    'undo',
+    {
+      description:
+        'Undo the most recent edit in the project, exactly like Cmd+Z. The history is shared with the user, so this undoes whatever came last, which may be an edit the user made by hand; the reply names the step that was undone — check it is the step you meant, because an edit that timed out may still have been applied. Call get_project_overview after to see the result.',
+      inputSchema: {}
+    },
+    async () => ({
+      content: [{ type: 'text', text: await requestFromRenderer<string>('undo', {}) }]
+    })
+  )
+
+  server.registerTool(
+    'redo',
+    {
+      description:
+        'Redo the step that was last undone, exactly like Cmd+Shift+Z. Any new edit after an undo clears what can be redone. The reply names the step that was redone.',
+      inputSchema: {}
+    },
+    async () => ({
+      content: [{ type: 'text', text: await requestFromRenderer<string>('redo', {}) }]
+    })
+  )
+
+  // ── Xuất video ───────────────────────────────────────────────
+  registerMcpExportTools(server)
 
   // ── Công cụ GHI ──────────────────────────────────────────────
   // Sinh từ chính danh mục của AI Chat, nên hai lối vào không thể lệch nhau.

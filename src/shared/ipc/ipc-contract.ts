@@ -297,7 +297,17 @@ export interface GenerateMusicRequest {
 export interface McpBridgeRequest {
   requestId: string
   kind:
-    'project-overview' | 'transcript' | 'media' | 'import-media' | 'shots' | 'fonts' | 'apply-tools'
+    | 'project-overview'
+    | 'transcript'
+    | 'translation'
+    | 'media'
+    | 'import-media'
+    | 'shots'
+    | 'fonts'
+    | 'apply-tools'
+    | 'undo'
+    | 'redo'
+    | 'document-snapshot'
   payload: unknown
 }
 

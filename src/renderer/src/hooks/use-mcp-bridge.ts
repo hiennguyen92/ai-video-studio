@@ -7,6 +7,8 @@ import { createId } from '../../../shared/domain/project-document-factory'
 import type { MediaAsset } from '../../../shared/domain/media-asset-types'
 import type { ProjectDocument } from '../../../shared/domain/project-document-types'
 import { useEditorStore } from '../state/editor-store'
+import { formatTranscript, formatTranslation } from './mcp-bridge-speech-text-formatters'
+import { redoLabel, undoLabel } from '../../../shared/commands/command-history'
 
 /**
  * Trả lời máy chủ MCP thay cho tiến trình main.
@@ -20,32 +22,6 @@ import { useEditorStore } from '../state/editor-store'
  * từng cái là bỏ đi toàn bộ ý nghĩa của việc tự động. Lưới an toàn ở đây là hoàn
  * tác — mỗi lời gọi là một bước undo, và người dùng thấy chúng trong lịch sử.
  */
-
-function formatTranscript(document: ProjectDocument, transcriptId?: string): string {
-  const transcript = transcriptId
-    ? document.transcripts.find((item) => item.id === transcriptId)
-    : document.transcripts[0]
-
-  if (!transcript) return 'Dự án chưa có bản phiên âm nào.'
-
-  const asset = document.assets.find((item) => item.id === transcript.assetId)
-  const header = [
-    `transcript id=${transcript.id}`,
-    `language=${transcript.language}`,
-    `asset=${asset?.name ?? transcript.assetId}`,
-    `segments=${transcript.segments.length}`
-  ].join(' ')
-
-  // Mốc thời gian ghi bằng GIÂY vì công cụ cũng nhận giây; để mô hình tự đổi
-  // micro giây là mời nó nhầm ba chữ số.
-  const lines = transcript.segments.map((segment) => {
-    const from = (segment.startUs / 1_000_000).toFixed(2)
-    const to = (segment.endUs / 1_000_000).toFixed(2)
-    return `- id=${segment.id} ${from}s–${to}s: ${segment.text}`
-  })
-
-  return [header, '', ...lines].join('\n')
-}
 
 function formatMedia(document: ProjectDocument): string {
   if (document.assets.length === 0) return 'Thư viện media đang trống.'
@@ -279,6 +255,46 @@ export function useMcpBridge(): void {
             return
           }
 
+          // Bản chụp để main xuất video: cùng thứ hộp thoại Xuất gửi đi, nên hai
+          // lối xuất dựng ra đúng một kết quả.
+          case 'document-snapshot':
+            respond(true, document)
+            return
+
+          case 'translation': {
+            const payload = request.payload as { translationId?: string }
+            respond(true, formatTranslation(document, payload?.translationId))
+            return
+          }
+
+          case 'undo':
+          case 'redo': {
+            // Có `document` tức là có phiên; kiểm lại chỉ để trình biên dịch thấy.
+            const history = state.session
+            const label = !history
+              ? undefined
+              : request.kind === 'undo'
+                ? undoLabel(history)
+                : redoLabel(history)
+            if (label === undefined) {
+              respond(
+                true,
+                request.kind === 'undo'
+                  ? 'Không còn bước nào để hoàn tác.'
+                  : 'Không còn bước nào để làm lại.'
+              )
+              return
+            }
+            if (request.kind === 'undo') state.undo()
+            else state.redo()
+            const revision = useEditorStore.getState().session?.document.revision
+            respond(
+              true,
+              `${request.kind === 'undo' ? 'Đã hoàn tác' : 'Đã làm lại'}: ${label}\nrevision=${revision}`
+            )
+            return
+          }
+
           case 'media':
             respond(true, formatMedia(document))
             return
@@ -335,11 +351,20 @@ export function useMcpBridge(): void {
               resolveSoundEffects(calls),
               resolveImportedMedia(calls)
             ]).then(([fontFiles, soundEffects, importedMedia]) => {
+              // Đọc lại trạng thái SAU khi chờ: phông, hiệu ứng âm thanh và nhập media
+              // tốn thời gian, và một lời gọi khác (undo chẳng hạn) có thể đã đổi
+              // dự án. Lập kế hoạch trên bản chụp cũ sẽ ghi đè thay đổi đó.
+              const latest = useEditorStore.getState()
+              const latestDocument = latest.session?.document
+              if (!latestDocument) {
+                respond(false, undefined, 'Dự án đã bị đóng trong lúc xử lý.')
+                return
+              }
               const plan = planChatToolCalls(
                 {
-                  document,
-                  selectedClipIds: state.selection.clipIds,
-                  playheadUs: state.playheadUs,
+                  document: latestDocument,
+                  selectedClipIds: latest.selection.clipIds,
+                  playheadUs: latest.playheadUs,
                   makeId: (prefix) => createId(prefix ?? 'clip'),
                   shots: Object.fromEntries(shotCache),
                   fontFiles,
@@ -356,7 +381,7 @@ export function useMcpBridge(): void {
               // lời rỗng rồi gọi lại mãi.
               const applied =
                 commands.length > 0
-                  ? state.run(commands, `MCP: ${plan.steps.map((s) => s.description).join('; ')}`)
+                  ? latest.run(commands, `MCP: ${plan.steps.map((s) => s.description).join('; ')}`)
                   : plan.steps.length > 0
 
               const result: McpApplyResult = {
@@ -372,7 +397,8 @@ export function useMcpBridge(): void {
                         ? [{ tool: 'apply', reason: 'Không áp dụng được lệnh nào' }]
                         : [])
                     ],
-                revision: useEditorStore.getState().session?.document.revision ?? document.revision
+                revision:
+                  useEditorStore.getState().session?.document.revision ?? latestDocument.revision
               }
               respond(true, result)
             })

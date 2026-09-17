@@ -295,6 +295,19 @@ App mở một máy chủ MCP trên `127.0.0.1` (Streamable HTTP, đường dẫ
 `chat-tool-planner` để hoá thành `EditorCommand`. Không có đường ghi riêng nào cho
 agent ngoài, nên hai lối vào không thể lệch nhau về quy tắc kiểm tra.
 
+**Ngoại lệ: công cụ chỉ có ở MCP.** Nhóm đọc (`get_project_overview`,
+`get_transcript`, `get_translation`, `list_media`, `list_shots`, `list_fonts`),
+`undo`/`redo` và nhóm xuất video (`mcp-export-tools.ts`) đăng ký thẳng ở main, không
+nằm trong danh mục chung:
+AI Chat đã có ngữ cảnh dựng sẵn và nút hoàn tác trên giao diện, agent ngoài thì không.
+`undo`/`redo` gọi đúng hàm của editor store và trả tên bước vừa gỡ — lịch sử dùng
+chung với người dùng, nên agent phải đọc được nó vừa hoàn tác cái gì.
+
+Xuất qua MCP mất nhiều phút, dài hơn hạn chờ của một lời gọi, nên `start_export` lấy
+bản chụp document từ renderer, gọi `runExport` với `sender = null` rồi trả jobId ngay.
+`export-manager` giữ sự kiện mới nhất của từng job để `get_export_status` đọc lại.
+Job của agent không đẩy sự kiện về cửa sổ: hộp thoại Xuất đang mở sẽ tưởng là job của nó.
+
 **Vì sao HTTP chứ không stdio:** app là một cửa sổ GUI đang chạy sẵn. stdio buộc
 client tự khởi động tiến trình server, tức là mở thêm một instance thứ hai của
 trình dựng phim. HTTP cho phép nối vào đúng cửa sổ người dùng đang làm việc.

@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { MAX_TEXT_ROTATION_DEG } from '../domain/text-placement'
-import { MAX_TEXT_OUTLINE_WIDTH_PX } from '../domain/subtitle-types'
+import { MAX_TEXT_OUTLINE_WIDTH_PX, SUBTITLE_STYLE_PRESETS } from '../domain/subtitle-types'
 
 /**
  * Danh mục công cụ mà AI Chat được phép gọi.
@@ -27,6 +27,8 @@ const gain = z.number().min(0).max(4)
  * nhất, và cũng tránh việc mô hình bịa ra id không tồn tại.
  */
 const optionalClipId = z.string().min(1).max(120).optional()
+
+const hexColor = z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Màu phải có dạng #RRGGBB')
 
 export const chatToolSchemas = {
   split_clip: z.object({
@@ -160,7 +162,10 @@ export const chatToolSchemas = {
     trackId: z.string().min(1).max(120),
     name: z.string().min(1).max(120).optional(),
     hidden: z.boolean().optional(),
-    locked: z.boolean().optional()
+    locked: z.boolean().optional(),
+    /** Solo: chỉ nghe những track đang solo. */
+    solo: z.boolean().optional(),
+    role: z.enum(['dialogue', 'voiceover', 'music', 'sfx']).optional()
   }),
 
   set_clip_transform: z.object({
@@ -176,10 +181,14 @@ export const chatToolSchemas = {
 
   update_text_overlay: z.object({
     overlayId: z.string().min(1).max(120),
+    /** Lane chữ đích; bỏ trống thì giữ lane đang có. */
+    trackId: z.string().min(1).max(120).optional(),
     text: z.string().max(500).optional(),
     startSeconds: seconds.optional(),
     endSeconds: seconds.optional(),
     animation: z.enum(['none', 'fade', 'pop', 'slide-up', 'typewriter']).optional(),
+    /** Thời lượng hiệu ứng vào/ra, giây. */
+    animationDurationSeconds: z.number().min(0).max(5).optional(),
     exit: z.enum(['none', 'fade', 'shrink', 'slide-down']).optional(),
     glow: z.boolean().optional(),
     /**
@@ -205,6 +214,8 @@ export const chatToolSchemas = {
     subtitleTrackId: z.string().min(1).max(120),
     cueId: z.string().min(1).max(120),
     text: z.string().max(5000).optional(),
+    /** Dòng thứ hai của phụ đề song ngữ. */
+    secondaryText: z.string().max(5000).optional(),
     startSeconds: seconds.optional(),
     endSeconds: seconds.optional()
   }),
@@ -496,6 +507,71 @@ export const chatToolSchemas = {
     duckVolume: gain.optional(),
     baseVolume: gain.optional(),
     paddingSeconds: seconds.optional()
+  }),
+
+  /**
+   * Kiểu chữ còn lại mà giao diện chỉnh được: cỡ, nền hộp, vị trí neo, lề, bóng,
+   * số ký tự mỗi dòng, mẫu phụ đề. Nhận từng phần, trường bỏ trống giữ nguyên.
+   */
+  set_text_style: z.object({
+    /** Mẫu phụ đề dựng sẵn, áp trước các trường khác. Chỉ cho track phụ đề. */
+    preset: z.string().min(1).max(60).optional(),
+    fontSizePx: z.number().int().min(12).max(300).optional(),
+    box: z.enum(['none', 'dark', 'light']).optional(),
+    boxColor: hexColor.optional(),
+    boxOpacity: z.number().min(0).max(1).optional(),
+    position: z.enum(['bottom', 'middle', 'top']).optional(),
+    marginVerticalPx: z.number().int().min(0).max(600).optional(),
+    /** Chỉ cho track phụ đề. */
+    shadowPx: z.number().int().min(0).max(10).optional(),
+    /** Chỉ cho track phụ đề. */
+    maxCharsPerLine: z.number().int().min(12).max(100).optional(),
+    overlayId: z.string().min(1).max(120).optional(),
+    subtitleTrackId: z.string().min(1).max(120).optional()
+  }),
+
+  rename_subtitle_track: z.object({
+    subtitleTrackId: z.string().min(1).max(120),
+    name: z.string().min(1).max(120)
+  }),
+
+  remove_subtitle_track: z.object({
+    subtitleTrackId: z.string().min(1).max(120)
+  }),
+
+  /** Sửa chữ một đoạn phiên âm — hay dùng để sửa lỗi nhận dạng trước khi dựng phụ đề. */
+  update_transcript_segment: z.object({
+    transcriptId: z.string().min(1).max(120),
+    segmentId: z.string().min(1).max(120),
+    text: z.string().min(1).max(5000)
+  }),
+
+  merge_transcript_segments: z.object({
+    transcriptId: z.string().min(1).max(120),
+    /** Đoạn này gộp với đoạn NGAY SAU nó. */
+    segmentId: z.string().min(1).max(120)
+  }),
+
+  remove_transcript: z.object({
+    transcriptId: z.string().min(1).max(120)
+  }),
+
+  update_translation_segment: z.object({
+    translationId: z.string().min(1).max(120),
+    segmentId: z.string().min(1).max(120),
+    text: z.string().min(1).max(5000)
+  }),
+
+  /** Thay cả bảng thuật ngữ, như ô sửa glossary trên giao diện. */
+  set_translation_glossary: z.object({
+    translationId: z.string().min(1).max(120),
+    entries: z
+      .array(z.object({ from: z.string().min(1).max(200), to: z.string().max(200) }))
+      .max(200)
+  }),
+
+  remove_translation: z.object({
+    translationId: z.string().min(1).max(120)
   })
 } as const
 
@@ -547,12 +623,13 @@ export const chatToolDescriptions: Record<ChatToolName, string> = {
   reorder_track:
     'Move a lane to another position, counting from 0 at the top. This is how you change what covers what: the lowest lane draws on top of everything above it.',
   set_track:
-    'Rename a lane, hide it, or lock it. A hidden lane disappears from the preview and from the exported file.',
+    'Rename a lane, hide it, lock it, solo it, or change the role of an audio lane (dialogue, voiceover, music, sfx — auto_duck_music uses the role to tell speech from music). A hidden lane disappears from the preview and from the exported file. Solo and role only apply to audio lanes; only one audio lane can be soloed at a time, soloing another turns the first off, and while one is soloed only it is heard.',
   set_clip_transform:
     'Place a clip inside the frame: x and y are fractions of the frame from the centre (0 is centred, 1 pushes the centre to the edge), scale multiplies its size, rotationDeg tilts it, opacity fades it. Use this to put a logo or a product photo where you want it. Pass reset:true to put it back.',
   update_text_overlay:
-    'Change an existing on-screen text: its words, its timing, or its enter/exit animation.',
-  update_subtitle_cue: 'Change the words or the timing of one subtitle cue.',
+    'Change an existing on-screen text: its words, its timing, its enter/exit animation and how long that animation takes, its glow or frame, or move it to another text lane with trackId.',
+  update_subtitle_cue:
+    'Change the words or the timing of one subtitle cue. secondaryText is the second line of a bilingual subtitle.',
   move_subtitle_cue: 'Move one cue to a different subtitle track. It keeps its words and timing.',
   remove_subtitle_cue: 'Delete one subtitle cue.',
   add_sound_effect:
@@ -592,6 +669,21 @@ export const chatToolDescriptions: Record<ChatToolName, string> = {
     'Tilt text by an angle, clockwise, from -180 to 180 degrees (90 stands the text upright, 180 turns it upside down). Works in the preview and in the exported file alike. With no overlayId and no subtitleTrackId it applies to every text overlay.',
   set_text_position:
     'Pin text to an exact spot on the frame. xPct/yPct are fractions of frame width and height (0..1) for the CENTER of the text block, so 0.5/0.5 is dead centre and 0.5/0.85 sits low. Overrides the alignment and margins in both the preview and the exported file. Pass clear:true to unpin and go back to alignment. With no overlayId and no subtitleTrackId it applies to every text overlay.',
+  set_text_style: `Change the rest of the text look on text overlays or a subtitle track, the same things the Style and Layout panels edit. Fields left out keep their value. fontSizePx is 12 to 300 (subtitles up to 200). box "dark"/"light"/"none" sets a matching background box, text colour and outline together; on an overlay it also removes a cute frame, because a box and a frame cannot both show. boxColor/boxOpacity fine-tune the box (opacity 0 turns it off); on an overlay that has a frame, set box first. position anchors the text to the bottom, middle or top of the frame with marginVerticalPx of space from the edge, and unpins text pinned with set_text_position. shadowPx (0 to 10), maxCharsPerLine (12 to 100) and preset (${SUBTITLE_STYLE_PRESETS.map((item) => item.id).join(', ')}) only apply to a subtitle track. With no overlayId and no subtitleTrackId it applies to every text overlay.`,
+  rename_subtitle_track: 'Rename a subtitle track.',
+  remove_subtitle_track:
+    'Delete a subtitle track and all its cues. A subtitle lane pointing at it stays on the timeline but shows nothing until it is given another subtitle track.',
+  update_transcript_segment:
+    'Fix the words of one transcript segment, for example a name the speech recogniser got wrong. Timing is unchanged. Call get_transcript for segment ids. Subtitle tracks already built from it do not change. To carry the fix into subtitles, call remove_subtitle_track on the old track first and then create_subtitle_track — creating without removing leaves both tracks on screen.',
+  merge_transcript_segments:
+    'Join one transcript segment with the segment right after it, into one segment spanning both. Use it when recognition split a sentence in the middle.',
+  remove_transcript:
+    'Delete a transcript. Its translations are deleted with it. Clips and subtitle tracks already built from it are not touched.',
+  update_translation_segment:
+    'Fix the words of one translated segment. Call get_translation for segment ids. The segment is marked as edited so translating again does not overwrite it.',
+  set_translation_glossary:
+    'Replace the glossary of a translation: terms that must be translated a fixed way (from → to). It applies the next time the translation is run; it does not rewrite existing segments.',
+  remove_translation: 'Delete one translation. Its transcript stays.',
   set_text_font:
     'Change the font of text overlays or a subtitle track. Call list_fonts first and use a family name from it — a font that is not installed silently falls back to the default. Pass fontPostScriptName to pick a specific weight or width within the family; the family name alone cannot select a face. With no overlayId and no subtitleTrackId it applies to every text overlay.'
 }
@@ -624,13 +716,14 @@ export const chatToolParameterHints: Record<ChatToolName, string> = {
     "{ kind: 'video' | 'audio' | 'subtitle' | 'text' | 'image', name: string, role?: 'dialogue' | 'voiceover' | 'music' | 'sfx' }",
   remove_track: '{ trackId: string }',
   reorder_track: '{ trackId: string, toIndex: number }',
-  set_track: '{ trackId: string, name?: string, hidden?: boolean, locked?: boolean }',
+  set_track:
+    "{ trackId: string, name?: string, hidden?: boolean, locked?: boolean, solo?: boolean, role?: 'dialogue' | 'voiceover' | 'music' | 'sfx' }",
   set_clip_transform:
     '{ clipId?: string, x?: number, y?: number, scale?: number, rotationDeg?: number, opacity?: number, reset?: boolean }',
   update_text_overlay:
-    "{ overlayId: string, text?: string, startSeconds?: number, endSeconds?: number, animation?: 'none' | 'fade' | 'pop' | 'slide-up' | 'typewriter', exit?: 'none' | 'fade' | 'shrink' | 'slide-down', glow?: boolean, frame?: { styleId: string, paletteId?: string, decorId?: string, paddingScaleX?: number, paddingScaleY?: number } | null }",
+    "{ overlayId: string, trackId?: string, text?: string, startSeconds?: number, endSeconds?: number, animation?: 'none' | 'fade' | 'pop' | 'slide-up' | 'typewriter', animationDurationSeconds?: number, exit?: 'none' | 'fade' | 'shrink' | 'slide-down', glow?: boolean, frame?: { styleId: string, paletteId?: string, decorId?: string, paddingScaleX?: number, paddingScaleY?: number } | null }",
   update_subtitle_cue:
-    '{ subtitleTrackId: string, cueId: string, text?: string, startSeconds?: number, endSeconds?: number }',
+    '{ subtitleTrackId: string, cueId: string, text?: string, secondaryText?: string, startSeconds?: number, endSeconds?: number }',
   move_subtitle_cue: '{ subtitleTrackId: string, toSubtitleTrackId: string, cueId: string }',
   remove_subtitle_cue: '{ subtitleTrackId: string, cueId: string }',
   add_sound_effect:
@@ -663,7 +756,18 @@ export const chatToolParameterHints: Record<ChatToolName, string> = {
     '{ xPct?: number, yPct?: number, clear?: boolean, overlayId?: string, subtitleTrackId?: string }',
   set_text_color:
     '{ color: string, outlineColor?: string, outlineWidthPx?: number, overlayId?: string, subtitleTrackId?: string }',
-  set_text_rotation: '{ rotationDeg: number, overlayId?: string, subtitleTrackId?: string }'
+  set_text_rotation: '{ rotationDeg: number, overlayId?: string, subtitleTrackId?: string }',
+  set_text_style:
+    "{ preset?: string, fontSizePx?: number, box?: 'none' | 'dark' | 'light', boxColor?: string, boxOpacity?: number, position?: 'bottom' | 'middle' | 'top', marginVerticalPx?: number, shadowPx?: number, maxCharsPerLine?: number, overlayId?: string, subtitleTrackId?: string }",
+  rename_subtitle_track: '{ subtitleTrackId: string, name: string }',
+  remove_subtitle_track: '{ subtitleTrackId: string }',
+  update_transcript_segment: '{ transcriptId: string, segmentId: string, text: string }',
+  merge_transcript_segments: '{ transcriptId: string, segmentId: string }',
+  remove_transcript: '{ transcriptId: string }',
+  update_translation_segment: '{ translationId: string, segmentId: string, text: string }',
+  set_translation_glossary:
+    '{ translationId: string, entries: Array<{ from: string, to: string }> }',
+  remove_translation: '{ translationId: string }'
 }
 
 /**

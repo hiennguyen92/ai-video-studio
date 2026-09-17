@@ -51,12 +51,27 @@ export async function detectExportCapabilities(): Promise<ExportCapabilities> {
 
 const activeJobs = new Map<string, ExportHandle>()
 
-function emit(sender: WebContents, event: ExportProgressEvent): void {
-  if (!sender.isDestroyed()) sender.send(IPC_EVENT.exportProgress, event)
+/**
+ * Sự kiện mới nhất của từng job, để ai không nghe IPC — agent MCP — vẫn HỎI được
+ * tiến độ. Giữ cả job đã xong: agent cần đọc được kết quả sau khi job kết thúc.
+ */
+const latestEvents = new Map<string, ExportProgressEvent>()
+
+export function exportJobStatus(jobId: string): ExportProgressEvent | undefined {
+  return latestEvents.get(jobId)
 }
 
+function emit(sender: WebContents | null, event: ExportProgressEvent): void {
+  latestEvents.set(event.jobId, event)
+  if (sender && !sender.isDestroyed()) sender.send(IPC_EVENT.exportProgress, event)
+}
+
+/**
+ * `sender` null nghĩa là job của agent MCP: không đẩy sự kiện về cửa sổ, vì hộp
+ * thoại Xuất đang mở sẽ tưởng đó là job của nó và tự reset.
+ */
 export async function runExport(
-  sender: WebContents,
+  sender: WebContents | null,
   request: ExportRequest
 ): Promise<{ jobId: string }> {
   const jobId = createId('export')
@@ -122,6 +137,7 @@ export async function runExport(
         )
 
   activeJobs.set(jobId, handle)
+  emit(sender, { jobId, status: 'running', outTimeUs: 0 })
 
   void handle.done
     .then((result) => {

@@ -55,6 +55,8 @@ import {
   planRippleTrimClip,
   planSlipClip
 } from './chat-tool-timeline-edit-modes'
+import { planSetTextStyle } from './chat-tool-text-style'
+import { planTranscriptDataTool } from './chat-tool-transcript-subtitle-data'
 
 /**
  * Dịch lời gọi công cụ của AI thành LỆNH SỬA đã có sẵn của trình biên tập.
@@ -929,10 +931,19 @@ function planOne(context: ChatEditContext, tool: ChatToolName, args: unknown): P
       const track = document.tracks.find((item) => item.id === input.trackId)
       if (!track) throw new Error(`Không tìm thấy track "${input.trackId}"`)
 
-      const patch: { name?: string; hidden?: boolean; locked?: boolean } = {}
+      const patch: Extract<EditorCommand, { type: 'track/update' }>['patch'] = {}
       if (input.name !== undefined) patch.name = input.name
       if (input.hidden !== undefined) patch.hidden = input.hidden
       if (input.locked !== undefined) patch.locked = input.locked
+      // Solo và vai trò chỉ được đọc ở lane tiếng; nhận cho lane khác là báo agent
+      // "đã áp dụng" một thứ không có tác dụng gì.
+      if ((input.solo !== undefined || input.role !== undefined) && track.kind !== 'audio') {
+        throw new Error('Chỉ lane tiếng mới có solo và vai trò')
+      }
+      if (input.solo !== undefined) patch.solo = input.solo
+      if (input.role !== undefined) {
+        patch.role = input.role
+      }
       if (Object.keys(patch).length === 0) throw new Error('Chưa nêu thứ gì để đổi')
 
       return {
@@ -997,6 +1008,13 @@ function planOne(context: ChatEditContext, tool: ChatToolName, args: unknown): P
       const nextEnd = endUs ?? overlay.endUs
       if (nextEnd <= nextStart) throw new Error('Thời điểm kết thúc phải sau thời điểm bắt đầu')
 
+      if (input.trackId !== undefined) {
+        const lane = document.tracks.find((item) => item.id === input.trackId)
+        if (!lane || lane.kind !== 'text') {
+          throw new Error(`"${input.trackId}" không phải lane chữ`)
+        }
+      }
+
       const frame = input.frame !== undefined ? checkedFrame(input.frame) : undefined
       const frameColors = frame ? frameTextColors(frame) : undefined
 
@@ -1010,7 +1028,11 @@ function planOne(context: ChatEditContext, tool: ChatToolName, args: unknown): P
             ...(input.text !== undefined ? { text: input.text } : {}),
             ...(startUs !== undefined ? { startUs } : {}),
             ...(endUs !== undefined ? { endUs } : {}),
+            ...(input.trackId !== undefined ? { trackId: input.trackId } : {}),
             ...(input.animation !== undefined ? { animation: input.animation } : {}),
+            ...(input.animationDurationSeconds !== undefined
+              ? { animationDurationUs: secondsToMicros(input.animationDurationSeconds) }
+              : {}),
             ...(input.exit !== undefined ? { exitAnimation: input.exit } : {}),
             ...(input.glow !== undefined ? { glow: input.glow } : {}),
             // `!== undefined` chứ KHÔNG phải kiểm truthy: `null` là lệnh bỏ khung
@@ -1052,6 +1074,7 @@ function planOne(context: ChatEditContext, tool: ChatToolName, args: unknown): P
             trackId: input.subtitleTrackId,
             cueId: input.cueId,
             ...(input.text !== undefined ? { text: input.text } : {}),
+            ...(input.secondaryText !== undefined ? { textSecondary: input.secondaryText } : {}),
             ...(startUs !== undefined ? { startUs } : {}),
             ...(endUs !== undefined ? { endUs } : {})
           }
@@ -1145,6 +1168,19 @@ function planOne(context: ChatEditContext, tool: ChatToolName, args: unknown): P
         ]
       }
     }
+
+    case 'set_text_style':
+      return { tool, ...planSetTextStyle(document, chatToolSchemas.set_text_style.parse(args)) }
+
+    case 'rename_subtitle_track':
+    case 'remove_subtitle_track':
+    case 'update_transcript_segment':
+    case 'merge_transcript_segments':
+    case 'remove_transcript':
+    case 'update_translation_segment':
+    case 'set_translation_glossary':
+    case 'remove_translation':
+      return { tool, ...planTranscriptDataTool(document, tool, args) }
 
     case 'set_text_position': {
       const input = chatToolSchemas.set_text_position.parse(args)

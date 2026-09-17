@@ -170,6 +170,13 @@ test('agent liệt kê được công cụ dựng phim', async () => {
   expect(names).toContain('get_project_overview')
   expect(names).toContain('get_transcript')
   expect(names).toContain('list_media')
+  expect(names).toContain('get_translation')
+  // Hoàn tác riêng của MCP — agent bên ngoài không có phím Cmd+Z.
+  expect(names).toContain('undo')
+  expect(names).toContain('redo')
+  expect(names).toContain('start_export')
+  expect(names).toContain('get_export_status')
+  expect(names).toContain('cancel_export')
   // Nhóm dựng — sinh từ chính danh mục của AI Chat trong app.
   //
   // Kiểm ĐỦ chứ không kiểm vài cái: máy chủ MCP đổi từng schema Zod sang JSON
@@ -267,6 +274,38 @@ test('bản dựng của agent hoàn tác được như mọi thao tác tay', as
   await expect(page.locator('.timeline-clip')).toHaveCount(0)
   await page.keyboard.press('ControlOrMeta+Shift+z')
   await expect(page.locator('.timeline-clip')).toHaveCount(2)
+})
+
+test('agent tự hoàn tác và làm lại được qua MCP', async () => {
+  const client = await connect()
+
+  const undone = textOf(await client.callTool({ name: 'undo', arguments: {} }))
+  expect(undone).toContain('Đã hoàn tác: MCP:')
+  await expect(page.locator('.timeline-clip')).toHaveCount(0)
+
+  const redone = textOf(await client.callTool({ name: 'redo', arguments: {} }))
+  expect(redone).toContain('Đã làm lại: MCP:')
+  await expect(page.locator('.timeline-clip')).toHaveCount(2)
+
+  await client.close()
+})
+
+test('agent sửa được chữ transcript và đọc lại thấy chữ mới', async () => {
+  const client = await connect()
+
+  const fixed = textOf(
+    await client.callTool({
+      name: 'update_transcript_segment',
+      arguments: { transcriptId: 'tr_mcp', segmentId: 'g3', text: 'Chốt đơn ngay' }
+    })
+  )
+  expect(fixed).toContain('Đã áp dụng')
+  const transcript = textOf(await client.callTool({ name: 'get_transcript', arguments: {} }))
+  expect(transcript).toContain('id=g3 9.00s–12.00s: Chốt đơn ngay')
+
+  // Trả lại như cũ để các bước sau không phụ thuộc vào phép thử này.
+  expect(textOf(await client.callTool({ name: 'undo', arguments: {} }))).toContain('Đã hoàn tác')
+  await client.close()
 })
 
 test('bản dựng được lưu vào dự án với đúng mốc thời gian', async () => {
@@ -395,6 +434,44 @@ test('agent bị chặn khi chọn cú máy không tồn tại', async () => {
   )
   expect(result).toContain('Bị từ chối')
   expect(result).toContain('Không có cú máy số')
+
+  await client.close()
+})
+
+test('agent xuất được video qua MCP và theo dõi tới khi xong', async () => {
+  const client = await connect()
+  const outputPath = join(workDir, 'agent-xuat.mp4')
+
+  // Đường dẫn tương đối vô nghĩa với app: agent chạy ở thư mục khác.
+  const relative = textOf(
+    await client.callTool({ name: 'start_export', arguments: { outputPath: 'x.mp4' } })
+  )
+  expect(relative).toContain('tuyệt đối')
+
+  const started = textOf(
+    await client.callTool({ name: 'start_export', arguments: { outputPath, scale: 'quarter' } })
+  )
+  const jobId = /jobId=(\S+)/.exec(started)?.[1]
+  expect(jobId, started).toBeTruthy()
+
+  // Hỏi lại như một agent thật: xuất mất thời gian, lời gọi đầu chỉ trả jobId.
+  let status = ''
+  await expect
+    .poll(
+      async () => {
+        status = textOf(await client.callTool({ name: 'get_export_status', arguments: { jobId } }))
+        return /status=(\w+)/.exec(status)?.[1]
+      },
+      { timeout: 120_000, intervals: [500] }
+    )
+    .not.toBe('running')
+  expect(status).toContain('status=succeeded')
+  expect(status).toContain(`output=${outputPath}`)
+  expect((await stat(outputPath)).size).toBeGreaterThan(0)
+
+  // Không ghi đè ngầm bản xuất đã có.
+  const again = textOf(await client.callTool({ name: 'start_export', arguments: { outputPath } }))
+  expect(again).toContain('overwrite:true')
 
   await client.close()
 })

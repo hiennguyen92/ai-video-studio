@@ -134,6 +134,15 @@ giao diện chỉ lộ ra khi chuyển tab với dữ liệu thật.
       (Adjust), `set_clip_zoom` (Zoom); thêm `ripple_trim_clip`, `slip_clip`,
       `rate_stretch_clip`. Tổng quan dự án in đoạn nguồn, tốc độ, fade, Adjust, filter, zoom
       của từng clip.
+- [x] Phủ nốt MCP theo những gì giao diện sửa được: `set_text_style` (cỡ chữ, nền hộp,
+      neo trên/giữa/dưới, lề, bóng, số ký tự mỗi dòng, mẫu phụ đề); `rename_subtitle_track`,
+      `remove_subtitle_track`; sửa/gộp/xoá transcript; sửa đoạn dịch, glossary, xoá bản dịch;
+      `set_track` thêm solo và vai trò; `update_text_overlay` dời lane và thời lượng hiệu ứng;
+      `update_subtitle_cue` sửa dòng song ngữ. Riêng MCP: `get_translation`, `undo`, `redo`,
+      và xuất video `start_export` / `get_export_status` / `cancel_export` (chạy nền, agent
+      hỏi tiến độ; tự chọn Remotion khi dự án có chữ overlay/chuyển cảnh; không ghi đè
+      file có sẵn nếu không nêu `overwrite`). Vẫn cố ý KHÔNG phơi các job tốn tiền (phiên
+      âm, dịch, lồng tiếng, nhạc); AI Chat trong app vẫn không tự xuất.
 - [x] Hiệu ứng ra và viền phát sáng cho chữ overlay
 - [x] Khung nền dễ thương cho chữ overlay: năm kiểu, sáu bộ màu, ba điểm trang
       trí góc. Vẽ bằng SVG sinh ra trong mã chứ không gom file ảnh — không giấy
