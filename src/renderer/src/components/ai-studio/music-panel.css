@@ -120,3 +120,19 @@
   padding: var(--space-1) var(--space-3);
   font-size: var(--text-sm);
 }
+
+/* Hàng nút thẳng lề với chữ và ô nhập phía trên. */
+.music-panel__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-3);
+}
+
+.music-panel__actions .music-panel__hint {
+  padding: 0;
+}
+
+.music-generation .notice {
+  margin: var(--space-1) var(--space-3);
+}
