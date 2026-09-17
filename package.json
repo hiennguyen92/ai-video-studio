@@ -1,6 +1,6 @@
 {
   "name": "ai-video-studio",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "AI Video Studio — trình chỉnh sửa video desktop với timeline nhiều track và bộ công cụ AI (phiên âm, dịch, lồng tiếng, phụ đề).",
   "main": "./out/main/index.js",
   "author": "AI Video Studio",
