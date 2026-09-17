@@ -289,6 +289,8 @@ export const dictionaryVi = {
       'ffmpeg KHÔNG vẽ được transition và Text. Xuất bằng nó sẽ ra file thiếu những phần đó.',
     engineHint:
       'ffmpeg nhanh hơn khoảng 6,7 lần. Remotion dùng chung bản dựng với preview nên bản xuất không lệch bản xem trước, và là đường duy nhất làm được transition cùng Text động.',
+    previewModeWarning:
+      'Còn {count} clip đang bật chế độ soi vùng của effect. Bản xuất sẽ có mảng màu đè lên hình — tắt "Soi vùng da" ở Inspector trước khi xuất.',
     burnSubtitles: 'Nung phụ đề vào hình',
     exportSrt: 'Xuất thêm file SRT',
     noSubtitles: 'Dự án chưa có phụ đề nào',

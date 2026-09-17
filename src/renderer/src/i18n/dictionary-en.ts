@@ -289,6 +289,8 @@ export const dictionaryEn: Dictionary = {
       'ffmpeg cannot draw transitions or Text. Exporting with it produces a file missing them.',
     engineHint:
       'ffmpeg is about 6.7x faster. Remotion shares the composition with the preview, so the export cannot drift from what you saw, and it is the only path to transitions and animated Text.',
+    previewModeWarning:
+      '{count} clip(s) still have an effect\'s inspect mode on. The export will contain the colour overlay — turn off "Highlight skin area" in the Inspector first.',
     burnSubtitles: 'Burn subtitles into the video',
     exportSrt: 'Also export an SRT file',
     noSubtitles: 'This project has no subtitles yet',

@@ -242,3 +242,28 @@ test('timeline gắn nhãn LUT và Zoom trước các effect', async () => {
   // Tên đầy đủ kèm loại nằm trong tooltip của clip, vì nhãn không bắt chuột.
   await expect(clip).toHaveAttribute('title', /Filters: Phim đen trắng/)
 })
+
+test('bật soi vùng da thì hộp thoại Xuất video cảnh báo, tắt thì hết', async () => {
+  await page.locator('.timeline-clip').first().click()
+  await studio().getByRole('tab', { name: 'Effects', exact: true }).click()
+  await studio()
+    .locator('.library-panel__section:not([hidden])')
+    .locator('[data-effect-kind="skin-smooth"]')
+    .click()
+
+  const inspector = page.getByRole('region', { name: 'Thuộc tính' })
+  await inspector.getByRole('tab', { name: 'Video', exact: true }).click()
+  const skin = inspector.locator('.effect-stack__item').last()
+  await skin.getByLabel('Soi vùng da').selectOption('on')
+
+  // Chế độ soi vẽ đè màu và bản xuất vẽ y hệt preview, nên phải cảnh báo trước khi xuất.
+  await page.getByRole('button', { name: 'Xuất video' }).click()
+  const dialog = page.getByRole('dialog', { name: 'Xuất video' })
+  await expect(dialog.locator('.notice--warning')).toContainText('soi vùng')
+  await dialog.getByRole('button', { name: 'Đóng' }).click()
+
+  await skin.getByLabel('Soi vùng da').selectOption('off')
+  await page.getByRole('button', { name: 'Xuất video' }).click()
+  await expect(dialog.locator('.notice--warning')).toHaveCount(0)
+  await dialog.getByRole('button', { name: 'Đóng' }).click()
+})

@@ -3,6 +3,7 @@ import type { ExportCapabilities, ExportProgressEvent } from '../../../../shared
 import { FRAME_RATE_PRESETS, formatClockTime } from '../../../../shared/domain/time-units'
 import { selectDocument, selectDurationUs, useEditorStore } from '../../state/editor-store'
 import { requiresRemotionRenderer } from '../../../../shared/domain/remotion-render-plan'
+import { countClipsInEffectPreviewMode } from '../../../../shared/domain/clip-effect-preview-mode'
 import { interpolate, useT } from '../../i18n/use-translation'
 import { ToolButton } from '../ui/tool-button'
 import { EmptyState } from '../ui/empty-state'
@@ -61,6 +62,7 @@ export function ExportDialog({ onClose }: { onClose(): void }): JSX.Element {
    * đăng video lên. Nên khi dự án có hai thứ đó, mặc định chuyển sang Remotion.
    */
   const needsRemotion = document ? requiresRemotionRenderer(document) : false
+  const clipsInPreviewMode = countClipsInEffectPreviewMode(document ?? null)
   const [engine, setEngine] = useState<'ffmpeg' | 'remotion'>('ffmpeg')
   const effectiveEngine = needsRemotion && engine === 'ffmpeg' ? 'remotion' : engine
   const [capabilities, setCapabilities] = useState<ExportCapabilities | null>(null)
@@ -164,6 +166,17 @@ export function ExportDialog({ onClose }: { onClose(): void }): JSX.Element {
           <EmptyState title={t.export.emptyTimeline} hint={t.export.emptyTimelineHint} />
         ) : (
           <div className="export-dialog__body">
+            {/*
+              Chế độ soi vùng của effect vẽ đè màu lên hình và bản xuất vẽ y hệt
+              preview. Quên tắt thì file ra loang màu, mà thường chỉ phát hiện sau
+              khi đã đăng — nên nói ngay ở đây, cạnh nút Bắt đầu xuất.
+            */}
+            {clipsInPreviewMode > 0 && (
+              <div className="notice notice--warning">
+                {interpolate(t.export.previewModeWarning, { count: clipsInPreviewMode })}
+              </div>
+            )}
+
             <div className="field-row">
               <span className="field-row__label">{t.export.outputLabel}</span>
               <div className="export-dialog__path">
