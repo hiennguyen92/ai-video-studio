@@ -661,6 +661,16 @@ export const dictionaryEn: Dictionary = {
     selectClipFirst: 'Select a clip on the timeline to transcribe.',
     selectedClip: 'Clip: {name}',
     languageAuto: 'Auto-detect',
+    segmentation: 'Segments',
+    segmentationPhrase: 'Short phrases (subtitle-sized)',
+    segmentationSentence: 'By sentence',
+    segmentationWord: 'By word',
+    segmentationPhraseHint:
+      'Each segment is up to about 60 characters, split at word boundaries — one or two subtitle lines.',
+    segmentationSentenceHint:
+      'Each segment is one full sentence, split at full stops, question and exclamation marks. Very long sentences break at commas.',
+    segmentationWordHint:
+      'Each word becomes its own segment with its own timing (uses DTW for tighter timestamps, slightly slower).',
     start: 'Start transcribing',
     running: 'Transcribing…',
     cancel: 'Cancel',

@@ -1,3 +1,4 @@
+import { applySttSegmentation, type SttSegmentationMode } from '../../shared/ai/stt-segmentation'
 import { spawn } from 'node:child_process'
 import { access, readFile, rm } from 'node:fs/promises'
 import { constants } from 'node:fs'
@@ -44,6 +45,20 @@ const DEFAULT_BINARY_CANDIDATES = [
  * đề thì chữ tràn kín màn hình. Con số này cho ra đoạn vừa một tới hai dòng.
  */
 const MAX_SEGMENT_CHARACTERS = 60
+
+/**
+ * Tên preset `--dtw` của whisper.cpp suy từ tên file model, ví dụ `ggml-medium.bin` →
+ * `medium`, `ggml-large-v3-q5_0.bin` → `large.v3`. Không nhận ra thì `undefined`:
+ * DTW sai loại model cho mốc thời gian vô nghĩa.
+ */
+export function whisperDtwPreset(modelPath: string): string | undefined {
+  const match =
+    /^ggml-(tiny|base|small|medium|large-v1|large-v2|large-v3-turbo|large-v3)(\.en)?(?:[-.].*)?\.bin$/i.exec(
+      basename(modelPath)
+    )
+  if (!match) return undefined
+  return `${match[1].toLowerCase().replace(/-/g, '.')}${match[2] ?? ''}`
+}
 
 export const whisperCppDescriptor: ProviderDescriptor = {
   id: PROVIDER_ID,
@@ -121,6 +136,9 @@ interface RunOptions {
   audioPath: string
   language?: string
   threads?: number
+  segmentation: SttSegmentationMode
+  /** Preset `--dtw` cho mốc từng từ chính xác hơn; bỏ trống thì không dùng. */
+  dtwPreset?: string
   signal: AbortSignal
   onProgress?(ratio: number): void
 }
@@ -143,14 +161,17 @@ async function runWhisper(options: RunOptions): Promise<string> {
     '-ojf',
     '-of',
     outputBase,
-    // Chia đoạn theo ranh giới TỪ, không cắt giữa chữ.
-    '-ml',
-    String(MAX_SEGMENT_CHARACTERS),
-    '-sow',
     // In tiến trình thật để job hiển thị đúng phần trăm.
     '-pp',
     '-np'
   ]
+  // Cụm ngắn: để whisper tự cắt ~60 ký tự ở ranh giới TỪ. Theo câu / theo từ: để
+  // nguyên đoạn tự nhiên của whisper rồi gom lại theo mốc từng từ ở bước sau — cắt
+  // theo độ dài trước thì mất ranh giới câu.
+  if (options.segmentation === 'phrase') args.push('-ml', String(MAX_SEGMENT_CHARACTERS), '-sow')
+  // DTW chỉ thật sự tính mốc khi TẮT flash attention: đo trên whisper-cli 1.9.2, để
+  // flash attention bật (mặc định) thì mọi `t_dtw` đều là -1.
+  if (options.dtwPreset) args.push('-dtw', options.dtwPreset, '-nfa')
   if (options.threads && options.threads > 0) args.push('-t', String(options.threads))
 
   const child = spawn(options.binaryPath, args)
@@ -259,21 +280,37 @@ export const whisperCppSttAdapter: SttAdapter = {
     const binaryPath = await resolveWhisperBinary(context.config?.binaryPath)
     const threads = Number(context.config?.threads ?? '')
 
-    const json = await runWhisper({
-      binaryPath,
-      modelPath,
-      audioPath: request.audioPath,
-      language: request.language,
-      threads: Number.isFinite(threads) && threads > 0 ? threads : undefined,
-      signal: context.signal,
-      onProgress: context.onProgress
-    })
+    const segmentation = request.segmentation ?? 'phrase'
+    const run = (dtwPreset?: string): Promise<string> =>
+      runWhisper({
+        binaryPath,
+        modelPath,
+        audioPath: request.audioPath,
+        language: request.language,
+        threads: Number.isFinite(threads) && threads > 0 ? threads : undefined,
+        segmentation,
+        dtwPreset,
+        signal: context.signal,
+        onProgress: context.onProgress
+      })
+
+    // Theo từ cần mốc từng từ sát nhất: bật DTW nếu nhận ra loại model. DTW hỏng (bản
+    // whisper-cli cũ, model lạ) thì chạy lại không có nó — mốc thô vẫn hơn không có gì.
+    const dtwPreset = segmentation === 'word' ? whisperDtwPreset(modelPath) : undefined
+    let json: string
+    try {
+      json = await run(dtwPreset)
+    } catch (error) {
+      const cancelled = error instanceof ProviderError && error.kind === 'cancelled'
+      if (!dtwPreset || cancelled) throw error
+      json = await run()
+    }
 
     const parsed = parseWhisperJson(json)
     return {
       language: parsed.language,
       languageAutoDetected: !request.language,
-      segments: parsed.segments
+      segments: applySttSegmentation(parsed.segments, segmentation)
     }
   },
 

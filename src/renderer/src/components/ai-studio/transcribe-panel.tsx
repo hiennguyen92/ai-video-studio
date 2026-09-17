@@ -1,3 +1,7 @@
+import {
+  STT_SEGMENTATION_MODES,
+  type SttSegmentationMode
+} from '../../../../shared/ai/stt-segmentation'
 import { useCallback, useEffect, useMemo, useState, type JSX } from 'react'
 import type { Transcript } from '../../../../shared/domain/transcript-types'
 import { formatClockTime } from '../../../../shared/domain/time-units'
@@ -23,6 +27,19 @@ import './transcribe-panel.css'
  * được lưu theo hệ toạ độ của ASSET, nên phải cộng vị trí clip trên timeline mới
  * ra được vị trí cần tua.
  */
+
+/** Nhãn và mô tả của từng cách chia đoạn. */
+const SEGMENTATION_LABEL_KEYS = {
+  phrase: 'segmentationPhrase',
+  sentence: 'segmentationSentence',
+  word: 'segmentationWord'
+} as const satisfies Record<SttSegmentationMode, string>
+
+const SEGMENTATION_HINT_KEYS = {
+  phrase: 'segmentationPhraseHint',
+  sentence: 'segmentationSentenceHint',
+  word: 'segmentationWordHint'
+} as const satisfies Record<SttSegmentationMode, string>
 
 const PROVIDER_ID = 'whisper-cpp'
 
@@ -71,6 +88,7 @@ export function TranscribePanel({
   const { models, downloads, download, cancelDownload, deleteModel } = useWhisperModels()
   const { state: transcription, start, cancel } = useTranscription()
   const [language, setLanguage] = useState('vi')
+  const [segmentation, setSegmentation] = useState<SttSegmentationMode>('phrase')
   const [activeModelPath, setActiveModelPath] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -131,9 +149,10 @@ export function TranscribePanel({
       durationUs: Math.round(selected.clip.durationUs * selected.clip.speed),
       providerId: PROVIDER_ID,
       language: language || undefined,
+      segmentation,
       label: `Phiên âm ${selected.asset.name}`
     })
-  }, [selected, activeModelPath, language, start, t.transcribe.noModel])
+  }, [selected, activeModelPath, language, segmentation, start, t.transcribe.noModel])
 
   /**
    * Tua preview tới đoạn được nhấn.
@@ -274,6 +293,23 @@ export function TranscribePanel({
           ))}
         </select>
       </div>
+
+      <div className="field-row">
+        <span className="field-row__label">{t.transcribe.segmentation}</span>
+        <select
+          value={segmentation}
+          onChange={(event) => setSegmentation(event.target.value as SttSegmentationMode)}
+          aria-label={t.transcribe.segmentation}
+          disabled={busy}
+        >
+          {STT_SEGMENTATION_MODES.map((mode) => (
+            <option key={mode} value={mode}>
+              {t.transcribe[SEGMENTATION_LABEL_KEYS[mode]]}
+            </option>
+          ))}
+        </select>
+      </div>
+      <p className="transcribe-panel__hint">{t.transcribe[SEGMENTATION_HINT_KEYS[segmentation]]}</p>
 
       <div className="transcribe-panel__actions">
         {busy ? (

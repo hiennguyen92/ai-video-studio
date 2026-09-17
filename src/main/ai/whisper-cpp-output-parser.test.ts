@@ -156,3 +156,19 @@ describe('parseProgressLine', () => {
     expect(parseProgressLine('')).toBeNull()
   })
 })
+
+describe('mốc DTW', () => {
+  it('có t_dtw thì dùng làm mốc kết thúc của từ; -1 thì dùng offsets', () => {
+    const words = mergeTokensIntoWords([
+      { text: ' Hello', offsets: { from: 50, to: 450 }, t_dtw: 34 },
+      { text: ' ever', offsets: { from: 460, to: 700 }, t_dtw: 70 },
+      { text: 'yone', offsets: { from: 700, to: 960 }, t_dtw: 104 },
+      { text: ' ok', offsets: { from: 1000, to: 1200 }, t_dtw: -1 }
+    ])
+    expect(words).toEqual([
+      { text: 'Hello', startUs: 50_000, endUs: 340_000 },
+      { text: 'everyone', startUs: 460_000, endUs: 1_040_000 },
+      { text: 'ok', startUs: 1_000_000, endUs: 1_200_000 }
+    ])
+  })
+})

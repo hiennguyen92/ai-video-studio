@@ -163,6 +163,11 @@ test('phiên âm clip thật và transcript vào project', async () => {
 
   // Câu thử là tiếng Anh nên phải đổi ngôn ngữ, mặc định đang là tiếng Việt.
   await page.getByRole('tabpanel', { name: 'Phiên âm' }).getByLabel('Ngôn ngữ').selectOption('en')
+  // Chia theo câu: câu thử có đúng ba câu, nên phải ra đúng ba đoạn.
+  await page
+    .getByRole('tabpanel', { name: 'Phiên âm' })
+    .getByLabel('Chia đoạn')
+    .selectOption('sentence')
 
   const startButton = page.getByRole('button', { name: 'Bắt đầu phiên âm' })
   await expect(startButton).toBeEnabled()
@@ -175,8 +180,13 @@ test('phiên âm clip thật và transcript vào project', async () => {
   // Nội dung phải khớp câu đã đọc — đây mới là bằng chứng nhận dạng thật sự chạy,
   // không phải chỉ có job chạy xong. So khớp lỏng vì model nhỏ hay sai hoa/thường
   // và dấu câu.
-  // Đoạn dài phải được chia nhỏ, không dồn hết vào một khối chữ tràn màn hình.
-  expect(await segments.count()).toBeGreaterThan(1)
+  // Mỗi câu một đoạn: không dồn cả ba câu vào một khối, cũng không cắt giữa câu.
+  await expect(segments).toHaveCount(3)
+  for (const text of await segments
+    .locator('textarea')
+    .evaluateAll((nodes) => nodes.map((node) => (node as HTMLTextAreaElement).value.trim()))) {
+    expect(text).toMatch(/[.!?]$/)
+  }
 
   const spoken = (await segments.allTextContents()).join(' ').toLowerCase()
   expect(spoken).toContain('quick brown fox')

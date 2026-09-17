@@ -1,3 +1,4 @@
+import type { SttSegmentationMode } from '../../../shared/ai/stt-segmentation'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { JobRecord } from '../../../shared/jobs/job-types'
 import type { Transcript } from '../../../shared/domain/transcript-types'
@@ -30,6 +31,7 @@ export interface StartTranscriptionOptions {
   providerId: string
   /** Bỏ trống để engine tự nhận diện. */
   language?: string
+  segmentation?: SttSegmentationMode
   label: string
 }
 
@@ -124,6 +126,7 @@ export function useTranscription(): {
       sourceInUs: options.sourceInUs,
       durationUs: options.durationUs,
       language: options.language,
+      segmentation: options.segmentation,
       label: options.label
     })
 

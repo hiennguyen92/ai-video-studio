@@ -1,3 +1,4 @@
+import type { SttSegmentationMode } from './stt-segmentation'
 import type {
   ConnectionTestResult,
   ProviderDescriptor,
@@ -108,6 +109,8 @@ export interface SttRequest {
   language?: string
   wantWordTimestamps: boolean
   wantSpeakerLabels: boolean
+  /** Cách chia đoạn; bỏ trống = cụm ngắn (mặc định cũ). */
+  segmentation?: SttSegmentationMode
 }
 
 export interface SttWord {

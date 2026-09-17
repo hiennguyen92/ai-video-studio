@@ -15,6 +15,11 @@ interface WhisperToken {
   offsets?: { from?: number; to?: number }
   /** Xác suất của token, 0..1. */
   p?: number
+  /**
+   * Mốc căn bằng DTW (đơn vị 10 ms), chỉ có khi chạy với `-dtw`; -1 khi không tính.
+   * Đo thật: nó rơi vào CUỐI token, sát hơn `offsets.to`.
+   */
+  t_dtw?: number
 }
 
 interface WhisperSegment {
@@ -60,7 +65,9 @@ export function mergeTokensIntoWords(tokens: WhisperToken[]): SttWord[] {
     if (!text) continue
 
     const fromUs = (token.offsets?.from ?? 0) * 1000
-    const toUs = (token.offsets?.to ?? 0) * 1000
+    // Có mốc DTW thì dùng làm mốc kết thúc (chính xác hơn), nhưng không để trước mốc đầu.
+    const dtwUs = token.t_dtw !== undefined && token.t_dtw >= 0 ? token.t_dtw * 10_000 : undefined
+    const toUs = dtwUs !== undefined ? Math.max(fromUs, dtwUs) : (token.offsets?.to ?? 0) * 1000
 
     const previous = words.at(-1)
     if (startsNewWord || !previous) {

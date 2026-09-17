@@ -1,3 +1,4 @@
+import type { SttSegmentationMode } from '../ai/stt-segmentation'
 import type { SoundEffectLibraryStatus } from '../domain/sound-effect-catalog'
 import type { MediaAsset } from '../domain/media-asset-types'
 import type { ProjectDocument } from '../domain/project-document-types'
@@ -243,6 +244,7 @@ export interface TranscribeIpcRequest {
   sourceInUs: number
   durationUs: number
   language?: string
+  segmentation?: SttSegmentationMode
   label: string
 }
 

@@ -659,6 +659,16 @@ export const dictionaryVi = {
     selectClipFirst: 'Chọn một clip trên timeline để phiên âm.',
     selectedClip: 'Clip: {name}',
     languageAuto: 'Tự nhận diện',
+    segmentation: 'Chia đoạn',
+    segmentationPhrase: 'Cụm ngắn (vừa phụ đề)',
+    segmentationSentence: 'Theo câu',
+    segmentationWord: 'Theo từ',
+    segmentationPhraseHint:
+      'Mỗi đoạn tối đa khoảng 60 ký tự, cắt ở ranh giới từ — vừa một hai dòng phụ đề.',
+    segmentationSentenceHint:
+      'Mỗi đoạn là trọn một câu, cắt theo dấu chấm, hỏi, cảm. Câu quá dài được ngắt ở dấu phẩy.',
+    segmentationWordHint:
+      'Mỗi từ là một đoạn, có mốc thời gian riêng (bật DTW cho mốc chính xác hơn, chạy chậm hơn một chút).',
     start: 'Bắt đầu phiên âm',
     running: 'Đang phiên âm…',
     cancel: 'Huỷ',

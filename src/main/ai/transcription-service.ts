@@ -1,3 +1,4 @@
+import type { SttSegmentationMode } from '../../shared/ai/stt-segmentation'
 import { join } from 'node:path'
 import { rm } from 'node:fs/promises'
 import type { JobRecord } from '../../shared/jobs/job-types'
@@ -33,6 +34,8 @@ export interface TranscriptionRequest {
   durationUs: Micros
   /** Bỏ trống để engine tự nhận diện ngôn ngữ. */
   language?: string
+  /** Cách chia đoạn; bỏ trống = cụm ngắn. */
+  segmentation?: SttSegmentationMode
   label: string
 }
 
@@ -86,7 +89,9 @@ export async function enqueueTranscription(request: TranscriptionRequest): Promi
     sourcePath: request.sourcePath,
     sourceInUs: request.sourceInUs,
     durationUs: request.durationUs,
-    language: request.language ?? null
+    language: request.language ?? null,
+    // Cùng file, cùng model mà chia đoạn khác thì kết quả khác: phải vào vân tay.
+    segmentation: request.segmentation ?? 'phrase'
   })
 
   return jobQueue.enqueue({
@@ -128,7 +133,8 @@ export async function enqueueTranscription(request: TranscriptionRequest): Promi
             audioPath,
             language: request.language,
             wantWordTimestamps: true,
-            wantSpeakerLabels: false
+            wantSpeakerLabels: false,
+            segmentation: request.segmentation
           }
         )
 
