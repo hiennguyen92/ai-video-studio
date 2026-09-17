@@ -47,6 +47,24 @@
   padding: var(--space-2) var(--space-4);
 }
 
+/*
+ * Chú thích dưới một trường: thụt vào ĐÚNG cột giá trị của `field-row` (nhãn rộng
+ * 150px + khe), để nó đọc như phần tiếp theo của trường chứ không như một đoạn văn
+ * trôi nổi giữa hộp thoại.
+ */
+.export-dialog__hint {
+  margin: 0 0 var(--space-2);
+  padding: 0 var(--space-4) 0 calc(var(--space-4) + 150px + var(--space-2));
+  font-size: var(--text-sm);
+  line-height: 1.55;
+  color: var(--text-muted);
+}
+
+/* Notice trong hộp thoại ăn theo lề ngang của field-row, không dùng lề mặc định. */
+.export-dialog__body > .notice {
+  margin: var(--space-2) var(--space-4);
+}
+
 .export-dialog__path {
   display: flex;
   align-items: center;
@@ -66,6 +84,13 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* Câu văn xuôi đứng ở cột giá trị: font mono dành cho số và đường dẫn, không phải cho câu. */
+.export-dialog__path-value--empty,
+.export-dialog__body .field-row__value--prose {
+  font-family: inherit;
+  direction: ltr;
 }
 
 .export-dialog__inline {

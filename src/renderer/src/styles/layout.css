@@ -260,6 +260,7 @@
   padding: var(--space-2) var(--space-3);
   border-radius: var(--radius-md);
   font-size: var(--text-sm);
+  line-height: 1.55;
   background: var(--danger-muted);
   color: var(--danger);
   border: 1px solid rgba(248, 113, 113, 0.3);
@@ -269,6 +270,20 @@
   background: rgba(251, 191, 36, 0.12);
   color: var(--warning);
   border-color: rgba(251, 191, 36, 0.3);
+}
+
+/* Thông báo mang TIN, không phải lỗi: màu nhấn, chữ đọc như chữ thường. */
+.notice--info {
+  background: var(--accent-muted);
+  color: var(--text-primary);
+  border-color: var(--accent-border);
+}
+
+/* Ký hiệu đầu dòng. Cùng line-height với phần chữ để nằm ngang dòng đầu. */
+.notice__icon {
+  flex: none;
+  line-height: 1.55;
+  opacity: 0.9;
 }
 
 /* ── Trường nhập trong Inspector ───────────────────────────────── */

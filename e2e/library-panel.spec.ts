@@ -222,7 +222,7 @@ test('look đi tới file xuất ra: đen trắng thì khung hình mất màu', 
   const dialog = page.getByRole('dialog', { name: 'Xuất video' })
   await dialog.getByRole('button', { name: 'Chọn nơi lưu…' }).click()
   // Look không vẽ được bằng ffmpeg: app phải tự chọn Remotion, không để look rơi mất.
-  await expect(dialog.getByText(/phải dùng Remotion/)).toBeVisible()
+  await expect(dialog.locator('.notice--info')).toContainText('Remotion')
   await dialog.getByRole('button', { name: 'Bắt đầu xuất' }).click()
   await expect(dialog.getByText('Xuất xong')).toBeVisible({ timeout: 240_000 })
   await dialog.getByRole('button', { name: 'Đóng' }).first().click()
@@ -278,7 +278,7 @@ test('thanh tab con bám mép trên khi cuộn danh sách dài', async () => {
 test('Effects có lưới thẻ, Filters nằm ngay sau nó, Sound Effects có đủ danh sách', async () => {
   await studio().getByRole('tab', { name: 'Effects', exact: true }).click()
   await expect(studio().locator('.library-panel__section:not([hidden]) .library-card')).toHaveCount(
-    29
+    30
   )
 
   // Filters nằm ngay sau Effects.

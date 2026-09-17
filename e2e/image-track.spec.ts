@@ -376,7 +376,7 @@ test('ảnh đi tới file xuất ra, không chỉ sống trong preview', async 
 
   // Dự án có ảnh nên phải dùng Remotion; ffmpeg không đọc được ảnh tĩnh theo
   // trục thời gian của video.
-  await expect(page.getByText('Dự án có transition')).toBeVisible()
+  await expect(page.locator('.notice--info')).toContainText('Remotion')
 
   await page.getByRole('button', { name: 'Bắt đầu xuất' }).click()
   await expect(page.getByText('Xuất xong')).toBeVisible({ timeout: 240_000 })

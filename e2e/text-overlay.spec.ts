@@ -1448,7 +1448,7 @@ test('chữ đi tới file xuất ra, không chỉ sống trong preview', async 
   const engine = dialog.getByLabel('Bộ dựng hình')
   await expect(engine).toHaveValue('remotion')
   await expect(engine).toBeDisabled()
-  await expect(dialog.getByText(/phải dùng Remotion/)).toBeVisible()
+  await expect(dialog.locator('.notice--info')).toContainText('Remotion')
   await dialog.getByRole('button', { name: 'Chọn nơi lưu…' }).click()
   await dialog.getByRole('button', { name: 'Bắt đầu xuất' }).click()
   await expect(dialog.getByText('Xuất xong')).toBeVisible({ timeout: 600_000 })

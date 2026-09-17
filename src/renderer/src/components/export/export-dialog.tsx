@@ -173,14 +173,27 @@ export function ExportDialog({ onClose }: { onClose(): void }): JSX.Element {
             */}
             {clipsInPreviewMode > 0 && (
               <div className="notice notice--warning">
-                {interpolate(t.export.previewModeWarning, { count: clipsInPreviewMode })}
+                <span className="notice__icon" aria-hidden>
+                  ⚠
+                </span>
+                <span>
+                  {interpolate(t.export.previewModeWarning, { count: clipsInPreviewMode })}
+                </span>
               </div>
             )}
 
             <div className="field-row">
               <span className="field-row__label">{t.export.outputLabel}</span>
               <div className="export-dialog__path">
-                <span className="export-dialog__path-value" title={outputPath ?? undefined}>
+                {/* Đường dẫn dùng font mono để đọc được; câu "chưa chọn" thì không. */}
+                <span
+                  className={
+                    outputPath
+                      ? 'export-dialog__path-value'
+                      : 'export-dialog__path-value export-dialog__path-value--empty'
+                  }
+                  title={outputPath ?? undefined}
+                >
                   {outputPath ?? t.export.notChosen}
                 </span>
                 <ToolButton
@@ -242,17 +255,19 @@ export function ExportDialog({ onClose }: { onClose(): void }): JSX.Element {
                   {capabilities?.hardwareEncoderAvailable
                     ? (capabilities.hardwareEncoderName ?? '')
                     : t.export.hardwareUnavailable}
-                  {/*
-                    Năng lực dò được là của ffmpeg đi kèm, còn Remotion dựng bằng
-                    FFmpeg riêng của nó. Không nói ra thì người dùng tưởng đã bật
-                    được phần cứng trong khi thực tế đang mã hoá bằng phần mềm.
-                  */}
-                  {effectiveEngine === 'remotion' && capabilities?.hardwareEncoderAvailable && (
-                    <em className="export-dialog__note"> {t.export.hardwareBestEffort}</em>
-                  )}
                 </span>
               </label>
             </div>
+            {/*
+              Năng lực dò được là của ffmpeg đi kèm, còn Remotion dựng bằng FFmpeg
+              riêng của nó. Không nói ra thì người dùng tưởng đã bật được phần cứng
+              trong khi thực tế đang mã hoá bằng phần mềm. Để thành dòng riêng bên
+              dưới, không chèn sau tên encoder: chèn vào thì hai thứ khác hẳn nhau
+              dính làm một câu và vắt dòng loạn.
+            */}
+            {effectiveEngine === 'remotion' && capabilities?.hardwareEncoderAvailable && (
+              <p className="export-dialog__hint">{t.export.hardwareBestEffort}</p>
+            )}
 
             <div className="field-row">
               <span className="field-row__label">{t.export.engine}</span>
@@ -266,16 +281,28 @@ export function ExportDialog({ onClose }: { onClose(): void }): JSX.Element {
                 <option value="remotion">{t.export.engineRemotion}</option>
               </select>
             </div>
-            {/* Nói rõ vì sao không đổi được, thay vì để một ô xám không giải thích. */}
-            {needsRemotion && <div className="notice">{t.export.engineForced}</div>}
-            <p className="export-dialog__hint">
-              {needsRemotion ? t.export.engineWarning : t.export.engineHint}
-            </p>
+            {/*
+              Bắt buộc Remotion thì nói rõ VÌ SAO ngay tại ô chọn đang bị khoá — một
+              ô xám không giải thích trông như lỗi. Đây là tin, không phải lỗi, nên
+              dùng màu nhấn chứ không phải màu đỏ của `.notice` mặc định.
+            */}
+            {needsRemotion ? (
+              <div className="notice notice--info">
+                <span className="notice__icon" aria-hidden>
+                  ⓘ
+                </span>
+                <span>{t.export.engineForced}</span>
+              </div>
+            ) : (
+              <p className="export-dialog__hint">{t.export.engineHint}</p>
+            )}
 
             <div className="field-row">
               <span className="field-row__label">{t.export.burnSubtitles}</span>
               {subtitleTracks.length === 0 ? (
-                <span className="field-row__value">{t.export.noSubtitles}</span>
+                <span className="field-row__value field-row__value--prose">
+                  {t.export.noSubtitles}
+                </span>
               ) : (
                 <select
                   value={burnSubtitleTrackId}

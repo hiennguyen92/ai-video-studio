@@ -278,19 +278,16 @@ export const dictionaryVi = {
     resolution: 'Độ phân giải',
     frameRate: 'Tốc độ khung hình',
     hardware: 'Tăng tốc phần cứng',
-    hardwareBestEffort: '(Remotion dùng FFmpeg riêng; không có thì tự lùi về mã hoá phần mềm)',
-    hardwareUnavailable: 'Máy này không có bộ mã hoá phần cứng khả dụng',
+    hardwareBestEffort: 'Remotion dùng FFmpeg riêng nên có thể không áp dụng.',
+    hardwareUnavailable: 'Máy này không có mã hoá phần cứng',
     engine: 'Bộ dựng hình',
     engineFfmpeg: 'ffmpeg (nhanh)',
     engineRemotion: 'Remotion (khớp preview)',
-    engineForced:
-      'Dự án có transition, Text, zoom, effect, filter hoặc Adjust nên phải dùng Remotion.',
-    engineWarning:
-      'ffmpeg KHÔNG vẽ được transition và Text. Xuất bằng nó sẽ ra file thiếu những phần đó.',
+    engineForced: 'Transition, Text và hiệu ứng phải dựng bằng Remotion — ffmpeg không vẽ được.',
     engineHint:
-      'ffmpeg nhanh hơn khoảng 6,7 lần. Remotion dùng chung bản dựng với preview nên bản xuất không lệch bản xem trước, và là đường duy nhất làm được transition cùng Text động.',
+      'ffmpeg nhanh hơn ~6,7×. Remotion dùng chung bản dựng với preview nên bản xuất không lệch.',
     previewModeWarning:
-      'Còn {count} clip đang bật chế độ soi vùng của effect. Bản xuất sẽ có mảng màu đè lên hình — tắt "Soi vùng da" ở Inspector trước khi xuất.',
+      'Soi vùng da đang bật ở {count} clip — tắt ở Inspector, không thì bản xuất có mảng xanh.',
     burnSubtitles: 'Nung phụ đề vào hình',
     exportSrt: 'Xuất thêm file SRT',
     noSubtitles: 'Dự án chưa có phụ đề nào',

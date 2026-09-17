@@ -175,7 +175,7 @@ test('effect đi tới file xuất ra: ngoài mặt nạ đen, trong mặt nạ 
   await page.getByRole('button', { name: 'Xuất video' }).click()
   const dialog = page.getByRole('dialog', { name: 'Xuất video' })
   await dialog.getByRole('button', { name: 'Chọn nơi lưu…' }).click()
-  await expect(dialog.getByText(/phải dùng Remotion/)).toBeVisible()
+  await expect(dialog.locator('.notice--info')).toContainText('Remotion')
   await dialog.getByRole('button', { name: 'Bắt đầu xuất' }).click()
   await expect(dialog.getByText('Xuất xong')).toBeVisible({ timeout: 240_000 })
   await dialog.getByRole('button', { name: 'Đóng' }).first().click()
@@ -259,7 +259,7 @@ test('bật soi vùng da thì hộp thoại Xuất video cảnh báo, tắt thì
   // Chế độ soi vẽ đè màu và bản xuất vẽ y hệt preview, nên phải cảnh báo trước khi xuất.
   await page.getByRole('button', { name: 'Xuất video' }).click()
   const dialog = page.getByRole('dialog', { name: 'Xuất video' })
-  await expect(dialog.locator('.notice--warning')).toContainText('soi vùng')
+  await expect(dialog.locator('.notice--warning')).toContainText(/Soi vùng da/i)
   await dialog.getByRole('button', { name: 'Đóng' }).click()
 
   await skin.getByLabel('Soi vùng da').selectOption('off')

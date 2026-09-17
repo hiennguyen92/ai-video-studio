@@ -104,7 +104,7 @@ test('hộp thoại xuất cho chọn bộ dựng và nói rõ đánh đổi', a
   await expect(engine).toBeVisible()
   // Mặc định vẫn là ffmpeg: Remotion chậm hơn mà chưa đổi lại được tính năng nào.
   await expect(engine).toHaveValue('ffmpeg')
-  await expect(dialog.getByText(/nhanh hơn khoảng 6,7 lần/)).toBeVisible()
+  await expect(dialog.locator('.export-dialog__hint')).toContainText('ffmpeg')
 })
 
 test('xuất bằng Remotion ra file MP4 phát được', async () => {

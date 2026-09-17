@@ -278,19 +278,16 @@ export const dictionaryEn: Dictionary = {
     resolution: 'Resolution',
     frameRate: 'Frame rate',
     hardware: 'Hardware acceleration',
-    hardwareBestEffort: '(Remotion uses its own FFmpeg; falls back to software when missing)',
-    hardwareUnavailable: 'No hardware encoder available on this machine',
+    hardwareBestEffort: 'Remotion uses its own FFmpeg, so this may not apply.',
+    hardwareUnavailable: 'No hardware encoder on this machine',
     engine: 'Render engine',
     engineFfmpeg: 'ffmpeg (fast)',
     engineRemotion: 'Remotion (matches preview)',
-    engineForced:
-      'This project has transitions, Text, zoom, effects, filters or Adjust, so Remotion is required.',
-    engineWarning:
-      'ffmpeg cannot draw transitions or Text. Exporting with it produces a file missing them.',
+    engineForced: 'Transitions, Text and effects need Remotion — ffmpeg cannot draw them.',
     engineHint:
-      'ffmpeg is about 6.7x faster. Remotion shares the composition with the preview, so the export cannot drift from what you saw, and it is the only path to transitions and animated Text.',
+      'ffmpeg is ~6.7× faster. Remotion shares the preview composition, so the export cannot drift.',
     previewModeWarning:
-      '{count} clip(s) still have an effect\'s inspect mode on. The export will contain the colour overlay — turn off "Highlight skin area" in the Inspector first.',
+      'Skin-area inspect is on for {count} clip(s) — turn it off in the Inspector, or the export shows the green overlay.',
     burnSubtitles: 'Burn subtitles into the video',
     exportSrt: 'Also export an SRT file',
     noSubtitles: 'This project has no subtitles yet',
