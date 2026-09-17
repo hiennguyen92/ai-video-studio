@@ -82,29 +82,45 @@ const studio = (): ReturnType<Page['getByRole']> => page.getByRole('region', { n
 
 test('tab Cấu hình AI liệt kê provider và cho biết kho bí mật đang dùng', async () => {
   await studio().getByRole('tab', { name: 'Cấu hình AI' }).click()
+  await studio().getByRole('tab', { name: 'Voice', exact: true }).click()
 
   await expect(page.getByText('ElevenLabs', { exact: true })).toBeVisible()
   // Khớp chính xác: tên provider tự host cũng chứa chuỗi "OpenAI".
   await expect(page.getByText('OpenAI', { exact: true })).toBeVisible()
   await expect(page.getByText('Máy chủ tự host (OpenAI-compatible)')).toBeVisible()
-  await expect(page.getByText('whisper.cpp (chạy trong máy)')).toBeVisible()
   // safeStorage thật của Electron phải sẵn sàng trên macOS.
   await expect(page.getByText(/Kho bí mật:/)).toBeVisible()
   // Kiểm theo TỪNG thẻ thay vì đếm tổng: thêm provider mới là con số lại sai, mà
   // con số đó chẳng khẳng định được điều gì.
-  for (const name of ['ElevenLabs', 'OpenAI', 'ElevenLabs Music']) {
-    const card = page.locator('.provider-card').filter({
-      has: page.getByText(name, { exact: true })
-    })
-    await expect(card.getByText('Chưa có khoá', { exact: true })).toBeVisible()
+  for (const name of ['ElevenLabs', 'OpenAI']) {
+    await expect(providerCard(name).getByText('Chưa có khoá', { exact: true })).toBeVisible()
   }
+  await expect(
+    page
+      .locator('.provider-card', { hasText: 'Máy chủ tự host (OpenAI-compatible)' })
+      .getByText('Không bắt buộc khoá')
+  ).toBeVisible()
+  // Provider xếp theo tab con: whisper.cpp không lẫn vào tab Voice.
+  await expect(page.getByText('whisper.cpp (chạy trong máy)')).toHaveCount(0)
 
-  // Huy hiệu được kiểm theo TỪNG thẻ: đếm tổng sẽ phải sửa lại mỗi lần thêm
-  // provider chạy local, mà con số đó chẳng nói lên điều gì.
-  for (const name of ['Máy chủ tự host (OpenAI-compatible)', 'whisper.cpp (chạy trong máy)']) {
-    const card = page.locator('.provider-card', { hasText: name })
-    await expect(card.getByText('Không bắt buộc khoá')).toBeVisible()
-  }
+  await studio().getByRole('tab', { name: 'Transcribe', exact: true }).click()
+  await expect(
+    page
+      .locator('.provider-card', { hasText: 'whisper.cpp (chạy trong máy)' })
+      .getByText('Không bắt buộc khoá')
+  ).toBeVisible()
+
+  await studio().getByRole('tab', { name: 'Music', exact: true }).click()
+  await expect(
+    providerCard('ElevenLabs Music').getByText('Chưa có khoá', { exact: true })
+  ).toBeVisible()
+
+  // MCP là kết nối agent, không phải provider: không có thẻ provider nào.
+  await studio().getByRole('tab', { name: 'MCP', exact: true }).click()
+  await expect(page.getByLabel('Địa chỉ', { exact: true })).toBeVisible()
+  await expect(page.locator('.provider-card')).toHaveCount(0)
+
+  await studio().getByRole('tab', { name: 'Voice', exact: true }).click()
 })
 
 /**
@@ -148,6 +164,17 @@ test('tab Giọng đọc chặn đúng tính năng phụ thuộc khoá, không c
   // Nhưng ô kịch bản vẫn gõ được — thiếu khoá không được khoá cả giao diện.
   await page.getByLabel('Kịch bản', { exact: true }).fill('Xin chào, đây là bản thử nghiệm.')
   await expect(page.getByRole('button', { name: 'Chia thành đoạn' })).toBeEnabled()
+
+  // Nút "Mở Cấu hình AI" mở thẳng tab con Voice, kể cả khi lần trước để ở tab khác.
+  await studio().getByRole('tab', { name: 'Cấu hình AI' }).click()
+  await studio().getByRole('tab', { name: 'MCP', exact: true }).click()
+  await studio().getByRole('tab', { name: 'Giọng đọc' }).click()
+  await page.getByRole('button', { name: 'Mở Cấu hình AI' }).click()
+  await expect(studio().getByRole('tab', { name: 'Voice', exact: true })).toHaveAttribute(
+    'aria-selected',
+    'true'
+  )
+  await studio().getByRole('tab', { name: 'Giọng đọc' }).click()
 })
 
 test('danh mục giọng cố định nạp được mà không cần khoá và không gọi mạng', async () => {
@@ -237,6 +264,7 @@ test('phần giảm nhạc dùng được mà không cần khoá AI, và nói r�
 
 test('xoá khoá đưa provider về trạng thái chưa cấu hình', async () => {
   await studio().getByRole('tab', { name: 'Cấu hình AI' }).click()
+  await studio().getByRole('tab', { name: 'Voice', exact: true }).click()
   const card = providerCard('OpenAI')
   await card.getByRole('button', { name: 'Xoá khoá' }).click()
 

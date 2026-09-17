@@ -307,6 +307,15 @@ export const dictionaryVi = {
   },
   aiSettings: {
     title: 'Cấu hình AI',
+    sectionVoice: 'Voice',
+    sectionTranscribe: 'Transcribe',
+    sectionTranslate: 'Translate',
+    sectionMusic: 'Music',
+    sectionMcp: 'MCP',
+    sectionVoiceHint: 'Dịch vụ tạo giọng đọc cho tab Giọng đọc và lồng tiếng.',
+    sectionTranscribeHint: 'Phiên âm lời nói thành chữ cho tab Phiên âm.',
+    sectionTranslateHint: 'Máy chủ LLM dùng cho tab Dịch — và cũng là máy chủ của AI Chat.',
+    sectionMusicHint: 'Dịch vụ tạo nhạc nền bằng AI cho tab Nhạc nền.',
     intro: 'Khoá API được lưu trong kho bí mật của hệ điều hành, không nằm trong file dự án.',
     storageOk: 'Kho bí mật: {backend}',
     storageUnavailable:

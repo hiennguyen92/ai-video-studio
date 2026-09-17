@@ -118,6 +118,7 @@ const studio = (): ReturnType<Page['getByRole']> => page.getByRole('region', { n
 
 test('provider tự host không đòi khoá API', async () => {
   await studio().getByRole('tab', { name: 'Cấu hình AI' }).click()
+  await studio().getByRole('tab', { name: 'Voice', exact: true }).click()
 
   // Giới hạn trong thẻ của chính provider này: provider chạy local khác cũng có
   // huy hiệu y hệt.
@@ -188,6 +189,7 @@ test('máy chủ tắt thì báo lỗi rõ ràng thay vì treo', async () => {
   await new Promise<void>((resolve) => ttsServer.close(() => resolve()))
 
   await studio().getByRole('tab', { name: 'Cấu hình AI' }).click()
+  await studio().getByRole('tab', { name: 'Voice', exact: true }).click()
   await page
     .locator('.provider-card', { hasText: 'Máy chủ tự host' })
     .getByRole('button', { name: 'Kiểm tra kết nối' })

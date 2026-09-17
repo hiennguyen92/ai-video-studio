@@ -64,6 +64,7 @@ test('mở tab Giọng đọc TRƯỚC khi có khoá, panel phải nhận ra kho
 
 test('nhập khoá thật vào Keychain và kiểm tra kết nối thành công', async () => {
   await studio().getByRole('tab', { name: 'Cấu hình AI' }).click()
+  await studio().getByRole('tab', { name: 'Voice', exact: true }).click()
 
   await page.getByLabel('ElevenLabs API key').fill(apiKey as string)
   await page.getByRole('button', { name: 'Lưu khoá' }).first().click()

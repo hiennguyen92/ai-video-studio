@@ -123,6 +123,7 @@ test('tab Phiên âm nói rõ chưa chọn clip và chưa có model', async () =
 
 test('trỏ tới model đã tải sẵn qua Cấu hình AI', async () => {
   await studio().getByRole('tab', { name: 'Cấu hình AI' }).click()
+  await studio().getByRole('tab', { name: 'Transcribe', exact: true }).click()
 
   const card = page.locator('.provider-card', { hasText: 'whisper.cpp' })
   await expect(card).toBeVisible()

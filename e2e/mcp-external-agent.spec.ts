@@ -139,6 +139,7 @@ const studio = (): ReturnType<Page['getByRole']> => page.getByRole('region', { n
 
 test('app công bố địa chỉ và khoá MCP để cấu hình agent', async () => {
   await studio().getByRole('tab', { name: 'Cấu hình AI' }).click()
+  await studio().getByRole('tab', { name: 'MCP', exact: true }).click()
 
   const address = page.getByLabel('Địa chỉ', { exact: true })
   await expect(address).toBeVisible()

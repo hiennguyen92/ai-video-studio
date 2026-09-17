@@ -307,6 +307,15 @@ export const dictionaryEn: Dictionary = {
   },
   aiSettings: {
     title: 'AI settings',
+    sectionVoice: 'Voice',
+    sectionTranscribe: 'Transcribe',
+    sectionTranslate: 'Translate',
+    sectionMusic: 'Music',
+    sectionMcp: 'MCP',
+    sectionVoiceHint: 'Text-to-speech services for the Voice tab and dubbing.',
+    sectionTranscribeHint: 'Speech-to-text for the Transcribe tab.',
+    sectionTranslateHint: 'LLM server for the Translate tab — also the server behind AI Chat.',
+    sectionMusicHint: 'AI music generation for the Music tab.',
     intro: 'API keys are stored in the OS secret store, never in the project file.',
     storageOk: 'Secret store: {backend}',
     storageUnavailable:

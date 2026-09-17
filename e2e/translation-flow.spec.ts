@@ -150,6 +150,7 @@ test('tab Dịch nói rõ chưa có gì để dịch', async () => {
 
 test('trỏ tới máy chủ LLM và kiểm tra kết nối', async () => {
   await studio().getByRole('tab', { name: 'Cấu hình AI' }).click()
+  await studio().getByRole('tab', { name: 'Translate', exact: true }).click()
 
   const card = page.locator('.provider-card', { hasText: 'Máy chủ LLM (OpenAI-compatible)' })
   await expect(card).toBeVisible()

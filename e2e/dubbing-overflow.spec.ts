@@ -151,6 +151,7 @@ async function seedTranscriptAndTranslation(): Promise<void> {
 
 test('cấu hình máy chủ TTS tự host', async () => {
   await studio().getByRole('tab', { name: 'Cấu hình AI' }).click()
+  await studio().getByRole('tab', { name: 'Voice', exact: true }).click()
 
   const card = page.locator('.provider-card', { hasText: 'Máy chủ tự host (OpenAI-compatible)' })
   await card.locator('input[type="text"]').nth(0).fill(serverBaseUrl)

@@ -3,6 +3,7 @@ import type { MediaAsset } from '../../../../shared/domain/media-asset-types'
 import { useT } from '../../i18n/use-translation'
 import { MediaLibraryPanel } from './media-library-panel'
 import { AiSettingsPanel } from './ai-settings-panel'
+import type { AiSettingsSection } from './ai-settings-sections'
 import { VoicePanel } from './voice-panel'
 import { MusicPanel } from './music-panel'
 import { TranscribePanel } from './transcribe-panel'
@@ -58,8 +59,18 @@ export function AiStudioPanel({
     setVisitedTabs((current) => (current.has(tab) ? current : new Set(current).add(tab)))
   }, [])
 
-  // Tab Giọng đọc cần đưa người dùng sang Cấu hình AI khi thiếu khoá.
-  const openSettings = useCallback(() => selectTab('settings'), [selectTab])
+  /** Tab con đang mở trong Cấu hình AI — giữ ở đây để nút "Mở Cấu hình AI" mở đúng tab. */
+  const [settingsSection, setSettingsSection] = useState<AiSettingsSection>('voice')
+
+  // Các tab tạo nội dung đưa người dùng sang Cấu hình AI khi thiếu khoá/cấu hình, mở
+  // thẳng tab con của đúng loại việc đó.
+  const openSettings = useCallback(
+    (section: AiSettingsSection) => {
+      setSettingsSection(section)
+      selectTab('settings')
+    },
+    [selectTab]
+  )
 
   const tabs: Array<{ key: StudioTabKey; label: string }> = [
     { key: 'media', label: t.studio.tabs.media },
@@ -112,20 +123,26 @@ export function AiStudioPanel({
 
         {visitedTabs.has('voice') && (
           <div className="studio-tab-panel" hidden={activeTab !== 'voice'}>
-            <VoicePanel onOpenSettings={openSettings} credentialsVersion={credentialsVersion} />
+            <VoicePanel
+              onOpenSettings={() => openSettings('voice')}
+              credentialsVersion={credentialsVersion}
+            />
           </div>
         )}
 
         {visitedTabs.has('music') && (
           <div className="studio-tab-panel" hidden={activeTab !== 'music'}>
-            <MusicPanel onOpenSettings={openSettings} credentialsVersion={credentialsVersion} />
+            <MusicPanel
+              onOpenSettings={() => openSettings('music')}
+              credentialsVersion={credentialsVersion}
+            />
           </div>
         )}
 
         {visitedTabs.has('transcribe') && (
           <div className="studio-tab-panel" hidden={activeTab !== 'transcribe'}>
             <TranscribePanel
-              onOpenSettings={openSettings}
+              onOpenSettings={() => openSettings('transcribe')}
               credentialsVersion={credentialsVersion}
             />
           </div>
@@ -134,6 +151,8 @@ export function AiStudioPanel({
         {visitedTabs.has('settings') && (
           <div className="studio-tab-panel" hidden={activeTab !== 'settings'}>
             <AiSettingsPanel
+              section={settingsSection}
+              onSectionChange={setSettingsSection}
               onCredentialsChanged={() => setCredentialsVersion((current) => current + 1)}
             />
           </div>
@@ -141,7 +160,7 @@ export function AiStudioPanel({
 
         {visitedTabs.has('translate') && (
           <div className="studio-tab-panel" hidden={activeTab !== 'translate'}>
-            <TranslatePanel onOpenSettings={openSettings} />
+            <TranslatePanel onOpenSettings={() => openSettings('translate')} />
           </div>
         )}
 

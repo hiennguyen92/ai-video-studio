@@ -119,6 +119,7 @@ async function ask(message: string): Promise<void> {
 
 test('chuẩn bị: cấu hình máy chủ LLM và đưa một clip lên timeline', async () => {
   await studio().getByRole('tab', { name: 'Cấu hình AI' }).click()
+  await studio().getByRole('tab', { name: 'Translate', exact: true }).click()
   const card = page.locator('.provider-card', { hasText: 'Máy chủ LLM (OpenAI-compatible)' })
   await card.locator('input[type="text"]').nth(0).fill(serverBaseUrl)
   await card.locator('input[type="text"]').nth(1).fill('qwen2.5:7b')

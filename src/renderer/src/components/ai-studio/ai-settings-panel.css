@@ -170,3 +170,15 @@
   overflow-x: auto;
   user-select: text;
 }
+
+/* Một dòng nói tab con này cấu hình cho việc gì. */
+.ai-settings__section-hint {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+/* Thanh tab con: `.ai-settings` đã có đệm, kéo thanh ra sát mép cho khớp các panel khác. */
+.ai-settings > .panel-subtabs {
+  margin: calc(-1 * var(--space-3)) calc(-1 * var(--space-3)) 0;
+}

@@ -2,20 +2,49 @@ import { useCallback, useEffect, useState, type JSX } from 'react'
 import type { AiSettingsSnapshot } from '../../../../shared/ipc/ipc-contract'
 import type { ConnectionTestResult } from '../../../../shared/ai/ai-capability-types'
 import { interpolate, useT } from '../../i18n/use-translation'
-import { ToolButton } from '../ui/tool-button'
+import { PanelSubtabs } from '../ui/panel-subtabs'
+import {
+  AI_SETTINGS_SECTIONS,
+  AI_SETTINGS_SECTION_TASK,
+  type AiSettingsSection
+} from './ai-settings-sections'
 import { McpConnectionSection } from './mcp-connection-section'
+import { ProviderCard } from './provider-card'
 import './ai-settings-panel.css'
 
 /**
- * Tab Cấu hình AI (DESCRIPTION §3.G).
+ * Tab Cấu hình AI (DESCRIPTION §3.G), chia tab con theo loại việc: Voice, Transcribe,
+ * Translate, Music, MCP. Mỗi tab chỉ hiện provider làm được việc đó — trước đây mọi
+ * provider xếp chung một cột dài, tìm ô của whisper.cpp phải cuộn qua cả loạt dịch vụ
+ * giọng đọc.
  *
  * Ô nhập khoá là `type="password"` và giá trị KHÔNG bao giờ được đọc ngược từ
  * tiến trình main: sau khi lưu, ô được xoá trắng và trạng thái chỉ còn là "đã có
  * khoá". Renderer không có cách nào lấy lại khoá, kể cả khi có mã lạ chạy trong trang.
  */
+const SECTION_LABEL_KEYS = {
+  voice: 'sectionVoice',
+  transcribe: 'sectionTranscribe',
+  translate: 'sectionTranslate',
+  music: 'sectionMusic',
+  mcp: 'sectionMcp'
+} as const satisfies Record<AiSettingsSection, string>
+
+const SECTION_HINT_KEYS = {
+  voice: 'sectionVoiceHint',
+  transcribe: 'sectionTranscribeHint',
+  translate: 'sectionTranslateHint',
+  music: 'sectionMusicHint'
+} as const satisfies Record<Exclude<AiSettingsSection, 'mcp'>, string>
+
 export function AiSettingsPanel({
+  section,
+  onSectionChange,
   onCredentialsChanged
 }: {
+  /** Tab con đang mở; do panel AI Studio giữ để nút "Mở Cấu hình AI" mở đúng tab. */
+  section: AiSettingsSection
+  onSectionChange(section: AiSettingsSection): void
   onCredentialsChanged?(): void
 }): JSX.Element {
   const t = useT()
@@ -129,23 +158,29 @@ export function AiSettingsPanel({
     }
   }, [])
 
-  const taskLabel = (task: string): string =>
-    task === 'tts'
-      ? t.aiSettings.taskTts
-      : task === 'stt'
-        ? t.aiSettings.taskStt
-        : task === 'translate'
-          ? t.aiSettings.taskTranslate
-          : t.aiSettings.taskMusic
-
   return (
     <div className="ai-settings">
-      <p className="ai-settings__intro">{t.aiSettings.intro}</p>
+      <PanelSubtabs<AiSettingsSection>
+        label={t.aiSettings.title}
+        active={section}
+        onChange={onSectionChange}
+        tabs={AI_SETTINGS_SECTIONS.map((key) => ({
+          key,
+          label: t.aiSettings[SECTION_LABEL_KEYS[key]]
+        }))}
+      />
 
-      {snapshot && !snapshot.encryption.available && (
+      {section !== 'mcp' && (
+        <p className="ai-settings__section-hint">{t.aiSettings[SECTION_HINT_KEYS[section]]}</p>
+      )}
+
+      {/* Lời dặn về khoá API chỉ có nghĩa ở các tab provider, không ở MCP. */}
+      {section !== 'mcp' && <p className="ai-settings__intro">{t.aiSettings.intro}</p>}
+
+      {section !== 'mcp' && snapshot && !snapshot.encryption.available && (
         <div className="notice">{t.aiSettings.storageUnavailable}</div>
       )}
-      {snapshot?.encryption.available && (
+      {section !== 'mcp' && snapshot?.encryption.available && (
         <p className="ai-settings__storage">
           {interpolate(t.aiSettings.storageOk, { backend: snapshot.encryption.backend })}
         </p>
@@ -154,130 +189,39 @@ export function AiSettingsPanel({
       {error && <div className="notice">{interpolate(t.errors.generic, { message: error })}</div>}
       {notice && <p className="ai-settings__notice">{notice}</p>}
 
-      {snapshot?.providers.map(({ descriptor, hasCredential, config }) => {
-        const busy = busyProvider === descriptor.id
-        const test = testResults[descriptor.id]
+      {section === 'mcp' && <McpConnectionSection />}
 
-        return (
-          <section key={descriptor.id} className="provider-card">
-            <header className="provider-card__header">
-              <span className="provider-card__name">{descriptor.name}</span>
-              <span
-                className={`provider-card__badge ${hasCredential ? 'provider-card__badge--ok' : ''}`}
-              >
-                {hasCredential
-                  ? t.aiSettings.configured
-                  : descriptor.credentialRequired
-                    ? t.aiSettings.notConfigured
-                    : t.aiSettings.noCredentialNeeded}
-              </span>
-            </header>
-
-            <p className="provider-card__tasks">
-              {t.aiSettings.tasksLabel}: {descriptor.tasks.map(taskLabel).join(', ')}
-            </p>
-
-            {descriptor.noteVi && <p className="provider-card__note">{descriptor.noteVi}</p>}
-
-            {/* Ô cấu hình dựng TỪ khai báo của provider — không viết cứng ô nào
-                cho riêng một provider, y như cách tham số model được dựng. */}
-            {(descriptor.configFields ?? []).map((field) => {
-              const saved = config[field.key] ?? field.defaultValue ?? ''
-              const draft = configDrafts[descriptor.id]?.[field.key]
-              return (
-                <label key={field.key} className="provider-card__config">
-                  <span className="field-row__label">
-                    {field.labelVi}
-                    {field.required ? ' *' : ''}
-                  </span>
-                  <input
-                    type="text"
-                    value={draft ?? saved}
-                    placeholder={field.placeholder}
-                    title={field.hintVi}
-                    spellCheck={false}
-                    disabled={busy}
-                    onChange={(event) =>
-                      setConfigDrafts((current) => ({
-                        ...current,
-                        [descriptor.id]: {
-                          ...(current[descriptor.id] ?? config),
-                          [field.key]: event.target.value
-                        }
-                      }))
-                    }
-                  />
-                </label>
-              )
-            })}
-
-            {(descriptor.configFields ?? []).length > 0 && (
-              <ToolButton
-                label={t.aiSettings.configSave}
-                variant="outline"
-                onClick={() => void handleSaveConfig(descriptor.id, descriptor.name)}
-                disabled={busy || !configDrafts[descriptor.id]}
-              />
-            )}
-
-            <div className="provider-card__key-row">
-              <input
-                type="password"
-                autoComplete="off"
-                spellCheck={false}
-                value={drafts[descriptor.id] ?? ''}
-                onChange={(event) =>
-                  setDrafts((current) => ({ ...current, [descriptor.id]: event.target.value }))
+      {section !== 'mcp' &&
+        snapshot?.providers
+          .filter((entry) => entry.descriptor.tasks.includes(AI_SETTINGS_SECTION_TASK[section]))
+          .map((entry) => {
+            const providerId = entry.descriptor.id
+            const name = entry.descriptor.name
+            return (
+              <ProviderCard
+                key={providerId}
+                entry={entry}
+                busy={busyProvider === providerId}
+                encryptionAvailable={snapshot.encryption.available}
+                keyDraft={drafts[providerId] ?? ''}
+                configDraft={configDrafts[providerId]}
+                test={testResults[providerId]}
+                onKeyDraftChange={(value) =>
+                  setDrafts((current) => ({ ...current, [providerId]: value }))
                 }
-                placeholder={t.aiSettings.keyPlaceholder}
-                aria-label={`${descriptor.name} ${descriptor.credentialLabel}`}
-                disabled={busy || snapshot?.encryption.available === false}
+                onConfigDraftChange={(field, value) =>
+                  setConfigDrafts((current) => ({
+                    ...current,
+                    [providerId]: { ...(current[providerId] ?? entry.config), [field]: value }
+                  }))
+                }
+                onSaveKey={() => void handleSave(providerId, name)}
+                onSaveConfig={() => void handleSaveConfig(providerId, name)}
+                onTest={() => void handleTest(providerId)}
+                onRemove={() => void handleRemove(providerId, name)}
               />
-              <ToolButton
-                label={t.aiSettings.save}
-                variant="primary"
-                onClick={() => void handleSave(descriptor.id, descriptor.name)}
-                disabled={busy || !(drafts[descriptor.id] ?? '').trim()}
-              />
-            </div>
-
-            <div className="provider-card__actions">
-              <ToolButton
-                label={busy ? t.aiSettings.testing : t.aiSettings.test}
-                variant="outline"
-                onClick={() => void handleTest(descriptor.id)}
-                disabled={busy || (!hasCredential && descriptor.credentialRequired)}
-              />
-              <ToolButton
-                label={t.aiSettings.remove}
-                variant="danger"
-                onClick={() => void handleRemove(descriptor.id, descriptor.name)}
-                disabled={busy || !hasCredential}
-              />
-              <a
-                className="provider-card__link"
-                href={descriptor.credentialHelpUrl}
-                target="_blank"
-                rel="noreferrer"
-              >
-                {t.aiSettings.getKey}
-              </a>
-            </div>
-
-            {test && (
-              <p
-                className={`provider-card__test ${test.ok ? 'provider-card__test--ok' : 'provider-card__test--fail'}`}
-              >
-                {test.ok ? t.aiSettings.testOk : t.aiSettings.testFailed}
-                {test.details ? ` · ${test.details}` : ''}
-                {!test.ok && test.message ? ` · ${test.message}` : ''}
-              </p>
-            )}
-          </section>
-        )
-      })}
-
-      <McpConnectionSection />
+            )
+          })}
     </div>
   )
 }
