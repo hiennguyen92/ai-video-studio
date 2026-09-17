@@ -1,4 +1,11 @@
-import { useCallback, useMemo, type JSX, type PointerEvent as ReactPointerEvent } from 'react'
+import {
+  useCallback,
+  useMemo,
+  useState,
+  type JSX,
+  type PointerEvent as ReactPointerEvent
+} from 'react'
+import { useEditorStore } from '../../state/editor-store'
 import {
   clipSourceOutUs,
   type Clip,
@@ -45,6 +52,7 @@ export function TimelineClip({
   asset,
   pixelsPerSecond,
   selected,
+  dragBadge,
   onPointerDown
 }: {
   clip: Clip
@@ -52,8 +60,13 @@ export function TimelineClip({
   asset: MediaAsset | undefined
   pixelsPerSecond: number
   selected: boolean
+  /** Chữ nhỏ hiện trên clip lúc đang kéo (tốc độ mới khi rate stretch, điểm vào khi slip). */
+  dragBadge?: string
   onPointerDown(event: ReactPointerEvent<HTMLElement>, clip: Clip, mode: ClipDragMode): void
 }): JSX.Element {
+  const isBlade = useEditorStore((state) => state.timelineTool === 'blade')
+  // Chế độ Blade: vạch dọc theo con trỏ cho thấy chỗ sẽ cắt trước khi bấm.
+  const [bladeX, setBladeX] = useState<number | null>(null)
   const left = usToPx(clip.startUs, pixelsPerSecond)
   const width = usToPx(clip.durationUs, pixelsPerSecond)
   const color = clipColor(track)
@@ -106,6 +119,12 @@ export function TimelineClip({
         background: `color-mix(in srgb, ${color} 22%, var(--surface-raised))`
       }}
       onPointerDown={handlePointerDown}
+      onPointerMove={
+        isBlade
+          ? (event) => setBladeX(event.clientX - event.currentTarget.getBoundingClientRect().left)
+          : undefined
+      }
+      onPointerLeave={isBlade ? () => setBladeX(null) : undefined}
       {...dropProps}
       role="button"
       tabIndex={0}
@@ -134,6 +153,11 @@ export function TimelineClip({
       <span className="timeline-clip__label">{asset?.name ?? clip.label ?? ''}</span>
 
       <TimelineClipTags clip={clip} />
+
+      {dragBadge && <span className="timeline-clip__drag-badge">{dragBadge}</span>}
+      {isBlade && bladeX !== null && (
+        <span className="timeline-clip__blade-line" style={{ left: bladeX }} aria-hidden />
+      )}
 
       {!track.locked && (
         <>

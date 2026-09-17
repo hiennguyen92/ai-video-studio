@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { frameDurationUs } from '../../../shared/domain/time-units'
 import { selectionRemovalCommands } from '../../../shared/commands/selection-removal'
 import { useEditorStore } from '../state/editor-store'
+import { TIMELINE_TOOL_KEYS } from '../state/timeline-tool-keys'
 
 /**
  * Phím tắt của trình soạn thảo.
@@ -104,7 +105,15 @@ export function useKeyboardShortcuts(): void {
         }
         case 'Escape': {
           store.clearSelection()
+          return
         }
+      }
+
+      // Chế độ công cụ timeline: phím đơn, không kèm phím bổ trợ (Cmd+R là tải lại…).
+      const tool = TIMELINE_TOOL_KEYS[event.key.toLowerCase()]
+      if (tool && !modifier && !event.altKey) {
+        event.preventDefault()
+        store.setTimelineTool(tool)
       }
     }
 

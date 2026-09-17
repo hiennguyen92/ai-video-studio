@@ -2,41 +2,32 @@ import { useCallback, useRef, useState, type PointerEvent as ReactPointerEvent }
 import type { Clip, Track } from '../../../../shared/domain/timeline-track-types'
 import { clipEndUs } from '../../../../shared/domain/timeline-track-types'
 import type { ProjectDocument } from '../../../../shared/domain/project-document-types'
-import type { EditorCommand } from '../../../../shared/commands/editor-command-types'
 import { clipSelectSeekUs } from '../../../../shared/domain/clip-select-seek'
-import { frameDurationUs } from '../../../../shared/domain/time-units'
+import { frameDurationUs, snapMicrosToFrame } from '../../../../shared/domain/time-units'
 import { useEditorStore } from '../../state/editor-store'
 import { collectSnapTargets, pxToUs, snapTime, type SnapContext } from './timeline-geometry'
 import type { ClipDragMode } from './timeline-clip'
+import {
+  clipDragCommands,
+  clipDragKind,
+  clipDragLabel,
+  edgePreview,
+  ratePreview,
+  slipPreview,
+  type ClipDragKind,
+  type ClipDragPreview
+} from './clip-drag-kinds'
+
+export type { ClipDragPreview } from './clip-drag-kinds'
 
 /**
- * Kéo và cắt clip bằng chuột.
+ * Kéo, cắt, slip, rate stretch và blade trên clip bằng chuột.
  *
- * Trong lúc kéo chỉ cập nhật một trạng thái xem trước cục bộ; document chỉ được
- * sửa MỘT lần lúc thả chuột. Hai lý do: kéo chuột sinh hàng trăm sự kiện mỗi giây,
- * áp lệnh theo từng sự kiện sẽ nhồi hàng trăm bước vào lịch sử undo và bắt immer
- * dựng lại document liên tục.
+ * Việc một cú kéo NGHĨA LÀ GÌ nằm ở `clip-drag-kinds` (theo chế độ công cụ và chỗ
+ * bấm); ở đây chỉ nghe chuột. Trong lúc kéo chỉ cập nhật trạng thái xem trước cục
+ * bộ; document được sửa MỘT lần lúc thả chuột — kéo sinh hàng trăm sự kiện mỗi giây,
+ * áp lệnh theo từng sự kiện là nhồi hàng trăm bước vào lịch sử hoàn tác.
  */
-
-export interface ClipDragPreview {
-  clipId: string
-  mode: ClipDragMode
-  /** Track đang được nhắm tới — có thể khác track ban đầu khi kéo dọc. */
-  targetTrackId: string
-  startUs: number
-  durationUs: number
-  /** Mốc vừa bắt dính vào, để vẽ đường chỉ dẫn. */
-  snappedToUs: number | null
-}
-
-interface DragSession {
-  clip: Clip
-  sourceTrack: Track
-  mode: ClipDragMode
-  pointerStartX: number
-  pointerStartY: number
-  pointerId: number
-}
 
 const MIN_DRAG_DURATION_US = 1000
 
@@ -65,57 +56,15 @@ export function useTimelineInteractions(options: {
   const setPlaying = useEditorStore((state) => state.setPlaying)
 
   const [preview, setPreview] = useState<ClipDragPreview | null>(null)
-  const sessionRef = useRef<DragSession | null>(null)
   const previewRef = useRef<ClipDragPreview | null>(null)
 
-  const commit = useCallback(
-    (session: DragSession, final: ClipDragPreview | null) => {
-      if (!final) return
-
-      const commands: EditorCommand[] = []
-
-      if (session.mode === 'move') {
-        const movedTrack = final.targetTrackId !== session.sourceTrack.id
-        if (movedTrack || final.startUs !== session.clip.startUs) {
-          commands.push({
-            type: 'clip/move',
-            clipId: session.clip.id,
-            toTrackId: movedTrack ? final.targetTrackId : undefined,
-            toStartUs: final.startUs
-          })
-        }
-      } else if (session.mode === 'trim-start') {
-        if (final.startUs !== session.clip.startUs) {
-          commands.push({
-            type: 'clip/trim',
-            clipId: session.clip.id,
-            edge: 'start',
-            toUs: final.startUs
-          })
-        }
-      } else if (final.startUs + final.durationUs !== clipEndUs(session.clip)) {
-        commands.push({
-          type: 'clip/trim',
-          clipId: session.clip.id,
-          edge: 'end',
-          toUs: final.startUs + final.durationUs
-        })
-      }
-
-      if (commands.length > 0) {
-        const label = session.mode === 'move' ? 'Di chuyển clip' : 'Cắt clip'
-        run(commands, label)
-      }
-    },
-    [run]
-  )
-
   const handleClipPointerDown = useCallback(
-    (event: ReactPointerEvent<HTMLElement>, clip: Clip, track: Track, mode: ClipDragMode) => {
+    (event: ReactPointerEvent<HTMLElement>, clip: Clip, track: Track, zone: ClipDragMode) => {
       if (!document || track.locked) return
       event.preventDefault()
       event.stopPropagation()
 
+      const { timelineTool, playheadUs } = useEditorStore.getState()
       const additive = event.shiftKey || event.metaKey || event.ctrlKey
       toggleClipSelection(clip.id, track.id, additive)
 
@@ -123,71 +72,75 @@ export function useTimelineInteractions(options: {
       const clipBox = event.currentTarget.getBoundingClientRect()
       const clickUs = clip.startUs + pxToUs(event.clientX - clipBox.left, pixelsPerSecond)
 
-      const session: DragSession = {
-        clip,
-        sourceTrack: track,
-        mode,
-        pointerStartX: event.clientX,
-        pointerStartY: event.clientY,
-        pointerId: event.pointerId
-      }
-      sessionRef.current = session
-
       const snapContext: SnapContext = {
         document,
         pixelsPerSecond,
         frameRate: document.settings.frameRate,
         // Đọc lúc bấm chứ không theo dõi: theo dõi thì cả timeline vẽ lại mỗi khung
         // khi đang phát.
-        playheadUs: useEditorStore.getState().playheadUs,
+        playheadUs,
         enabled: snapEnabled,
         excludeClipIds: [clip.id]
       }
+
+      // BLADE: cắt ngay tại chỗ bấm (bắt dính vào đầu phát, mép clip khác nếu gần),
+      // làm tròn về khung hình. Không có thao tác kéo.
+      if (timelineTool === 'blade') {
+        const snapped = snapTime(clickUs, collectSnapTargets(snapContext), snapContext)
+        const atUs = snapMicrosToFrame(snapped.us, document.settings.frameRate)
+        if (atUs > clip.startUs && atUs < clipEndUs(clip)) {
+          run([{ type: 'clip/split', clipId: clip.id, atUs }], 'Cắt clip')
+        }
+        return
+      }
+
+      const kind: ClipDragKind = clipDragKind(timelineTool, zone, track.kind)
       const snapTargets = collectSnapTargets(snapContext)
+      const assetDurationUs = document.assets.find((item) => item.id === clip.assetId)?.probe
+        .durationUs
+      const pointerStartX = event.clientX
+      const pointerStartY = event.clientY
+      const pointerId = event.pointerId
 
       const handleMove = (moveEvent: PointerEvent): void => {
-        if (moveEvent.pointerId !== session.pointerId) return
-        const deltaUs = pxToUs(moveEvent.clientX - session.pointerStartX, pixelsPerSecond)
+        if (moveEvent.pointerId !== pointerId || kind === 'none') return
+        const deltaUs = pxToUs(moveEvent.clientX - pointerStartX, pixelsPerSecond)
+        const base = {
+          clipId: clip.id,
+          kind,
+          targetTrackId: track.id,
+          startUs: clip.startUs,
+          durationUs: clip.durationUs,
+          snappedToUs: null as number | null
+        }
+        let next: ClipDragPreview | null = null
 
-        let next: ClipDragPreview
-
-        if (session.mode === 'move') {
+        if (kind === 'move') {
           const snapped = snapTime(clip.startUs + deltaUs, snapTargets, snapContext)
-          const targetTrackId = trackAtClientY(moveEvent.clientY) ?? session.sourceTrack.id
-          const targetTrack = document.tracks.find((item) => item.id === targetTrackId)
+          const overTrackId = trackAtClientY(moveEvent.clientY) ?? track.id
+          const overTrack = document.tracks.find((item) => item.id === overTrackId)
           // Chỉ cho thả sang track cùng loại và không bị khoá.
-          const allowed =
-            targetTrack && targetTrack.kind === session.sourceTrack.kind && !targetTrack.locked
+          const allowed = overTrack && overTrack.kind === track.kind && !overTrack.locked
           next = {
-            clipId: clip.id,
-            mode: session.mode,
-            targetTrackId: allowed ? targetTrackId : session.sourceTrack.id,
+            ...base,
+            targetTrackId: allowed ? overTrackId : track.id,
             startUs: snapped.us,
-            durationUs: clip.durationUs,
             snappedToUs: snapped.snappedTo
           }
-        } else if (session.mode === 'trim-start') {
-          const snapped = snapTime(clip.startUs + deltaUs, snapTargets, snapContext)
-          const maxStart = clipEndUs(clip) - MIN_DRAG_DURATION_US
-          const startUs = Math.min(snapped.us, maxStart)
-          next = {
-            clipId: clip.id,
-            mode: session.mode,
-            targetTrackId: session.sourceTrack.id,
-            startUs,
-            durationUs: clipEndUs(clip) - startUs,
-            snappedToUs: snapped.snappedTo
-          }
+        } else if (kind === 'slip') {
+          next = { ...base, ...slipPreview(clip, deltaUs, assetDurationUs) }
         } else {
-          const snapped = snapTime(clipEndUs(clip) + deltaUs, snapTargets, snapContext)
-          const endUs = Math.max(snapped.us, clip.startUs + MIN_DRAG_DURATION_US)
-          next = {
-            clipId: clip.id,
-            mode: session.mode,
-            targetTrackId: session.sourceTrack.id,
-            startUs: clip.startUs,
-            durationUs: endUs - clip.startUs,
-            snappedToUs: snapped.snappedTo
+          const anchorUs = kind.endsWith('start') ? clip.startUs : clipEndUs(clip)
+          const snapped = snapTime(anchorUs + deltaUs, snapTargets, snapContext)
+          if (kind === 'rate-start' || kind === 'rate-end') {
+            const rate = ratePreview(clip, kind, snapped.us, MIN_DRAG_DURATION_US)
+            next = rate ? { ...base, ...rate, snappedToUs: snapped.snappedTo } : previewRef.current
+          } else {
+            next = {
+              ...base,
+              ...edgePreview(clip, kind, snapped.us, MIN_DRAG_DURATION_US),
+              snappedToUs: snapped.snappedTo
+            }
           }
         }
 
@@ -195,22 +148,28 @@ export function useTimelineInteractions(options: {
         setPreview(next)
       }
 
-      const handleUp = (upEvent: PointerEvent): void => {
-        if (upEvent.pointerId !== session.pointerId) return
+      const finish = (): void => {
         window.removeEventListener('pointermove', handleMove)
         window.removeEventListener('pointerup', handleUp)
         window.removeEventListener('pointercancel', handleCancel)
-
-        commit(session, previewRef.current)
-        sessionRef.current = null
         previewRef.current = null
         setPreview(null)
+      }
+
+      const handleUp = (upEvent: PointerEvent): void => {
+        if (upEvent.pointerId !== pointerId) return
+        const final = previewRef.current
+        finish()
+        if (final) {
+          const commands = clipDragCommands(clip, track.id, final)
+          if (commands.length > 0) run(commands, clipDragLabel(final.kind))
+        }
 
         // Bấm chọn (không kéo, không giữ phím chọn thêm): đưa đầu phát tới clip nếu
         // nó đang ở ngoài, để preview hiện đúng clip vừa chọn.
         const movedPx = Math.max(
-          Math.abs(upEvent.clientX - session.pointerStartX),
-          Math.abs(upEvent.clientY - session.pointerStartY)
+          Math.abs(upEvent.clientX - pointerStartX),
+          Math.abs(upEvent.clientY - pointerStartY)
         )
         if (movedPx < CLICK_SLOP_PX && !additive) {
           const seekUs = clipSelectSeekUs(
@@ -226,15 +185,8 @@ export function useTimelineInteractions(options: {
         }
       }
 
-      const handleCancel = (): void => {
-        window.removeEventListener('pointermove', handleMove)
-        window.removeEventListener('pointerup', handleUp)
-        window.removeEventListener('pointercancel', handleCancel)
-        // Huỷ giữa chừng thì không ghi gì cả — clip trở lại vị trí cũ.
-        sessionRef.current = null
-        previewRef.current = null
-        setPreview(null)
-      }
+      // Huỷ giữa chừng thì không ghi gì cả — clip trở lại như cũ.
+      const handleCancel = (): void => finish()
 
       window.addEventListener('pointermove', handleMove)
       window.addEventListener('pointerup', handleUp)
@@ -246,7 +198,7 @@ export function useTimelineInteractions(options: {
       snapEnabled,
       toggleClipSelection,
       trackAtClientY,
-      commit,
+      run,
       setPlayhead,
       setPlaying
     ]

@@ -581,3 +581,83 @@
     0 0 14px var(--accent);
   transform: translate(-50%, -50%);
 }
+
+/* Nhóm nút chế độ công cụ: dính liền nhau như một công tắc nhiều nấc. */
+.timeline__tools {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: var(--radius-md);
+  background: var(--surface-base);
+}
+
+/* ── Con trỏ và dấu hiệu theo chế độ công cụ ─────────────────────── */
+
+/* Trim / Rate stretch: thân clip chỉ để chọn, mép mới kéo được. */
+.timeline--tool-trim .timeline-clip,
+.timeline--tool-rate-stretch .timeline-clip {
+  cursor: default;
+}
+
+.timeline--tool-trim .timeline-clip__handle {
+  cursor: col-resize;
+  background: color-mix(in srgb, #f2c14e 45%, transparent);
+}
+
+.timeline--tool-rate-stretch .timeline-clip__handle {
+  cursor: ew-resize;
+  background: color-mix(in srgb, #5ec8a8 45%, transparent);
+}
+
+/* Slip: cả clip là vùng kéo, mép không có nghĩa riêng. */
+.timeline--tool-slip .timeline-clip,
+.timeline--tool-slip .timeline-clip__handle {
+  cursor: ew-resize;
+}
+
+/* Blade: con trỏ ngắm và vạch dọc tại chỗ sẽ cắt; ẩn tay nắm mép. */
+.timeline--tool-blade .timeline-clip,
+.timeline--tool-blade .timeline-clip__handle {
+  cursor: crosshair;
+}
+
+.timeline--tool-blade .timeline-clip__handle {
+  background: none;
+}
+
+.timeline-clip__blade-line {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  margin-left: -1px;
+  background: #fff;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.8);
+  pointer-events: none;
+}
+
+/* Chữ nhỏ lúc kéo: tốc độ mới (rate stretch), điểm vào mới (slip). */
+.timeline-clip__drag-badge {
+  position: absolute;
+  top: 3px;
+  right: 5px;
+  padding: 0 4px;
+  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.75);
+  color: #fff;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  line-height: 14px;
+  pointer-events: none;
+}
+
+/* Vạch vị trí chuột (lướt): mờ hơn vạch đầu phát, để không lẫn hai thứ. */
+.timeline__hover-line {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: rgba(255, 255, 255, 0.45);
+  pointer-events: none;
+  z-index: 3;
+}

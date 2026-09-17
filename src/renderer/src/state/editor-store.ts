@@ -43,14 +43,31 @@ export interface Selection {
   text?: TextBlockRef
 }
 
+/**
+ * Chế độ công cụ của timeline: quyết định kéo/bấm lên clip làm gì.
+ *
+ * - select: chọn, kéo để dời, kéo mép để cắt (mặc định)
+ * - trim: kéo mép là ripple trim — clip phía sau dịch theo, không để hở
+ * - slip: kéo clip để đổi đoạn nguồn, giữ vị trí và độ dài
+ * - rate-stretch: kéo mép để đổi độ dài bằng cách đổi tốc độ
+ * - blade: bấm lên clip là cắt đôi tại chỗ bấm
+ */
+export type TimelineTool = 'select' | 'trim' | 'slip' | 'rate-stretch' | 'blade'
+
 interface EditorState {
   session: ProjectSessionState | null
   selection: Selection
   playheadUs: number
+  /**
+   * Thời điểm dưới con trỏ chuột khi rê trên timeline, hoặc `null` khi chuột ở ngoài.
+   * Khác đầu phát: chỉ để khung xem trước nhỏ "lướt" tới, không tua preview lớn.
+   */
+  hoverUs: number | null
   isPlaying: boolean
   /** Mức zoom timeline, tính bằng pixel cho mỗi giây. */
   pixelsPerSecond: number
   snapEnabled: boolean
+  timelineTool: TimelineTool
   saveState: SaveState
   lastError: string | null
 
@@ -61,6 +78,7 @@ interface EditorState {
   undo(): void
   redo(): void
   setPlayhead(us: number): void
+  setHoverUs(us: number | null): void
   setPlaying(playing: boolean): void
   setSelection(selection: Selection): void
   /** Chọn một khối chữ trên timeline; bỏ chọn clip đang có. */
@@ -69,6 +87,7 @@ interface EditorState {
   clearSelection(): void
   setPixelsPerSecond(value: number): void
   toggleSnap(): void
+  setTimelineTool(tool: TimelineTool): void
   setSaveState(state: SaveState): void
   setError(message: string | null): void
 }
@@ -81,9 +100,11 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
   session: null,
   selection: { clipIds: [] },
   playheadUs: 0,
+  hoverUs: null,
   isPlaying: false,
   pixelsPerSecond: DEFAULT_PIXELS_PER_SECOND,
   snapEnabled: true,
+  timelineTool: 'select',
   saveState: 'idle',
   lastError: null,
 
@@ -98,7 +119,13 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
     }),
 
   closeProject: () =>
-    set({ session: null, selection: { clipIds: [] }, playheadUs: 0, isPlaying: false }),
+    set({
+      session: null,
+      selection: { clipIds: [] },
+      playheadUs: 0,
+      hoverUs: null,
+      isPlaying: false
+    }),
 
   run: (commands, label) => {
     const { session } = get()
@@ -125,6 +152,11 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
     const { session } = get()
     if (!session || !canRedo(session)) return
     set({ session: redo(session), saveState: 'dirty' })
+  },
+
+  setHoverUs: (us) => {
+    // Chỉ ghi khi đổi thật: rê chuột bắn hàng trăm sự kiện, cùng một khung thì bỏ qua.
+    if (get().hoverUs !== us) set({ hoverUs: us })
   },
 
   setPlayhead: (us) => {
@@ -164,6 +196,8 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
     }),
 
   toggleSnap: () => set((state) => ({ snapEnabled: !state.snapEnabled })),
+
+  setTimelineTool: (timelineTool) => set({ timelineTool }),
 
   setSaveState: (saveState) => set({ saveState }),
 

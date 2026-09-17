@@ -255,3 +255,53 @@ test('bấm chọn clip nằm ngoài đầu phát thì đầu phát và preview 
   await page.waitForTimeout(300)
   expect(Math.abs((await playhead.boundingBox())!.x - before)).toBeLessThan(1)
 })
+
+test('rê chuột trên timeline thì khung nhỏ góc preview hiện khung tại chỗ chuột, preview lớn đứng yên', async () => {
+  const stage = page.locator('.preview__stage')
+  const hover = page.getByTestId('timeline-hover-preview')
+  const ruler = (await page.locator('.timeline__ruler-row').boundingBox())!
+  const lanes = (await page.locator('.timeline__lanes').boundingBox())!
+
+  // Đo bằng thời điểm của thẻ video chứ không chụp ảnh: chụp ảnh trong Electron làm
+  // cửa sổ mất focus và con trỏ "rời" timeline, nên khung nhỏ tắt đúng lúc chụp.
+  const hoverVideoTimes = (): Promise<number[]> =>
+    hover.evaluate((node) => [...node.querySelectorAll('video')].map((video) => video.currentTime))
+  const mainVideoTimes = (): Promise<number[]> =>
+    stage.evaluate((node) =>
+      [...node.querySelectorAll('video')]
+        .filter((video) => !video.closest('[data-testid="timeline-hover-preview"]'))
+        .map((video) => Math.round(video.currentTime * 10) / 10)
+    )
+
+  // Đầu phát về đầu, thu nhỏ timeline cho cả chín cảnh nằm trong khung nhìn.
+  await page.mouse.click(ruler.x + 2, ruler.y + 12)
+  const timeline = page.getByRole('region', { name: 'Timeline' })
+  for (let i = 0; i < 3; i += 1) await timeline.getByRole('button', { name: 'Thu nhỏ' }).click()
+  await page.mouse.move(5, 5)
+  await page.waitForTimeout(700)
+  const mainBefore = await mainVideoTimes()
+
+  const y = lanes.y + 20
+  await page.mouse.move(ruler.x + 40, y, { steps: 4 })
+  await expect(hover).toHaveClass(/preview__hover--visible/)
+  await expect(page.locator('.timeline__hover-line')).toHaveCount(1)
+  await page.waitForTimeout(700)
+  const earlyTimes = await hoverVideoTimes()
+  const earlyTimecode = await hover.locator('.preview__hover-timecode').textContent()
+
+  await page.mouse.move(ruler.x + 120, y, { steps: 6 })
+  await page.waitForTimeout(700)
+  const laterTimes = await hoverVideoTimes()
+  const laterTimecode = await hover.locator('.preview__hover-timecode').textContent()
+
+  // Khung nhỏ tua theo chuột: timecode đổi, và video bên trong đang ở đoạn nguồn khác.
+  expect(laterTimecode).not.toBe(earlyTimecode)
+  expect(laterTimes.length).toBeGreaterThan(0)
+  expect(laterTimes).not.toEqual(earlyTimes)
+
+  // Rời timeline: khung nhỏ ẩn, vạch mất; preview lớn vẫn nguyên ở đầu phát.
+  await page.mouse.move(5, 5, { steps: 3 })
+  await expect(hover).not.toHaveClass(/preview__hover--visible/)
+  await expect(page.locator('.timeline__hover-line')).toHaveCount(0)
+  expect(await mainVideoTimes()).toEqual(mainBefore)
+})

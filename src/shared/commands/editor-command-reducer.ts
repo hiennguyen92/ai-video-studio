@@ -18,6 +18,7 @@ import {
   splitClipAt,
   trimClipEdgeTo
 } from './timeline-mutations'
+import { rateStretchClip, rippleTrimTrackClips, slipClip } from './timeline-edit-tools'
 
 /**
  * Reducer thuần: áp một command lên draft của project document.
@@ -228,6 +229,57 @@ export function applyEditorCommand(doc: ProjectDocument, command: EditorCommand)
 
       const others = snapshot(track.clips).filter((item) => item.id !== clip.id)
       track.clips = placeClip({ ...track, clips: others }, trimmed, () => createId('clip'))
+      return OK
+    }
+
+    case 'clip/ripple-trim': {
+      const found = locateClip(doc, command.clipId)
+      if (!found) return fail(`Không tìm thấy clip ${command.clipId}`)
+      const track = doc.tracks[found.trackIndex]
+      if (track.locked) return fail(`Track "${track.name}" đang bị khoá`)
+      const clip = track.clips[found.clipIndex]
+      const next = rippleTrimTrackClips(
+        snapshot(track.clips),
+        clip.id,
+        command.edge,
+        command.toUs,
+        {
+          assetDurationUs: assetDurationLimitUs(doc, clip.assetId),
+          minDurationUs: MIN_CLIP_DURATION_US
+        }
+      )
+      if (!next) return fail('Kết quả cắt không hợp lệ')
+      track.clips = next
+      return OK
+    }
+
+    case 'clip/slip': {
+      const found = locateClip(doc, command.clipId)
+      if (!found) return fail(`Không tìm thấy clip ${command.clipId}`)
+      const track = doc.tracks[found.trackIndex]
+      if (track.locked) return fail(`Track "${track.name}" đang bị khoá`)
+      const clip = track.clips[found.clipIndex]
+      const limit = assetDurationLimitUs(doc, clip.assetId)
+      // Ảnh tĩnh không có đoạn nguồn nào để trượt.
+      if (limit === undefined) return fail('Chỉ slip được clip hình hoặc clip tiếng')
+      clip.sourceInUs = slipClip(snapshot(clip), command.toSourceInUs, limit).sourceInUs
+      return OK
+    }
+
+    case 'clip/rate-stretch': {
+      const found = locateClip(doc, command.clipId)
+      if (!found) return fail(`Không tìm thấy clip ${command.clipId}`)
+      const track = doc.tracks[found.trackIndex]
+      if (track.locked) return fail(`Track "${track.name}" đang bị khoá`)
+      // Cùng lý do với đổi tốc độ: ảnh tĩnh không có trục thời gian để phát nhanh chậm.
+      if (track.kind !== 'video' && track.kind !== 'audio') {
+        return fail('Chỉ đổi được tốc độ của clip hình hoặc clip tiếng')
+      }
+      const clip = snapshot(track.clips[found.clipIndex])
+      const stretched = rateStretchClip(clip, command.edge, command.toUs, MIN_CLIP_DURATION_US)
+      if (!stretched) return fail('Tốc độ này làm clip ngắn quá')
+      const others = snapshot(track.clips).filter((item) => item.id !== clip.id)
+      track.clips = placeClip({ ...track, clips: others }, stretched, () => createId('clip'))
       return OK
     }
 

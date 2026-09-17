@@ -7,7 +7,8 @@ import {
 } from '../../state/editor-store'
 import { useT } from '../../i18n/use-translation'
 import { ToolButton } from '../ui/tool-button'
-import { IconMagnet, IconSplit, IconTrash, IconZoomIn, IconZoomOut } from '../ui/icons'
+import { IconMagnet, IconScissors, IconTrash, IconZoomIn, IconZoomOut } from '../ui/icons'
+import { TimelineToolButtons } from './timeline-tool-buttons'
 import { AddTrackMenuButton } from './add-track-menu-button'
 import type { AddableTrackKind } from './use-timeline-tracks'
 
@@ -49,9 +50,13 @@ export function TimelineToolbar({
 
   return (
     <div className="timeline__toolbar">
+      <TimelineToolButtons />
+
+      <div className="top-bar__divider" />
+
       <ToolButton
         label={t.timeline.split}
-        icon={<IconSplit />}
+        icon={<IconScissors />}
         iconOnly
         onClick={onSplit}
         disabled={!canSplit}

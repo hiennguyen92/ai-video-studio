@@ -3,6 +3,7 @@ import { LocaleProvider } from './i18n/locale-provider'
 import { ProjectListView } from './components/projects/project-list-view'
 import { EditorWorkspace } from './components/editor/editor-workspace'
 import { useEditorStore } from './state/editor-store'
+import { TooltipLayer } from './components/ui/tooltip-layer'
 
 /**
  * Gốc ứng dụng.
@@ -32,6 +33,7 @@ export default function App(): JSX.Element {
   return (
     <LocaleProvider>
       <AppRoutes />
+      <TooltipLayer />
     </LocaleProvider>
   )
 }

@@ -149,6 +149,32 @@ const trimClip = z.object({
 })
 
 /**
+ * Ripple trim: cắt/kéo dài một mép rồi dời mọi clip phía sau trên cùng track theo
+ * lượng độ dài vừa đổi (chế độ Trim của timeline).
+ */
+const rippleTrimClip = z.object({
+  type: z.literal('clip/ripple-trim'),
+  clipId: z.string(),
+  edge: z.enum(['start', 'end']),
+  toUs: z.number().int()
+})
+
+/** Slip: đổi điểm vào nguồn, giữ vị trí và độ dài trên timeline. */
+const slipClipCommand = z.object({
+  type: z.literal('clip/slip'),
+  clipId: z.string(),
+  toSourceInUs: z.number().int()
+})
+
+/** Rate stretch: kéo một mép đổi độ dài, giữ đoạn nguồn, tốc độ tự đổi cho vừa. */
+const rateStretchClipCommand = z.object({
+  type: z.literal('clip/rate-stretch'),
+  clipId: z.string(),
+  edge: z.enum(['start', 'end']),
+  toUs: z.number().int()
+})
+
+/**
  * Cắt bỏ một khoảng thời gian rồi kéo phần sau lùi lên lấp chỗ trống.
  *
  * Áp cho MỌI track theo mặc định để giữ đồng bộ hình–tiếng; chỉ định `trackIds`
@@ -688,6 +714,9 @@ export const editorCommandSchema = z.discriminatedUnion('type', [
   removeClip,
   moveClip,
   trimClip,
+  rippleTrimClip,
+  slipClipCommand,
+  rateStretchClipCommand,
   splitClip,
   rippleDelete,
   duplicateClip,

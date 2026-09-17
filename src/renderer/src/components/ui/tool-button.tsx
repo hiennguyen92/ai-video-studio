@@ -3,8 +3,8 @@ import type { ButtonHTMLAttributes, JSX, ReactNode } from 'react'
 /**
  * Nút dùng chung.
  *
- * `title` luôn được đặt để mọi nút chỉ có icon vẫn có tooltip — DESCRIPTION §2
- * yêu cầu có tooltip, và nút icon không nhãn mà thiếu tooltip thì không đoán được.
+ * Nút chỉ có icon luôn có tooltip (`data-tooltip`, vẽ bởi `TooltipLayer`) — DESCRIPTION
+ * §2 yêu cầu có tooltip, và nút icon không nhãn mà thiếu tooltip thì không đoán được.
  * Nút chỉ-icon còn nhận thêm `aria-label` để trình đọc màn hình đọc được.
  */
 
@@ -49,7 +49,10 @@ export function ToolButton({
     <button
       type="button"
       className={classes}
-      title={label}
+      // Nút chỉ có icon: tooltip riêng của app (hiện nhanh, có chip phím tắt). Nút có
+      // chữ thì nhãn đã nằm sẵn trên nút, chỉ giữ `title` cho trường hợp chữ bị cắt.
+      title={iconOnly ? undefined : label}
+      data-tooltip={iconOnly ? label : undefined}
       aria-label={iconOnly ? label : undefined}
       aria-pressed={active || undefined}
       {...rest}

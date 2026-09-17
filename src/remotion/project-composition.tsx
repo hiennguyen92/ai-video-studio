@@ -1,5 +1,6 @@
 import { findClipLook } from '../shared/domain/clip-look-catalog'
 import { ClipEffectFrame } from './clip-effect-frame'
+import { CompositionMarkersContext, useCompositionMarkers } from './composition-markers'
 import { buildLookFilterSvg, lookFilterId } from '../shared/domain/clip-look-svg'
 import { useMemo, type CSSProperties, type JSX } from 'react'
 import { TextOverlayFrameParts } from './text-overlay-frame'
@@ -63,6 +64,8 @@ export type ProjectCompositionProps = {
   plan: RenderPlan
   /** id asset -> URL http. Thiếu URL thì phần tử đó không vẽ được. */
   mediaUrls: Record<string, string>
+  /** Tắt dấu hiệu DOM (xem `composition-markers`). Bỏ trống = bật. */
+  markers?: boolean
 }
 
 /**
@@ -144,6 +147,7 @@ function VideoClip({
   url: string
   frame: { width: number; height: number }
 }): JSX.Element {
+  const markers = useCompositionMarkers()
   const frame = useCurrentFrame()
   const { fps } = useVideoConfig()
   const fade = useFadeGain(clip.durationInFrames, clip.fadeInFrames, clip.fadeOutFrames)
@@ -195,7 +199,9 @@ function VideoClip({
         thì cái sau đè mất cái trước.
       */}
       <ClipEffectFrame
-        clipKey={clip.key}
+        // Id bộ lọc phải khác giữa hai Player trên cùng trang: `url(#id)` trỏ tới phần
+        // tử ĐẦU TIÊN mang id đó, và bộ lọc của khung thu nhỏ tính theo cỡ khác.
+        clipKey={markers ? clip.key : `thumb-${clip.key}`}
         effects={clip.effects}
         frame={frame}
         fps={fps}
@@ -205,7 +211,7 @@ function VideoClip({
         {clip.media === 'image' ? (
           <Img
             src={url}
-            data-clip-id={clip.key}
+            data-clip-id={markers ? clip.key : undefined}
             style={{
               width: fitted.width,
               height: fitted.height,
@@ -216,7 +222,7 @@ function VideoClip({
         ) : (
           <OffthreadVideo
             src={url}
-            data-clip-id={clip.key}
+            data-clip-id={markers ? clip.key : undefined}
             startFrom={clip.sourceFromFrame}
             playbackRate={clip.playbackRate}
             volume={clip.muted ? 0 : clip.volume * fade}
@@ -345,6 +351,7 @@ function composeTextTransform(
 }
 
 function SubtitleCue({ cue, height }: { cue: RenderPlanSubtitleCue; height: number }): JSX.Element {
+  const markers = useCompositionMarkers()
   const { style } = cue
   // Ngắt dòng bằng đúng hàm mà lớp ghi file ASS dùng, để preview và bản nung
   // xuống dòng giống nhau.
@@ -377,10 +384,10 @@ function SubtitleCue({ cue, height }: { cue: RenderPlanSubtitleCue; height: numb
   return (
     <AbsoluteFill
       // Class ổn định để gỡ lỗi và để kiểm thử bám vào; Remotion không tự đặt.
-      className="subtitle-cue"
+      className={markers ? 'subtitle-cue' : undefined}
       // Id của cue, để khung điều khiển trên preview biết đo đúng khối nào khi
       // màn hình đang có nhiều khối chữ cùng lúc.
-      data-block-id={cue.key}
+      data-block-id={markers ? cue.key : undefined}
       style={
         // Thả tự do thì lề và alignment không còn nghĩa gì — chính khối chữ tự
         // đặt chỗ. Lúc nung, thẻ `\an5\pos` cũng ghi đè đúng những thứ đó.
@@ -397,7 +404,7 @@ function SubtitleCue({ cue, height }: { cue: RenderPlanSubtitleCue; height: numb
       }
     >
       <div
-        className="text-block"
+        className={markers ? 'text-block' : undefined}
         style={{
           display: 'flex',
           flexDirection: 'column',
@@ -442,6 +449,7 @@ function SubtitleCue({ cue, height }: { cue: RenderPlanSubtitleCue; height: numb
  * nhau ở mọi cỡ chữ và mọi phông.
  */
 function TextOverlayLayer({ overlay }: { overlay: RenderPlanTextOverlay }): JSX.Element {
+  const markers = useCompositionMarkers()
   const frame = useCurrentFrame()
   const { style } = overlay
 
@@ -513,8 +521,8 @@ function TextOverlayLayer({ overlay }: { overlay: RenderPlanTextOverlay }): JSX.
 
   return (
     <AbsoluteFill
-      className="text-overlay"
-      data-block-id={overlay.key}
+      className={markers ? 'text-overlay' : undefined}
+      data-block-id={markers ? overlay.key : undefined}
       style={
         style.position
           ? { opacity }
@@ -530,7 +538,7 @@ function TextOverlayLayer({ overlay }: { overlay: RenderPlanTextOverlay }): JSX.
       }
     >
       <div
-        className="text-block"
+        className={markers ? 'text-block' : undefined}
         style={{
           display: 'flex',
           flexDirection: 'column',
@@ -607,7 +615,11 @@ function hexToRgba(hex: string, alpha: number): string {
   return `rgba(${red}, ${green}, ${blue}, ${alpha})`
 }
 
-export function ProjectComposition({ plan, mediaUrls }: ProjectCompositionProps): JSX.Element {
+export function ProjectComposition({
+  plan,
+  mediaUrls,
+  markers = true
+}: ProjectCompositionProps): JSX.Element {
   /**
    * Mọi lớp NHÌN THẤY xếp chung một hàng, theo đúng thứ tự lane trên timeline.
    *
@@ -664,20 +676,22 @@ export function ProjectComposition({ plan, mediaUrls }: ProjectCompositionProps)
   layers.sort((left, right) => left.layerIndex - right.layerIndex || left.order - right.order)
 
   return (
-    <AbsoluteFill style={{ backgroundColor: plan.backgroundColor }}>
-      <LookFilterDefs plan={plan} />
-      {layers.map((layer) => layer.node)}
+    <CompositionMarkersContext.Provider value={markers}>
+      <AbsoluteFill style={{ backgroundColor: plan.backgroundColor }}>
+        <LookFilterDefs plan={plan} />
+        {layers.map((layer) => layer.node)}
 
-      {/* Tiếng không có lớp: nghe được thì nghe, không che gì của ai. */}
-      {plan.audio.map((clip) => {
-        const url = mediaUrls[clip.assetId]
-        if (!url) return null
-        return (
-          <Sequence key={clip.key} from={clip.fromFrame} durationInFrames={clip.durationInFrames}>
-            <AudioClip clip={clip} url={url} />
-          </Sequence>
-        )
-      })}
-    </AbsoluteFill>
+        {/* Tiếng không có lớp: nghe được thì nghe, không che gì của ai. */}
+        {plan.audio.map((clip) => {
+          const url = mediaUrls[clip.assetId]
+          if (!url) return null
+          return (
+            <Sequence key={clip.key} from={clip.fromFrame} durationInFrames={clip.durationInFrames}>
+              <AudioClip clip={clip} url={url} />
+            </Sequence>
+          )
+        })}
+      </AbsoluteFill>
+    </CompositionMarkersContext.Provider>
   )
 }

@@ -226,3 +226,61 @@ export const IconSparkle = (p: IconProps): JSX.Element => (
     <path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z" />
   </Icon>
 )
+
+/* ── Chế độ công cụ timeline ───────────────────────────────────── */
+
+/** Chọn: mũi tên con trỏ. */
+export const IconCursor = (p: IconProps): JSX.Element => (
+  <Icon {...p}>
+    <path d="M5 3l14 8-6 1.6L10 19z" />
+  </Icon>
+)
+
+/** Trim (ripple): hai ngoặc vuông quay lưng vào một mép cắt. */
+export const IconTrim = (p: IconProps): JSX.Element => (
+  <Icon {...p}>
+    <path d="M10 5H6v14h4" />
+    <path d="M14 5h4v14h-4" />
+    <path d="M12 3v18" />
+  </Icon>
+)
+
+/** Slip: khung cố định, mũi tên hai chiều trượt bên trong. */
+export const IconSlip = (p: IconProps): JSX.Element => (
+  <Icon {...p}>
+    <path d="M4 6h16v12H4z" />
+    <path d="M7 12h10" />
+    <path d="M9 10l-2 2 2 2" />
+    <path d="M15 10l2 2-2 2" />
+  </Icon>
+)
+
+/** Rate stretch: đồng hồ kèm mũi tên kéo giãn. */
+export const IconRateStretch = (p: IconProps): JSX.Element => (
+  <Icon {...p}>
+    <circle cx="12" cy="10" r="5" />
+    <path d="M12 7.5V10l1.8 1.2" />
+    <path d="M3 19h18" />
+    <path d="M5 17l-2 2 2 2" />
+    <path d="M19 17l2 2-2 2" />
+  </Icon>
+)
+
+/** Blade: lưỡi dao cạo. */
+export const IconBlade = (p: IconProps): JSX.Element => (
+  <Icon {...p}>
+    <path d="M4 20L15 9" />
+    <path d="M15 9l5-5v4l-3 3" />
+    <path d="M9 15l-2-2" />
+  </Icon>
+)
+
+/** Kéo: cắt clip đang chọn tại đầu phát. */
+export const IconScissors = (p: IconProps): JSX.Element => (
+  <Icon {...p}>
+    <circle cx="6" cy="7" r="2.5" />
+    <circle cx="6" cy="17" r="2.5" />
+    <path d="M8.2 8.3L20 18" />
+    <path d="M8.2 15.7L20 6" />
+  </Icon>
+)

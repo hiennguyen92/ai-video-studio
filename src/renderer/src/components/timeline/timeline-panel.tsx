@@ -7,7 +7,7 @@ import {
 } from 'react'
 import { looseLaneHeight, type Track } from '../../../../shared/domain/timeline-track-types'
 import { selectionRemovalCommands } from '../../../../shared/commands/selection-removal'
-import { microsToSeconds } from '../../../../shared/domain/time-units'
+import { microsToSeconds, snapMicrosToFrame } from '../../../../shared/domain/time-units'
 import { selectDocument, selectDurationUs, useEditorStore } from '../../state/editor-store'
 import { useT } from '../../i18n/use-translation'
 import { EmptyState } from '../ui/empty-state'
@@ -23,6 +23,7 @@ import { TimelineRuler } from './timeline-ruler'
 import { TimelineTrackHead } from './timeline-track-head'
 import { pxToUs, usToPx, zoomToFit } from './timeline-geometry'
 import { TimelinePlayhead } from './timeline-playhead'
+import { TimelineHoverLine } from './timeline-hover-line'
 import { useTimelineInteractions } from './use-timeline-interactions'
 import './timeline-panel.css'
 
@@ -41,6 +42,8 @@ export function TimelinePanel(): JSX.Element {
   const document = useEditorStore(selectDocument)
   const durationUs = useEditorStore(selectDurationUs)
   const setPlayhead = useEditorStore((state) => state.setPlayhead)
+  const timelineTool = useEditorStore((state) => state.timelineTool)
+  const setHoverUs = useEditorStore((state) => state.setHoverUs)
   const setPlaying = useEditorStore((state) => state.setPlaying)
   const pixelsPerSecond = useEditorStore((state) => state.pixelsPerSecond)
   const setPixelsPerSecond = useEditorStore((state) => state.setPixelsPerSecond)
@@ -182,8 +185,8 @@ export function TimelinePanel(): JSX.Element {
   const handleSplit = useCallback(() => {
     if (!selectedClipId) return
     const atUs = useEditorStore.getState().playheadUs
-    run([{ type: 'clip/split', clipId: selectedClipId, atUs }], t.timeline.split)
-  }, [selectedClipId, run, t.timeline.split])
+    run([{ type: 'clip/split', clipId: selectedClipId, atUs }], 'Cắt clip')
+  }, [selectedClipId, run])
 
   // Nút thùng rác xoá đúng thứ phím Delete xoá — cùng một hàm, nên không thể lệch
   // nhau kiểu nút mờ đi trong khi phím vẫn xoá được.
@@ -237,7 +240,10 @@ export function TimelinePanel(): JSX.Element {
   }
 
   return (
-    <section className="panel timeline" aria-label={t.timeline.title}>
+    <section
+      className={`panel timeline timeline--tool-${timelineTool}`}
+      aria-label={t.timeline.title}
+    >
       <TimelineToolbar
         canSplit={Boolean(selectedClipId)}
         canDelete={Boolean(removal)}
@@ -279,7 +285,21 @@ export function TimelinePanel(): JSX.Element {
         </div>
 
         <div className="timeline__scroll">
-          <div className="timeline__content" style={{ width: contentWidthPx }}>
+          <div
+            className="timeline__content"
+            style={{ width: contentWidthPx }}
+            // Vị trí chuột cho khung xem trước nhỏ ở góc preview: làm tròn về khung
+            // hình để rê trong cùng một khung không bắn cập nhật thừa.
+            onPointerMove={(event) =>
+              setHoverUs(
+                Math.min(
+                  durationUs,
+                  snapMicrosToFrame(clientXToUs(event.clientX), document.settings.frameRate)
+                )
+              )
+            }
+            onPointerLeave={() => setHoverUs(null)}
+          >
             <div className="timeline__ruler-row" onPointerDown={handleScrub}>
               <TimelineRuler
                 durationUs={durationUs}
@@ -335,7 +355,13 @@ export function TimelinePanel(): JSX.Element {
                     const isDragging = preview?.clipId === clip.id
                     const shown =
                       isDragging && preview
-                        ? { ...clip, startUs: preview.startUs, durationUs: preview.durationUs }
+                        ? {
+                            ...clip,
+                            startUs: preview.startUs,
+                            durationUs: preview.durationUs,
+                            sourceInUs: preview.sourceInUs ?? clip.sourceInUs,
+                            speed: preview.speed ?? clip.speed
+                          }
                         : clip
                     // Khi kéo sang track khác, clip chỉ được vẽ ở track đích.
                     if (isDragging && preview && preview.targetTrackId !== track.id) return null
@@ -348,6 +374,7 @@ export function TimelinePanel(): JSX.Element {
                         asset={document.assets.find((item) => item.id === clip.assetId)}
                         pixelsPerSecond={pixelsPerSecond}
                         selected={selection.clipIds.includes(clip.id)}
+                        dragBadge={isDragging ? preview?.badge : undefined}
                         onPointerDown={(event, target, mode: ClipDragMode) =>
                           handleClipPointerDown(event, target, track, mode)
                         }
@@ -403,6 +430,7 @@ export function TimelinePanel(): JSX.Element {
               />
             )}
 
+            <TimelineHoverLine pixelsPerSecond={pixelsPerSecond} />
             <TimelinePlayhead
               bodyRef={bodyRef}
               pixelsPerSecond={pixelsPerSecond}
