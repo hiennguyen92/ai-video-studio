@@ -78,10 +78,13 @@ export function PreviewPanel(): JSX.Element {
             <RemotionPreviewStage document={document} />
             {/* Sau Player để nằm ĐÈ lên khung hình; đặt trước thì Player phủ mất. */}
             <PreviewTextGizmo document={document} />
-            {/* Khung nhỏ góc phải dưới: khung hình tại vị trí chuột trên timeline. */}
-            <TimelineHoverPreview document={document} />
           </div>
         )}
+
+        {/* Khung nhỏ góc phải dưới: khung hình tại vị trí chuột trên timeline. Gắn vào
+            vùng panel chứ không vào khung video, để dự án dọc hay ngang nó đều ở cùng
+            một chỗ, cùng cỡ. */}
+        {hasContent && <TimelineHoverPreview document={document} />}
       </div>
 
       <div className="preview__transport">

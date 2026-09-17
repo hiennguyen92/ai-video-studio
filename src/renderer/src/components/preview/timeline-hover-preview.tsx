@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type JSX } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type JSX } from 'react'
 import { Player, type PlayerRef } from '@remotion/player'
 import { ProjectComposition } from '../../../../remotion/project-composition'
 import type { ProjectDocument } from '../../../../shared/domain/project-document-types'
@@ -78,7 +78,12 @@ function HoverPlayer({
   return (
     <div
       className={`preview__hover${visible ? ' preview__hover--visible' : ''}`}
-      style={{ aspectRatio: `${plan.width} / ${plan.height}` }}
+      style={
+        {
+          aspectRatio: `${plan.width} / ${plan.height}`,
+          '--hover-aspect': plan.width / plan.height
+        } as CSSProperties
+      }
       aria-hidden={!visible}
       data-testid="timeline-hover-preview"
     >
