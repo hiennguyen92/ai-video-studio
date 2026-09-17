@@ -96,11 +96,11 @@ async function savedClip(): Promise<SavedClip> {
   return document.tracks.find((track) => track.kind === 'video')!.clips[0]
 }
 
-test('tab Effects có 29 thẻ, thẻ vẽ bằng bộ lọc thật', async () => {
+test('tab Effects có 30 thẻ, thẻ vẽ bằng bộ lọc thật', async () => {
   await studio().getByRole('tab', { name: 'Library' }).click()
   await studio().getByRole('tab', { name: 'Effects', exact: true }).click()
   const cards = studio().locator('.library-panel__section:not([hidden]) .library-card')
-  await expect(cards).toHaveCount(29)
+  await expect(cards).toHaveCount(30)
   // Thẻ hạt phim mang bộ lọc SVG của chính composition, không phải ảnh tĩnh.
   await expect(cards.filter({ hasText: 'Hạt phim' }).locator('filter feTurbulence')).toHaveCount(1)
 })

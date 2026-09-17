@@ -252,6 +252,14 @@ Ràng buộc đã kiểm chứng: Chrome bỏ qua `feDisplacementMap` khi bản 
 lúp dựng bản đồ dịch chuyển hoàn toàn bằng primitive (dải Φ từ blur một chiều,
 hình tròn từ đèn điểm `feDiffuseLighting`).
 
+Mặt nạ theo MÀU (không theo vùng hình học) dựng được ngay trong bộ lọc, và effect
+làm mịn da là ví dụ: `feColorMatrix` ghi một hiệu số kênh vào alpha,
+`feComponentTransfer`/`feFuncA` nắn alpha đó thành dải hình thang, rồi
+`feComposite operator="in"` NHÂN alpha hai dải lại — đó là cách nhân hai mặt nạ
+mà không cần primitive riêng. Làm mờ nhẹ mặt nạ trước khi dùng thì mép mới mềm.
+Đo trên Electron thật: bốn tông da từ sáng tới rất sẫm đều lọt mặt nạ, còn xám,
+trắng, trời xanh, lá cây và áo đỏ ra đúng từng byte như khi không có bộ lọc.
+
 ### Giọng đọc không cần khoá
 
 Mọi provider giọng đọc khác đều đòi khoá API và tính tiền, nên trước đây một máy

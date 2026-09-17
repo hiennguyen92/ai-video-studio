@@ -2,6 +2,7 @@ import { findClipEffect } from './clip-effect-catalog'
 import * as color from './clip-effect-render-color'
 import * as distort from './clip-effect-render-distort'
 import * as region from './clip-effect-render-region'
+import * as skin from './clip-effect-render-skin'
 import * as stylize from './clip-effect-render-stylize'
 import type { EffectOverlay, EffectRecipe, EffectRenderContext } from './clip-effect-render-types'
 import { clampEffectIntensity, normalizeEffectParams, type ClipEffect } from './clip-effect-types'
@@ -41,7 +42,8 @@ const RECIPES: Record<string, EffectRecipe> = {
   hsl: color.hsl,
   'color-wheels': color.colorWheels,
   clarity: color.clarity,
-  'shadows-highlights': color.shadowsHighlights
+  'shadows-highlights': color.shadowsHighlights,
+  'skin-smooth': skin.skinSmooth
 }
 
 export function hasEffectRecipe(kind: string): boolean {

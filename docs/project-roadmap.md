@@ -123,7 +123,7 @@ giao diện chỉ lộ ra khi chuyển tab với dữ liệu thật.
       thứ nâng cảm giác có hậu kỳ rõ nhất trên footage gần như tĩnh
 - [x] Thêm sáu kiểu chuyển cảnh: lia vụt hai hướng, nhoè, nhiễu hình, xoay, loé
 - [x] Chỉnh màu clip: sáng, tương phản, bão hoà, nhiệt độ, tối góc.
-- [x] Tab Effects trong Library: 29 effect hình CHỒNG được trên một clip (phong
+- [x] Tab Effects trong Library: 30 effect hình CHỒNG được trên một clip (phong
       cách, biến dạng, làm mờ, mặt nạ, tách nền, chỉnh màu), vẽ bằng bộ lọc SVG
       dùng chung cho preview, bản xuất và thẻ minh hoạ; chỉnh ở Inspector; agent
       dùng `add_clip_effect` / `update_clip_effect` / `remove_clip_effect` / `move_clip_effect`

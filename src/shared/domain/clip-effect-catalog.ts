@@ -200,6 +200,28 @@ export const CLIP_EFFECTS: EffectDefinition[] = [
     ],
     tags: ['vùng tối', 'vùng sáng', 'shadows', 'highlights', 'cứu sáng']
   },
+  {
+    kind: 'skin-smooth',
+    nameVi: 'Làm mịn da',
+    nameEn: 'Skin smoothing',
+    group: 'color',
+    usesIntensity: true,
+    params: [
+      numberParam('brighten', 'Nâng sáng da', 'Skin brightness', 0, 100, 25, 1, '%'),
+      numberParam('range', 'Dải tông da', 'Skin tone range', 0, 100, 50, 1, '%'),
+      selectParam(
+        'showArea',
+        'Soi vùng da',
+        'Highlight skin area',
+        [
+          ['off', 'Tắt', 'Off'],
+          ['on', 'Bật', 'On']
+        ],
+        'off'
+      )
+    ],
+    tags: ['làm mịn da', 'da', 'mịn', 'sáng da', 'chân dung', 'skin', 'beauty', 'retouch']
+  },
 
   // ── Phong cách ─────────────────────────────────────────────────────────────
   intensityOnly('vignette', 'Tối góc', 'Vignette', 'stylize', ['tối góc', 'vignette', 'điện ảnh']),
