@@ -1,0 +1,721 @@
+{
+  "sliceSize": 64,
+  "tile": 256,
+  "note": "9-slice: corners 64px fixed; edges stretch or round; center = fill. Use border-width = slice * scale.",
+  "frames": [
+    {
+      "id": "confetti-party",
+      "name": "Confetti Party",
+      "file": "frames/confetti-party.png",
+      "width": 256,
+      "height": 256,
+      "slice": 64,
+      "repeat": "stretch",
+      "padding": {
+        "top": 34,
+        "right": 34,
+        "bottom": 34,
+        "left": 34
+      },
+      "textColor": "#3a2a4a",
+      "css": "border: 64px solid transparent; border-image: url(frames/confetti-party.png) 64 fill / 64px / 0 stretch;"
+    },
+    {
+      "id": "strawberry",
+      "name": "Strawberry",
+      "file": "frames/strawberry.png",
+      "width": 256,
+      "height": 256,
+      "slice": 64,
+      "repeat": "stretch",
+      "padding": {
+        "top": 34,
+        "right": 34,
+        "bottom": 34,
+        "left": 34
+      },
+      "textColor": "#7a1e2e",
+      "css": "border: 64px solid transparent; border-image: url(frames/strawberry.png) 64 fill / 64px / 0 stretch;"
+    },
+    {
+      "id": "watermelon",
+      "name": "Watermelon",
+      "file": "frames/watermelon.png",
+      "width": 256,
+      "height": 256,
+      "slice": 64,
+      "repeat": "stretch",
+      "padding": {
+        "top": 36,
+        "right": 36,
+        "bottom": 36,
+        "left": 36
+      },
+      "textColor": "#7a1e2e",
+      "css": "border: 64px solid transparent; border-image: url(frames/watermelon.png) 64 fill / 64px / 0 stretch;"
+    },
+    {
+      "id": "lemon-fresh",
+      "name": "Lemon Fresh",
+      "file": "frames/lemon-fresh.png",
+      "width": 256,
+      "height": 256,
+      "slice": 64,
+      "repeat": "stretch",
+      "padding": {
+        "top": 34,
+        "right": 34,
+        "bottom": 34,
+        "left": 34
+      },
+      "textColor": "#6b5a12",
+      "css": "border: 64px solid transparent; border-image: url(frames/lemon-fresh.png) 64 fill / 64px / 0 stretch;"
+    },
+    {
+      "id": "bubble-pop",
+      "name": "Bubble Pop",
+      "file": "frames/bubble-pop.png",
+      "width": 256,
+      "height": 256,
+      "slice": 64,
+      "repeat": "round",
+      "padding": {
+        "top": 36,
+        "right": 36,
+        "bottom": 36,
+        "left": 36
+      },
+      "textColor": "#3a3a5a",
+      "css": "border: 64px solid transparent; border-image: url(frames/bubble-pop.png) 64 fill / 64px / 0 round;"
+    },
+    {
+      "id": "paw-prints",
+      "name": "Paw Prints",
+      "file": "frames/paw-prints.png",
+      "width": 256,
+      "height": 256,
+      "slice": 64,
+      "repeat": "stretch",
+      "padding": {
+        "top": 34,
+        "right": 34,
+        "bottom": 34,
+        "left": 34
+      },
+      "textColor": "#5a3a1e",
+      "css": "border: 64px solid transparent; border-image: url(frames/paw-prints.png) 64 fill / 64px / 0 stretch;"
+    },
+    {
+      "id": "music-notes",
+      "name": "Music Notes",
+      "file": "frames/music-notes.png",
+      "width": 256,
+      "height": 256,
+      "slice": 64,
+      "repeat": "stretch",
+      "padding": {
+        "top": 34,
+        "right": 34,
+        "bottom": 34,
+        "left": 34
+      },
+      "textColor": "#4b3480",
+      "css": "border: 64px solid transparent; border-image: url(frames/music-notes.png) 64 fill / 64px / 0 stretch;"
+    },
+    {
+      "id": "donut-sprinkles",
+      "name": "Donut Sprinkles",
+      "file": "frames/donut-sprinkles.png",
+      "width": 256,
+      "height": 256,
+      "slice": 64,
+      "repeat": "round",
+      "padding": {
+        "top": 36,
+        "right": 36,
+        "bottom": 36,
+        "left": 36
+      },
+      "textColor": "#7a2f48",
+      "css": "border: 64px solid transparent; border-image: url(frames/donut-sprinkles.png) 64 fill / 64px / 0 round;"
+    },
+    {
+      "id": "gingham-picnic",
+      "name": "Gingham Picnic",
+      "file": "frames/gingham-picnic.png",
+      "width": 256,
+      "height": 256,
+      "slice": 64,
+      "repeat": "round",
+      "padding": {
+        "top": 36,
+        "right": 36,
+        "bottom": 36,
+        "left": 36
+      },
+      "textColor": "#7a1e2e",
+      "css": "border: 64px solid transparent; border-image: url(frames/gingham-picnic.png) 64 fill / 64px / 0 round;"
+    },
+    {
+      "id": "daisy-chain",
+      "name": "Daisy Chain",
+      "file": "frames/daisy-chain.png",
+      "width": 256,
+      "height": 256,
+      "slice": 64,
+      "repeat": "round",
+      "padding": {
+        "top": 36,
+        "right": 36,
+        "bottom": 36,
+        "left": 36
+      },
+      "textColor": "#2f5a22",
+      "css": "border: 64px solid transparent; border-image: url(frames/daisy-chain.png) 64 fill / 64px / 0 round;"
+    },
+    {
+      "id": "cloud-sun",
+      "name": "Cloud Sun",
+      "file": "frames/cloud-sun.png",
+      "width": 256,
+      "height": 256,
+      "slice": 64,
+      "repeat": "round",
+      "padding": {
+        "top": 36,
+        "right": 36,
+        "bottom": 36,
+        "left": 36
+      },
+      "textColor": "#6b4a12",
+      "css": "border: 64px solid transparent; border-image: url(frames/cloud-sun.png) 64 fill / 64px / 0 round;"
+    },
+    {
+      "id": "moon-stars",
+      "name": "Moon Stars",
+      "file": "frames/moon-stars.png",
+      "width": 256,
+      "height": 256,
+      "slice": 64,
+      "repeat": "stretch",
+      "padding": {
+        "top": 34,
+        "right": 34,
+        "bottom": 34,
+        "left": 34
+      },
+      "textColor": "#4b3480",
+      "css": "border: 64px solid transparent; border-image: url(frames/moon-stars.png) 64 fill / 64px / 0 stretch;"
+    },
+    {
+      "id": "leafy-green",
+      "name": "Leafy Green",
+      "file": "frames/leafy-green.png",
+      "width": 256,
+      "height": 256,
+      "slice": 64,
+      "repeat": "stretch",
+      "padding": {
+        "top": 34,
+        "right": 34,
+        "bottom": 34,
+        "left": 34
+      },
+      "textColor": "#2f5a22",
+      "css": "border: 64px solid transparent; border-image: url(frames/leafy-green.png) 64 fill / 64px / 0 stretch;"
+    },
+    {
+      "id": "ribbon-bow",
+      "name": "Ribbon Bow",
+      "file": "frames/ribbon-bow.png",
+      "width": 256,
+      "height": 256,
+      "slice": 64,
+      "repeat": "stretch",
+      "padding": {
+        "top": 40,
+        "right": 34,
+        "bottom": 34,
+        "left": 34
+      },
+      "textColor": "#8a2f4a",
+      "css": "border: 64px solid transparent; border-image: url(frames/ribbon-bow.png) 64 fill / 64px / 0 stretch;"
+    },
+    {
+      "id": "spiral-notebook",
+      "name": "Spiral Notebook",
+      "file": "frames/spiral-notebook.png",
+      "width": 256,
+      "height": 256,
+      "slice": 64,
+      "repeat": "round",
+      "padding": {
+        "top": 42,
+        "right": 30,
+        "bottom": 30,
+        "left": 30
+      },
+      "textColor": "#5a4a30",
+      "css": "border: 64px solid transparent; border-image: url(frames/spiral-notebook.png) 64 fill / 64px / 0 round;"
+    },
+    {
+      "id": "royal-crown",
+      "name": "Royal Crown",
+      "file": "frames/royal-crown.png",
+      "width": 256,
+      "height": 256,
+      "slice": 64,
+      "repeat": "stretch",
+      "padding": {
+        "top": 34,
+        "right": 34,
+        "bottom": 34,
+        "left": 34
+      },
+      "textColor": "#4b3480",
+      "css": "border: 64px solid transparent; border-image: url(frames/royal-crown.png) 64 fill / 64px / 0 stretch;"
+    },
+    {
+      "id": "winter-snow",
+      "name": "Winter Snow",
+      "file": "frames/winter-snow.png",
+      "width": 256,
+      "height": 256,
+      "slice": 64,
+      "repeat": "stretch",
+      "padding": {
+        "top": 34,
+        "right": 34,
+        "bottom": 34,
+        "left": 34
+      },
+      "textColor": "#2a4a80",
+      "css": "border: 64px solid transparent; border-image: url(frames/winter-snow.png) 64 fill / 64px / 0 stretch;"
+    },
+    {
+      "id": "chalkboard",
+      "name": "Chalkboard",
+      "file": "frames/chalkboard.png",
+      "width": 256,
+      "height": 256,
+      "slice": 64,
+      "repeat": "round",
+      "padding": {
+        "top": 34,
+        "right": 34,
+        "bottom": 34,
+        "left": 34
+      },
+      "textColor": "#f4f0e6",
+      "css": "border: 64px solid transparent; border-image: url(frames/chalkboard.png) 64 fill / 64px / 0 round;"
+    },
+    {
+      "id": "wood-sign",
+      "name": "Wood Sign",
+      "file": "frames/wood-sign.png",
+      "width": 256,
+      "height": 256,
+      "slice": 64,
+      "repeat": "round",
+      "padding": {
+        "top": 34,
+        "right": 34,
+        "bottom": 34,
+        "left": 34
+      },
+      "textColor": "#4a2e14",
+      "css": "border: 64px solid transparent; border-image: url(frames/wood-sign.png) 64 fill / 64px / 0 round;"
+    },
+    {
+      "id": "rainbow-cloud",
+      "name": "Rainbow Cloud",
+      "file": "frames/rainbow-cloud.png",
+      "width": 256,
+      "height": 256,
+      "slice": 64,
+      "repeat": "round",
+      "padding": {
+        "top": 36,
+        "right": 36,
+        "bottom": 36,
+        "left": 36
+      },
+      "textColor": "#2a4a80",
+      "css": "border: 64px solid transparent; border-image: url(frames/rainbow-cloud.png) 64 fill / 64px / 0 round;"
+    },
+    {
+      "id": "pop-burst",
+      "name": "Pop Burst",
+      "file": "frames/pop-burst.png",
+      "width": 256,
+      "height": 256,
+      "slice": 64,
+      "repeat": "round",
+      "padding": {
+        "top": 34,
+        "right": 34,
+        "bottom": 34,
+        "left": 34
+      },
+      "textColor": "#2b2b2b",
+      "css": "border: 64px solid transparent; border-image: url(frames/pop-burst.png) 64 fill / 64px / 0 round;"
+    },
+    {
+      "id": "sakura-pink",
+      "name": "Sakura Pink",
+      "file": "frames/sakura-pink.png",
+      "width": 256,
+      "height": 256,
+      "slice": 64,
+      "repeat": "stretch",
+      "padding": {
+        "top": 34,
+        "right": 34,
+        "bottom": 34,
+        "left": 34
+      },
+      "textColor": "#8a2f4a",
+      "css": "border: 64px solid transparent; border-image: url(frames/sakura-pink.png) 64 fill / 64px / 0 stretch;"
+    },
+    {
+      "id": "pastel-pink",
+      "name": "Pastel Pink",
+      "file": "frames/pastel-pink.png",
+      "width": 256,
+      "height": 256,
+      "slice": 64,
+      "repeat": "stretch",
+      "padding": {
+        "top": 28,
+        "right": 28,
+        "bottom": 28,
+        "left": 28
+      },
+      "textColor": "#7a2f48",
+      "css": "border: 64px solid transparent; border-image: url(frames/pastel-pink.png) 64 fill / 64px / 0 stretch;"
+    },
+    {
+      "id": "sticker-mint",
+      "name": "Sticker Mint",
+      "file": "frames/sticker-mint.png",
+      "width": 256,
+      "height": 256,
+      "slice": 64,
+      "repeat": "stretch",
+      "padding": {
+        "top": 32,
+        "right": 32,
+        "bottom": 32,
+        "left": 32
+      },
+      "textColor": "#1f5c4a",
+      "css": "border: 64px solid transparent; border-image: url(frames/sticker-mint.png) 64 fill / 64px / 0 stretch;"
+    },
+    {
+      "id": "doodle-ink",
+      "name": "Doodle Ink",
+      "file": "frames/doodle-ink.png",
+      "width": 256,
+      "height": 256,
+      "slice": 64,
+      "repeat": "stretch",
+      "padding": {
+        "top": 30,
+        "right": 30,
+        "bottom": 30,
+        "left": 30
+      },
+      "textColor": "#2b2b2b",
+      "css": "border: 64px solid transparent; border-image: url(frames/doodle-ink.png) 64 fill / 64px / 0 stretch;"
+    },
+    {
+      "id": "polka-dots",
+      "name": "Polka Dots",
+      "file": "frames/polka-dots.png",
+      "width": 256,
+      "height": 256,
+      "slice": 64,
+      "repeat": "round",
+      "padding": {
+        "top": 36,
+        "right": 36,
+        "bottom": 36,
+        "left": 36
+      },
+      "textColor": "#8a3b5c",
+      "css": "border: 64px solid transparent; border-image: url(frames/polka-dots.png) 64 fill / 64px / 0 round;"
+    },
+    {
+      "id": "candy-stripes",
+      "name": "Candy Stripes",
+      "file": "frames/candy-stripes.png",
+      "width": 256,
+      "height": 256,
+      "slice": 64,
+      "repeat": "round",
+      "padding": {
+        "top": 36,
+        "right": 36,
+        "bottom": 36,
+        "left": 36
+      },
+      "textColor": "#7a3b5e",
+      "css": "border: 64px solid transparent; border-image: url(frames/candy-stripes.png) 64 fill / 64px / 0 round;"
+    },
+    {
+      "id": "neon-pink",
+      "name": "Neon Pink",
+      "file": "frames/neon-pink.png",
+      "width": 256,
+      "height": 256,
+      "slice": 64,
+      "repeat": "stretch",
+      "padding": {
+        "top": 30,
+        "right": 30,
+        "bottom": 30,
+        "left": 30
+      },
+      "textColor": "#ffd6f5",
+      "css": "border: 64px solid transparent; border-image: url(frames/neon-pink.png) 64 fill / 64px / 0 stretch;"
+    },
+    {
+      "id": "neon-cyan",
+      "name": "Neon Cyan",
+      "file": "frames/neon-cyan.png",
+      "width": 256,
+      "height": 256,
+      "slice": 64,
+      "repeat": "stretch",
+      "padding": {
+        "top": 30,
+        "right": 30,
+        "bottom": 30,
+        "left": 30
+      },
+      "textColor": "#d9fbff",
+      "css": "border: 64px solid transparent; border-image: url(frames/neon-cyan.png) 64 fill / 64px / 0 stretch;"
+    },
+    {
+      "id": "chat-bubble",
+      "name": "Chat Bubble",
+      "file": "frames/chat-bubble.png",
+      "width": 256,
+      "height": 256,
+      "slice": 64,
+      "repeat": "stretch",
+      "padding": {
+        "top": 28,
+        "right": 28,
+        "bottom": 48,
+        "left": 28
+      },
+      "textColor": "#2b2b2b",
+      "css": "border: 64px solid transparent; border-image: url(frames/chat-bubble.png) 64 fill / 64px / 0 stretch;"
+    },
+    {
+      "id": "sticky-note",
+      "name": "Sticky Note",
+      "file": "frames/sticky-note.png",
+      "width": 256,
+      "height": 256,
+      "slice": 64,
+      "repeat": "stretch",
+      "padding": {
+        "top": 40,
+        "right": 30,
+        "bottom": 30,
+        "left": 30
+      },
+      "textColor": "#5a4a12",
+      "css": "border: 64px solid transparent; border-image: url(frames/sticky-note.png) 64 fill / 64px / 0 stretch;"
+    },
+    {
+      "id": "kraft-tag",
+      "name": "Kraft Tag",
+      "file": "frames/kraft-tag.png",
+      "width": 256,
+      "height": 256,
+      "slice": 64,
+      "repeat": "round",
+      "padding": {
+        "top": 32,
+        "right": 32,
+        "bottom": 32,
+        "left": 32
+      },
+      "textColor": "#4a3320",
+      "css": "border: 64px solid transparent; border-image: url(frames/kraft-tag.png) 64 fill / 64px / 0 round;"
+    },
+    {
+      "id": "retro-pixel",
+      "name": "Retro Pixel",
+      "file": "frames/retro-pixel.png",
+      "width": 256,
+      "height": 256,
+      "slice": 64,
+      "repeat": "stretch",
+      "padding": {
+        "top": 34,
+        "right": 34,
+        "bottom": 34,
+        "left": 34
+      },
+      "textColor": "#2b2b2b",
+      "css": "border: 64px solid transparent; border-image: url(frames/retro-pixel.png) 64 fill / 64px / 0 stretch;"
+    },
+    {
+      "id": "candy-gloss",
+      "name": "Candy Gloss",
+      "file": "frames/candy-gloss.png",
+      "width": 256,
+      "height": 256,
+      "slice": 64,
+      "repeat": "stretch",
+      "padding": {
+        "top": 30,
+        "right": 30,
+        "bottom": 30,
+        "left": 30
+      },
+      "textColor": "#fff",
+      "css": "border: 64px solid transparent; border-image: url(frames/candy-gloss.png) 64 fill / 64px / 0 stretch;"
+    },
+    {
+      "id": "flower-corners",
+      "name": "Flower Corners",
+      "file": "frames/flower-corners.png",
+      "width": 256,
+      "height": 256,
+      "slice": 64,
+      "repeat": "stretch",
+      "padding": {
+        "top": 34,
+        "right": 34,
+        "bottom": 34,
+        "left": 34
+      },
+      "textColor": "#1f5c4a",
+      "css": "border: 64px solid transparent; border-image: url(frames/flower-corners.png) 64 fill / 64px / 0 stretch;"
+    },
+    {
+      "id": "heart-corners",
+      "name": "Heart Corners",
+      "file": "frames/heart-corners.png",
+      "width": 256,
+      "height": 256,
+      "slice": 64,
+      "repeat": "stretch",
+      "padding": {
+        "top": 32,
+        "right": 32,
+        "bottom": 32,
+        "left": 32
+      },
+      "textColor": "#8a2f4a",
+      "css": "border: 64px solid transparent; border-image: url(frames/heart-corners.png) 64 fill / 64px / 0 stretch;"
+    },
+    {
+      "id": "frosted-glass",
+      "name": "Frosted Glass",
+      "file": "frames/frosted-glass.png",
+      "width": 256,
+      "height": 256,
+      "slice": 64,
+      "repeat": "stretch",
+      "padding": {
+        "top": 28,
+        "right": 28,
+        "bottom": 28,
+        "left": 28
+      },
+      "textColor": "#fff",
+      "css": "border: 64px solid transparent; border-image: url(frames/frosted-glass.png) 64 fill / 64px / 0 stretch;"
+    },
+    {
+      "id": "comic-pop",
+      "name": "Comic Pop",
+      "file": "frames/comic-pop.png",
+      "width": 256,
+      "height": 256,
+      "slice": 64,
+      "repeat": "stretch",
+      "padding": {
+        "top": 30,
+        "right": 30,
+        "bottom": 30,
+        "left": 30
+      },
+      "textColor": "#2b2b2b",
+      "css": "border: 64px solid transparent; border-image: url(frames/comic-pop.png) 64 fill / 64px / 0 stretch;"
+    },
+    {
+      "id": "cloud-puff",
+      "name": "Cloud Puff",
+      "file": "frames/cloud-puff.png",
+      "width": 256,
+      "height": 256,
+      "slice": 64,
+      "repeat": "round",
+      "padding": {
+        "top": 36,
+        "right": 36,
+        "bottom": 36,
+        "left": 36
+      },
+      "textColor": "#3b5a80",
+      "css": "border: 64px solid transparent; border-image: url(frames/cloud-puff.png) 64 fill / 64px / 0 round;"
+    },
+    {
+      "id": "starry-night",
+      "name": "Starry Night",
+      "file": "frames/starry-night.png",
+      "width": 256,
+      "height": 256,
+      "slice": 64,
+      "repeat": "stretch",
+      "padding": {
+        "top": 32,
+        "right": 32,
+        "bottom": 32,
+        "left": 32
+      },
+      "textColor": "#fff5c2",
+      "css": "border: 64px solid transparent; border-image: url(frames/starry-night.png) 64 fill / 64px / 0 stretch;"
+    },
+    {
+      "id": "retro-double",
+      "name": "Retro Double",
+      "file": "frames/retro-double.png",
+      "width": 256,
+      "height": 256,
+      "slice": 64,
+      "repeat": "stretch",
+      "padding": {
+        "top": 34,
+        "right": 34,
+        "bottom": 34,
+        "left": 34
+      },
+      "textColor": "#6b3a1e",
+      "css": "border: 64px solid transparent; border-image: url(frames/retro-double.png) 64 fill / 64px / 0 stretch;"
+    },
+    {
+      "id": "rainbow-rim",
+      "name": "Rainbow Rim",
+      "file": "frames/rainbow-rim.png",
+      "width": 256,
+      "height": 256,
+      "slice": 64,
+      "repeat": "stretch",
+      "padding": {
+        "top": 36,
+        "right": 36,
+        "bottom": 36,
+        "left": 36
+      },
+      "textColor": "#3a2a4a",
+      "css": "border: 64px solid transparent; border-image: url(frames/rainbow-rim.png) 64 fill / 64px / 0 stretch;"
+    }
+  ]
+}

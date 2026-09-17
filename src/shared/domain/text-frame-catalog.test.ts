@@ -1,3 +1,5 @@
+import { existsSync } from 'node:fs'
+import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import {
   TEXT_FRAME_DECORS,
@@ -5,16 +7,23 @@ import {
   TEXT_FRAME_STYLES,
   findTextFrameDecor,
   findTextFramePalette,
-  findTextFrameStyle
+  findTextFrameStyle,
+  type VectorTextFrameStyle
 } from './text-frame-catalog'
+import { IMAGE_TEXT_FRAME_FILES, normalizeHexColor } from './text-frame-image-styles'
 import {
   buildBubbleTailImageUri,
   buildDecorImageUri,
   buildFrameImageUri
 } from './text-frame-svg-builders'
 
-/** Mọi tổ hợp khung × bộ màu. Ma trận hữu hạn nên soi được hết, 5 × 6 = 30. */
-const MOI_TO_HOP = TEXT_FRAME_STYLES.flatMap((style) =>
+const KHUNG_VECTOR = TEXT_FRAME_STYLES.filter(
+  (style): style is VectorTextFrameStyle => style.kind === 'vector'
+)
+const KHUNG_ANH = TEXT_FRAME_STYLES.filter((style) => style.kind === 'image')
+
+/** Mọi tổ hợp khung vector × bộ màu. Ma trận hữu hạn nên soi được hết, 5 × 6 = 30. */
+const MOI_TO_HOP = KHUNG_VECTOR.flatMap((style) =>
   TEXT_FRAME_PALETTES.map((palette) => ({ style, palette }))
 )
 
@@ -49,7 +58,31 @@ describe('danh mục khung nền chữ', () => {
     }
   })
 
-  it('mọi khung đều dựng được hình', () => {
+  it('khung ảnh đọc đủ số đo từ frames.json', () => {
+    expect(KHUNG_ANH.length).toBeGreaterThan(0)
+    for (const style of KHUNG_ANH) {
+      if (style.kind !== 'image') continue
+      expect(style.slicePx).toBeGreaterThan(0)
+      expect(style.textColor).toMatch(/^#[0-9A-F]{6}$/)
+      // Thiếu tên tiếng Việt thì giao diện tiếng Việt lòi ra tên tiếng Anh.
+      expect(style.nameVi).not.toBe(style.nameEn)
+      expect(style.tags.length).toBeGreaterThanOrEqual(2)
+    }
+  })
+
+  it('mọi file khai trong frames.json đều có thật', () => {
+    // Khai mà thiếu file thì bản dựng hỏng ở import, xa hẳn chỗ gây ra lỗi.
+    for (const file of IMAGE_TEXT_FRAME_FILES) {
+      expect(existsSync(join(__dirname, '..', '..', '..', 'resources', file))).toBe(true)
+    }
+  })
+
+  it('màu ba chữ số được mở thành sáu', () => {
+    expect(normalizeHexColor('#fff')).toBe('#FFFFFF')
+    expect(normalizeHexColor('#3a2a4a')).toBe('#3A2A4A')
+  })
+
+  it('mọi khung vector đều dựng được hình', () => {
     for (const { style, palette } of MOI_TO_HOP) {
       expect(buildFrameImageUri(style, palette)).toBeTruthy()
     }

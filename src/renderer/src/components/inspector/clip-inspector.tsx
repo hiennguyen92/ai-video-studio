@@ -1,0 +1,83 @@
+import type { JSX } from 'react'
+import type { EditorCommand } from '../../../../shared/commands/editor-command-types'
+import type { MediaAsset } from '../../../../shared/domain/media-asset-types'
+import type { Clip, Track } from '../../../../shared/domain/timeline-track-types'
+import { useT } from '../../i18n/use-translation'
+import { ClipAnimationSection } from './clip-animation-section'
+import { ClipAudioSection } from './clip-audio-section'
+import { ClipBasicSection } from './clip-basic-section'
+import { clipInspectorTabs, type ClipInspectorTab } from './clip-inspector-tab-list'
+import { ClipVideoSection } from './clip-video-section'
+
+const TAB_LABEL_KEYS = {
+  basic: 'tabBasic',
+  video: 'tabVideo',
+  audio: 'tabAudio',
+  animation: 'tabAnimation'
+} as const satisfies Record<ClipInspectorTab, string>
+
+type ClipUpdatePatch = Extract<EditorCommand, { type: 'clip/update' }>['patch']
+
+/**
+ * Thuộc tính của clip đang chọn, chia tab con Basic / Video / Audio / Animation.
+ *
+ * Tab đang mở do panel cha giữ, để chọn sang clip khác vẫn ở đúng tab đó — đang chỉnh
+ * màu hàng loạt clip mà mỗi lần chọn lại bật về Basic là phải bấm lại mãi. Tab
+ * không có với loại clip này (ảnh không có Audio) thì hiện tab Basic.
+ */
+export function ClipInspector({
+  clip,
+  track,
+  asset,
+  tab,
+  onTabChange,
+  run
+}: {
+  clip: Clip
+  track: Track
+  asset: MediaAsset | undefined
+  tab: ClipInspectorTab
+  onTabChange(tab: ClipInspectorTab): void
+  run(commands: EditorCommand[], label: string): void
+}): JSX.Element {
+  const t = useT()
+  const tabs = clipInspectorTabs(track.kind)
+  const active = tabs.includes(tab) ? tab : 'basic'
+  const update = (patch: ClipUpdatePatch, label: string): void => {
+    run([{ type: 'clip/update', clipId: clip.id, patch }], label)
+  }
+
+  return (
+    <div className="inspector">
+      <div className="clip-inspector__subtabs">
+        <div className="subtab-bar" role="tablist" aria-label={t.inspector.clip}>
+          {tabs.map((key) => (
+            <button
+              key={key}
+              type="button"
+              role="tab"
+              aria-selected={active === key}
+              className={`subtab ${active === key ? 'subtab--active' : ''}`}
+              onClick={() => onTabChange(key)}
+            >
+              {t.inspector[TAB_LABEL_KEYS[key]]}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div role="tabpanel" aria-label={t.inspector[TAB_LABEL_KEYS[active]]}>
+        {active === 'basic' && <ClipBasicSection clip={clip} track={track} asset={asset} />}
+        {active === 'video' && (
+          <ClipVideoSection
+            clip={clip}
+            run={run}
+            onTransform={(transform, label) => update({ transform }, label)}
+          />
+        )}
+        {active === 'audio' && <ClipAudioSection clip={clip} onUpdate={update} />}
+        {active === 'animation' && <ClipAnimationSection clip={clip} track={track} run={run} />}
+      </div>
+    </div>
+  )
+}

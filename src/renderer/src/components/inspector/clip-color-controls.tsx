@@ -11,9 +11,9 @@ import { ToolButton } from '../ui/tool-button'
 /**
  * Chỉnh màu clip đang chọn.
  *
- * Năm thanh trượt, không có LUT. Bộ lọc CSS không áp được bảng tra ba chiều, và
- * làm đúng phải đẩy từng khung qua shader — nên ở đây không bày ra ô "LUT" chỉ
- * chỉnh gần đúng bằng mấy bộ lọc chắp vá (DESCRIPTION §3.B).
+ * Năm thanh trượt chỉnh tay. Look màu dựng sẵn (tab LUT) nằm ở mục riêng ngay
+ * trên, áp SAU phần chỉnh này. File `.cube` tuỳ ý vẫn chưa nhận: bảng tra ba chiều
+ * không dựng đúng bằng bộ lọc SVG, làm đúng phải đẩy từng khung qua shader.
  */
 
 const SLIDERS: Array<{

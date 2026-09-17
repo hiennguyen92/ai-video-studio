@@ -4,7 +4,8 @@ import {
   buildBubbleTailImageUri,
   buildDecorImageUri
 } from '../shared/domain/text-frame-svg-builders'
-import { frameBorderPx } from './text-overlay-frame-css'
+import { frameBorderPx, imageFrameBorderPx } from './text-overlay-frame-css'
+import { TextFrameImageCanvas } from './text-frame-image-canvas'
 
 /**
  * Khung nền dễ thương sau chữ.
@@ -42,6 +43,19 @@ export function TextOverlayFrameParts({
   frame: ResolvedTextFrame
   fontSizePx: number
 }): JSX.Element | null {
+  if (frame.kind === 'image') {
+    return (
+      <TextFrameImageCanvas
+        // Đổi khung là dựng mới, để việc chờ nạp ảnh bắt đầu lại từ đầu.
+        key={frame.style.id}
+        styleId={frame.style.id}
+        slicePx={frame.style.slicePx}
+        repeat={frame.style.repeat}
+        borderPx={imageFrameBorderPx(frame, fontSizePx)}
+      />
+    )
+  }
+
   const border = frameBorderPx(frame, fontSizePx)
   const tail = frame.style.hasTail ? buildBubbleTailImageUri(frame.palette) : undefined
   const decor = frame.decor ? buildDecorImageUri(frame.decor, frame.palette) : undefined

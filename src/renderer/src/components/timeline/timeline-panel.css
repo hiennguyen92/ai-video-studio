@@ -324,6 +324,15 @@
   box-shadow: 0 0 0 1px var(--accent);
 }
 
+/* Đang rê thẻ zoom của tab Library qua clip: tô sáng cả clip sẽ nhận. */
+.timeline-clip--drop::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: color-mix(in srgb, var(--accent) 35%, transparent);
+  pointer-events: none;
+}
+
 .timeline-clip--locked {
   cursor: not-allowed;
   opacity: 0.75;
@@ -357,6 +366,50 @@
   overflow: hidden;
   text-overflow: ellipsis;
   pointer-events: none;
+}
+
+/* Nhãn LUT / Zoom / effect xếp dọc dưới tên clip. Không bắt chuột để kéo, cắt mép,
+   thả thẻ vẫn đi qua clip. Track thấp không đủ chỗ thì nhãn dưới cùng bị cắt; tên
+   đầy đủ nằm trong tooltip của clip. */
+.timeline-clip__tags {
+  position: absolute;
+  left: 5px;
+  right: 5px;
+  top: 17px;
+  bottom: 2px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.timeline-clip__tag {
+  flex: none;
+  max-width: 100%;
+  padding: 0 3px;
+  overflow: hidden;
+  border-radius: 2px;
+  font-size: 8px;
+  line-height: 11px;
+  font-weight: 600;
+  color: #fff;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.timeline-clip__tag--lut {
+  background: color-mix(in srgb, #d98a2b 85%, #000);
+}
+
+.timeline-clip__tag--zoom {
+  background: color-mix(in srgb, #2f8f6b 85%, #000);
+}
+
+.timeline-clip__tag--effect {
+  background: color-mix(in srgb, #7a5bd6 85%, #000);
 }
 
 .timeline-clip__fade {
@@ -467,4 +520,56 @@
   background: var(--accent);
   pointer-events: none;
   z-index: 5;
+}
+
+/*
+  Chuyển cảnh ở chỗ nối giữa hai clip: biểu tượng nằm ĐÈ lên vạch cắt, chuột phải
+  mở menu. Nằm trên clip (z-index) để bấm được mà không kéo theo clip.
+*/
+.timeline-cut {
+  position: absolute;
+  top: 50%;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  transform: translate(-50%, -50%);
+}
+
+.timeline-cut__badge {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  font-size: 12px;
+  line-height: 1;
+  border: 0;
+  padding: 0;
+  box-shadow: 0 0 0 2px var(--surface-base);
+  cursor: context-menu;
+}
+
+.timeline-cut__badge:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 1px;
+}
+
+/* Đang rê thẻ chuyển cảnh trúng chỗ nối này: vạch sáng báo "thả vào đây". */
+.timeline-cut--drop::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 6px;
+  height: 52px;
+  border-radius: 3px;
+  /* Lõi trắng, viền màu nhấn: tô toàn màu nhấn thì lẫn vào viền xanh của clip
+     đang chọn nằm ngay cạnh. */
+  background: #fff;
+  box-shadow:
+    0 0 0 2px var(--accent),
+    0 0 14px var(--accent);
+  transform: translate(-50%, -50%);
 }

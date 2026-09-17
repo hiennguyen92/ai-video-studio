@@ -504,7 +504,7 @@ test('kéo tay nắm ở đầu lane để đổi thứ tự lane', async () => 
   expect([...after].sort()).toEqual([...before].sort())
 
   // Một lần kéo là MỘT bước hoàn tác.
-  await expect(page.getByRole('button', { name: /Hoàn tác: Đổi thứ tự lane/ })).toBeVisible()
+  await expect(page.getByRole('button', { name: /Hoàn tác: Đổi thứ tự track/ })).toBeVisible()
   await page.keyboard.press('ControlOrMeta+z')
   expect(await names()).toEqual(before)
 

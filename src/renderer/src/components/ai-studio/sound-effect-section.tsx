@@ -10,12 +10,13 @@ import { selectDocument, useEditorStore } from '../../state/editor-store'
 import { useLocale } from '../../i18n/use-translation'
 import { ToolButton } from '../ui/tool-button'
 import { IconPlay } from '../ui/icons'
+import './sound-effect-section.css'
 
 /**
  * Hiệu ứng âm thanh dựng sẵn trong app.
  *
- * Không mạng, không tính tiền, không giấy phép phải xét — chúng được tổng hợp
- * bằng ffmpeg lúc build. Bấm một cái là thành asset THẬT trong thư viện, kéo
+ * Không mạng, không tính tiền — file nằm sẵn trong `resources/sound-effects/`,
+ * được chuẩn hoá độ to lúc build. Bấm một cái là thành asset THẬT trong thư viện, kéo
  * cắt chỉnh hoàn tác đều như file nhập tay (DESCRIPTION §4).
  *
  * Danh mục là hằng số dùng chung với công cụ MCP, nên agent và người dùng nhìn
@@ -31,7 +32,6 @@ export function SoundEffectSection(): JSX.Element {
   const { t, locale } = useLocale()
   const document = useEditorStore(selectDocument)
   const run = useEditorStore((state) => state.run)
-  const playheadUs = useEditorStore((state) => state.playheadUs)
 
   const [status, setStatus] = useState<SoundEffectLibraryStatus | null>(null)
   const [previewUrls, setPreviewUrls] = useState<Record<string, string>>({})
@@ -110,7 +110,11 @@ export function SoundEffectSection(): JSX.Element {
           assetId: asset.id,
           // Đặt ở đầu phát, nhưng né clip đang có: đè lên lời thoại là hỏng bản
           // dựng mà không ai để ý ngay.
-          startUs: findFreeSlot(track.clips, playheadUs, asset.probe.durationUs),
+          startUs: findFreeSlot(
+            track.clips,
+            useEditorStore.getState().playheadUs,
+            asset.probe.durationUs
+          ),
           durationUs: asset.probe.durationUs,
           sourceInUs: 0
         })
@@ -158,17 +162,19 @@ export function SoundEffectSection(): JSX.Element {
                   {Math.round(effect.durationUs / 1000)}ms · {effect.tags.slice(0, 2).join(', ')}
                 </span>
               </div>
-              <ToolButton
-                label={t.soundEffects.addToTimeline}
-                disabled={busyId !== null}
-                onClick={() => void add(effect.id, true)}
-              />
-              <ToolButton
-                label={t.soundEffects.addToLibrary}
-                variant="outline"
-                disabled={busyId !== null}
-                onClick={() => void add(effect.id, false)}
-              />
+              <div className="sound-effect-item__actions">
+                <ToolButton
+                  label={t.soundEffects.addToTimeline}
+                  disabled={busyId !== null}
+                  onClick={() => void add(effect.id, true)}
+                />
+                <ToolButton
+                  label={t.soundEffects.addToLibrary}
+                  variant="outline"
+                  disabled={busyId !== null}
+                  onClick={() => void add(effect.id, false)}
+                />
+              </div>
             </article>
           )
         )}

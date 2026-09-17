@@ -114,8 +114,8 @@ giao diện chỉ lộ ra khi chuyển tab với dữ liệu thật.
       cả video. Lát chia đều được đánh dấu rõ là không phải chỗ chuyển cảnh.
 - [x] `set_canvas` — không có nó thì footage dọc nằm trong khung 16:9 và không
       công cụ nào khác sửa được
-- [x] `set_clip_transition` — mô hình dữ liệu đã đỡ từ trước nhưng agent không
-      gọi được
+- [x] `set_cut_transition` — agent đặt chuyển cảnh vào chỗ nối giữa hai clip, cùng
+      mô hình với timeline (thay cho `set_clip_transition` đặt trên từng clip)
 - [x] Nền hộp cho chữ overlay, chỉnh được cả trên giao diện lẫn qua công cụ
 - [x] Chạy thử trọn luồng trên footage thật: 98 giây một cú máy → video dọc 25,9
       giây có chuyển cảnh, chữ và giọng đọc
@@ -123,6 +123,10 @@ giao diện chỉ lộ ra khi chuyển tab với dữ liệu thật.
       thứ nâng cảm giác có hậu kỳ rõ nhất trên footage gần như tĩnh
 - [x] Thêm sáu kiểu chuyển cảnh: lia vụt hai hướng, nhoè, nhiễu hình, xoay, loé
 - [x] Chỉnh màu clip: sáng, tương phản, bão hoà, nhiệt độ, tối góc.
+- [x] Tab Effects trong Library: 29 effect hình CHỒNG được trên một clip (phong
+      cách, biến dạng, làm mờ, mặt nạ, tách nền, chỉnh màu), vẽ bằng bộ lọc SVG
+      dùng chung cho preview, bản xuất và thẻ minh hoạ; chỉnh ở Inspector; agent
+      dùng `add_clip_effect` / `update_clip_effect` / `remove_clip_effect`
       **Không có LUT** — bộ lọc CSS không áp được bảng tra ba chiều, làm đúng phải
       đẩy từng khung qua shader, tức thêm một đường vẽ và một cái giá về tốc độ
       render chưa đo.
@@ -156,7 +160,8 @@ ghi vào backlog rõ ràng."
 - Sinh video bằng AI
 - LUT (.cube) — cần một đường vẽ WebGL riêng; xem mục chỉnh màu ở Mốc 5
 - Keyframe cho mọi thông số (hiện chuyển động và màu là một giá trị cho cả clip)
-- Hiệu ứng nâng cao khác
+- Hiệu ứng cần WebGL (ASCII, kính vạn hoa, mắt cá, halftone) và HSL theo dải màu
+  — bộ lọc SVG không dựng được
 - Bám đối tượng và tự cắt khung theo chủ thể
 - Đa camera
 - Đóng gói bản cài cho **Windows và Linux** — cấu hình có sẵn nhưng chưa chạy thử

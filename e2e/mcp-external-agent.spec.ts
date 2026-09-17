@@ -143,7 +143,7 @@ test('app công bố địa chỉ và khoá MCP để cấu hình agent', async 
   const address = page.getByLabel('Địa chỉ', { exact: true })
   await expect(address).toBeVisible()
   mcpUrl = await address.inputValue()
-  mcpToken = await page.getByLabel('Khoá truy cập').inputValue()
+  mcpToken = await page.getByLabel('Khoá truy cập', { exact: true }).inputValue()
 
   // Chỉ nghe trên máy này — cổng cục bộ sửa được dự án nên không được mở ra ngoài.
   expect(mcpUrl).toContain('127.0.0.1')
@@ -176,6 +176,10 @@ test('agent liệt kê được công cụ dựng phim', async () => {
   // danh sách mà không báo gì — công cụ có trong app nhưng agent không gọi được.
   const missing = Object.keys(chatToolSchemas).filter((name) => !names.includes(name))
   expect(missing).toEqual([])
+  // Chuyển cảnh đặt theo chỗ nối giữa hai clip, cùng mô hình với timeline; công cụ
+  // cũ đặt trên từng clip đã bỏ.
+  expect(names).toContain('set_cut_transition')
+  expect(names).not.toContain('set_clip_transition')
 
   await client.close()
 })

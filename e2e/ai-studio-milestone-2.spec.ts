@@ -189,7 +189,7 @@ test('chia kịch bản thành các đoạn tạo lại được riêng lẻ', a
 test('tab Nhạc nền dùng được đầy đủ khi không có khoá AI nào', async () => {
   await studio().getByRole('tab', { name: 'Nhạc nền' }).click()
 
-  await expect(page.getByText('Chưa có bản nhạc nào trong thư viện.')).toBeVisible()
+  await expect(page.getByText('Chưa có bản nhạc nào trong Media.')).toBeVisible()
 
   await studio().getByRole('button', { name: 'Tải nhạc lên' }).first().click()
   await expect(page.locator('.music-item')).toHaveCount(1, { timeout: 60_000 })
@@ -208,6 +208,7 @@ test('nhạc đã chèn nằm đúng trên track nhạc nền và sửa được
   const inspector = page.getByRole('region', { name: 'Thuộc tính' })
   await expect(inspector.getByText('Nhạc nền 1')).toBeVisible()
   // Âm lượng và fade chỉnh ở Inspector, không nhân đôi ô điều khiển trong panel nhạc.
+  await inspector.getByRole('tab', { name: 'Audio', exact: true }).click()
   await expect(inspector.getByLabel('Âm lượng')).toBeVisible()
   await expect(inspector.getByLabel('Fade in')).toBeVisible()
 })

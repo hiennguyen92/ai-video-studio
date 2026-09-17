@@ -94,9 +94,14 @@ describe('pointerRotationDeg', () => {
     expect(pointerRotationDeg(100, 100, 50, 50)).toBe(-45)
   })
 
-  it('kẹp lại trong giới hạn thay vì cho xoay lộn ngược', () => {
-    // Con trỏ ngay bên phải tâm = 90°, phải bị kẹp về 45.
-    expect(pointerRotationDeg(100, 100, 180, 100)).toBe(45)
-    expect(pointerRotationDeg(100, 100, 100, 180)).toBe(45)
+  it('xoay được trọn vòng: dựng đứng, lộn ngược, và phía bên kia', () => {
+    // Con trỏ ngay bên phải tâm = 90°, ngay bên dưới = 180°, bên trái = −90°.
+    expect(pointerRotationDeg(100, 100, 180, 100)).toBe(90)
+    expect(Math.abs(pointerRotationDeg(100, 100, 100, 180))).toBe(180)
+    expect(pointerRotationDeg(100, 100, 20, 100)).toBe(-90)
+  })
+
+  it('nơi gọi vẫn kẹp hẹp hơn được', () => {
+    expect(pointerRotationDeg(100, 100, 180, 100, 45)).toBe(45)
   })
 })

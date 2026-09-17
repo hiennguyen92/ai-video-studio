@@ -36,8 +36,10 @@ export function soundEffectsDir(): string {
 }
 
 export function soundEffectPath(id: string): string | null {
-  if (!findSoundEffect(id)) return null
-  const path = join(soundEffectsDir(), soundEffectFileName(id))
+  const definition = findSoundEffect(id)
+  if (!definition) return null
+  // Theo id CHUẨN của mục tìm được: id cũ dẫn sang file của hiệu ứng tương đương.
+  const path = join(soundEffectsDir(), soundEffectFileName(definition.id))
   return existsSync(path) ? path : null
 }
 
@@ -83,7 +85,7 @@ export async function buildSoundEffectAsset(id: string): Promise<MediaAsset> {
       contentHash: hash,
       sizeBytes: stats.size,
       mtimeMs: stats.mtimeMs,
-      builtinId: id
+      builtinId: definition.id
     },
     probe,
     derived: {},

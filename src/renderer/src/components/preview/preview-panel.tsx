@@ -1,5 +1,9 @@
 import { useCallback, type JSX } from 'react'
-import { formatTimecode, frameDurationUs } from '../../../../shared/domain/time-units'
+import {
+  formatTimecode,
+  frameDurationUs,
+  type FrameRate
+} from '../../../../shared/domain/time-units'
 import { selectDocument, selectDurationUs, useEditorStore } from '../../state/editor-store'
 import { useT } from '../../i18n/use-translation'
 import { EmptyState } from '../ui/empty-state'
@@ -19,7 +23,6 @@ import './preview-panel.css'
 export function PreviewPanel(): JSX.Element {
   const t = useT()
   const document = useEditorStore(selectDocument)
-  const playheadUs = useEditorStore((state) => state.playheadUs)
   const isPlaying = useEditorStore((state) => state.isPlaying)
   const setPlaying = useEditorStore((state) => state.setPlaying)
   const setPlayhead = useEditorStore((state) => state.setPlayhead)
@@ -30,9 +33,11 @@ export function PreviewPanel(): JSX.Element {
   const stepFrames = useCallback(
     (direction: -1 | 1) => {
       setPlaying(false)
-      setPlayhead(playheadUs + direction * frameStepUs)
+      // Đọc lúc bấm, không theo dõi: panel này chứa Player, và vẽ lại nó mỗi khung
+      // khi đang phát làm Player tụt khung, tiếng bị kéo lùi nghe như lặp.
+      setPlayhead(useEditorStore.getState().playheadUs + direction * frameStepUs)
     },
-    [playheadUs, frameStepUs, setPlaying, setPlayhead]
+    [frameStepUs, setPlaying, setPlayhead]
   )
 
   if (!document) {
@@ -101,7 +106,7 @@ export function PreviewPanel(): JSX.Element {
         />
 
         <span className="preview__timecode">
-          {formatTimecode(playheadUs, settings.frameRate)}
+          <PlayheadTimecode frameRate={settings.frameRate} />
           <span className="preview__timecode-total">
             {' / '}
             {formatTimecode(durationUs, settings.frameRate)}
@@ -110,4 +115,13 @@ export function PreviewPanel(): JSX.Element {
       </div>
     </section>
   )
+}
+
+/**
+ * Timecode của đầu phát. Component riêng để CHỈ nó vẽ lại mỗi khung khi đang phát,
+ * không kéo theo cả panel chứa Player.
+ */
+function PlayheadTimecode({ frameRate }: { frameRate: FrameRate }): JSX.Element {
+  const playheadUs = useEditorStore((state) => state.playheadUs)
+  return <>{formatTimecode(playheadUs, frameRate)}</>
 }

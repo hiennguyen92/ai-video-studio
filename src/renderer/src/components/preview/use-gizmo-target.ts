@@ -1,4 +1,6 @@
 import type { ProjectDocument } from '../../../../shared/domain/project-document-types'
+import { resolveTextFrame } from '../../../../shared/domain/remotion-render-plan'
+import { frameBasePaddingPx } from '../../../../remotion/text-overlay-frame-css'
 import type { TextBlockRef } from '../../../../shared/domain/text-block-drag'
 import type { TextPosition } from '../../../../shared/domain/text-placement'
 import { DEFAULT_CLIP_TRANSFORM } from '../../../../shared/domain/timeline-track-types'
@@ -12,6 +14,15 @@ import { useEditorStore, type Selection } from '../../state/editor-store'
  * đổi cỡ. Gom về một mô tả chung ở đây để lớp giao diện chỉ còn lo phần chuột.
  */
 
+/** Đệm khung của chữ đang chọn, để kéo mép khung trên xem trước. */
+export interface GizmoFramePadding {
+  scaleX: number
+  scaleY: number
+  /** Đệm một bên ở hệ số 1, px composition. */
+  basePaddingPx: { x: number; y: number }
+  write(axis: 'x' | 'y', scale: number, label: string): void
+}
+
 export interface GizmoTarget {
   /** Bộ chọn tìm ĐÚNG phần tử đang vẽ thứ này trong khung xem trước. */
   selector: string
@@ -21,6 +32,8 @@ export interface GizmoTarget {
   /** Hệ số phóng. `null` với chữ: chữ đổi cỡ bằng cỡ phông, không bằng kéo góc. */
   scale: number | null
   write(next: { position: TextPosition; rotationDeg: number; scale: number }, label: string): void
+  /** Chỉ có khi thứ đang chọn là chữ overlay CÓ khung. */
+  framePadding?: GizmoFramePadding
 }
 
 /** Đổi `ClipTransform.x/y` (-1..1, 0 là giữa) sang phần khung hình (0..1). */
@@ -39,7 +52,34 @@ function textTarget(document: ProjectDocument, block: TextBlockRef): GizmoTarget
   if (block.kind === 'overlay') {
     const overlay = document.textOverlays.find((item) => item.id === block.overlayId)
     if (!overlay) return null
+    // Tra khung như lớp vẽ tra: khung có id lạ thì lớp vẽ bỏ khung, và tay nắm mép
+    // cũng không được hiện ra để kéo một thứ không có trên hình.
+    const resolvedFrame = resolveTextFrame(overlay)
+    const frame = overlay.frame
+    const framePadding: GizmoFramePadding | undefined =
+      resolvedFrame && frame
+        ? {
+            scaleX: resolvedFrame.padding.x,
+            scaleY: resolvedFrame.padding.y,
+            basePaddingPx: frameBasePaddingPx(resolvedFrame, overlay.style.fontSizePx),
+            write: (axis, scale, label) =>
+              void run(
+                [
+                  {
+                    type: 'text/update',
+                    overlayId: overlay.id,
+                    frame: {
+                      ...frame,
+                      [axis === 'x' ? 'paddingScaleX' : 'paddingScaleY']: scale
+                    }
+                  }
+                ],
+                label
+              )
+          }
+        : undefined
     return {
+      framePadding,
       selector: `[data-block-id="${overlay.id}"] .text-block`,
       position: overlay.style.position ?? null,
       rotationDeg: overlay.style.rotationDeg ?? 0,

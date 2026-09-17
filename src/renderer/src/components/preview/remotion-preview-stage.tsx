@@ -29,13 +29,15 @@ import { useLocalMediaUrls } from '../../hooks/use-local-media-urls'
 
 export function RemotionPreviewStage({ document }: { document: ProjectDocument }): JSX.Element {
   const playerRef = useRef<PlayerRef>(null)
-  const playheadUs = useEditorStore((state) => state.playheadUs)
   const isPlaying = useEditorStore((state) => state.isPlaying)
   const setPlayhead = useEditorStore((state) => state.setPlayhead)
   const setPlaying = useEditorStore((state) => state.setPlaying)
 
   const mediaUrls = useLocalMediaUrls()
   const plan = useMemo(() => buildRenderPlan(document), [document])
+  // Giữ nguyên tham chiếu giữa các lần vẽ: object mới mỗi lần là Player dựng lại
+  // cả composition dù không có gì đổi.
+  const inputProps = useMemo(() => ({ plan, mediaUrls }), [plan, mediaUrls])
   const fps = document.settings.frameRate
 
   /**
@@ -95,18 +97,34 @@ export function RemotionPreviewStage({ document }: { document: ProjectDocument }
   }, [fps, setPlayhead, setPlaying])
 
   // Store đổi từ chỗ khác (bấm timeline, nhấn đoạn transcript) → tua Player.
+  //
+  // ĐĂNG KÝ thẳng với store chứ không theo dõi bằng hook: theo dõi thì component
+  // này — và cả Player bên trong — vẽ lại mỗi khung khi đang phát. Đo được: luồng
+  // chính bận tới mức Player tụt khung (≈24 thay vì 30 khung/giây), hình chạy
+  // chậm hơn tiếng, và Remotion kéo tiếng lùi ~0,7 giây cho khớp — nghe như lặp.
+  //
+  // Hàm đăng ký chạy ĐỒNG BỘ ngay trong `setPlayhead`, nên lúc so với khung Player
+  // vừa báo thì chưa có khung nào chen vào giữa.
   useEffect(() => {
-    const player = playerRef.current
-    if (!player) return
+    const seekToPlayhead = (playheadUs: number): void => {
+      const player = playerRef.current
+      if (!player) return
 
-    const target = frameOfMicros(playheadUs, fps)
+      const target = frameOfMicros(playheadUs, fps)
 
-    // Chính Player vừa báo khung này lên store — tua lại là tự nói với chính mình.
-    if (framePushedByPlayer.current === target) return
+      // Chính Player vừa báo khung này lên store — tua lại là tự nói với chính mình.
+      if (framePushedByPlayer.current === target) return
 
-    // Chỉ tua khi lệch thật: gọi seekTo mỗi khung sẽ làm giật hình lúc phát.
-    if (Math.abs(player.getCurrentFrame() - target) > 1) player.seekTo(target)
-  }, [playheadUs, fps])
+      // Chỉ tua khi lệch thật: gọi seekTo mỗi khung sẽ làm giật hình lúc phát.
+      if (Math.abs(player.getCurrentFrame() - target) > 1) player.seekTo(target)
+    }
+
+    // Đồng bộ một lần lúc gắn (mở dự án, đổi fps), rồi theo mỗi lần đầu phát đổi.
+    seekToPlayhead(useEditorStore.getState().playheadUs)
+    return useEditorStore.subscribe((state, previous) => {
+      if (state.playheadUs !== previous.playheadUs) seekToPlayhead(state.playheadUs)
+    })
+  }, [fps])
 
   // Nút phát/dừng trên thanh công cụ điều khiển Player.
   useEffect(() => {
@@ -120,7 +138,7 @@ export function RemotionPreviewStage({ document }: { document: ProjectDocument }
     <Player
       ref={playerRef}
       component={ProjectComposition}
-      inputProps={{ plan, mediaUrls }}
+      inputProps={inputProps}
       durationInFrames={plan.durationInFrames}
       fps={frameRateToNumber(fps)}
       compositionWidth={plan.width}

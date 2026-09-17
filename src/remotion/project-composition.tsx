@@ -1,4 +1,7 @@
-import type { CSSProperties, JSX } from 'react'
+import { findClipLook } from '../shared/domain/clip-look-catalog'
+import { ClipEffectFrame } from './clip-effect-frame'
+import { buildLookFilterSvg, lookFilterId } from '../shared/domain/clip-look-svg'
+import { useMemo, type CSSProperties, type JSX } from 'react'
 import { TextOverlayFrameParts } from './text-overlay-frame'
 import { frameBoxCss } from './text-overlay-frame-css'
 import {
@@ -8,7 +11,8 @@ import {
   OffthreadVideo,
   Sequence,
   interpolate,
-  useCurrentFrame
+  useCurrentFrame,
+  useVideoConfig
 } from 'remotion'
 import type {
   RenderPlan,
@@ -141,6 +145,7 @@ function VideoClip({
   frame: { width: number; height: number }
 }): JSX.Element {
   const frame = useCurrentFrame()
+  const { fps } = useVideoConfig()
   const fade = useFadeGain(clip.durationInFrames, clip.fadeInFrames, clip.fadeOutFrames)
   const enter = combineTransitionStyles(
     useEnterStyle(clip.transition),
@@ -189,32 +194,41 @@ function VideoClip({
         bao: khung bao đã mang bộ lọc của chuyển cảnh, hai chỗ cùng đặt `filter`
         thì cái sau đè mất cái trước.
       */}
-      {clip.media === 'image' ? (
-        <Img
-          src={url}
-          data-clip-id={clip.key}
-          style={{
-            width: fitted.width,
-            height: fitted.height,
-            objectFit: 'contain',
-            filter: colorGradeFilterCss(clip.colorGrade)
-          }}
-        />
-      ) : (
-        <OffthreadVideo
-          src={url}
-          data-clip-id={clip.key}
-          startFrom={clip.sourceFromFrame}
-          playbackRate={clip.playbackRate}
-          volume={clip.muted ? 0 : clip.volume * fade}
-          style={{
-            width: '100%',
-            height: '100%',
-            objectFit: 'contain',
-            filter: colorGradeFilterCss(clip.colorGrade)
-          }}
-        />
-      )}
+      <ClipEffectFrame
+        clipKey={clip.key}
+        effects={clip.effects}
+        frame={frame}
+        fps={fps}
+        width={fitted.width}
+        height={fitted.height}
+      >
+        {clip.media === 'image' ? (
+          <Img
+            src={url}
+            data-clip-id={clip.key}
+            style={{
+              width: fitted.width,
+              height: fitted.height,
+              objectFit: 'contain',
+              filter: mediaFilterCss(clip)
+            }}
+          />
+        ) : (
+          <OffthreadVideo
+            src={url}
+            data-clip-id={clip.key}
+            startFrom={clip.sourceFromFrame}
+            playbackRate={clip.playbackRate}
+            volume={clip.muted ? 0 : clip.volume * fade}
+            style={{
+              width: '100%',
+              height: '100%',
+              objectFit: 'contain',
+              filter: mediaFilterCss(clip)
+            }}
+          />
+        )}
+      </ClipEffectFrame>
 
       {temperature && (
         <AbsoluteFill
@@ -229,6 +243,46 @@ function VideoClip({
 
       {vignette && <AbsoluteFill style={{ background: vignette, pointerEvents: 'none' }} />}
     </AbsoluteFill>
+  )
+}
+
+/**
+ * Bộ lọc đặt lên chính thẻ media: chỉnh màu trước, look sau.
+ *
+ * Thứ tự này là thứ tự của mọi trình dựng: chỉnh phơi sáng/tương phản cho đúng
+ * rồi mới áp LUT. Đảo lại thì kéo sáng làm lệch luôn màu của look.
+ */
+function mediaFilterCss(clip: RenderPlanVideoClip): string | undefined {
+  const grade = colorGradeFilterCss(clip.colorGrade)
+  const look = clip.look ? `url(#${lookFilterId(clip.look.id, clip.look.intensity)})` : ''
+  return [grade, look].filter(Boolean).join(' ') || undefined
+}
+
+/**
+ * Định nghĩa bộ lọc SVG cho mọi look đang dùng trong kế hoạch, mỗi (look, cường
+ * độ) một lần. Nằm trong composition để bản xuất có đúng bộ lọc mà preview dùng.
+ */
+function LookFilterDefs({ plan }: { plan: RenderPlan }): JSX.Element | null {
+  const markup = useMemo(() => {
+    const seen = new Map<string, string>()
+    for (const clip of plan.video) {
+      if (!clip.look) continue
+      const id = lookFilterId(clip.look.id, clip.look.intensity)
+      const definition = findClipLook(clip.look.id)
+      if (definition && !seen.has(id))
+        seen.set(id, buildLookFilterSvg(definition, clip.look.intensity))
+    }
+    return [...seen.values()].join('')
+  }, [plan.video])
+  if (!markup) return null
+  return (
+    <svg
+      aria-hidden
+      width={0}
+      height={0}
+      style={{ position: 'absolute' }}
+      dangerouslySetInnerHTML={{ __html: `<defs>${markup}</defs>` }}
+    />
   )
 }
 
@@ -255,7 +309,12 @@ function freePlacementCss(position: TextPosition | undefined): CSSProperties {
   return {
     position: 'absolute',
     left: `${position.xPct * 100}%`,
-    top: `${position.yPct * 100}%`
+    top: `${position.yPct * 100}%`,
+    // Rộng đúng bằng nội dung. Phần tử đặt tuyệt đối mặc định chỉ được rộng tới
+    // mép phải khung hình tính từ `left`, nên kéo chữ lại gần mép là trình duyệt
+    // ép nó xuống hàng thành một cột. Ngắt dòng đã do `wrapSubtitleText` quyết
+    // (số ký tự, Enter) — kéo chữ đi đâu cũng phải giữ nguyên các dòng đó.
+    width: 'max-content'
   }
 }
 
@@ -357,7 +416,7 @@ function SubtitleCue({ cue, height }: { cue: RenderPlanSubtitleCue; height: numb
       >
         {lines.map((line, index) => (
           <span key={index} style={textStyle}>
-            {line}
+            {visibleLine(line)}
           </span>
         ))}
         {secondaryLines.map((line, index) => (
@@ -366,7 +425,7 @@ function SubtitleCue({ cue, height }: { cue: RenderPlanSubtitleCue; height: numb
             key={`secondary-${index}`}
             style={{ ...textStyle, fontSize: style.fontSizePx * 0.75 }}
           >
-            {line}
+            {visibleLine(line)}
           </span>
         ))}
       </div>
@@ -524,12 +583,20 @@ function TextOverlayLayer({ overlay }: { overlay: RenderPlanTextOverlay }): JSX.
                 : undefined
             }}
           >
-            {line}
+            {visibleLine(line)}
           </span>
         ))}
       </div>
     </AbsoluteFill>
   )
+}
+
+/**
+ * Dòng trống (người dùng Enter hai lần) phải còn chiều cao: một `<span>` rỗng cao
+ * bằng 0, và khoảng cách giữa hai đoạn biến mất trên hình.
+ */
+function visibleLine(line: string): string {
+  return line === '' ? '\u00A0' : line
 }
 
 function hexToRgba(hex: string, alpha: number): string {
@@ -598,6 +665,7 @@ export function ProjectComposition({ plan, mediaUrls }: ProjectCompositionProps)
 
   return (
     <AbsoluteFill style={{ backgroundColor: plan.backgroundColor }}>
+      <LookFilterDefs plan={plan} />
       {layers.map((layer) => layer.node)}
 
       {/* Tiếng không có lớp: nghe được thì nghe, không che gì của ai. */}

@@ -95,7 +95,7 @@ export function useTrackReorder(options: {
 
         run(
           [{ type: 'track/reorder', trackId, toIndex: reorderToIndex(final.slot, fromIndex) }],
-          'Đổi thứ tự lane'
+          'Đổi thứ tự track'
         )
       }
 

@@ -29,13 +29,14 @@ export function TextOverlaySection(): JSX.Element {
   const t = useT()
   const document = useEditorStore(selectDocument)
   const run = useEditorStore((state) => state.run)
-  const playheadUs = useEditorStore((state) => state.playheadUs)
   const setPlayhead = useEditorStore((state) => state.setPlayhead)
   const setPlaying = useEditorStore((state) => state.setPlaying)
 
   const overlays = document?.textOverlays ?? []
 
   const handleAdd = useCallback(() => {
+    // Đọc lúc thao tác, không theo dõi: theo dõi đầu phát là vẽ lại mỗi khung khi đang phát.
+    const { playheadUs } = useEditorStore.getState()
     const overlay: TextOverlay = {
       id: createId('text'),
       // Rơi vào lane chữ vừa thêm, nếu có.
@@ -49,7 +50,7 @@ export function TextOverlaySection(): JSX.Element {
       animationDurationUs: DEFAULT_TEXT_ANIMATION_DURATION_US
     }
     run([{ type: 'text/add', overlay }], 'Thêm chữ')
-  }, [document, playheadUs, run])
+  }, [document, run])
 
   return (
     <div className="text-overlay-section">

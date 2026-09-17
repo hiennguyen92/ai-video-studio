@@ -7,8 +7,14 @@ import {
 } from '../../../../shared/domain/text-placement'
 import { scaledSizeFromBounds } from '../../../../shared/domain/clip-frame-fit'
 import { useEditorStore } from '../../state/editor-store'
+import {
+  textFrameEdgeAxis,
+  textFramePaddingScaleFromEdgeDrag,
+  type TextFrameEdge
+} from '../../../../shared/domain/text-frame-edge-drag'
 import { useT } from '../../i18n/use-translation'
 import { resolveGizmoTarget } from './use-gizmo-target'
+import { PreviewGizmoFrameEdgeHandles } from './preview-gizmo-frame-edge-handles'
 
 /**
  * Khung điều khiển vẽ ĐÈ lên khung xem trước cho thứ đang chọn.
@@ -64,7 +70,7 @@ function sameBox(left: GizmoBox, right: GizmoBox): boolean {
   )
 }
 
-type DragMode = 'move' | 'rotate' | 'resize'
+type DragMode = 'move' | 'rotate' | 'resize' | 'pad'
 
 interface DragState {
   mode: DragMode
@@ -77,6 +83,45 @@ interface DragState {
   position: TextPosition
   rotationDeg: number
   scale: number
+  /** Mép đang kéo, chỉ có ở chế độ `pad`. */
+  edge?: TextFrameEdge
+  /** Hệ số đệm khung của trục đang kéo, lúc bắt đầu và hiện tại. */
+  startPadScale: number
+  padScale: number
+}
+
+/** Hệ số đệm hiện tại của trục ứng với mép, hoặc 1 khi không kéo mép. */
+function padScaleOf(target: ReturnType<typeof resolveGizmoTarget>, edge?: TextFrameEdge): number {
+  if (!edge || !target?.framePadding) return 1
+  return textFrameEdgeAxis(edge) === 'x' ? target.framePadding.scaleX : target.framePadding.scaleY
+}
+
+/**
+ * Kích thước khung điều khiển trong lúc kéo: phóng theo góc, hoặc nới theo mép.
+ *
+ * Kéo mép thì chỉ trục đó đổi, mỗi bên thêm đúng phần đệm tăng thêm — khung chạy
+ * theo con trỏ ngay, còn chữ thật nhảy tới lúc thả, cùng lối với các kiểu kéo khác.
+ */
+function padResizedSize(
+  measured: GizmoBox,
+  drag: DragState,
+  target: ReturnType<typeof resolveGizmoTarget>,
+  compositionWidthPx: number
+): { widthPx: number; heightPx: number } {
+  if (drag.mode === 'pad' && drag.edge && target?.framePadding) {
+    const axis = textFrameEdgeAxis(drag.edge)
+    const screenPerComposition = measured.stageWidthPx / compositionWidthPx
+    const grow =
+      2 *
+      (drag.padScale - drag.startPadScale) *
+      target.framePadding.basePaddingPx[axis] *
+      screenPerComposition
+    return axis === 'x'
+      ? { widthPx: Math.max(1, measured.widthPx + grow), heightPx: measured.heightPx }
+      : { widthPx: measured.widthPx, heightPx: Math.max(1, measured.heightPx + grow) }
+  }
+  const ratio = drag.scale / (target?.scale ?? 1)
+  return { widthPx: measured.widthPx * ratio, heightPx: measured.heightPx * ratio }
 }
 
 export function PreviewTextGizmo({ document }: { document: ProjectDocument }): JSX.Element {
@@ -160,7 +205,7 @@ export function PreviewTextGizmo({ document }: { document: ProjectDocument }): J
   }, [selector, isPlaying, targetRotationDeg, document.settings.width])
 
   const beginDrag = useCallback(
-    (event: PointerEvent<HTMLElement>, mode: DragMode) => {
+    (event: PointerEvent<HTMLElement>, mode: DragMode, edge?: TextFrameEdge) => {
       const root = rootRef.current
       if (!root || !measured || !target) return
       event.preventDefault()
@@ -186,7 +231,10 @@ export function PreviewTextGizmo({ document }: { document: ProjectDocument }): J
         startPosition,
         position: startPosition,
         rotationDeg: target.rotationDeg,
-        scale: target.scale ?? 1
+        scale: target.scale ?? 1,
+        edge,
+        startPadScale: padScaleOf(target, edge),
+        padScale: padScaleOf(target, edge)
       })
     },
     [measured, target]
@@ -214,6 +262,23 @@ export function PreviewTextGizmo({ document }: { document: ProjectDocument }): J
         return
       }
 
+      if (drag.mode === 'pad' && drag.edge && target?.framePadding) {
+        const axis = textFrameEdgeAxis(drag.edge)
+        setDrag({
+          ...drag,
+          padScale: textFramePaddingScaleFromEdgeDrag({
+            edge: drag.edge,
+            startScale: drag.startPadScale,
+            deltaXPx: event.clientX - drag.pointerStartX,
+            deltaYPx: event.clientY - drag.pointerStartY,
+            rotationDeg: drag.rotationDeg,
+            basePaddingPx: target.framePadding.basePaddingPx[axis],
+            screenPxPerCompositionPx: stage.width / document.settings.width
+          })
+        })
+        return
+      }
+
       if (drag.mode === 'resize') {
         // Tỉ lệ khoảng cách tới tâm: kéo ra xa gấp đôi thì to gấp đôi. Đo theo
         // khoảng cách chứ không theo trục ngang, để còn đúng khi đang xoay.
@@ -228,13 +293,24 @@ export function PreviewTextGizmo({ document }: { document: ProjectDocument }): J
         rotationDeg: pointerRotationDeg(centerX, centerY, event.clientX, event.clientY)
       })
     },
-    [drag, measured]
+    [drag, measured, target, document.settings.width]
   )
 
   const endDrag = useCallback(() => {
     if (!drag || !target) return
     setDrag(null)
-    const labels: Record<DragMode, string> = {
+    if (drag.mode === 'pad') {
+      // Nhấp mà không kéo thì không ghi gì: một bước hoàn tác rỗng trông như lỗi.
+      if (!drag.edge || !target.framePadding || drag.padScale === drag.startPadScale) return
+      const axis = textFrameEdgeAxis(drag.edge)
+      target.framePadding.write(
+        axis,
+        drag.padScale,
+        axis === 'x' ? t.preview.framePaddingX : t.preview.framePaddingY
+      )
+      return
+    }
+    const labels: Record<Exclude<DragMode, 'pad'>, string> = {
       move: t.preview.moveText,
       rotate: t.preview.rotateText,
       resize: t.preview.resizeText
@@ -280,8 +356,7 @@ export function PreviewTextGizmo({ document }: { document: ProjectDocument }): J
               ...measured,
               centerXPx: drag.position.xPct * measured.stageWidthPx,
               centerYPx: drag.position.yPct * measured.stageHeightPx,
-              widthPx: (measured.widthPx * drag.scale) / (target?.scale ?? 1),
-              heightPx: (measured.heightPx * drag.scale) / (target?.scale ?? 1)
+              ...padResizedSize(measured, drag, target, document.settings.width)
             }
           : measured
       )
@@ -290,8 +365,8 @@ export function PreviewTextGizmo({ document }: { document: ProjectDocument }): J
   const readout = drag
     ? drag.mode === 'move'
       ? `${Math.round(drag.position.xPct * 100)}% · ${Math.round(drag.position.yPct * 100)}%`
-      : drag.mode === 'resize'
-        ? `${Math.round(drag.scale * 100)}%`
+      : drag.mode === 'resize' || drag.mode === 'pad'
+        ? `${Math.round((drag.mode === 'pad' ? drag.padScale : drag.scale) * 100)}%`
         : `${drag.rotationDeg}°`
     : null
 
@@ -349,6 +424,13 @@ export function PreviewTextGizmo({ document }: { document: ProjectDocument }): J
                 {...handlers}
               />
             ))}
+
+          {target.framePadding && (
+            <PreviewGizmoFrameEdgeHandles
+              onBegin={(event, edge) => beginDrag(event, 'pad', edge)}
+              handlers={handlers}
+            />
+          )}
 
           {readout && <span className="preview-gizmo__readout">{readout}</span>}
         </div>

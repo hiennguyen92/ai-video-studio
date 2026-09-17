@@ -20,9 +20,11 @@ import {
 import {
   DEFAULT_TEXT_ANIMATION_DURATION_US,
   applyTextOverlayBox,
+  applyTextOverlayFrame,
   createDefaultTextOverlayStyle,
   defaultTextTrackId,
-  type TextOverlay
+  type TextOverlay,
+  type TextOverlayFrame
 } from '../domain/text-overlay-types'
 import {
   TEXT_FRAME_DECORS,
@@ -32,9 +34,21 @@ import {
   findTextFramePalette,
   findTextFrameStyle
 } from '../domain/text-frame-catalog'
+import {
+  findCutPoints,
+  isJunction,
+  removeCutTransitionCommands,
+  setCutTransitionCommands
+} from '../domain/timeline-cut-transitions'
 import { guessDuckingTracks, planAutoDucking } from '../domain/auto-ducking-planner'
 import { roundHalfUp } from '../domain/time-units'
+import { CLIP_LOOKS, findClipLook } from '../domain/clip-look-catalog'
 import { chatToolSchemas, isChatToolName, type ChatToolName } from './chat-tool-catalog'
+import {
+  planAddClipEffect,
+  planRemoveClipEffect,
+  planUpdateClipEffect
+} from './chat-tool-clip-effects'
 
 /**
  * Dịch lời gọi công cụ của AI thành LỆNH SỬA đã có sẵn của trình biên tập.
@@ -66,7 +80,7 @@ export interface ChatEditContext {
    * Không phải chuyện thẩm mỹ: agent đọc bản tổng quan rồi thao tác theo id, và
    * một chữ overlay mang id `clip_…` sẽ khiến nó gọi nhầm công cụ dành cho clip.
    */
-  makeId(prefix?: 'clip' | 'track' | 'text'): string
+  makeId(prefix?: 'clip' | 'track' | 'text' | 'fx'): string
   /**
    * Cú máy đã dò, theo id asset.
    *
@@ -544,6 +558,10 @@ function planOne(context: ChatEditContext, tool: ChatToolName, args: unknown): P
       if (input.fontSizePx) style.fontSizePx = input.fontSizePx
       if (input.rotationDeg !== undefined) style.rotationDeg = input.rotationDeg
 
+      const frame = checkedFrame(input.frame) ?? undefined
+      const frameColors = frame ? frameTextColors(frame) : undefined
+      if (frameColors) style = applyTextOverlayFrame(style, frameColors)
+
       const overlay: TextOverlay = {
         id: context.makeId('text'),
         // Cùng quy tắc với nút thêm chữ trên giao diện: rơi vào lane chữ cuối
@@ -557,12 +575,12 @@ function planOne(context: ChatEditContext, tool: ChatToolName, args: unknown): P
         animationDurationUs: DEFAULT_TEXT_ANIMATION_DURATION_US,
         exitAnimation: input.exit,
         glow: input.glow,
-        frame: checkedFrame(input.frame) ?? undefined
+        frame
       }
 
       return {
         tool,
-        description: `Thêm chữ "${input.text.slice(0, 30)}" từ ${formatSeconds(startUs)} tới ${formatSeconds(endUs)}`,
+        description: `Thêm Text "${input.text.slice(0, 30)}" từ ${formatSeconds(startUs)} tới ${formatSeconds(endUs)}`,
         commands: [{ type: 'text/add', overlay }]
       }
     }
@@ -574,7 +592,7 @@ function planOne(context: ChatEditContext, tool: ChatToolName, args: unknown): P
 
       return {
         tool,
-        description: `Xoá chữ "${overlay.text.slice(0, 30)}"`,
+        description: `Xoá Text "${overlay.text.slice(0, 30)}"`,
         commands: [{ type: 'text/remove', overlayId: input.overlayId }]
       }
     }
@@ -604,33 +622,43 @@ function planOne(context: ChatEditContext, tool: ChatToolName, args: unknown): P
       }
     }
 
-    case 'set_clip_transition': {
-      const input = chatToolSchemas.set_clip_transition.parse(args)
-      const clipId = resolveClipId(context, input.clipId)
+    case 'set_cut_transition': {
+      const input = chatToolSchemas.set_cut_transition.parse(args)
+      const fromClipId = resolveClipId(context, input.fromClipId)
 
-      const edge = input.edge ?? 'in'
-      const edgeLabel = edge === 'out' ? 'hiệu ứng ra' : 'chuyển cảnh'
-
-      if (input.kind === 'none') {
-        return {
-          tool,
-          description: `Gỡ ${edgeLabel} của clip`,
-          commands: [{ type: 'clip/set-transition', clipId, edge }]
-        }
+      const track = document.tracks.find((item) =>
+        item.clips.some((clip) => clip.id === fromClipId)
+      )
+      if (!track || (track.kind !== 'video' && track.kind !== 'image')) {
+        throw new Error('Chỉ đặt được chuyển cảnh giữa hai clip hình')
       }
 
-      const durationUs = secondsToMicros(input.durationSeconds ?? 0.5)
+      // Cùng phép tìm chỗ nối mà timeline dùng, để agent và người dùng cùng nhìn
+      // thấy một tập chỗ nối.
+      const point = findCutPoints(track).find((item) => item.leftClip?.id === fromClipId)
+
+      if (input.kind === 'none') {
+        const commands = point ? removeCutTransitionCommands(point) : []
+        if (commands.length === 0) {
+          throw new Error(`Sau clip "${fromClipId}" không có chuyển cảnh nào để gỡ`)
+        }
+        return { tool, description: 'Gỡ transition ở chỗ nối', commands }
+      }
+
+      if (!point || !isJunction(point)) {
+        throw new Error(
+          `Clip "${fromClipId}" không liền với clip nào phía sau trên cùng track — chuyển cảnh chỉ đặt được vào chỗ nối giữa hai clip sát nhau`
+        )
+      }
+
+      const durationUs =
+        input.durationSeconds !== undefined ? secondsToMicros(input.durationSeconds) : undefined
       return {
         tool,
-        description: `Đặt ${edgeLabel} ${input.kind} ${formatSeconds(durationUs)} cho clip`,
-        commands: [
-          {
-            type: 'clip/set-transition',
-            clipId,
-            edge,
-            transition: { kind: input.kind, durationUs }
-          }
-        ]
+        description: `Đặt transition ${input.kind}${
+          durationUs !== undefined ? ` ${formatSeconds(durationUs)}` : ''
+        } ở chỗ nối sau clip`,
+        commands: setCutTransitionCommands(point, input.kind, durationUs)
       }
     }
 
@@ -649,6 +677,59 @@ function planOne(context: ChatEditContext, tool: ChatToolName, args: unknown): P
       }
     }
 
+    case 'set_clip_look': {
+      const input = chatToolSchemas.set_clip_look.parse(args)
+      const clipId = resolveClipId(context, input.clipId)
+
+      if (input.lookId === 'none') {
+        return {
+          tool,
+          description: 'Gỡ filter của clip',
+          commands: [{ type: 'clip/set-look', clipId }]
+        }
+      }
+
+      // Kiểm id ở đây và NÉM kèm danh sách: agent sửa được ở lượt sau. Lớp dựng hình
+      // thì lặng lẽ bỏ id lạ để không làm chết bản xuất — hai tầng, hai cách xử.
+      const look = findClipLook(input.lookId)
+      if (!look) {
+        throw new Error(
+          `Không có look "${input.lookId}". Chọn một trong: ${CLIP_LOOKS.map((item) => item.id).join(', ')}`
+        )
+      }
+      const current = findClipById(document, clipId)?.look
+      return {
+        tool,
+        description: `Đặt filter ${look.nameVi} cho clip`,
+        commands: [
+          {
+            type: 'clip/set-look',
+            clipId,
+            look: { id: look.id, intensity: input.intensity ?? current?.intensity ?? 1 }
+          }
+        ]
+      }
+    }
+
+    case 'add_clip_effect':
+    case 'update_clip_effect':
+    case 'remove_clip_effect': {
+      const input = chatToolSchemas[tool].parse(args)
+      const clipId = resolveClipId(context, input.clipId)
+      const clip = findClipById(document, clipId)!
+      const planned =
+        tool === 'add_clip_effect'
+          ? planAddClipEffect(
+              clip,
+              chatToolSchemas.add_clip_effect.parse(args),
+              context.makeId('fx')
+            )
+          : tool === 'update_clip_effect'
+            ? planUpdateClipEffect(clip, chatToolSchemas.update_clip_effect.parse(args))
+            : planRemoveClipEffect(clip, chatToolSchemas.remove_clip_effect.parse(args))
+      return { tool, ...planned }
+    }
+
     case 'set_clip_motion': {
       const input = chatToolSchemas.set_clip_motion.parse(args)
       const clipId = resolveClipId(context, input.clipId)
@@ -656,14 +737,14 @@ function planOne(context: ChatEditContext, tool: ChatToolName, args: unknown): P
       if (input.kind === 'none') {
         return {
           tool,
-          description: 'Gỡ chuyển động của clip',
+          description: 'Gỡ zoom của clip',
           commands: [{ type: 'clip/set-motion', clipId }]
         }
       }
 
       return {
         tool,
-        description: `Đặt chuyển động ${input.kind} cho clip`,
+        description: `Đặt zoom ${input.kind} cho clip`,
         commands: [
           {
             type: 'clip/set-motion',
@@ -681,7 +762,7 @@ function planOne(context: ChatEditContext, tool: ChatToolName, args: unknown): P
       if (input.reset) {
         return {
           tool,
-          description: 'Trả clip về màu gốc',
+          description: 'Đặt lại Adjust của clip',
           commands: [{ type: 'clip/set-color-grade', clipId }]
         }
       }
@@ -699,7 +780,7 @@ function planOne(context: ChatEditContext, tool: ChatToolName, args: unknown): P
 
       return {
         tool,
-        description: `Chỉnh màu clip (${Object.keys(grade).join(', ')})`,
+        description: `Chỉnh Adjust của clip (${Object.keys(grade).join(', ')})`,
         commands: [{ type: 'clip/set-color-grade', clipId, grade }]
       }
     }
@@ -796,7 +877,7 @@ function planOne(context: ChatEditContext, tool: ChatToolName, args: unknown): P
 
       return {
         tool,
-        description: `Xoá lane "${track.name}"${losing.length > 0 ? ` cùng ${losing.join(' và ')}` : ''}`,
+        description: `Xoá track "${track.name}"${losing.length > 0 ? ` cùng ${losing.join(' và ')}` : ''}`,
         commands: [{ type: 'track/remove', trackId: track.id }]
       }
     }
@@ -813,7 +894,7 @@ function planOne(context: ChatEditContext, tool: ChatToolName, args: unknown): P
       return {
         tool,
         // Nói cả nghĩa của phép dời: agent thường gọi lệnh này để đổi lớp che.
-        description: `Dời lane "${document.tracks[from].name}" xuống vị trí ${input.toIndex} (lane dưới vẽ trên)`,
+        description: `Dời track "${document.tracks[from].name}" xuống vị trí ${input.toIndex} (track dưới vẽ trên)`,
         commands: [{ type: 'track/reorder', trackId: input.trackId, toIndex: input.toIndex }]
       }
     }
@@ -831,7 +912,7 @@ function planOne(context: ChatEditContext, tool: ChatToolName, args: unknown): P
 
       return {
         tool,
-        description: `Đổi lane "${track.name}": ${Object.keys(patch).join(', ')}`,
+        description: `Đổi track "${track.name}": ${Object.keys(patch).join(', ')}`,
         commands: [{ type: 'track/update', trackId: track.id, patch }]
       }
     }
@@ -891,9 +972,12 @@ function planOne(context: ChatEditContext, tool: ChatToolName, args: unknown): P
       const nextEnd = endUs ?? overlay.endUs
       if (nextEnd <= nextStart) throw new Error('Thời điểm kết thúc phải sau thời điểm bắt đầu')
 
+      const frame = input.frame !== undefined ? checkedFrame(input.frame) : undefined
+      const frameColors = frame ? frameTextColors(frame) : undefined
+
       return {
         tool,
-        description: `Sửa chữ "${input.text ?? overlay.text}"`,
+        description: `Sửa Text "${input.text ?? overlay.text}"`,
         commands: [
           {
             type: 'text/update',
@@ -907,8 +991,18 @@ function planOne(context: ChatEditContext, tool: ChatToolName, args: unknown): P
             // `!== undefined` chứ KHÔNG phải kiểm truthy: `null` là lệnh bỏ khung
             // và phải đi lọt tới reducer. Kiểm truthy sẽ nuốt mất nó, và nút tắt
             // khung im lặng không làm gì.
-            ...(input.frame !== undefined ? { frame: checkedFrame(input.frame) ?? null } : {})
-          }
+            ...(input.frame !== undefined ? { frame: frame ?? null } : {})
+          },
+          // Cùng một bước với lệnh đổi khung, để một lần hoàn tác gỡ cả khung lẫn màu.
+          ...(frameColors
+            ? [
+                {
+                  type: 'text/set-style' as const,
+                  overlayId: overlay.id,
+                  style: applyTextOverlayFrame(overlay.style, frameColors)
+                }
+              ]
+            : [])
         ]
       }
     }
@@ -968,7 +1062,7 @@ function planOne(context: ChatEditContext, tool: ChatToolName, args: unknown): P
       const input = chatToolSchemas.add_sound_effect.parse(args)
       const definition = findSoundEffect(input.soundEffectId)
       if (!definition) {
-        throw new Error(`Không có hiệu ứng âm thanh "${input.soundEffectId}"`)
+        throw new Error(`Không có sound effect "${input.soundEffectId}"`)
       }
 
       // Asset do tiến trình main dựng sẵn (probe thời lượng thật, hash nội dung)
@@ -976,7 +1070,7 @@ function planOne(context: ChatEditContext, tool: ChatToolName, args: unknown): P
       // lối với đường dẫn phông chữ.
       const asset = context.soundEffects?.[input.soundEffectId]
       if (!asset) {
-        throw new Error(`Bản cài này không có file cho hiệu ứng "${input.soundEffectId}"`)
+        throw new Error(`Bản cài này không có file cho sound effect "${input.soundEffectId}"`)
       }
 
       const commands: EditorCommand[] = [{ type: 'asset/add', asset }]
@@ -985,8 +1079,9 @@ function planOne(context: ChatEditContext, tool: ChatToolName, args: unknown): P
         const track = input.trackId
           ? document.tracks.find((item) => item.id === input.trackId)
           : document.tracks.find((item) => item.kind === 'audio' && !item.locked)
-        if (!track) throw new Error('Không tìm thấy track tiếng nào để đặt hiệu ứng')
-        if (track.kind !== 'audio') throw new Error(`Track "${track.name}" không phải track tiếng`)
+        if (!track) throw new Error('Không tìm thấy track âm thanh nào để đặt sound effect')
+        if (track.kind !== 'audio')
+          throw new Error(`Track "${track.name}" không phải track âm thanh`)
 
         commands.push({
           type: 'clip/insert',
@@ -1004,8 +1099,8 @@ function planOne(context: ChatEditContext, tool: ChatToolName, args: unknown): P
         tool,
         description:
           input.atSeconds !== undefined
-            ? `Đặt hiệu ứng "${definition.nameVi}" ở ${formatSeconds(secondsToMicros(input.atSeconds))}`
-            : `Thêm hiệu ứng "${definition.nameVi}" vào thư viện`,
+            ? `Đặt sound effect "${definition.nameVi}" ở ${formatSeconds(secondsToMicros(input.atSeconds))}`
+            : `Thêm sound effect "${definition.nameVi}" vào Media`,
         commands
       }
     }
@@ -1081,7 +1176,7 @@ function planOne(context: ChatEditContext, tool: ChatToolName, args: unknown): P
 
       return {
         tool,
-        description: `Dời ${targets.length} chữ ${where}`,
+        description: `Dời ${targets.length} Text ${where}`,
         commands: targets.map((overlay) => ({
           type: 'text/set-style' as const,
           overlayId: overlay.id,
@@ -1094,9 +1189,11 @@ function planOne(context: ChatEditContext, tool: ChatToolName, args: unknown): P
       const input = chatToolSchemas.set_text_color.parse(args)
       // Chỉ ghi đè viền khi agent NÊU: bỏ trống nghĩa là giữ nguyên, và một cái
       // viền bị xoá âm thầm làm chữ mất hút trên footage sáng.
-      const patch = input.outlineColor
-        ? { color: input.color, outlineColor: input.outlineColor }
-        : { color: input.color }
+      const patch = {
+        color: input.color,
+        ...(input.outlineColor ? { outlineColor: input.outlineColor } : {}),
+        ...(input.outlineWidthPx !== undefined ? { outlineWidthPx: input.outlineWidthPx } : {})
+      }
 
       if (input.subtitleTrackId) {
         const subtitleTrack = document.subtitleTracks.find(
@@ -1131,7 +1228,7 @@ function planOne(context: ChatEditContext, tool: ChatToolName, args: unknown): P
 
       return {
         tool,
-        description: `Đổi màu ${targets.length} chữ sang ${input.color}`,
+        description: `Đổi màu ${targets.length} Text sang ${input.color}`,
         commands: targets.map((overlay) => ({
           type: 'text/set-style' as const,
           overlayId: overlay.id,
@@ -1176,7 +1273,7 @@ function planOne(context: ChatEditContext, tool: ChatToolName, args: unknown): P
 
       return {
         tool,
-        description: `Xoay ${targets.length} chữ ${input.rotationDeg}°`,
+        description: `Xoay ${targets.length} Text ${input.rotationDeg}°`,
         commands: targets.map((overlay) => ({
           type: 'text/set-style' as const,
           overlayId: overlay.id,
@@ -1229,7 +1326,7 @@ function planOne(context: ChatEditContext, tool: ChatToolName, args: unknown): P
 
       return {
         tool,
-        description: `Đổi phông ${overlays.length} chữ sang ${input.fontFamily}`,
+        description: `Đổi phông ${overlays.length} Text sang ${input.fontFamily}`,
         commands: overlays.map((overlay) => ({
           type: 'text/set-style' as const,
           overlayId: overlay.id,
@@ -1279,18 +1376,27 @@ function planOne(context: ChatEditContext, tool: ChatToolName, args: unknown): P
  * phải NÓI RA để agent sửa được ở lượt sau. Hai tầng, hai cách xử, cả hai đều cố ý.
  */
 function checkedFrame(
-  frame: { styleId: string; paletteId: string; decorId?: string } | null | undefined
-): { styleId: string; paletteId: string; decorId?: string } | null | undefined {
+  frame: TextOverlayFrame | null | undefined
+): TextOverlayFrame | null | undefined {
   if (!frame) return frame
 
-  if (!findTextFrameStyle(frame.styleId)) {
+  const style = findTextFrameStyle(frame.styleId)
+  if (!style) {
     throw new Error(
       `Không có kiểu khung "${frame.styleId}". Chọn một trong: ${TEXT_FRAME_STYLES.map((item) => item.id).join(', ')}`
     )
   }
-  if (!findTextFramePalette(frame.paletteId)) {
+  // Khung ảnh mang màu sẵn trong ảnh: bộ màu và trang trí agent gửi kèm bị bỏ đi
+  // thay vì báo lỗi, vì chúng vô hại và bắt agent gọi lại chỉ tốn một lượt.
+  const padding = {
+    ...(frame.paddingScaleX !== undefined ? { paddingScaleX: frame.paddingScaleX } : {}),
+    ...(frame.paddingScaleY !== undefined ? { paddingScaleY: frame.paddingScaleY } : {})
+  }
+  if (style.kind === 'image') return { styleId: style.id, ...padding }
+
+  if (!frame.paletteId || !findTextFramePalette(frame.paletteId)) {
     throw new Error(
-      `Không có bộ màu khung "${frame.paletteId}". Chọn một trong: ${TEXT_FRAME_PALETTES.map((item) => item.id).join(', ')}`
+      `${frame.paletteId ? `Không có bộ màu khung "${frame.paletteId}"` : `Khung "${style.id}" cần paletteId`}. Chọn một trong: ${TEXT_FRAME_PALETTES.map((item) => item.id).join(', ')}`
     )
   }
   if (frame.decorId && !findTextFrameDecor(frame.decorId)) {
@@ -1299,6 +1405,19 @@ function checkedFrame(
     )
   }
   return frame
+}
+
+/**
+ * Màu chữ đi kèm khung, để chữ không mất hút trong ruột khung.
+ *
+ * Cùng việc giao diện làm khi đổi khung (`applyTextOverlayFrame`): chữ trắng mặc
+ * định đặt vào giấy nhớ vàng là không đọc được.
+ */
+function frameTextColors(frame: TextOverlayFrame): { text: string } | undefined {
+  const style = findTextFrameStyle(frame.styleId)
+  if (!style) return undefined
+  if (style.kind === 'image') return { text: style.textColor }
+  return frame.paletteId ? findTextFramePalette(frame.paletteId) : undefined
 }
 
 /**

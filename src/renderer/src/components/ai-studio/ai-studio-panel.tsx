@@ -8,6 +8,7 @@ import { MusicPanel } from './music-panel'
 import { TranscribePanel } from './transcribe-panel'
 import { TranslatePanel } from './translate-panel'
 import { SubtitlesPanel } from './subtitles-panel'
+import { LibraryPanel } from '../library/library-panel'
 
 /**
  * Panel trái — AI Studio (DESCRIPTION §3).
@@ -18,7 +19,7 @@ import { SubtitlesPanel } from './subtitles-panel'
  */
 
 export type StudioTabKey =
-  'media' | 'voice' | 'music' | 'transcribe' | 'translate' | 'subtitles' | 'settings'
+  'media' | 'library' | 'voice' | 'music' | 'transcribe' | 'translate' | 'subtitles' | 'settings'
 
 export function AiStudioPanel({
   importing,
@@ -62,6 +63,7 @@ export function AiStudioPanel({
 
   const tabs: Array<{ key: StudioTabKey; label: string }> = [
     { key: 'media', label: t.studio.tabs.media },
+    { key: 'library', label: t.studio.tabs.library },
     { key: 'voice', label: t.studio.tabs.voice },
     { key: 'music', label: t.studio.tabs.music },
     { key: 'transcribe', label: t.studio.tabs.transcribe },
@@ -99,6 +101,12 @@ export function AiStudioPanel({
               onImportClick={onImportClick}
               onAddToTimeline={onAddToTimeline}
             />
+          </div>
+        )}
+
+        {visitedTabs.has('library') && (
+          <div className="studio-tab-panel" hidden={activeTab !== 'library'}>
+            <LibraryPanel />
           </div>
         )}
 

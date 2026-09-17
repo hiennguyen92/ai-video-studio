@@ -58,7 +58,7 @@ test('lane thêm sau nằm TRÊN lane thêm trước', async () => {
   await page.locator('.media-card').first().waitFor({ timeout: 90_000 })
 
   // Lane CHỮ trước, rồi lane ẢNH — nên ảnh nằm dưới danh sách, tức vẽ sau.
-  await timeline.getByRole('button', { name: 'Thêm track text' }).click()
+  await timeline.getByRole('button', { name: 'Thêm track Text' }).click()
   await page.getByRole('region', { name: 'AI Studio' }).getByRole('tab', { name: 'Phụ đề' }).click()
   await page.getByRole('button', { name: 'Thêm chữ' }).click()
   await page.getByLabel('Nội dung 1').fill('BỊ CHE')

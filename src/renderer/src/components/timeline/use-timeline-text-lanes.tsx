@@ -39,7 +39,6 @@ export function useTimelineTextLanes(options: {
   laneAtClientY(clientY: number): string | null
 }): TimelineTextLanes {
   const { document, pixelsPerSecond, laneAtClientY } = options
-  const playheadUs = useEditorStore((state) => state.playheadUs)
   const setPlayhead = useEditorStore((state) => state.setPlayhead)
   const setPlaying = useEditorStore((state) => state.setPlaying)
   const selection = useEditorStore((state) => state.selection)
@@ -114,7 +113,6 @@ export function useTimelineTextLanes(options: {
         item={shown}
         variant="overlay"
         pixelsPerSecond={pixelsPerSecond}
-        active={playheadUs >= shown.startUs && playheadUs < shown.endUs}
         selected={selection.text?.kind === 'overlay' && selection.text.overlayId === overlay.id}
         dragging={textDrag?.id === overlay.id}
         onSelect={(item) => chooseBlock(block, item)}
@@ -145,7 +143,6 @@ export function useTimelineTextLanes(options: {
         item={shown}
         variant="subtitle"
         pixelsPerSecond={pixelsPerSecond}
-        active={playheadUs >= shown.startUs && playheadUs < shown.endUs}
         selected={selection.text?.kind === 'subtitle' && selection.text.cueId === cue.id}
         dragging={textDrag?.id === cue.id}
         onSelect={(item) => chooseBlock(block, item)}

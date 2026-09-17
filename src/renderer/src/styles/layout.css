@@ -318,3 +318,108 @@ input[type='range'] {
 .studio-tab-panel[hidden] {
   display: none;
 }
+
+/* Menu chuột phải dùng chung: nổi trên mọi thứ, toạ độ cố định theo con trỏ. */
+.context-menu {
+  position: fixed;
+  z-index: 1000;
+  min-width: 180px;
+  padding: 4px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--surface-raised);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 45%);
+  display: flex;
+  flex-direction: column;
+}
+
+.context-menu__title {
+  padding: 6px 10px 4px;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.context-menu__label {
+  padding: 4px 10px 2px;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.context-menu__item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  text-align: left;
+  cursor: pointer;
+}
+
+.context-menu__item:hover,
+.context-menu__item:focus-visible {
+  background: var(--surface-hover);
+  color: var(--text-primary);
+  outline: none;
+}
+
+.context-menu__item--checked {
+  color: var(--text-primary);
+}
+
+.context-menu__check {
+  width: 14px;
+  color: var(--accent);
+}
+
+.context-menu__item--danger:hover,
+.context-menu__item--danger:focus-visible {
+  background: color-mix(in srgb, var(--danger) 25%, transparent);
+  color: #fff;
+}
+
+.context-menu__separator {
+  height: 1px;
+  margin: 4px 2px;
+  background: var(--border-subtle);
+}
+
+/* Dùng chung: tab con trong Library và trong panel Thuộc tính. */
+/* Thanh tab con dạng nút gạt — khác hẳn thanh tab chính để không nhầm hai tầng. */
+.subtab-bar {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: var(--radius-md);
+  background: var(--surface-base);
+}
+
+.subtab {
+  /* Rộng theo chữ chứ không chia đều: chia đều thì "LUT" thừa chỗ trong khi
+     "Sound Effects" bị cắt. Vẫn co được khi panel quá hẹp. */
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 4px 6px;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition:
+    color var(--transition-fast),
+    background var(--transition-fast);
+}
+
+.subtab:hover {
+  color: var(--text-secondary);
+}
+
+.subtab--active {
+  color: var(--text-primary);
+  background: var(--surface-active);
+}

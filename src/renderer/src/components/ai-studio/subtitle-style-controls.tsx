@@ -1,9 +1,11 @@
 import type { JSX } from 'react'
 import {
+  MAX_TEXT_OUTLINE_WIDTH_PX,
   SUBTITLE_STYLE_PRESETS,
   type SubtitleAlignment,
   type SubtitleStyle
 } from '../../../../shared/domain/subtitle-types'
+import { MAX_TEXT_ROTATION_DEG } from '../../../../shared/domain/text-placement'
 import { useT } from '../../i18n/use-translation'
 import { FontFamilySelect } from './font-family-select'
 import { TextPositionRow } from './text-position-row'
@@ -47,8 +49,8 @@ export function SubtitleStyleControls({
         <span className="field-row__label">{t.subtitles.rotation}</span>
         <input
           type="range"
-          min={-45}
-          max={45}
+          min={-MAX_TEXT_ROTATION_DEG}
+          max={MAX_TEXT_ROTATION_DEG}
           step={1}
           value={style.rotationDeg ?? 0}
           aria-label={t.subtitles.rotation}
@@ -123,12 +125,13 @@ export function SubtitleStyleControls({
         <input
           type="range"
           min={0}
-          max={8}
+          max={MAX_TEXT_OUTLINE_WIDTH_PX}
           step={1}
           value={style.outlineWidthPx}
           aria-label={t.subtitles.outlineWidth}
           onChange={(event) => patch({ outlineWidthPx: Number(event.target.value) })}
         />
+        <span className="field-row__value">{style.outlineWidthPx}px</span>
       </div>
 
       <div className="field-row">

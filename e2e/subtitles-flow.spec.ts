@@ -480,7 +480,9 @@ test('kéo cue sang lane phụ đề khác thì nó chuyển hẳn sang track đ
   await expect(lanes.nth(0).locator('.timeline-text-block--subtitle')).toHaveCount(1)
   await expect(lanes.nth(1).locator('.timeline-text-block--subtitle')).toHaveCount(3)
 
-  await expect(page.getByRole('button', { name: /Hoàn tác: Dời chữ sang lane khác/ })).toBeVisible()
+  await expect(
+    page.getByRole('button', { name: /Hoàn tác: Dời Text sang track khác/ })
+  ).toBeVisible()
   await page.keyboard.press('ControlOrMeta+z')
   await expect(lanes.nth(0).locator('.timeline-text-block--subtitle')).toHaveCount(2)
 })

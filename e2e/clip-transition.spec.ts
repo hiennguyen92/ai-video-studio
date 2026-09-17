@@ -155,134 +155,179 @@ test.afterAll(async () => {
 
 const inspector = (): ReturnType<Page['getByRole']> =>
   page.getByRole('region', { name: 'Thuộc tính' })
+const studio = (): ReturnType<Page['getByRole']> => page.getByRole('region', { name: 'AI Studio' })
 
-test('Inspector chỉ hiện chuyển cảnh cho clip hình, mặc định là cắt thẳng', async () => {
+interface SavedTransitionClip {
+  id: string
+  transitionIn?: { kind: string; durationUs: number }
+  transitionOut?: { kind: string; durationUs: number }
+}
+
+async function savedVideoClips(): Promise<SavedTransitionClip[]> {
+  await expect(page.locator('.top-bar__status')).toHaveText('Đã lưu', { timeout: 15_000 })
+  const projectsRoot = join(userDataDir, 'projects')
+  const [projectId] = await readdir(projectsRoot)
+  const document = JSON.parse(
+    await readFile(join(projectsRoot, projectId, 'project.json'), 'utf8')
+  ) as { tracks: Array<{ kind: string; clips: SavedTransitionClip[] }> }
+  return document.tracks.find((track) => track.kind === 'video')!.clips
+}
+
+/**
+ * Kéo một thẻ chuyển cảnh từ tab Library thả vào chỗ nối giữa hai clip.
+ * `offsetPx` lệch điểm thả khỏi chỗ nối, để thử thả trượt.
+ */
+async function dropOnCut(name: string, offsetPx = 0): Promise<void> {
+  const lane = page.locator('.timeline-lane--video').first()
+  const laneBox = (await lane.boundingBox())!
+  const cutX = (await page.locator('.timeline-clip').nth(1).boundingBox())!.x
+  await studio()
+    .getByRole('button', { name, exact: true })
+    .dragTo(lane, { targetPosition: { x: cutX - laneBox.x + offsetPx, y: laneBox.height / 2 } })
+}
+
+test('Inspector không còn mục chuyển cảnh trên từng clip', async () => {
   await page.locator('.timeline-clip').nth(1).click()
+  await inspector().getByRole('tab', { name: 'Animation', exact: true }).click()
+  // Mục chuyển động vẫn còn — dấu hiệu Inspector đã hiện đủ cho clip hình.
+  await expect(inspector().getByLabel('Zoom', { exact: true })).toBeVisible()
+  await expect(inspector().getByLabel('Transitions', { exact: true })).toHaveCount(0)
+  await expect(inspector().getByLabel('Animation ra', { exact: true })).toHaveCount(0)
 
-  const select = inspector().getByLabel('Chuyển cảnh', { exact: true })
-  await expect(select).toBeVisible()
-  await expect(select).toHaveValue('')
-  await expect(inspector().getByText(/lấy phần nguồn nằm trước điểm vào/)).toBeVisible()
+  await studio().getByRole('tab', { name: 'Library' }).click()
+  await expect(studio().getByText(/Kéo thẻ thả vào chỗ nối giữa hai clip/)).toBeVisible()
 })
 
-test('đặt chuyển cảnh KHÔNG làm đổi vị trí hay độ dài clip', async () => {
-  // Chờ autosave ghi xong TRƯỚC khi chụp mốc, nếu không mốc sẽ là mảng rỗng và
-  // phép so sánh trở nên vô nghĩa.
+test('thả vào chỗ nối: ra ở clip trước, vào ở clip sau, clip không xê dịch', async () => {
   await expect(page.locator('.top-bar__status')).toHaveText('Đã lưu', { timeout: 15_000 })
   const before = await savedClips()
   expect(before).toHaveLength(2)
 
-  await inspector().getByLabel('Chuyển cảnh', { exact: true }).selectOption('fade')
-  await expect(page.locator('.top-bar__status')).toHaveText('Đã lưu', { timeout: 15_000 })
+  await dropOnCut('Mờ chồng')
+  const [first, second] = await savedVideoClips()
+  expect(first.transitionOut?.kind).toBe('fade')
+  expect(second.transitionIn?.kind).toBe('fade')
+  // Clip đầu không có hiệu ứng vào, clip sau không có hiệu ứng ra: chỉ chỗ nối đổi.
+  expect(first.transitionIn).toBeUndefined()
+  expect(second.transitionOut).toBeUndefined()
 
-  // Đây là khác biệt cốt lõi so với `xfade`: chuyển cảnh nằm gọn trong phần
-  // nguồn của clip, không co timeline, không đẩy gì phía sau.
+  // Chuyển cảnh nằm gọn trong phần nguồn của clip, không co timeline, không đẩy gì.
   expect(await savedClips()).toEqual(before)
+
+  // Chỗ nối hiện biểu tượng cho biết kiểu đang dùng.
+  await expect(page.getByRole('button', { name: 'Transition: Mờ chồng' })).toBeVisible()
+
+  // Tab Animation của clip SAU chỗ nối hiện phía "Vào"; đổi thời lượng ở đây là đổi
+  // cả chỗ nối, hai phía cùng một số.
+  await page.locator('.timeline-clip').nth(1).click()
+  const edgeIn = inspector().locator('[data-transition-edge="in"]')
+  await expect(edgeIn).toContainText('Vào: Mờ chồng')
+  await expect(inspector().locator('[data-transition-edge="out"]')).toHaveCount(0)
+  await edgeIn.getByLabel('Thời lượng transition (Vào)').selectOption('1000000')
+  await expect(page.locator('.top-bar__status')).toHaveText('Đã lưu', { timeout: 15_000 })
+  const [left, right] = await savedVideoClips()
+  expect(left.transitionOut?.durationUs).toBe(1_000_000)
+  expect(right.transitionIn?.durationUs).toBe(1_000_000)
+  await edgeIn.getByLabel('Thời lượng transition (Vào)').selectOption('500000')
 })
 
-test('giữ NGUYÊN vị trí phát, đổi hiệu ứng thì hình đổi theo', async () => {
+test('mỗi kiểu thả vào chỗ nối cho ra một khung hình riêng, không kiểu nào trùng kiểu nào', async () => {
   const stage = page.locator('.preview__stage')
   const ruler = page.locator('.timeline__ruler-row')
-  const box = await ruler.boundingBox()
+  const rulerBox = (await ruler.boundingBox())!
+  const firstBox = (await page.locator('.timeline-clip').first().boundingBox())!
 
-  await page.locator('.timeline-clip').nth(1).click()
-  const select = inspector().getByLabel('Chuyển cảnh', { exact: true })
-
-  // Chuyển cảnh dài 3 giây để vùng hiệu ứng đủ rộng mà đặt đầu phát vào giữa.
-  await select.selectOption('fade')
-  await inspector().getByLabel('Thời lượng (giây)').fill('3')
-  await page.waitForTimeout(400)
-
-  // Đặt đầu phát MỘT LẦN rồi giữ nguyên. Đổi vị trí giữa các lần chụp thì hình
-  // khác nhau dù có hiệu ứng hay không — phép thử sẽ không chứng minh được gì.
-  // Cắt ở giây 5, hiệu ứng dài 3 giây → vùng chuyển cảnh là giây 2–5. Đặt đầu
-  // phát vào khoảng giữa đó, MỘT LẦN, rồi giữ nguyên.
-  await page.mouse.click(box!.x + 210, box!.y + 12)
-  await page.waitForTimeout(900)
-  const withFade = await stage.screenshot()
-
-  await select.selectOption('wipe-left')
-  await page.waitForTimeout(900)
-  const withWipe = await stage.screenshot()
-
-  await select.selectOption('')
-  await page.waitForTimeout(900)
-  const withoutTransition = await stage.screenshot()
-
-  // Cùng một thời điểm, ba trạng thái phải cho ba khung hình khác nhau.
-  expect(withFade.equals(withWipe)).toBe(false)
-  expect(withFade.equals(withoutTransition)).toBe(false)
-  expect(withWipe.equals(withoutTransition)).toBe(false)
-})
-
-test('mỗi kiểu chuyển cảnh cho ra một khung hình riêng, không kiểu nào trùng kiểu nào', async () => {
-  const stage = page.locator('.preview__stage')
-  const ruler = page.locator('.timeline__ruler-row')
-  const box = await ruler.boundingBox()
-
-  await page.locator('.timeline-clip').nth(1).click()
-  const select = inspector().getByLabel('Chuyển cảnh', { exact: true })
-  await select.selectOption('fade')
-  await inspector().getByLabel('Thời lượng (giây)').fill('3')
-  await page.waitForTimeout(400)
-
-  // Đặt đầu phát MỘT LẦN vào giữa vùng chuyển cảnh rồi giữ nguyên.
-  await page.mouse.click(box!.x + 210, box!.y + 12)
+  // Chuyển cảnh mặc định 0,5 giây quanh chỗ nối ở giây 5 → đặt đầu phát ở giây
+  // 4,75, MỘT LẦN, rồi giữ nguyên. Đổi vị trí giữa các lần chụp thì hình khác
+  // nhau dù có hiệu ứng hay không — phép thử sẽ không chứng minh được gì.
+  await page.mouse.click(firstBox.x + (firstBox.width * 4.75) / 5, rulerBox.y + 12)
   await page.waitForTimeout(900)
 
   const shots = new Map<string, string>()
-  for (const kind of [
-    'fade',
-    'slide-left',
-    'wipe-left',
-    'zoom',
-    'whip-left',
-    'whip-right',
-    'blur',
-    'glitch',
-    'spin',
-    'flash'
+  for (const name of [
+    'Mờ chồng',
+    'Trượt sang trái',
+    'Gạt sang trái',
+    'Phóng vào',
+    'Lia vụt sang trái',
+    'Lia vụt sang phải',
+    'Nhoè dần rồi rõ',
+    'Nhiễu hình',
+    'Xoay vào',
+    'Loé trắng'
   ]) {
-    await select.selectOption(kind)
+    await dropOnCut(name)
+    await expect(page.getByRole('button', { name: `Transition: ${name}` })).toBeVisible()
     await page.waitForTimeout(900)
-    shots.set(kind, (await stage.screenshot()).toString('base64'))
+    shots.set(name, (await stage.screenshot()).toString('base64'))
   }
 
-  // Hai kiểu cho ra cùng một ảnh nghĩa là một trong hai chưa được vẽ, và ô chọn
-  // đang bày ra một lựa chọn không tồn tại.
+  // Hai kiểu cho ra cùng một ảnh nghĩa là một trong hai chưa được vẽ, và thẻ đang
+  // bày ra một lựa chọn không tồn tại.
   const seen = new Map<string, string>()
-  for (const [kind, image] of shots) {
+  for (const [name, image] of shots) {
     const twin = seen.get(image)
-    expect(twin, `"${kind}" vẽ ra y hệt "${twin}"`).toBeUndefined()
-    seen.set(image, kind)
+    expect(twin, `"${name}" vẽ ra y hệt "${twin}"`).toBeUndefined()
+    seen.set(image, name)
   }
 })
 
-test('báo rõ khi thời lượng bị kẹp vì thiếu phần nguồn phía trước', async () => {
-  await page.locator('.timeline-clip').nth(1).click()
-  await inspector().getByLabel('Chuyển cảnh', { exact: true }).selectOption('fade')
+test('chuột phải vào biểu tượng mở menu có tên chuyển cảnh, và chọn được thời lượng', async () => {
+  // Không còn nút xoá thường trực trên timeline.
+  await page.locator('.timeline-cut').first().hover()
+  await expect(page.locator('.timeline-cut').getByRole('button', { name: /Xoá/ })).toHaveCount(0)
 
-  // Clip sau có 5 giây handle nên 3 giây vẫn thoải mái. Kiểm ở clip ĐẦU, nơi
-  // nằm ngay mốc 0 và không có gì phía trước để lấy.
-  await page.locator('.timeline-clip').first().click()
-  await inspector().getByLabel('Chuyển cảnh', { exact: true }).selectOption('fade')
+  const badge = page.locator('.timeline-cut__badge').first()
+  const name = (await badge.getAttribute('aria-label'))!.replace('Transition: ', '')
+  await badge.click({ button: 'right' })
 
-  await expect(inspector().getByText(/Chỉ dùng được 0\.00s/)).toBeVisible()
+  const menu = page.getByRole('menu')
+  await expect(menu).toBeVisible()
+  // Tên kiểu chuyển cảnh đang dùng nằm ngay trên đầu menu.
+  await expect(menu.locator('.context-menu__title')).toHaveText(name)
+  for (const label of ['0,2 giây', '0,3 giây', '0,5 giây', '1 giây', '2 giây']) {
+    await expect(menu.getByRole('menuitemradio', { name: label, exact: true })).toBeVisible()
+  }
+  // Mặc định 0,5 giây, được đánh dấu.
+  await expect(menu.getByRole('menuitemradio', { name: '0,5 giây', exact: true })).toHaveAttribute(
+    'aria-checked',
+    'true'
+  )
+
+  await menu.getByRole('menuitemradio', { name: '1 giây', exact: true }).click()
+  await expect(menu).toHaveCount(0)
+  const [first, second] = await savedVideoClips()
+  // Cùng một con số cho cả hai phía, kiểu giữ nguyên.
+  expect(first.transitionOut?.durationUs).toBe(1_000_000)
+  expect(second.transitionIn?.durationUs).toBe(1_000_000)
+  expect(second.transitionIn?.kind).toBe(first.transitionOut?.kind)
+
+  // Mở lại thì mức vừa chọn được đánh dấu; Escape đóng menu mà không đổi gì.
+  await badge.click({ button: 'right' })
+  await expect(
+    page.getByRole('menu').getByRole('menuitemradio', { name: '1 giây', exact: true })
+  ).toHaveAttribute('aria-checked', 'true')
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('menu')).toHaveCount(0)
 })
 
-test('gỡ chuyển cảnh đưa về cắt thẳng', async () => {
-  await page.locator('.timeline-clip').nth(1).click()
-  const select = inspector().getByLabel('Chuyển cảnh', { exact: true })
-  await select.selectOption('')
-  await expect(select).toHaveValue('')
+test('xoá chuyển cảnh từ menu chuột phải gỡ cả hai phía', async () => {
+  await page.locator('.timeline-cut__badge').first().click({ button: 'right' })
+  await page.getByRole('menu').getByRole('menuitem', { name: 'Xoá transition' }).click()
 
-  await expect(page.locator('.top-bar__status')).toHaveText('Đã lưu', { timeout: 15_000 })
-  const projectsRoot = join(userDataDir, 'projects')
-  const [projectId] = await readdir(projectsRoot)
-  const raw = await readFile(join(projectsRoot, projectId, 'project.json'), 'utf8')
-  const document = JSON.parse(raw) as {
-    tracks: Array<{ clips: Array<{ transitionIn?: unknown }> }>
-  }
-  const clips = document.tracks.flatMap((track) => track.clips)
-  expect(clips[1].transitionIn).toBeUndefined()
+  await expect(page.locator('.timeline-cut')).toHaveCount(0)
+  const [first, second] = await savedVideoClips()
+  expect(first.transitionOut).toBeUndefined()
+  expect(second.transitionIn).toBeUndefined()
+})
+
+test('thả xa chỗ nối thì không đặt chuyển cảnh nào', async () => {
+  const firstBox = (await page.locator('.timeline-clip').first().boundingBox())!
+  // Giữa clip đầu: cách chỗ nối cả nửa clip.
+  await dropOnCut('Xoay vào', -firstBox.width / 2)
+  await page.waitForTimeout(500)
+
+  await expect(page.locator('.timeline-cut')).toHaveCount(0)
+  const clips = await savedVideoClips()
+  expect(clips.every((clip) => !clip.transitionIn && !clip.transitionOut)).toBe(true)
 })

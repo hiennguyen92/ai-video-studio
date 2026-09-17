@@ -302,30 +302,66 @@ test('kéo tay nắm tròn thì xoay ảnh', async () => {
   expect((await savedImageTransform()).rotationDeg).toBeGreaterThan(0)
 })
 
-test('hiệu ứng ra làm ảnh mờ dần ở cuối, không tắt phụt', async () => {
-  await page.locator('.timeline-lane--image .timeline-clip').first().click()
-  const inspector = page.getByRole('region', { name: 'Thuộc tính' })
-  await inspector.getByLabel('Hiệu ứng ra', { exact: true }).selectOption('fade')
+test('chuyển cảnh ở chỗ nối làm ảnh trước mờ dần ở cuối, không tắt phụt', async () => {
+  // Chuyển cảnh không còn đặt trên từng clip: cắt ảnh làm đôi rồi thả "Mờ chồng"
+  // vào chỗ nối, clip trước nhận hiệu ứng ra.
+  const lane = page.locator('.timeline-lane--image')
+  const imageClip = lane.locator('.timeline-clip').first()
+  const clipBox = (await imageClip.boundingBox())!
+  const ruler = (await page.locator('.timeline__ruler-row').boundingBox())!
 
-  const opacityAt = async (): Promise<number> => {
-    const wrapper = page.locator('.preview__stage img[data-clip-id]').first()
-    return Number(
-      await wrapper.evaluate((node) => {
-        const parent = node.parentElement as HTMLElement
-        return getComputedStyle(parent).opacity
+  // Cắt ở giữa clip ảnh.
+  await page.mouse.click(clipBox.x + clipBox.width / 2, ruler.y + 12)
+  await imageClip.click({ position: { x: 10, y: 10 } })
+  await page.getByRole('button', { name: 'Cắt tại playhead' }).click()
+  await expect(lane.locator('.timeline-clip')).toHaveCount(2)
+
+  await page
+    .getByRole('region', { name: 'AI Studio' })
+    .getByRole('tab', { name: 'Library' })
+    .click()
+  const laneBox = (await lane.boundingBox())!
+  const cutX = (await lane.locator('.timeline-clip').nth(1).boundingBox())!.x
+  await page
+    .getByRole('region', { name: 'AI Studio' })
+    .getByRole('button', { name: 'Mờ chồng', exact: true })
+    .dragTo(lane, { targetPosition: { x: cutX - laneBox.x, y: laneBox.height / 2 } })
+  await expect(page.getByRole('button', { name: 'Transition: Mờ chồng' })).toBeVisible()
+
+  // Đo đúng clip TRƯỚC chỗ nối: gần chỗ nối có cả hai ảnh cùng hiện.
+  await expect(page.locator('.top-bar__status')).toHaveText('Đã lưu', { timeout: 15_000 })
+  const { readFile, readdir } = await import('node:fs/promises')
+  const projectsRoot = join(userDataDir, 'projects')
+  const [projectId] = await readdir(projectsRoot)
+  const doc = JSON.parse(await readFile(join(projectsRoot, projectId, 'project.json'), 'utf8')) as {
+    tracks: Array<{ kind: string; clips: Array<{ id: string; startUs: number }> }>
+  }
+  const [leftClip] = [...doc.tracks.find((track) => track.kind === 'image')!.clips].sort(
+    (a, b) => a.startUs - b.startUs
+  )
+
+  const opacityAt = async (): Promise<number> =>
+    Number(
+      await page.locator(`.preview__stage img[data-clip-id="${leftClip.id}"]`).evaluate((node) => {
+        // Độ mờ hiệu dụng: nhân opacity mọi tầng bọc. Ảnh nằm trong vài lớp
+        // (khung bao clip, lớp effect), không chỉ ngay dưới khung bao.
+        let value = 1
+        for (let element: Element | null = node; element; element = element.parentElement) {
+          value *= Number(getComputedStyle(element).opacity)
+        }
+        return value
       })
     )
-  }
 
-  const ruler = page.locator('.timeline__ruler-row')
-  const box = await ruler.boundingBox()
-  // Giữa clip: rõ hẳn.
-  await page.mouse.click(box!.x + 60, box!.y + 12)
+  const secondsToX = (seconds: number): number => clipBox.x + (clipBox.width * seconds) / 5
+
+  // Đầu clip: rõ hẳn.
+  await page.mouse.click(secondsToX(1), ruler.y + 12)
   await page.waitForTimeout(500)
   const giua = await opacityAt()
 
-  // Sát cuối clip: phải mờ hơn hẳn.
-  await page.mouse.click(box!.x + 285, box!.y + 12)
+  // Sát chỗ nối (giây 2,5): phải mờ hơn hẳn.
+  await page.mouse.click(secondsToX(2.45), ruler.y + 12)
   await page.waitForTimeout(500)
   const cuoi = await opacityAt()
 
@@ -339,7 +375,7 @@ test('ảnh đi tới file xuất ra, không chỉ sống trong preview', async 
 
   // Dự án có ảnh nên phải dùng Remotion; ffmpeg không đọc được ảnh tĩnh theo
   // trục thời gian của video.
-  await expect(page.getByText('Dự án có chuyển cảnh')).toBeVisible()
+  await expect(page.getByText('Dự án có transition')).toBeVisible()
 
   await page.getByRole('button', { name: 'Bắt đầu xuất' }).click()
   await expect(page.getByText('Xuất xong')).toBeVisible({ timeout: 240_000 })

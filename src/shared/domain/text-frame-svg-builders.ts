@@ -12,7 +12,7 @@
  *    `border-image-width: auto` cũng rơi về `border-width` khi thiếu.
  */
 
-import type { TextFrameDecor, TextFramePalette, TextFrameStyle } from './text-frame-catalog'
+import type { TextFrameDecor, TextFramePalette, VectorTextFrameStyle } from './text-frame-catalog'
 import {
   TEXT_FRAME_VIEWBOX,
   cloudPath,
@@ -85,7 +85,7 @@ const BUILDERS: Record<string, (palette: TextFramePalette) => string> = {
 
 /** Khung chính, dùng làm `border-image-source`. */
 export function buildFrameImageUri(
-  style: TextFrameStyle,
+  style: VectorTextFrameStyle,
   palette: TextFramePalette
 ): string | undefined {
   const build = BUILDERS[style.id]

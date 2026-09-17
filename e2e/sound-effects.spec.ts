@@ -114,7 +114,11 @@ test('bản cài có ĐỦ file cho mọi hiệu ứng trong danh mục', async 
 test('nghe thử phát được tiếng thật trước khi thêm', async () => {
   await page
     .getByRole('region', { name: 'AI Studio' })
-    .getByRole('tab', { name: 'Nhạc nền' })
+    .getByRole('tab', { name: 'Library' })
+    .click()
+  await page
+    .getByRole('region', { name: 'AI Studio' })
+    .getByRole('tab', { name: 'Sound Effects' })
     .click()
 
   // Nút bật lên nghĩa là hàng đó đã có URL nghe thử — thiếu URL thì nút xám và
@@ -127,7 +131,7 @@ test('nghe thử phát được tiếng thật trước khi thêm', async () => 
   const served = await page.evaluate(async () => {
     const listed = await window.api.soundEffects.list()
     if (!listed.ok) return { status: 0, bytes: 0 }
-    const one = listed.data.effects.find((effect) => effect.id === 'ding')
+    const one = listed.data.effects.find((effect) => effect.id === 'clean-ding')
     if (!one) return { status: 0, bytes: 0 }
     const registered = await window.api.media.registerLocal([{ id: one.id, path: one.path }])
     if (!registered.ok) return { status: 0, bytes: 0 }
@@ -162,29 +166,33 @@ test('nghe thử phát được tiếng thật trước khi thêm', async () => 
 test('thêm hiệu ứng vào thư viện thì thành asset thật, giải theo id', async () => {
   await page
     .getByRole('region', { name: 'AI Studio' })
-    .getByRole('tab', { name: 'Nhạc nền' })
+    .getByRole('tab', { name: 'Library' })
+    .click()
+  await page
+    .getByRole('region', { name: 'AI Studio' })
+    .getByRole('tab', { name: 'Sound Effects' })
     .click()
   const row = page.locator('.sound-effect-item').filter({ hasText: 'Keng' })
-  await row.getByRole('button', { name: 'Chỉ thêm vào thư viện' }).click()
+  await row.getByRole('button', { name: 'Chỉ thêm vào Media' }).click()
 
-  // Thư viện media nằm ở tab Media, đang bị tab Nhạc nền che — nên kiểm CÓ MẶT
+  // Thư viện media nằm ở tab Media, đang bị tab Library che — nên kiểm CÓ MẶT
   // chứ không kiểm nhìn thấy. Bằng chứng thật nằm ở file dự án bên dưới.
   await expect(page.locator('.media-card', { hasText: 'Keng' })).toHaveCount(1)
   await expect(page.locator('.top-bar__status')).toHaveText('Đã lưu', { timeout: 15_000 })
 
   const doc = await savedDocument()
-  const asset = doc.assets.find((item) => item.source.builtinId === 'ding')
+  const asset = doc.assets.find((item) => item.source.builtinId === 'clean-ding')
   expect(asset).toBeDefined()
   // Dự án lưu ID. Đường dẫn chỉ là kết quả phân giải của lần chạy này — gỡ app
   // hay mở trên máy khác thì nó sai, và id mới là thứ trỏ lại được.
-  expect(asset!.source.builtinId).toBe('ding')
+  expect(asset!.source.builtinId).toBe('clean-ding')
 })
 
 test('đặt hiệu ứng lên timeline là MỘT bước hoàn tác cho cả asset lẫn clip', async () => {
   const before = await savedDocument()
   const assetsBefore = before.assets.length
 
-  const row = page.locator('.sound-effect-item').filter({ hasText: 'Bốp' })
+  const row = page.locator('.sound-effect-item').filter({ hasText: 'Bốp bong bóng nhỏ' })
   await row.getByRole('button', { name: 'Đặt vào timeline' }).click()
 
   await expect(page.locator('.timeline-lane--audio .timeline-clip')).toHaveCount(1)
@@ -202,7 +210,7 @@ test('đặt hiệu ứng lên timeline là MỘT bước hoàn tác cho cả as
 })
 
 test('tiếng đi tới file xuất ra, không chỉ nằm trong dự án', async () => {
-  const row = page.locator('.sound-effect-item').filter({ hasText: 'Đập mạnh' })
+  const row = page.locator('.sound-effect-item').filter({ hasText: 'Đập trầm' })
   await row.getByRole('button', { name: 'Đặt vào timeline' }).click()
   await expect(page.locator('.timeline-lane--audio .timeline-clip')).toHaveCount(1)
 

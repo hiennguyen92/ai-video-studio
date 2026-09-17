@@ -37,7 +37,6 @@ export function useTimelineMediaDrop(options: {
   const { document, pixelsPerSecond, clientXToUs } = options
   const t = useT()
   const run = useEditorStore((state) => state.run)
-  const playheadUs = useEditorStore((state) => state.playheadUs)
   const snapEnabled = useEditorStore((state) => state.snapEnabled)
   const [dropTargetTrackId, setDropTargetTrackId] = useState<string | null>(null)
 
@@ -67,7 +66,8 @@ export function useTimelineMediaDrop(options: {
         document,
         pixelsPerSecond,
         frameRate: document.settings.frameRate,
-        playheadUs,
+        // Đọc lúc thao tác, không theo dõi: theo dõi đầu phát là vẽ lại mỗi khung khi đang phát.
+        playheadUs: useEditorStore.getState().playheadUs,
         enabled: snapEnabled
       }
       const dropUs = snapTime(
@@ -86,7 +86,7 @@ export function useTimelineMediaDrop(options: {
       }
       run([command], t.media.addToTimeline)
     },
-    [document, pixelsPerSecond, playheadUs, snapEnabled, clientXToUs, run, t.media.addToTimeline]
+    [document, pixelsPerSecond, snapEnabled, clientXToUs, run, t.media.addToTimeline]
   )
 
   const laneDropProps = useCallback(

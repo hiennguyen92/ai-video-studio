@@ -100,6 +100,11 @@ test.afterAll(async () => {
 const inspector = (): ReturnType<Page['getByRole']> =>
   page.getByRole('region', { name: 'Thuộc tính' })
 
+/** Mở một tab con của panel Thuộc tính (Basic / Video / Audio / Animation). */
+async function openTab(name: string): Promise<void> {
+  await inspector().getByRole('tab', { name, exact: true }).click()
+}
+
 /** Đặt đầu phát vào GIỮA clip rồi giữ nguyên suốt các lần chụp. */
 async function seekToMiddle(): Promise<void> {
   const ruler = page.locator('.timeline__ruler-row')
@@ -110,8 +115,9 @@ async function seekToMiddle(): Promise<void> {
 
 test('Inspector hiện ô chuyển động cho clip hình, mặc định là đứng yên', async () => {
   await page.locator('.timeline-clip').first().click()
+  await openTab('Animation')
 
-  const select = inspector().getByLabel('Chuyển động', { exact: true })
+  const select = inspector().getByLabel('Zoom', { exact: true })
   await expect(select).toBeVisible()
   await expect(select).toHaveValue('')
   // Chưa chọn gì thì không có thanh cường độ — bày ra một thanh không tác dụng gì
@@ -123,7 +129,7 @@ test('mỗi kiểu chuyển động cho ra một khung hình khác nhau, ở cù
   const stage = page.locator('.preview__stage')
   await seekToMiddle()
 
-  const select = inspector().getByLabel('Chuyển động', { exact: true })
+  const select = inspector().getByLabel('Zoom', { exact: true })
 
   await select.selectOption('')
   await page.waitForTimeout(700)
@@ -147,7 +153,7 @@ test('mỗi kiểu chuyển động cho ra một khung hình khác nhau, ở cù
 
 test('cường độ 0 đưa khung hình về đúng như khi đứng yên', async () => {
   const stage = page.locator('.preview__stage')
-  const select = inspector().getByLabel('Chuyển động', { exact: true })
+  const select = inspector().getByLabel('Zoom', { exact: true })
 
   await select.selectOption('')
   await page.waitForTimeout(700)
@@ -163,16 +169,17 @@ test('cường độ 0 đưa khung hình về đúng như khi đứng yên', asy
 })
 
 test('lia máy nói rõ hình bị cắt bớt', async () => {
-  await inspector().getByLabel('Chuyển động', { exact: true }).selectOption('pan-right')
-  await expect(inspector().getByText(/phóng nền lên/)).toBeVisible()
+  await inspector().getByLabel('Zoom', { exact: true }).selectOption('pan-right')
+  await expect(inspector().getByText(/phóng hình lên/)).toBeVisible()
 
-  await inspector().getByLabel('Chuyển động', { exact: true }).selectOption('zoom-in')
-  await expect(inspector().getByText(/phóng nền lên/)).toHaveCount(0)
+  await inspector().getByLabel('Zoom', { exact: true }).selectOption('zoom-in')
+  await expect(inspector().getByText(/phóng hình lên/)).toHaveCount(0)
 })
 
 test('chỉnh màu làm đổi hình, và mỗi thông số đổi một kiểu khác nhau', async () => {
   const stage = page.locator('.preview__stage')
-  await inspector().getByLabel('Chuyển động', { exact: true }).selectOption('')
+  await inspector().getByLabel('Zoom', { exact: true }).selectOption('')
+  await openTab('Video')
   await seekToMiddle()
 
   const neutral = await stage.screenshot()
@@ -188,7 +195,7 @@ test('chỉnh màu làm đổi hình, và mỗi thông số đổi một kiểu 
     await inspector().getByLabel(label).fill(value)
     await page.waitForTimeout(700)
     shots.set(label, (await stage.screenshot()).toString('base64'))
-    await inspector().getByRole('button', { name: 'Về màu gốc' }).click()
+    await inspector().getByRole('button', { name: 'Đặt lại Adjust' }).click()
     await page.waitForTimeout(500)
   }
 
@@ -210,19 +217,20 @@ test('nút về màu gốc trả đúng khung hình ban đầu', async () => {
   await page.waitForTimeout(700)
   expect((await stage.screenshot()).equals(neutral)).toBe(false)
 
-  await inspector().getByRole('button', { name: 'Về màu gốc' }).click()
+  await inspector().getByRole('button', { name: 'Đặt lại Adjust' }).click()
   await page.waitForTimeout(700)
   expect((await stage.screenshot()).equals(neutral)).toBe(true)
 })
 
-test('giao diện nói thẳng là chưa hỗ trợ LUT', async () => {
+test('giao diện nói thẳng là chưa nhập được file LUT', async () => {
   // Bày một ô "LUT" chỉnh gần đúng bằng mấy bộ lọc chắp vá là đúng thứ §3.B cấm;
   // nói ra giới hạn là cách trung thực duy nhất.
-  await expect(inspector().getByText(/Chưa hỗ trợ LUT/)).toBeVisible()
+  await expect(inspector().getByText(/Chưa nhập được file LUT/)).toBeVisible()
 })
 
 test('chuyển động đi tới file xuất ra, không chỉ sống trong preview', async () => {
-  await inspector().getByLabel('Chuyển động', { exact: true }).selectOption('zoom-in')
+  await openTab('Animation')
+  await inspector().getByLabel('Zoom', { exact: true }).selectOption('zoom-in')
   await inspector().getByLabel('Cường độ').fill('1')
   await expect(page.locator('.top-bar__status')).toHaveText('Đã lưu', { timeout: 15_000 })
 

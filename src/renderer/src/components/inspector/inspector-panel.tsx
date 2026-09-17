@@ -1,20 +1,11 @@
-import { useCallback, useMemo, useState, type JSX } from 'react'
-import {
-  DEFAULT_CLIP_TRANSFORM,
-  clipEndUs,
-  type Clip,
-  type Track
-} from '../../../../shared/domain/timeline-track-types'
+import { useMemo, useState, type JSX } from 'react'
+import type { Clip, Track } from '../../../../shared/domain/timeline-track-types'
 import type { ProjectDocument } from '../../../../shared/domain/project-document-types'
-import { formatClockTime } from '../../../../shared/domain/time-units'
-import type { EditorCommand } from '../../../../shared/commands/editor-command-types'
 import { selectDocument, useEditorStore } from '../../state/editor-store'
 import { useT } from '../../i18n/use-translation'
 import { EmptyState } from '../ui/empty-state'
-import { ToolButton } from '../ui/tool-button'
-import { ClipColorControls } from './clip-color-controls'
-import { ClipMotionControls } from './clip-motion-controls'
-import { ClipTransitionControls } from './clip-transition-controls'
+import { ClipInspector } from './clip-inspector'
+import type { ClipInspectorTab } from './clip-inspector-tab-list'
 import { TextBlockInspector } from './text-block-inspector'
 import { AiChatPanel } from '../chat/ai-chat-panel'
 import './inspector-panel.css'
@@ -22,12 +13,8 @@ import './inspector-panel.css'
 /**
  * Panel phải — Thuộc tính và AI Chat (DESCRIPTION §2).
  *
- * Thanh trượt chỉ ghi lệnh khi người dùng THẢ chuột (`onChange`), còn khi đang
- * kéo thì chỉ đổi hiển thị. Ghi theo từng bước kéo sẽ nhét hàng chục bước vào
- * lịch sử undo cho một lần chỉnh âm lượng.
+ * Thuộc tính clip nằm ở `ClipInspector` (tab con Basic/Video/Audio/Animation).
  */
-
-type ClipUpdatePatch = Extract<EditorCommand, { type: 'clip/update' }>['patch']
 
 /**
  * Tìm clip đang chọn cùng track chứa nó.
@@ -55,30 +42,14 @@ export function InspectorPanel(): JSX.Element {
   const [activeTab, setActiveTab] = useState<'inspector' | 'chat'>('inspector')
   // Chỉ dựng chat khi lần đầu mở, nhưng đã dựng thì giữ nguyên.
   const [visitedChat, setVisitedChat] = useState(false)
+  const [clipTab, setClipTab] = useState<ClipInspectorTab>('basic')
 
   const found = useMemo(
     () => findClipWithTrack(document, selection.clipIds[0]),
     [document, selection.clipIds]
   )
 
-  const updateClip = useCallback(
-    (patch: ClipUpdatePatch, label: string) => {
-      if (!found) return
-      run([{ type: 'clip/update', clipId: found.clip.id, patch }], label)
-    },
-    [found, run]
-  )
-
   const asset = found ? document?.assets.find((item) => item.id === found.clip.assetId) : undefined
-  // Lane ảnh và lane hình cùng vẽ ra khung hình, nên cùng chỉnh được chuyển cảnh,
-  // chuyển động, màu và biến đổi. Khác nhau ở chỗ ảnh không có tiếng.
-  const isVisualTrack = found?.track.kind === 'video' || found?.track.kind === 'image'
-  const hasAudio = found?.track.kind === 'video' || found?.track.kind === 'audio'
-  // Trùng điều kiện với `hasAudio` nhưng vì lý do khác: ảnh tĩnh không có trục
-  // thời gian nguồn để mà phát nhanh hay chậm. Suy ra từ nó thay vì chép lại, để
-  // hai chỗ không lệch nhau nếu điều kiện đổi.
-  const canSetSpeed = hasAudio
-  const transform = found?.clip.transform ?? DEFAULT_CLIP_TRANSFORM
 
   return (
     <section className="panel" aria-label={t.inspector.title}>
@@ -125,270 +96,16 @@ export function InspectorPanel(): JSX.Element {
         )}
 
         {activeTab === 'inspector' && !selection.text && found && (
-          <div className="inspector">
-            <p className="field-group__title">{t.inspector.clip}</p>
-            <div className="field-row">
-              <span className="field-row__label">{t.inspector.clip}</span>
-              <span className="field-row__value inspector__name" title={asset?.name}>
-                {asset?.name ?? found.clip.label ?? '—'}
-              </span>
-            </div>
-            <div className="field-row">
-              <span className="field-row__label">{t.inspector.track}</span>
-              <span className="field-row__value">{found.track.name}</span>
-            </div>
-            <div className="field-row">
-              <span className="field-row__label">{t.inspector.start}</span>
-              <span className="field-row__value">{formatClockTime(found.clip.startUs)}</span>
-            </div>
-            <div className="field-row">
-              <span className="field-row__label">{t.inspector.duration}</span>
-              <span className="field-row__value">
-                {formatClockTime(found.clip.durationUs)}
-                {' · '}
-                {formatClockTime(clipEndUs(found.clip), false)}
-              </span>
-            </div>
-            <div className="field-row">
-              <span className="field-row__label">{t.inspector.sourceIn}</span>
-              <span className="field-row__value">{formatClockTime(found.clip.sourceInUs)}</span>
-            </div>
-
-            {/* Chuyển cảnh chỉ có nghĩa với clip hình. */}
-            {isVisualTrack && document && (
-              <ClipTransitionControls
-                clip={found.clip}
-                frameRate={document.settings.frameRate}
-                onChange={(transition) =>
-                  run(
-                    [{ type: 'clip/set-transition', clipId: found.clip.id, transition }],
-                    'Đổi chuyển cảnh'
-                  )
-                }
-              />
-            )}
-
-            {isVisualTrack && document && (
-              <ClipTransitionControls
-                edge="out"
-                clip={found.clip}
-                frameRate={document.settings.frameRate}
-                onChange={(transition) =>
-                  run(
-                    [
-                      {
-                        type: 'clip/set-transition',
-                        clipId: found.clip.id,
-                        edge: 'out',
-                        transition
-                      }
-                    ],
-                    'Đổi hiệu ứng ra'
-                  )
-                }
-              />
-            )}
-
-            {isVisualTrack && (
-              <ClipMotionControls
-                clip={found.clip}
-                onChange={(motion) =>
-                  run(
-                    [{ type: 'clip/set-motion', clipId: found.clip.id, motion }],
-                    'Đổi chuyển động'
-                  )
-                }
-              />
-            )}
-
-            {isVisualTrack && (
-              <ClipColorControls
-                clip={found.clip}
-                onChange={(grade) =>
-                  run(
-                    [{ type: 'clip/set-color-grade', clipId: found.clip.id, grade }],
-                    'Chỉnh màu clip'
-                  )
-                }
-              />
-            )}
-
-            {/* Ảnh không có tiếng: bày ô âm lượng ở đó là bày một tuỳ chọn
-                không có tác dụng nào. */}
-            {/* Tốc độ áp cho cả clip hình lẫn clip tiếng, nên nằm ngoài nhóm âm
-                lượng. Ảnh tĩnh thì không: một tấm ảnh không có trục thời gian
-                riêng để mà phát nhanh hay chậm. */}
-            {canSetSpeed && (
-              <>
-                <p className="field-group__title">{t.inspector.speed}</p>
-                <SliderRow
-                  label={t.inspector.speed}
-                  value={found.clip.speed}
-                  min={0.25}
-                  max={4}
-                  step={0.05}
-                  format={(value) => `${value.toFixed(2)}×`}
-                  onCommit={(value) =>
-                    run(
-                      [{ type: 'clip/set-speed', clipId: found.clip.id, speed: value }],
-                      t.inspector.speed
-                    )
-                  }
-                />
-              </>
-            )}
-
-            {hasAudio && (
-              <>
-                <p className="field-group__title">{t.inspector.volume}</p>
-                <SliderRow
-                  label={t.inspector.volume}
-                  value={found.clip.volume}
-                  min={0}
-                  max={2}
-                  step={0.01}
-                  format={(value) => `${Math.round(value * 100)}%`}
-                  onCommit={(value) => updateClip({ volume: value }, t.inspector.volume)}
-                />
-                <SliderRow
-                  label={t.inspector.fadeIn}
-                  value={found.clip.fadeInUs}
-                  min={0}
-                  max={Math.min(found.clip.durationUs, 5_000_000)}
-                  step={10_000}
-                  format={(value) => formatClockTime(value)}
-                  onCommit={(value) =>
-                    updateClip({ fadeInUs: Math.round(value) }, t.inspector.fadeIn)
-                  }
-                />
-                <SliderRow
-                  label={t.inspector.fadeOut}
-                  value={found.clip.fadeOutUs}
-                  min={0}
-                  max={Math.min(found.clip.durationUs, 5_000_000)}
-                  step={10_000}
-                  format={(value) => formatClockTime(value)}
-                  onCommit={(value) =>
-                    updateClip({ fadeOutUs: Math.round(value) }, t.inspector.fadeOut)
-                  }
-                />
-              </>
-            )}
-
-            {isVisualTrack && (
-              <>
-                <p className="field-group__title">{t.inspector.resetTransform}</p>
-                <SliderRow
-                  label={t.inspector.opacity}
-                  value={transform.opacity}
-                  min={0}
-                  max={1}
-                  step={0.01}
-                  format={(value) => `${Math.round(value * 100)}%`}
-                  onCommit={(value) =>
-                    updateClip({ transform: { ...transform, opacity: value } }, t.inspector.opacity)
-                  }
-                />
-                <SliderRow
-                  label={t.inspector.scale}
-                  value={transform.scale}
-                  min={0.1}
-                  max={4}
-                  step={0.01}
-                  format={(value) => `${value.toFixed(2)}×`}
-                  onCommit={(value) =>
-                    updateClip({ transform: { ...transform, scale: value } }, t.inspector.scale)
-                  }
-                />
-                <SliderRow
-                  label={t.inspector.positionX}
-                  value={transform.x}
-                  min={-1}
-                  max={1}
-                  step={0.005}
-                  format={(value) => `${Math.round(value * 100)}%`}
-                  onCommit={(value) =>
-                    updateClip({ transform: { ...transform, x: value } }, t.inspector.positionX)
-                  }
-                />
-                <SliderRow
-                  label={t.inspector.positionY}
-                  value={transform.y}
-                  min={-1}
-                  max={1}
-                  step={0.005}
-                  format={(value) => `${Math.round(value * 100)}%`}
-                  onCommit={(value) =>
-                    updateClip({ transform: { ...transform, y: value } }, t.inspector.positionY)
-                  }
-                />
-                <div className="inspector__actions">
-                  <ToolButton
-                    label={t.inspector.resetTransform}
-                    variant="outline"
-                    onClick={() =>
-                      updateClip(
-                        { transform: { ...DEFAULT_CLIP_TRANSFORM } },
-                        t.inspector.resetTransform
-                      )
-                    }
-                  />
-                </div>
-              </>
-            )}
-          </div>
+          <ClipInspector
+            clip={found.clip}
+            track={found.track}
+            asset={asset}
+            tab={clipTab}
+            onTabChange={setClipTab}
+            run={run}
+          />
         )}
       </div>
     </section>
-  )
-}
-
-/**
- * Thanh trượt kèm số.
- *
- * Giữ giá trị "đang kéo" ở state cục bộ và chỉ gọi `onCommit` khi thả chuột, để
- * mỗi lần chỉnh chỉ tạo đúng một bước hoàn tác.
- */
-function SliderRow({
-  label,
-  value,
-  min,
-  max,
-  step,
-  format,
-  onCommit
-}: {
-  label: string
-  value: number
-  min: number
-  max: number
-  step: number
-  format(value: number): string
-  onCommit(value: number): void
-}): JSX.Element {
-  const [dragging, setDragging] = useState<number | null>(null)
-  const shown = dragging ?? value
-
-  return (
-    <div className="field-row">
-      <span className="field-row__label">{label}</span>
-      <div className="inspector__slider">
-        <input
-          type="range"
-          min={min}
-          max={max}
-          step={step}
-          value={shown}
-          aria-label={label}
-          onInput={(event) => setDragging(Number(event.currentTarget.value))}
-          onChange={(event) => {
-            const next = Number(event.currentTarget.value)
-            setDragging(null)
-            onCommit(next)
-          }}
-        />
-        <span className="field-row__value inspector__slider-value">{format(shown)}</span>
-      </div>
-    </div>
   )
 }

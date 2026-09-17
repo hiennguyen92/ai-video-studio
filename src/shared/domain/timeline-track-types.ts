@@ -1,5 +1,16 @@
 import type { ClipColorGrade } from './clip-color-grade'
+import type { ClipEffect } from './clip-effect-types'
 import type { ClipMotion } from './clip-motion-types'
+
+/**
+ * Look màu (LUT dựng sẵn) áp lên clip hình. Lưu ID của look trong danh mục, không
+ * lưu công thức: sửa công thức về sau thì dự án cũ đi theo.
+ */
+export interface ClipLook {
+  id: string
+  /** 0..1 — trộn với hình gốc. */
+  intensity: number
+}
 import type { Micros } from './time-units'
 
 /**
@@ -112,6 +123,10 @@ export interface Clip {
   motion?: ClipMotion
   /** Chỉnh màu: sáng, tương phản, bão hoà, nhiệt độ, tối góc. */
   colorGrade?: ClipColorGrade
+  /** Look màu dựng sẵn (tab LUT), áp SAU chỉnh màu. */
+  look?: ClipLook
+  /** Effect hình (tab Effects), áp SAU look, theo đúng thứ tự trong mảng. */
+  effects?: ClipEffect[]
   /**
    * Hiệu ứng khi clip này xuất hiện.
    *

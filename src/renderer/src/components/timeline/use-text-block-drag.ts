@@ -65,7 +65,6 @@ export function useTextBlockDrag(options: {
   const { document, pixelsPerSecond, laneAtClientY } = options
   const run = useEditorStore((state) => state.run)
   const snapEnabled = useEditorStore((state) => state.snapEnabled)
-  const playheadUs = useEditorStore((state) => state.playheadUs)
 
   const [preview, setPreview] = useState<TextBlockDragPreview | null>(null)
   const previewRef = useRef<TextBlockDragPreview | null>(null)
@@ -109,7 +108,7 @@ export function useTextBlockDrag(options: {
       run(
         [command],
         laneChanged
-          ? 'Dời chữ sang lane khác'
+          ? 'Dời Text sang track khác'
           : session.mode === 'move'
             ? 'Dời chữ'
             : 'Đổi độ dài chữ'
@@ -145,7 +144,8 @@ export function useTextBlockDrag(options: {
         document,
         pixelsPerSecond,
         frameRate: document.settings.frameRate,
-        playheadUs,
+        // Đọc lúc thao tác, không theo dõi: theo dõi đầu phát là vẽ lại mỗi khung khi đang phát.
+        playheadUs: useEditorStore.getState().playheadUs,
         enabled: snapEnabled,
         excludeClipIds: []
       }
@@ -203,7 +203,7 @@ export function useTextBlockDrag(options: {
       window.addEventListener('pointerup', handleUp)
       window.addEventListener('pointercancel', handleUp)
     },
-    [commit, document, laneAtClientY, pixelsPerSecond, playheadUs, snapEnabled]
+    [commit, document, laneAtClientY, pixelsPerSecond, snapEnabled]
   )
 
   return { preview, handleTextBlockPointerDown }

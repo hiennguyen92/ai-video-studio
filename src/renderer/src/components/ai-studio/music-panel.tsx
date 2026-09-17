@@ -11,7 +11,6 @@ import { EmptyState } from '../ui/empty-state'
 import { IconImport, IconWaveform } from '../ui/icons'
 import { AutoDuckingSection } from './auto-ducking-section'
 import { MusicGenerationSection } from './music-generation-section'
-import { SoundEffectSection } from './sound-effect-section'
 import './music-panel.css'
 
 /**
@@ -148,10 +147,6 @@ export function MusicPanel({
         onOpenSettings={onOpenSettings}
         credentialsVersion={credentialsVersion}
       />
-
-      {/* Đặt trong tab Nhạc nền chứ không thêm tab thứ tám: thanh tab đã có bảy
-          mục, và hiệu ứng âm thanh cùng họ với nhạc — đều là tiếng nền. */}
-      <SoundEffectSection />
     </div>
   )
 }

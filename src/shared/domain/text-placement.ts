@@ -87,11 +87,10 @@ export function assPositionTag(
 /**
  * Giới hạn góc xoay, dùng chung cho thanh trượt, tay nắm xoay và công cụ MCP.
  *
- * ±45° đủ cho mọi kiểu chữ nghiêng thật sự dùng trong video ngắn; rộng hơn thì
- * chữ dựng đứng hoặc lộn ngược, và người dùng gần như luôn chạm vào đó do trượt
- * tay chứ không phải cố ý.
+ * ±180° là trọn một vòng: chữ dựng đứng hay lộn ngược đều là lựa chọn của người
+ * dùng, cùng mức mà clip hình đã cho phép.
  */
-export const MAX_TEXT_ROTATION_DEG = 45
+export const MAX_TEXT_ROTATION_DEG = 180
 
 /**
  * Vị trí mới sau khi kéo khối chữ đi một quãng trên khung xem trước.
@@ -119,9 +118,9 @@ export function dragTextPosition(
 /**
  * Góc của con trỏ so với tâm khối chữ, tính bằng độ theo chiều KIM ĐỒNG HỒ.
  *
- * Mốc 0 là hướng thẳng lên, vì tay nắm xoay nằm phía trên khối. Kẹp lại trong
- * khoảng cho phép để tay nắm không đưa được tới góc mà thanh trượt và công cụ
- * MCP từ chối.
+ * Mốc 0 là hướng thẳng lên, vì tay nắm xoay nằm phía trên khối. Ra trong khoảng
+ * −180..180, khớp với thanh trượt và công cụ MCP; vẫn kẹp theo `maxDeg` cho nơi
+ * gọi nào muốn hẹp hơn.
  */
 export function pointerRotationDeg(
   centerX: number,

@@ -172,3 +172,63 @@
   align-items: center;
   gap: var(--space-1);
 }
+
+/* Một ô chiếm trọn dòng trong hàng ô xếp ngang, như thanh trượt đệm khung. */
+/* Hai lớp chọn để thắng `.field-row` chung, vốn chỉ có hai cột và đệm hai bên. */
+.field-row.text-overlay-item__wide {
+  flex: 1 1 100%;
+  grid-template-columns: auto 1fr 44px;
+  padding: 0;
+}
+
+/* Lưới ảnh thu nhỏ để chọn khung: chiếm trọn một dòng của hàng ô xếp ngang. */
+.frame-thumbnail-grid {
+  flex: 1 1 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.frame-thumbnail-grid__toggle {
+  align-self: flex-start;
+}
+
+.frame-thumbnail-grid__title {
+  margin: var(--space-1) 0 2px;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.frame-thumbnail-grid__items {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(52px, 1fr));
+  gap: var(--space-1);
+}
+
+.frame-thumbnail {
+  aspect-ratio: 1;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  /* Nền caro sáng: khung ảnh trắng hay trong suốt vẫn nhìn ra được trên panel tối. */
+  background: repeating-conic-gradient(#d9dce3 0% 25%, #f4f5f8 0% 50%) 50% / 12px 12px;
+  cursor: pointer;
+}
+
+.frame-thumbnail:hover {
+  border-color: var(--text-secondary);
+}
+
+.frame-thumbnail--selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+.frame-thumbnail__image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+}

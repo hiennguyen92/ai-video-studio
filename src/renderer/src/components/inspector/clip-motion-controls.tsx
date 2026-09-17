@@ -6,6 +6,8 @@ import {
 } from '../../../../shared/domain/clip-motion-types'
 import type { Clip } from '../../../../shared/domain/timeline-track-types'
 import { useT } from '../../i18n/use-translation'
+import { LIBRARY_MOTION_KINDS } from '../../../../shared/domain/library-clip-effects'
+import { MOTION_LABEL_KEYS } from '../library/clip-effect-labels'
 
 /**
  * Chọn chuyển động chạy suốt clip đang chọn.
@@ -14,17 +16,6 @@ import { useT } from '../../i18n/use-translation'
  * cái này chạy hết độ dài clip. Đặt cạnh nhau vì người dùng hay nhầm hai thứ, và
  * nhìn thấy cả hai cùng lúc là cách phân biệt nhanh nhất.
  */
-
-const KINDS: Array<{ value: ClipMotionKind; labelKey: string }> = [
-  { value: 'zoom-in', labelKey: 'motionZoomIn' },
-  { value: 'zoom-out', labelKey: 'motionZoomOut' },
-  { value: 'pan-left', labelKey: 'motionPanLeft' },
-  { value: 'pan-right', labelKey: 'motionPanRight' },
-  { value: 'pan-up', labelKey: 'motionPanUp' },
-  { value: 'pan-down', labelKey: 'motionPanDown' },
-  { value: 'punch-in', labelKey: 'motionPunchIn' },
-  { value: 'shake', labelKey: 'motionShake' }
-]
 
 export function ClipMotionControls({
   clip,
@@ -55,9 +46,9 @@ export function ClipMotionControls({
           }}
         >
           <option value="">{t.inspector.motionNone}</option>
-          {KINDS.map((option) => (
-            <option key={option.value} value={option.value}>
-              {t.inspector[option.labelKey as keyof typeof t.inspector] as string}
+          {LIBRARY_MOTION_KINDS.map((kind) => (
+            <option key={kind} value={kind}>
+              {t.inspector[MOTION_LABEL_KEYS[kind]]}
             </option>
           ))}
         </select>

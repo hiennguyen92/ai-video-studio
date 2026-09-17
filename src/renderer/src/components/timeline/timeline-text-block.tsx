@@ -1,5 +1,6 @@
 import type { JSX, PointerEvent as ReactPointerEvent } from 'react'
 import type { TextBlockDragMode } from '../../../../shared/domain/text-block-drag'
+import { useEditorStore } from '../../state/editor-store'
 import { usToPx } from './timeline-geometry'
 
 /**
@@ -33,7 +34,6 @@ export function TimelineTextBlock({
   item,
   variant,
   pixelsPerSecond,
-  active,
   selected,
   dragging,
   onSelect,
@@ -42,12 +42,11 @@ export function TimelineTextBlock({
   item: TimelineTextBlockItem
   variant: TextBlockVariant
   pixelsPerSecond: number
-  /** Đầu phát đang nằm trong khoảng của khối này. */
-  active: boolean
   /**
    * Đang là khối được chọn, tức panel thuộc tính bên phải đang nói về nó.
    *
-   * Khác `active`: `active` chỉ nói đầu phát đang đi qua đây. Không phân biệt
+   * Khác "đang phát qua" (tô sáng khi đầu phát nằm trong khối): cái đó chỉ nói đầu
+   * phát đang đi qua đây. Không phân biệt
    * hai thứ thì người dùng sửa nhầm khối mà vẫn tưởng đang sửa khối mình bấm.
    */
   selected: boolean
@@ -60,6 +59,12 @@ export function TimelineTextBlock({
     mode: TextBlockDragMode
   ): void
 }): JSX.Element {
+  // Tự theo dõi đầu phát bằng bộ chọn trả BOOLEAN: khối chỉ vẽ lại lúc đầu phát
+  // đi vào hoặc ra khỏi nó. Nhận `playheadUs` từ cha thì cả timeline vẽ lại mỗi
+  // khung khi đang phát — đủ nặng để Player tụt khung và tiếng bị kéo lùi, lặp lại.
+  const active = useEditorStore(
+    (state) => state.playheadUs >= item.startUs && state.playheadUs < item.endUs
+  )
   const left = usToPx(item.startUs, pixelsPerSecond)
   const width = usToPx(item.endUs - item.startUs, pixelsPerSecond)
 

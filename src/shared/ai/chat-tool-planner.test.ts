@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { applyEditorCommand } from '../commands/editor-command-reducer'
 import { createEmptyProject } from '../domain/project-document-factory'
 import type { ProjectDocument } from '../domain/project-document-types'
-import { clipEndUs } from '../domain/timeline-track-types'
+import { clipEndUs, type Clip } from '../domain/timeline-track-types'
 import { chatToolDescriptions, chatToolParameterHints, chatToolSchemas } from './chat-tool-catalog'
 import { buildChatSystemPrompt, buildProjectContext } from './chat-context-builder'
 import type { MediaAsset } from '../domain/media-asset-types'
@@ -300,50 +300,175 @@ describe('công cụ đổi khung hình', () => {
   })
 })
 
-describe('công cụ chuyển cảnh', () => {
-  it('đặt được chuyển cảnh vào đầu clip', () => {
-    const { document, clipId } = withClip()
-    const plan = planChatToolCalls(context(document), [
-      {
-        name: 'set_clip_transition',
-        arguments: { clipId, kind: 'wipe-left', durationSeconds: 0.4 }
-      }
-    ])
+describe('công cụ chuyển cảnh ở chỗ nối', () => {
+  /** Hai clip sát nhau trên track hình đầu tiên: a [0–10s], b [10–20s]. */
+  function withCut(): { document: ProjectDocument; trackId: string } {
+    const { document, trackId } = withClip()
+    const result = applyEditorCommand(document, {
+      type: 'clip/insert',
+      clipId: 'clip_b',
+      trackId,
+      assetId: 'asset_1',
+      startUs: 10_000_000,
+      durationUs: 10_000_000,
+      sourceInUs: 0
+    })
+    if (!result.ok) throw new Error(result.error)
+    return { document, trackId }
+  }
 
+  const apply = (document: ProjectDocument, plan: ReturnType<typeof planChatToolCalls>): void => {
+    expect(plan.failures).toEqual([])
     for (const command of plan.steps.flatMap((step) => step.commands)) {
       expect(applyEditorCommand(document, command).ok).toBe(true)
     }
+  }
 
-    const clip = document.tracks[0].clips.find((item) => item.id === clipId)
-    expect(clip?.transitionIn).toEqual({ kind: 'wipe-left', durationUs: 400_000 })
+  const clipById = (document: ProjectDocument, id: string): Clip =>
+    document.tracks.flatMap((track) => track.clips).find((clip) => clip.id === id)!
+
+  it('đặt ra ở clip trước, vào ở clip sau, cùng kiểu và cùng thời lượng', () => {
+    const { document } = withCut()
+    apply(
+      document,
+      planChatToolCalls(context(document), [
+        {
+          name: 'set_cut_transition',
+          arguments: { fromClipId: 'clip_a', kind: 'wipe-left', durationSeconds: 0.3 }
+        }
+      ])
+    )
+    expect(clipById(document, 'clip_a').transitionOut).toEqual({
+      kind: 'wipe-left',
+      durationUs: 300_000
+    })
+    expect(clipById(document, 'clip_b').transitionIn).toEqual({
+      kind: 'wipe-left',
+      durationUs: 300_000
+    })
+    // Không đặt ở mép không phải chỗ nối.
+    expect(clipById(document, 'clip_a').transitionIn).toBeUndefined()
+    expect(clipById(document, 'clip_b').transitionOut).toBeUndefined()
   })
 
-  it('"none" gỡ chuyển cảnh đã đặt', () => {
-    const { document, clipId } = withClip()
-    const calls = [
-      { name: 'set_clip_transition', arguments: { clipId, kind: 'fade' } },
-      { name: 'set_clip_transition', arguments: { clipId, kind: 'none' } }
-    ]
+  it('bỏ trống clip thì lấy clip đang chọn; bỏ trống thời lượng thì mặc định 0,5 giây', () => {
+    const { document } = withCut()
+    apply(
+      document,
+      planChatToolCalls(context(document, ['clip_a']), [
+        { name: 'set_cut_transition', arguments: { kind: 'zoom' } }
+      ])
+    )
+    expect(clipById(document, 'clip_b').transitionIn).toEqual({ kind: 'zoom', durationUs: 500_000 })
+  })
 
-    for (const call of calls) {
-      const plan = planChatToolCalls(context(document), [call])
+  it('"none" gỡ cả hai phía', () => {
+    const { document } = withCut()
+    apply(
+      document,
+      planChatToolCalls(context(document), [
+        { name: 'set_cut_transition', arguments: { fromClipId: 'clip_a', kind: 'fade' } }
+      ])
+    )
+    apply(
+      document,
+      planChatToolCalls(context(document), [
+        { name: 'set_cut_transition', arguments: { fromClipId: 'clip_a', kind: 'none' } }
+      ])
+    )
+    expect(clipById(document, 'clip_a').transitionOut).toBeUndefined()
+    expect(clipById(document, 'clip_b').transitionIn).toBeUndefined()
+  })
+
+  it('clip không có clip liền sau thì báo lỗi, không đặt nửa vời', () => {
+    const { document } = withCut()
+    const plan = planChatToolCalls(context(document), [
+      { name: 'set_cut_transition', arguments: { fromClipId: 'clip_b', kind: 'fade' } }
+    ])
+    expect(plan.steps).toEqual([])
+    expect(plan.failures[0].reason).toContain('không liền với clip nào phía sau')
+  })
+
+  it('từ chối kiểu mô hình bịa ra và thời lượng quá 2 giây', () => {
+    const { document } = withCut()
+    for (const args of [
+      { fromClipId: 'clip_a', kind: 'star-wipe' },
+      { fromClipId: 'clip_a', kind: 'fade', durationSeconds: 3 }
+    ]) {
+      const plan = planChatToolCalls(context(document), [
+        { name: 'set_cut_transition', arguments: args }
+      ])
+      expect(plan.steps).toEqual([])
+      expect(plan.failures).toHaveLength(1)
+    }
+  })
+
+  it('công cụ cũ đặt trên từng clip không còn nữa', () => {
+    const { document, clipId } = withClip()
+    const plan = planChatToolCalls(context(document), [
+      { name: 'set_clip_transition', arguments: { clipId, kind: 'fade' } }
+    ])
+    expect(plan.steps).toEqual([])
+    expect(plan.failures).toHaveLength(1)
+  })
+
+  it('tổng quan dự án liệt kê chỗ nối và chuyển cảnh đang dùng', () => {
+    const { document } = withCut()
+    apply(
+      document,
+      planChatToolCalls(context(document), [
+        {
+          name: 'set_cut_transition',
+          arguments: { fromClipId: 'clip_a', kind: 'spin', durationSeconds: 1 }
+        }
+      ])
+    )
+    const overview = buildProjectContext({ document, selectedClipIds: [], playheadUs: 0 })
+    expect(overview).toContain('fromClipId=clip_a toClipId=clip_b at=10.00s transition=spin 1.00s')
+  })
+})
+
+describe('công cụ look màu', () => {
+  it('đặt look cho clip hình, gỡ bằng "none", giữ cường độ khi đổi look', () => {
+    const { document, clipId } = withClip()
+    const apply = (args: Record<string, unknown>): void => {
+      const plan = planChatToolCalls(context(document), [
+        { name: 'set_clip_look', arguments: args }
+      ])
       expect(plan.failures).toEqual([])
       for (const command of plan.steps.flatMap((step) => step.commands)) {
         expect(applyEditorCommand(document, command).ok).toBe(true)
       }
     }
+    const clip = (): Clip => document.tracks[0].clips.find((item) => item.id === clipId)!
 
-    const clip = document.tracks[0].clips.find((item) => item.id === clipId)
-    expect(clip?.transitionIn).toBeUndefined()
+    apply({ clipId, lookId: 'teal-orange', intensity: 0.6 })
+    expect(clip().look).toEqual({ id: 'teal-orange', intensity: 0.6 })
+
+    apply({ clipId, lookId: 'mono-film' })
+    expect(clip().look).toEqual({ id: 'mono-film', intensity: 0.6 })
+
+    apply({ clipId, lookId: 'none' })
+    expect(clip().look).toBeUndefined()
   })
 
-  it('từ chối kiểu chuyển cảnh mô hình bịa ra', () => {
+  it('id look bịa ra thì báo lỗi kèm danh sách id hợp lệ', () => {
     const { document, clipId } = withClip()
     const plan = planChatToolCalls(context(document), [
-      { name: 'set_clip_transition', arguments: { clipId, kind: 'star-wipe' } }
+      { name: 'set_clip_look', arguments: { clipId, lookId: 'hollywood-magic' } }
     ])
     expect(plan.steps).toEqual([])
-    expect(plan.failures).toHaveLength(1)
+    expect(plan.failures[0].reason).toContain('teal-orange')
+  })
+
+  it('danh mục look có trong tổng quan gửi agent', () => {
+    const overview = buildProjectContext({
+      document: project(),
+      selectedClipIds: [],
+      playheadUs: 0
+    })
+    expect(overview).toContain('id=slog3-to-709')
+    expect(overview).toContain('id=silver-bleach')
   })
 })
 
@@ -462,6 +587,88 @@ describe('khung nền chữ qua đường AI', () => {
       expect(applyEditorCommand(document, command).ok).toBe(true)
     }
     expect(document.textOverlays[0].frame).toEqual(KHUNG)
+  })
+
+  it('khung ảnh chỉ cần styleId, và chữ đổi sang màu hợp với ảnh', () => {
+    const document = chay([
+      {
+        name: 'add_text_overlay',
+        // Agent gửi thừa bộ màu: bỏ đi, không bắt gọi lại chỉ vì chi tiết vô hại.
+        arguments: {
+          text: 'Menu',
+          startSeconds: 0,
+          endSeconds: 2,
+          frame: { styleId: 'chalkboard', paletteId: 'hong-phan' }
+        }
+      }
+    ])
+    expect(document.textOverlays[0].frame).toEqual({ styleId: 'chalkboard' })
+    // Bảng đen tối màu: giữ chữ tối mặc định thì không đọc được.
+    expect(document.textOverlays[0].style.color).toBe('#F4F0E6')
+  })
+
+  it('đổi sang khung ảnh thì màu chữ đổi trong cùng một bước hoàn tác', () => {
+    const document = chay([
+      { name: 'add_text_overlay', arguments: { text: 'Hook', startSeconds: 0, endSeconds: 2 } }
+    ])
+    const plan = planChatToolCalls(context(document), [
+      {
+        name: 'update_text_overlay',
+        arguments: { overlayId: document.textOverlays[0].id, frame: { styleId: 'sticky-note' } }
+      }
+    ])
+    expect(plan.failures).toEqual([])
+    expect(plan.steps).toHaveLength(1)
+    for (const command of plan.steps[0].commands) {
+      expect(applyEditorCommand(document, command).ok).toBe(true)
+    }
+    expect(document.textOverlays[0].style.color).toBe('#5A4A12')
+  })
+
+  it('agent chỉnh được độ rộng khung, và đổi khung ảnh vẫn giữ nó', () => {
+    const document = chay([
+      {
+        name: 'add_text_overlay',
+        arguments: {
+          text: 'Hook',
+          startSeconds: 0,
+          endSeconds: 2,
+          frame: { styleId: 'sticky-note', paddingScaleX: 0, paddingScaleY: 2 }
+        }
+      }
+    ])
+    expect(document.textOverlays[0].frame).toEqual({
+      styleId: 'sticky-note',
+      paddingScaleX: 0,
+      paddingScaleY: 2
+    })
+  })
+
+  it('hệ số đệm ngoài khoảng 0–3 thì bị schema chặn', () => {
+    const plan = planChatToolCalls(context(project()), [
+      {
+        name: 'add_text_overlay',
+        arguments: {
+          text: 'Hook',
+          startSeconds: 0,
+          endSeconds: 2,
+          frame: { styleId: 'sticky-note', paddingScaleX: 10 }
+        }
+      }
+    ])
+    expect(plan.steps).toEqual([])
+    expect(plan.failures).toHaveLength(1)
+  })
+
+  it('khung vector thiếu bộ màu thì báo lỗi', () => {
+    const plan = planChatToolCalls(context(project()), [
+      {
+        name: 'add_text_overlay',
+        arguments: { text: 'Hook', startSeconds: 0, endSeconds: 2, frame: { styleId: 'may' } }
+      }
+    ])
+    expect(plan.steps).toEqual([])
+    expect(plan.failures[0].reason).toContain('hong-phan')
   })
 
   it('bỏ khung bằng null — null KHÔNG được bị mẫu spread nuốt mất', () => {
@@ -606,6 +813,33 @@ describe('công cụ đổi màu chữ', () => {
     expect(document.textOverlays[0].style.outlineColor).toBe('#001122')
   })
 
+  it('đổi được độ dày viền, không nêu thì giữ nguyên', () => {
+    const { document, overlayId } = themChu()
+    const truoc = document.textOverlays[0].style.outlineWidthPx
+
+    for (const command of chay(document, { color: '#FF00AA', overlayId }).steps.flatMap(
+      (step) => step.commands
+    )) {
+      applyEditorCommand(document, command)
+    }
+    expect(document.textOverlays[0].style.outlineWidthPx).toBe(truoc)
+
+    for (const command of chay(document, {
+      color: '#FF00AA',
+      outlineWidthPx: 12,
+      overlayId
+    }).steps.flatMap((step) => step.commands)) {
+      expect(applyEditorCommand(document, command).ok).toBe(true)
+    }
+    expect(document.textOverlays[0].style.outlineWidthPx).toBe(12)
+  })
+
+  it('từ chối độ dày viền ngoài 0–20', () => {
+    const { document } = themChu()
+    expect(chay(document, { color: '#FF00AA', outlineWidthPx: 50 }).failures).toHaveLength(1)
+    expect(chay(document, { color: '#FF00AA', outlineWidthPx: -1 }).failures).toHaveLength(1)
+  })
+
   it('từ chối màu sai cú pháp', () => {
     // Màu sai cú pháp không làm CSS lỗi — nó làm chữ biến mất, và đó là kiểu hỏng
     // chỉ lộ ra khi đã nhìn video.
@@ -631,6 +865,7 @@ describe('công cụ đổi màu chữ', () => {
   it('có trong danh mục và chuỗi gợi ý', () => {
     expect('set_text_color' in chatToolSchemas).toBe(true)
     expect(chatToolParameterHints.set_text_color).toContain('outlineColor')
+    expect(chatToolParameterHints.set_text_color).toContain('outlineWidthPx')
   })
 })
 
@@ -1217,9 +1452,16 @@ describe('công cụ xoay chữ', () => {
     expect(document.subtitleTracks[0].style.rotationDeg).toBe(-5)
   })
 
-  it('góc ngoài khoảng cho phép thì báo lỗi, không cắt bớt cho vừa', () => {
+  it('xoay quá nửa vòng thì vẫn được, vd. 120°', () => {
     const plan = planChatToolCalls(context(withOverlays()), [
       { name: 'set_text_rotation', arguments: { rotationDeg: 120 } }
+    ])
+    expect(plan.failures).toEqual([])
+  })
+
+  it('góc ngoài khoảng cho phép thì báo lỗi, không cắt bớt cho vừa', () => {
+    const plan = planChatToolCalls(context(withOverlays()), [
+      { name: 'set_text_rotation', arguments: { rotationDeg: 270 } }
     ])
 
     expect(plan.steps).toEqual([])
@@ -1509,40 +1751,6 @@ describe('công cụ đặt clip trong khung hình', () => {
   })
 })
 
-describe('công cụ hiệu ứng ra của clip', () => {
-  it('đặt được hiệu ứng ở mép RA', () => {
-    const { document, clipId } = withClip()
-    const plan = planChatToolCalls({ ...context(document), selectedClipIds: [clipId] }, [
-      {
-        name: 'set_clip_transition',
-        arguments: { edge: 'out', kind: 'fade', durationSeconds: 0.4 }
-      }
-    ])
-    expect(plan.failures).toEqual([])
-    for (const command of plan.steps.flatMap((step) => step.commands)) {
-      expect(applyEditorCommand(document, command).ok).toBe(true)
-    }
-
-    const clip = document.tracks.flatMap((track) => track.clips)[0]
-    expect(clip.transitionOut?.kind).toBe('fade')
-    // Không được đụng tới mép vào.
-    expect(clip.transitionIn).toBeUndefined()
-  })
-
-  it('bỏ trống mép thì vẫn là mép VÀO như trước', () => {
-    const { document, clipId } = withClip()
-    const plan = planChatToolCalls({ ...context(document), selectedClipIds: [clipId] }, [
-      { name: 'set_clip_transition', arguments: { kind: 'zoom' } }
-    ])
-    for (const command of plan.steps.flatMap((step) => step.commands)) {
-      expect(applyEditorCommand(document, command).ok).toBe(true)
-    }
-    const clip = document.tracks.flatMap((track) => track.clips)[0]
-    expect(clip.transitionIn?.kind).toBe('zoom')
-    expect(clip.transitionOut).toBeUndefined()
-  })
-})
-
 describe('công cụ hiệu ứng âm thanh dựng sẵn', () => {
   const effectAsset = (id: string, durationUs = 440_000): MediaAsset => ({
     id: `asset_${id}`,
@@ -1566,15 +1774,15 @@ describe('công cụ hiệu ứng âm thanh dựng sẵn', () => {
   it('thêm vào thư viện khi không nêu mốc thời gian', () => {
     const { document } = withClip()
     const plan = planChatToolCalls(
-      { ...context(document), soundEffects: { pop: effectAsset('pop') } },
-      [{ name: 'add_sound_effect', arguments: { soundEffectId: 'pop' } }]
+      { ...context(document), soundEffects: { 'tiny-bubble-pop': effectAsset('tiny-bubble-pop') } },
+      [{ name: 'add_sound_effect', arguments: { soundEffectId: 'tiny-bubble-pop' } }]
     )
 
     expect(plan.failures).toEqual([])
     for (const command of plan.steps.flatMap((step) => step.commands)) {
       expect(applyEditorCommand(document, command).ok).toBe(true)
     }
-    expect(document.assets.some((asset) => asset.source.builtinId === 'pop')).toBe(true)
+    expect(document.assets.some((asset) => asset.source.builtinId === 'tiny-bubble-pop')).toBe(true)
     // Không nêu mốc thì timeline không đổi.
     expect(document.tracks.flatMap((track) => track.clips)).toHaveLength(1)
   })
@@ -1582,8 +1790,8 @@ describe('công cụ hiệu ứng âm thanh dựng sẵn', () => {
   it('nêu mốc thì đặt luôn lên track tiếng, trong MỘT bước hoàn tác', () => {
     const { document } = withClip()
     const plan = planChatToolCalls(
-      { ...context(document), soundEffects: { ding: effectAsset('ding', 840_000) } },
-      [{ name: 'add_sound_effect', arguments: { soundEffectId: 'ding', atSeconds: 2 } }]
+      { ...context(document), soundEffects: { 'clean-ding': effectAsset('clean-ding', 840_000) } },
+      [{ name: 'add_sound_effect', arguments: { soundEffectId: 'clean-ding', atSeconds: 2 } }]
     )
 
     expect(plan.failures).toEqual([])
@@ -1615,7 +1823,7 @@ describe('công cụ hiệu ứng âm thanh dựng sẵn', () => {
     // chỉ phát hiện lúc kéo lên timeline và không nghe thấy gì.
     const { document } = withClip()
     const plan = planChatToolCalls(context(document), [
-      { name: 'add_sound_effect', arguments: { soundEffectId: 'pop' } }
+      { name: 'add_sound_effect', arguments: { soundEffectId: 'tiny-bubble-pop' } }
     ])
     expect(plan.steps).toEqual([])
     expect(plan.failures[0].reason).toContain('pop')
@@ -1640,6 +1848,6 @@ describe('công cụ hiệu ứng âm thanh dựng sẵn', () => {
       playheadUs: 0
     })
     expect(overview).toContain('add_sound_effect')
-    expect(overview).toContain('whoosh-fast')
+    expect(overview).toContain('airy-short-whoosh')
   })
 })

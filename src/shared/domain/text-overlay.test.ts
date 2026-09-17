@@ -231,9 +231,46 @@ describe('tra khung khi dựng kế hoạch', () => {
     const plan = planWith({ styleId: 'may', paletteId: 'hong-phan', decorId: 'trai-tim' })
     const resolved = plan.textOverlays[0].frame
 
-    expect(resolved?.style.id).toBe('may')
-    expect(resolved?.palette.fill).toBe('#FFE3EF')
-    expect(resolved?.decor?.id).toBe('trai-tim')
+    if (resolved?.kind !== 'vector') throw new Error('phải là khung vector')
+    expect(resolved.style.id).toBe('may')
+    expect(resolved.palette.fill).toBe('#FFE3EF')
+    expect(resolved.decor?.id).toBe('trai-tim')
+  })
+
+  it('khung ảnh không cần bộ màu, và bỏ qua bộ màu lẫn trang trí nếu có ghi', () => {
+    expect(planWith({ styleId: 'sticky-note' }).textOverlays[0].frame).toMatchObject({
+      kind: 'image',
+      style: { id: 'sticky-note' }
+    })
+    const ghiThua = planWith({
+      styleId: 'sticky-note',
+      paletteId: 'hong-phan',
+      decorId: 'ngoi-sao'
+    })
+    expect(ghiThua.textOverlays[0].frame).toEqual({
+      kind: 'image',
+      style: expect.objectContaining({ id: 'sticky-note' }),
+      padding: { x: 1, y: 1 }
+    })
+  })
+
+  it('hệ số đệm khung tới lớp vẽ, thiếu thì mặc định, sai thì kẹp lại', () => {
+    expect(
+      planWith({ styleId: 'sticky-note', paddingScaleX: 0, paddingScaleY: 2.5 }).textOverlays[0]
+        .frame?.padding
+    ).toEqual({ x: 0, y: 2.5 })
+    expect(
+      planWith({ styleId: 'may', paletteId: 'hong-phan' }).textOverlays[0].frame?.padding
+    ).toEqual({ x: 1, y: 1 })
+    // Project sửa tay ghi số âm: đệm âm làm chữ đè lên nét viền, nên phải kẹp.
+    expect(
+      planWith({ styleId: 'sticky-note', paddingScaleX: -4, paddingScaleY: 99 }).textOverlays[0]
+        .frame?.padding
+    ).toEqual({ x: 0, y: 3 })
+  })
+
+  it('khung vector thiếu bộ màu thì mất khung', () => {
+    expect(planWith({ styleId: 'may' }).textOverlays[0].frame).toBeNull()
   })
 
   it('kiểu khung lạ thì mất khung chứ không ném lỗi', () => {
@@ -258,8 +295,9 @@ describe('tra khung khi dựng kế hoạch', () => {
       decorId: 'khong-co-that'
     }).textOverlays[0].frame
 
-    expect(resolved?.style.id).toBe('may')
-    expect(resolved?.decor).toBeUndefined()
+    if (resolved?.kind !== 'vector') throw new Error('phải là khung vector')
+    expect(resolved.style.id).toBe('may')
+    expect(resolved.decor).toBeUndefined()
   })
 
   it('chữ không có khung thì trả null', () => {

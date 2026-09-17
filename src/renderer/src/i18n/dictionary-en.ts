@@ -26,6 +26,7 @@ export const dictionaryEn: Dictionary = {
     title: 'AI Studio',
     tabs: {
       media: 'Media',
+      library: 'Library',
       voice: 'Voice',
       music: 'Music',
       transcribe: 'Transcribe',
@@ -37,7 +38,7 @@ export const dictionaryEn: Dictionary = {
     comingSoonHint: 'Manual editing keeps working in the meantime.'
   },
   media: {
-    title: 'Media library',
+    title: 'Media',
     importButton: 'Import media',
     empty: 'No media yet.',
     emptyHint: 'Click "Import media", or drop video, audio and image files here.',
@@ -62,9 +63,9 @@ export const dictionaryEn: Dictionary = {
     cleanupConfirm:
       'Delete {count} generated files that nothing uses any more, freeing {size}? Files you imported are left alone.',
     cleanupDone: 'Deleted {count} files, freed {size}.',
-    remove: 'Remove {name} from the library',
+    remove: 'Remove {name} from Media',
     removeConfirm:
-      'Remove "{name}" from the library? The {count} clips using it on the timeline go too. The original file on disk is left alone.',
+      'Remove "{name}" from Media? The {count} clips using it on the timeline go too. The original file on disk is left alone.',
     generatedBadge: 'AI'
   },
   preview: {
@@ -81,11 +82,30 @@ export const dictionaryEn: Dictionary = {
     moveText: 'Move text',
     moveTextHint: 'Drag to move the text; drag the dot above it to rotate.',
     rotateText: 'Rotate text',
-    resizeText: 'Resize'
+    resizeText: 'Resize',
+    framePaddingX: 'Drag frame side padding',
+    framePaddingY: 'Drag frame top/bottom padding'
   },
   inspector: {
-    transition: 'Transition',
-    transitionNone: 'Hard cut',
+    tabBasic: 'Basic',
+    tabVideo: 'Video',
+    tabAudio: 'Audio',
+    tabAnimation: 'Animation',
+    transform: 'Transform',
+    transitions: 'Transitions',
+    transitionIn: 'In',
+    transitionOut: 'Out',
+    transitionsEmpty:
+      'This clip has no transition. Drag a card from Library → Transitions onto the cut between two clips.',
+    look: 'Filters',
+    lookNone: 'None',
+    lookIntensity: 'Filter intensity',
+    effects: 'Effects',
+    effectsEmpty: 'No effects yet. Add them from Library → Effects.',
+    effectIntensity: 'Intensity',
+    effectMoveUp: 'Apply earlier',
+    effectMoveDown: 'Apply later',
+    effectRemove: 'Remove effect',
     transitionFade: 'Crossfade',
     transitionSlideLeft: 'Slide left',
     transitionSlideRight: 'Slide right',
@@ -100,13 +120,7 @@ export const dictionaryEn: Dictionary = {
     transitionGlitch: 'Glitch',
     transitionSpin: 'Spin in',
     transitionFlash: 'Flash',
-    transitionDuration: 'Duration (seconds)',
-    exitTransition: 'Exit effect',
-    transitionHint:
-      'A transition uses source material before the clip in point. When there is not enough it shortens itself, and the first clip on the timeline gets none.',
-    transitionClamped:
-      'Only {seconds}s is usable — the clip has no more source before its in point.',
-    motion: 'Motion',
+    motion: 'Zoom',
     motionNone: 'Hold still',
     motionZoomIn: 'Slow push in',
     motionZoomOut: 'Slow pull out',
@@ -116,17 +130,17 @@ export const dictionaryEn: Dictionary = {
     motionPanDown: 'Pan down',
     motionPunchIn: 'Punch in',
     motionShake: 'Gentle shake',
-    motionIntensity: 'Intensity',
+    motionIntensity: 'Zoom intensity',
     motionPanNote:
       'Panning has to scale the frame up so the edges never show, so a little of the picture is cropped.',
-    color: 'Colour',
+    color: 'Adjust',
     colorBrightness: 'Brightness',
     colorContrast: 'Contrast',
     colorSaturation: 'Saturation',
     colorTemperature: 'Temperature',
     colorVignette: 'Vignette',
-    colorReset: 'Back to original',
-    colorNoLutNote: 'No LUT (.cube) support: CSS filters cannot apply a 3D lookup table.',
+    colorReset: 'Reset Adjust',
+    colorNoLutNote: 'LUT (.cube) files cannot be imported yet; use the built-in Filters above.',
     title: 'Inspector',
     chat: 'AI Chat',
     noSelection: 'Nothing selected.',
@@ -144,7 +158,7 @@ export const dictionaryEn: Dictionary = {
     scale: 'Scale',
     positionX: 'Position X',
     positionY: 'Position Y',
-    textOverlay: 'On-screen text',
+    textOverlay: 'Text',
     subtitleCue: 'Subtitle cue',
     textContent: 'Text',
     secondaryLine: 'Second line',
@@ -154,20 +168,43 @@ export const dictionaryEn: Dictionary = {
       'The style below belongs to the WHOLE subtitle track, not just this cue — changing it changes every cue in the track.',
     missingTextBlock: 'The selected text block no longer exists.',
     missingTextBlockHint: 'It was probably just deleted. Pick another block on the timeline.',
-    resetTransform: 'Reset transform'
+    resetTransform: 'Reset Transform'
+  },
+  library: {
+    tabs: {
+      transitions: 'Transitions',
+      effects: 'Effects',
+      lut: 'Filters',
+      zoom: 'Zoom',
+      soundEffects: 'Sound Effects'
+    },
+    transitionsHint:
+      'Drag a card onto the cut between two adjacent clips on the timeline: the end of the first clip plays out, the start of the next plays in. Hover the icon at the cut to see or remove it.',
+    hintSelected:
+      'Click a card to apply it to the selected clip, or drag it onto a clip on the timeline.',
+    hintNoClip:
+      'Select a visual clip on the timeline and click a card, or drag a card straight onto a clip.',
+    effectsHintSelected:
+      'Click a card to ADD an effect to the selected clip (effects stack), or drag a card onto a clip. Adjust or remove them in the Properties panel.'
   },
   soundEffects: {
-    section: 'Sound effects',
+    section: 'Sound Effects',
     hint: 'Bundled with the app: no network, no cost. Adding one makes a real asset, just like an imported file.',
     addToTimeline: 'Add to timeline',
-    addToLibrary: 'Library only',
-    needAudioTrack: 'No audio lane to drop the effect on.',
+    addToLibrary: 'Media only',
+    needAudioTrack: 'No audio track to drop the sound effect on.',
     preview: 'Preview',
     notBuiltYet:
-      'Sound effect library not built yet. Run `node scripts/build-sound-effects.mjs`, then reopen the app.',
-    missingLibrary: 'This install is missing the sound effect library. The build is packaged wrong.'
+      'Sound effects not built yet. Run `node scripts/build-sound-effects.mjs`, then reopen the app.',
+    missingLibrary: 'This install is missing the sound effects. The build is packaged wrong.'
   },
   timeline: {
+    effectsTag: 'Effect',
+    cutTransition: 'Transition: {name}',
+    cutTransitionDuration: 'Transition duration',
+    cutTransitionSeconds: '{seconds} s',
+    cutTransitionMenuHint: 'right-click to change the duration or remove it',
+    removeCutTransitionShort: 'Remove transition',
     title: 'Timeline',
     zoomIn: 'Zoom in',
     zoomOut: 'Zoom out',
@@ -185,7 +222,7 @@ export const dictionaryEn: Dictionary = {
     addTextTrack: 'Add text track',
     addImageTrack: 'Add image track',
     removeTrack: 'Remove track',
-    reorderTrack: 'Drag to reorder lane',
+    reorderTrack: 'Drag to reorder track',
     mute: 'Mute',
     unmute: 'Unmute',
     solo: 'Solo',
@@ -193,11 +230,11 @@ export const dictionaryEn: Dictionary = {
     show: 'Show',
     lock: 'Lock',
     unlock: 'Unlock',
-    empty: 'Drag media from the library here to start.',
+    empty: 'Drag files from the Media tab here to start.',
     trackHeight: 'Track height',
-    trackHeightSmall: 'Short lanes',
-    trackHeightMedium: 'Medium lanes',
-    trackHeightLarge: 'Tall lanes'
+    trackHeightSmall: 'Short tracks',
+    trackHeightMedium: 'Medium tracks',
+    trackHeightLarge: 'Tall tracks'
   },
   projects: {
     title: 'Projects',
@@ -227,11 +264,12 @@ export const dictionaryEn: Dictionary = {
     engine: 'Render engine',
     engineFfmpeg: 'ffmpeg (fast)',
     engineRemotion: 'Remotion (matches preview)',
-    engineForced: 'This project has transitions or text overlays, so Remotion is required.',
+    engineForced:
+      'This project has transitions, Text, zoom, effects, filters or Adjust, so Remotion is required.',
     engineWarning:
-      'ffmpeg cannot draw transitions or text overlays. Exporting with it produces a file missing them.',
+      'ffmpeg cannot draw transitions or Text. Exporting with it produces a file missing them.',
     engineHint:
-      'ffmpeg is about 6.7x faster. Remotion shares the composition with the preview, so the export cannot drift from what you saw, and it is the only path to transitions and animated text later.',
+      'ffmpeg is about 6.7x faster. Remotion shares the composition with the preview, so the export cannot drift from what you saw, and it is the only path to transitions and animated Text.',
     burnSubtitles: 'Burn subtitles into the video',
     exportSrt: 'Also export an SRT file',
     noSubtitles: 'This project has no subtitles yet',
@@ -311,8 +349,8 @@ export const dictionaryEn: Dictionary = {
     insertNewTrack: 'Insert on a new track',
     replaceSelected: 'Replace selected clip',
     inserted: 'Inserted into the timeline',
-    addedToLibrary: 'Added to the library',
-    reusedExisting: 'Reused audio already in the library',
+    addedToLibrary: 'Added to Media',
+    reusedExisting: 'Reused audio already in Media',
     missingKey: 'No API key for this provider yet.',
     openSettings: 'Open AI settings',
     outputFormat: 'Format',
@@ -477,7 +515,7 @@ export const dictionaryEn: Dictionary = {
   },
   musicGen: {
     section: 'Generate music with AI',
-    hint: 'Describe the track you want. Generated music becomes a real asset in the library, edited like any other audio file.',
+    hint: 'Describe the track you want. Generated music becomes a real asset in Media, edited like any other audio file.',
     prompt: 'Describe the track',
     promptPlaceholder: 'For example: gentle background music, acoustic guitar, instrumental',
     duration: 'Length (seconds)',
@@ -486,7 +524,7 @@ export const dictionaryEn: Dictionary = {
     generating: 'Generating…',
     cancel: 'Cancel',
     needsKey: 'No API key for ElevenLabs Music yet. Add one in the AI settings tab.',
-    done: 'Added "{name}" to the library',
+    done: 'Added "{name}" to Media',
     fromCache: 'Reused an earlier result instead of calling the provider again',
     unverified:
       'Note: the ElevenLabs Music call has not been verified with a real key — only against a server that follows the documented protocol.'
@@ -524,7 +562,7 @@ export const dictionaryEn: Dictionary = {
     needsProject: 'Open a project before an agent can edit anything.'
   },
   textOverlay: {
-    section: 'Text on video',
+    section: 'Text',
     hint: 'Hooks, prices, calls to action. Unlike subtitles you write these yourself and set their timing, so rebuilding subtitles does not wipe them.',
     add: 'Add text',
     empty: 'No text yet.',
@@ -532,7 +570,7 @@ export const dictionaryEn: Dictionary = {
     textPlaceholder: 'For example: You are missing out on this',
     start: 'Start (seconds)',
     end: 'End (seconds)',
-    animation: 'Animation',
+    animation: 'Animation in',
     animationNone: 'None',
     animationFade: 'Fade in',
     animationPop: 'Pop',
@@ -542,7 +580,7 @@ export const dictionaryEn: Dictionary = {
     positionTop: 'Top',
     positionMiddle: 'Middle',
     positionBottom: 'Bottom',
-    exit: 'Exit',
+    exit: 'Animation out',
     exitNone: 'Cut off',
     exitFade: 'Fade out',
     exitShrink: 'Shrink away',
@@ -553,11 +591,17 @@ export const dictionaryEn: Dictionary = {
     boxDark: 'Dark box',
     boxLight: 'Light box',
     frameGroup: 'Cute frames',
+    frameImageGroup: 'Picture frames',
+    frameGalleryShow: 'Browse frames',
+    frameGalleryHide: 'Hide frames',
+    framePaddingX: 'Frame side padding',
+    framePaddingY: 'Frame top/bottom padding',
     frameColor: 'Frame colour',
     frameDecor: 'Corner accent',
     frameDecorNone: 'None',
     color: 'Text colour',
     outlineColor: 'Outline colour',
+    outlineWidth: 'Outline width',
     fontSize: 'Font size',
     remove: 'Remove text',
     seek: 'Seek here'
@@ -600,7 +644,7 @@ export const dictionaryEn: Dictionary = {
   music: {
     title: 'Music',
     upload: 'Upload music',
-    empty: 'No music in the library yet.',
+    empty: 'No music in Media yet.',
     emptyHint: 'Upload a music file or import one, then insert it onto the music track.',
     insert: 'Insert on music track',
     insertAtPlayhead: 'Insert at playhead',

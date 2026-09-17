@@ -184,3 +184,49 @@
   bottom: -7px;
   cursor: nwse-resize;
 }
+
+/*
+  Tay nắm giữa mép, để kéo khung nền chữ rộng ra hay ôm sát chữ. Dáng thanh dẹt
+  chứ không vuông như tay nắm góc, để không nhầm với đổi cỡ.
+*/
+.preview-gizmo__edge {
+  position: absolute;
+  background: #fff;
+  border: 2px solid var(--accent);
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+
+.preview-gizmo__edge--left,
+.preview-gizmo__edge--right {
+  top: 50%;
+  width: 8px;
+  height: 22px;
+  margin-top: -11px;
+  cursor: ew-resize;
+}
+
+.preview-gizmo__edge--left {
+  left: -4px;
+}
+
+.preview-gizmo__edge--right {
+  right: -4px;
+}
+
+.preview-gizmo__edge--top,
+.preview-gizmo__edge--bottom {
+  left: 50%;
+  width: 22px;
+  height: 8px;
+  margin-left: -11px;
+  cursor: ns-resize;
+}
+
+.preview-gizmo__edge--top {
+  top: -4px;
+}
+
+.preview-gizmo__edge--bottom {
+  bottom: -4px;
+}

@@ -30,6 +30,7 @@ export const dictionaryVi = {
     title: 'AI Studio',
     tabs: {
       media: 'Media',
+      library: 'Library',
       voice: 'Giọng đọc',
       music: 'Nhạc nền',
       transcribe: 'Phiên âm',
@@ -41,7 +42,7 @@ export const dictionaryVi = {
     comingSoonHint: 'Các thao tác chỉnh sửa thủ công vẫn dùng bình thường.'
   },
   media: {
-    title: 'Thư viện media',
+    title: 'Media',
     importButton: 'Nhập media',
     empty: 'Chưa có media nào.',
     emptyHint: 'Nhấn "Nhập media" hoặc kéo file video, âm thanh, hình ảnh vào đây.',
@@ -66,9 +67,9 @@ export const dictionaryVi = {
     cleanupConfirm:
       'Dọn {count} file do ứng dụng sinh ra mà không còn ai dùng, giải phóng {size}? File bạn nhập vào không bị đụng tới.',
     cleanupDone: 'Đã dọn {count} file, giải phóng {size}.',
-    remove: 'Xoá {name} khỏi thư viện',
+    remove: 'Xoá {name} khỏi Media',
     removeConfirm:
-      'Xoá "{name}" khỏi thư viện? {count} clip đang dùng nó trên timeline cũng sẽ bị xoá. File gốc trên đĩa không bị đụng tới.',
+      'Xoá "{name}" khỏi Media? {count} clip đang dùng nó trên timeline cũng sẽ bị xoá. File gốc trên đĩa không bị đụng tới.',
     generatedBadge: 'AI'
   },
   preview: {
@@ -85,11 +86,30 @@ export const dictionaryVi = {
     moveText: 'Dời chữ',
     moveTextHint: 'Kéo để dời chữ, kéo chấm tròn phía trên để xoay.',
     rotateText: 'Xoay chữ',
-    resizeText: 'Đổi cỡ'
+    resizeText: 'Đổi cỡ',
+    framePaddingX: 'Kéo đệm ngang khung',
+    framePaddingY: 'Kéo đệm dọc khung'
   },
   inspector: {
-    transition: 'Chuyển cảnh',
-    transitionNone: 'Cắt thẳng',
+    tabBasic: 'Basic',
+    tabVideo: 'Video',
+    tabAudio: 'Audio',
+    tabAnimation: 'Animation',
+    transform: 'Transform',
+    transitions: 'Transitions',
+    transitionIn: 'Vào',
+    transitionOut: 'Ra',
+    transitionsEmpty:
+      'Clip chưa có transition. Kéo thẻ ở Library → Transitions thả vào chỗ nối giữa hai clip.',
+    look: 'Filters',
+    lookNone: 'Không',
+    lookIntensity: 'Cường độ filter',
+    effects: 'Effects',
+    effectsEmpty: 'Chưa có effect. Thêm ở tab Library → Effects.',
+    effectIntensity: 'Cường độ',
+    effectMoveUp: 'Áp sớm hơn',
+    effectMoveDown: 'Áp muộn hơn',
+    effectRemove: 'Gỡ effect',
     transitionFade: 'Mờ chồng',
     transitionSlideLeft: 'Trượt sang trái',
     transitionSlideRight: 'Trượt sang phải',
@@ -104,12 +124,7 @@ export const dictionaryVi = {
     transitionGlitch: 'Nhiễu hình',
     transitionSpin: 'Xoay vào',
     transitionFlash: 'Loé trắng',
-    transitionDuration: 'Thời lượng (giây)',
-    exitTransition: 'Hiệu ứng ra',
-    transitionHint:
-      'Chuyển cảnh lấy phần nguồn nằm trước điểm vào của clip. Không đủ thì nó tự ngắn lại, và clip đầu timeline không có chuyển cảnh.',
-    transitionClamped: 'Chỉ dùng được {seconds}s vì clip không còn đủ phần nguồn phía trước.',
-    motion: 'Chuyển động',
+    motion: 'Zoom',
     motionNone: 'Đứng yên',
     motionZoomIn: 'Đẩy vào chậm',
     motionZoomOut: 'Kéo ra chậm',
@@ -119,16 +134,16 @@ export const dictionaryVi = {
     motionPanDown: 'Lia xuống',
     motionPunchIn: 'Giật phóng vào',
     motionShake: 'Rung nhẹ',
-    motionIntensity: 'Cường độ',
-    motionPanNote: 'Lia máy phải phóng nền lên để không lộ mép khung, nên hình bị cắt bớt một ít.',
-    color: 'Màu sắc',
+    motionIntensity: 'Cường độ zoom',
+    motionPanNote: 'Lia phải phóng hình lên để không lộ mép khung, nên hình bị cắt bớt một ít.',
+    color: 'Adjust',
     colorBrightness: 'Độ sáng',
     colorContrast: 'Tương phản',
     colorSaturation: 'Độ bão hoà',
     colorTemperature: 'Nhiệt độ màu',
     colorVignette: 'Tối góc',
-    colorReset: 'Về màu gốc',
-    colorNoLutNote: 'Chưa hỗ trợ LUT (.cube): bộ lọc CSS không áp được bảng tra ba chiều.',
+    colorReset: 'Đặt lại Adjust',
+    colorNoLutNote: 'Chưa nhập được file LUT (.cube); dùng Filters dựng sẵn ở mục trên.',
     title: 'Thuộc tính',
     chat: 'AI Chat',
     noSelection: 'Chưa chọn đối tượng nào.',
@@ -146,7 +161,7 @@ export const dictionaryVi = {
     scale: 'Phóng to',
     positionX: 'Vị trí X',
     positionY: 'Vị trí Y',
-    textOverlay: 'Chữ trên hình',
+    textOverlay: 'Text',
     subtitleCue: 'Câu phụ đề',
     textContent: 'Nội dung',
     secondaryLine: 'Dòng thứ hai',
@@ -156,20 +171,41 @@ export const dictionaryVi = {
       'Kiểu chữ dưới đây thuộc về CẢ track phụ đề, không riêng câu này — sửa ở đây là mọi câu trong track đổi theo.',
     missingTextBlock: 'Khối chữ đang chọn không còn nữa.',
     missingTextBlockHint: 'Có lẽ nó vừa bị xoá. Chọn một khối khác trên timeline.',
-    resetTransform: 'Đặt lại biến đổi'
+    resetTransform: 'Đặt lại Transform'
+  },
+  library: {
+    tabs: {
+      transitions: 'Transitions',
+      effects: 'Effects',
+      lut: 'Filters',
+      zoom: 'Zoom',
+      soundEffects: 'Sound Effects'
+    },
+    transitionsHint:
+      'Kéo thẻ thả vào chỗ nối giữa hai clip liền nhau trên timeline: cuối clip trước nhận transition ra, đầu clip sau nhận transition vào. Chuột phải vào biểu tượng ở chỗ nối để đổi thời lượng hoặc xoá.',
+    hintSelected: 'Bấm một thẻ để áp vào clip đang chọn, hoặc kéo thẻ thả lên clip trên timeline.',
+    hintNoClip: 'Chọn một clip hình trên timeline rồi bấm thẻ, hoặc kéo thẻ thả thẳng lên clip.',
+    effectsHintSelected:
+      'Bấm thẻ để THÊM effect vào clip đang chọn (chồng được nhiều effect), hoặc kéo thẻ thả lên clip. Chỉnh và gỡ trong panel Thuộc tính.'
   },
   soundEffects: {
-    section: 'Hiệu ứng âm thanh',
+    section: 'Sound Effects',
     hint: 'Có sẵn trong app: không cần mạng, không tính phí. Thêm vào là thành asset thật như file nhập tay.',
     addToTimeline: 'Đặt vào timeline',
-    addToLibrary: 'Chỉ thêm vào thư viện',
-    needAudioTrack: 'Chưa có track tiếng nào để đặt hiệu ứng.',
+    addToLibrary: 'Chỉ thêm vào Media',
+    needAudioTrack: 'Chưa có track âm thanh nào để đặt sound effect.',
     preview: 'Nghe thử',
     notBuiltYet:
-      'Chưa dựng thư viện hiệu ứng. Chạy `node scripts/build-sound-effects.mjs` rồi mở lại app.',
-    missingLibrary: 'Bản cài này thiếu thư viện hiệu ứng âm thanh. Bản build đóng gói sai.'
+      'Chưa dựng bộ sound effect. Chạy `node scripts/build-sound-effects.mjs` rồi mở lại app.',
+    missingLibrary: 'Bản cài này thiếu bộ sound effect. Bản build đóng gói sai.'
   },
   timeline: {
+    effectsTag: 'Effect',
+    cutTransition: 'Transition: {name}',
+    cutTransitionDuration: 'Thời lượng transition',
+    cutTransitionSeconds: '{seconds} giây',
+    cutTransitionMenuHint: 'chuột phải để đổi thời lượng hoặc xoá',
+    removeCutTransitionShort: 'Xoá transition',
     title: 'Timeline',
     zoomIn: 'Phóng to',
     zoomOut: 'Thu nhỏ',
@@ -184,10 +220,10 @@ export const dictionaryVi = {
     textLane: 'Text',
     addVideoTrack: 'Thêm track video',
     addAudioTrack: 'Thêm track âm thanh',
-    addTextTrack: 'Thêm track text',
+    addTextTrack: 'Thêm track Text',
     addImageTrack: 'Thêm track hình ảnh',
     removeTrack: 'Xoá track',
-    reorderTrack: 'Kéo để đổi thứ tự lane',
+    reorderTrack: 'Kéo để đổi thứ tự track',
     mute: 'Tắt tiếng',
     unmute: 'Bật tiếng',
     solo: 'Solo',
@@ -195,11 +231,11 @@ export const dictionaryVi = {
     show: 'Hiện',
     lock: 'Khoá',
     unlock: 'Mở khoá',
-    empty: 'Kéo media từ thư viện vào đây để bắt đầu.',
+    empty: 'Kéo file từ tab Media vào đây để bắt đầu.',
     trackHeight: 'Chiều cao track',
-    trackHeightSmall: 'Lane nhỏ',
-    trackHeightMedium: 'Lane vừa',
-    trackHeightLarge: 'Lane lớn'
+    trackHeightSmall: 'Track nhỏ',
+    trackHeightMedium: 'Track vừa',
+    trackHeightLarge: 'Track lớn'
   },
   projects: {
     title: 'Dự án',
@@ -229,11 +265,12 @@ export const dictionaryVi = {
     engine: 'Bộ dựng hình',
     engineFfmpeg: 'ffmpeg (nhanh)',
     engineRemotion: 'Remotion (khớp preview)',
-    engineForced: 'Dự án có chuyển cảnh hoặc chữ overlay nên phải dùng Remotion.',
+    engineForced:
+      'Dự án có transition, Text, zoom, effect, filter hoặc Adjust nên phải dùng Remotion.',
     engineWarning:
-      'ffmpeg KHÔNG vẽ được chuyển cảnh và chữ overlay. Xuất bằng nó sẽ ra file thiếu những hiệu ứng đó.',
+      'ffmpeg KHÔNG vẽ được transition và Text. Xuất bằng nó sẽ ra file thiếu những phần đó.',
     engineHint:
-      'ffmpeg nhanh hơn khoảng 6,7 lần. Remotion dùng chung bản dựng với preview nên bản xuất không lệch bản xem trước, và là đường duy nhất làm được chuyển cảnh cùng chữ động về sau.',
+      'ffmpeg nhanh hơn khoảng 6,7 lần. Remotion dùng chung bản dựng với preview nên bản xuất không lệch bản xem trước, và là đường duy nhất làm được transition cùng Text động.',
     burnSubtitles: 'Nung phụ đề vào hình',
     exportSrt: 'Xuất thêm file SRT',
     noSubtitles: 'Dự án chưa có phụ đề nào',
@@ -312,8 +349,8 @@ export const dictionaryVi = {
     insertNewTrack: 'Chèn vào track mới',
     replaceSelected: 'Thay clip đang chọn',
     inserted: 'Đã chèn vào timeline',
-    addedToLibrary: 'Đã thêm vào thư viện',
-    reusedExisting: 'Dùng lại audio đã có trong thư viện',
+    addedToLibrary: 'Đã thêm vào Media',
+    reusedExisting: 'Dùng lại audio đã có trong Media',
     missingKey: 'Chưa có khoá API cho nhà cung cấp này.',
     openSettings: 'Mở Cấu hình AI',
     outputFormat: 'Định dạng',
@@ -476,7 +513,7 @@ export const dictionaryVi = {
   },
   musicGen: {
     section: 'Tạo nhạc bằng AI',
-    hint: 'Mô tả bản nhạc bạn muốn. Nhạc tạo ra thành asset thật trong thư viện, chèn và chỉnh như mọi file nhạc khác.',
+    hint: 'Mô tả bản nhạc bạn muốn. Nhạc tạo ra thành asset thật trong Media, chèn và chỉnh như mọi file nhạc khác.',
     prompt: 'Mô tả bản nhạc',
     promptPlaceholder: 'Ví dụ: nhạc nền nhẹ nhàng, guitar mộc, không lời',
     duration: 'Độ dài (giây)',
@@ -485,7 +522,7 @@ export const dictionaryVi = {
     generating: 'Đang tạo nhạc…',
     cancel: 'Huỷ',
     needsKey: 'Chưa có khoá API cho ElevenLabs Music. Vào Cấu hình AI để nhập khoá.',
-    done: 'Đã thêm "{name}" vào thư viện',
+    done: 'Đã thêm "{name}" vào Media',
     fromCache: 'Dùng lại kết quả đã tạo trước đó, không gọi lại provider',
     unverified:
       'Lưu ý: đường gọi tới ElevenLabs Music chưa được kiểm chứng bằng khoá thật — mới kiểm bằng máy chủ giả lập đúng giao thức.'
@@ -523,7 +560,7 @@ export const dictionaryVi = {
     needsProject: 'Phải mở một dự án thì agent mới sửa được.'
   },
   textOverlay: {
-    section: 'Chữ đè lên hình',
+    section: 'Text',
     hint: 'Hook đầu video, giá, lời kêu gọi hành động. Khác phụ đề: bạn tự viết và tự đặt giờ, nên dựng lại phụ đề không làm mất chúng.',
     add: 'Thêm chữ',
     empty: 'Chưa có chữ nào.',
@@ -531,7 +568,7 @@ export const dictionaryVi = {
     textPlaceholder: 'Ví dụ: Bạn đang bỏ lỡ thứ này',
     start: 'Bắt đầu (giây)',
     end: 'Kết thúc (giây)',
-    animation: 'Hiệu ứng',
+    animation: 'Animation vào',
     animationNone: 'Không',
     animationFade: 'Mờ dần',
     animationPop: 'Nảy lên',
@@ -541,7 +578,7 @@ export const dictionaryVi = {
     positionTop: 'Trên',
     positionMiddle: 'Giữa',
     positionBottom: 'Dưới',
-    exit: 'Hiệu ứng ra',
+    exit: 'Animation ra',
     exitNone: 'Tắt phụt',
     exitFade: 'Mờ dần',
     exitShrink: 'Thu nhỏ',
@@ -552,11 +589,17 @@ export const dictionaryVi = {
     boxDark: 'Hộp tối',
     boxLight: 'Hộp sáng',
     frameGroup: 'Khung dễ thương',
+    frameImageGroup: 'Khung ảnh',
+    frameGalleryShow: 'Chọn khung bằng hình',
+    frameGalleryHide: 'Ẩn bảng khung',
+    framePaddingX: 'Đệm ngang khung',
+    framePaddingY: 'Đệm dọc khung',
     frameColor: 'Màu khung',
     frameDecor: 'Trang trí góc',
     frameDecorNone: 'Không',
     color: 'Màu chữ',
     outlineColor: 'Màu viền',
+    outlineWidth: 'Độ dày viền',
     fontSize: 'Cỡ chữ',
     remove: 'Xoá chữ',
     seek: 'Tua tới đây'
@@ -599,8 +642,8 @@ export const dictionaryVi = {
   music: {
     title: 'Nhạc nền',
     upload: 'Tải nhạc lên',
-    empty: 'Chưa có bản nhạc nào trong thư viện.',
-    emptyHint: 'Tải file nhạc lên hoặc nhập từ thư viện media, rồi chèn vào track nhạc nền.',
+    empty: 'Chưa có bản nhạc nào trong Media.',
+    emptyHint: 'Tải file nhạc lên hoặc nhập vào tab Media, rồi chèn vào track nhạc nền.',
     insert: 'Chèn vào track nhạc',
     insertAtPlayhead: 'Chèn tại playhead',
     volume: 'Âm lượng',

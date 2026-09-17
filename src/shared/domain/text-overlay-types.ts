@@ -1,6 +1,5 @@
 import type { Micros } from './time-units'
 import { DEFAULT_SUBTITLE_STYLE, type SubtitleStyle } from './subtitle-types'
-import type { TextFramePalette } from './text-frame-catalog'
 
 /**
  * Chữ đè lên hình: hook đầu video, giá, lời kêu gọi hành động.
@@ -79,9 +78,31 @@ export interface TextOverlay {
  */
 export interface TextOverlayFrame {
   styleId: string
-  paletteId: string
-  /** Điểm trang trí ở góc. Bỏ trống nghĩa là không có. */
+  /**
+   * Bộ màu, chỉ khung VECTOR mới cần. Khung ảnh mang màu cố định trong ảnh nên bỏ
+   * trống; có ghi thì lớp dựng kế hoạch cũng bỏ qua.
+   */
+  paletteId?: string
+  /** Điểm trang trí ở góc, chỉ khung vector. Bỏ trống nghĩa là không có. */
   decorId?: string
+  /**
+   * Hệ số đệm ngang/dọc giữa chữ và viền khung. `1` (hoặc bỏ trống) là mặc định,
+   * `0` ôm sát chữ, tối đa `TEXT_FRAME_PADDING_SCALE_MAX`.
+   *
+   * Chỉ co giãn ĐỆM, không co giãn viền: viền theo cỡ chữ để nét vẽ và trang trí
+   * góc giữ đúng tỉ lệ. Muốn khung to cả nét thì đổi cỡ chữ.
+   */
+  paddingScaleX?: number
+  paddingScaleY?: number
+}
+
+/** Trần hệ số đệm khung. Rộng hơn nữa thì chữ lọt thỏm giữa một tấm nền trống. */
+export const TEXT_FRAME_PADDING_SCALE_MAX = 3
+
+/** Kẹp hệ số đệm về khoảng hợp lệ; thiếu hoặc hỏng thì về mặc định `1`. */
+export function clampTextFramePaddingScale(value: number | undefined): number {
+  if (value === undefined || !Number.isFinite(value)) return 1
+  return Math.min(TEXT_FRAME_PADDING_SCALE_MAX, Math.max(0, value))
 }
 
 /** Hiệu ứng vào mặc định — đủ nhanh để không làm chậm nhịp video ngắn. */
@@ -148,9 +169,10 @@ export function readTextOverlayBox(style: SubtitleStyle): TextOverlayBox {
  */
 export function applyTextOverlayFrame(
   style: SubtitleStyle,
-  palette: TextFramePalette
+  /** Bộ màu của khung vector, hoặc `{ text }` lấy từ khung ảnh. */
+  colors: { text: string }
 ): SubtitleStyle {
-  return { ...style, color: palette.text, outlineWidthPx: 0, boxOpacity: 0 }
+  return { ...style, color: colors.text, outlineWidthPx: 0, boxOpacity: 0 }
 }
 
 /**

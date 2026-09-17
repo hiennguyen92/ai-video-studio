@@ -9,6 +9,9 @@ import { formatClockTime } from '../../../../shared/domain/time-units'
 import { mediaFileUrl } from '../../../../shared/ipc/ipc-contract'
 import { usToPx } from './timeline-geometry'
 import { reducePeaksToColumns, useWaveformPeaks } from '../../hooks/use-waveform-peaks'
+import { useLibraryClipDrop } from '../library/use-library-clip-drop'
+import { TimelineClipTags } from './timeline-clip-tags'
+import { useClipTagDescriptions } from './use-clip-tag-descriptions'
 
 /**
  * Một clip trên timeline.
@@ -54,6 +57,8 @@ export function TimelineClip({
   const left = usToPx(clip.startUs, pixelsPerSecond)
   const width = usToPx(clip.durationUs, pixelsPerSecond)
   const color = clipColor(track)
+  // Nhận thẻ zoom kéo từ tab Library. Chuyển cảnh thì lane nhận, ở chỗ nối.
+  const { dropActive, dropProps } = useLibraryClipDrop(clip, track)
 
   const handlePointerDown = useCallback(
     (event: ReactPointerEvent<HTMLElement>) => {
@@ -84,12 +89,15 @@ export function TimelineClip({
         }
       : undefined
 
+  const tagLines = useClipTagDescriptions(clip)
+    .map((item) => `\n${item.full}`)
+    .join('')
   const fadeInWidth = usToPx(clip.fadeInUs, pixelsPerSecond)
   const fadeOutWidth = usToPx(clip.fadeOutUs, pixelsPerSecond)
 
   return (
     <div
-      className={`timeline-clip ${selected ? 'timeline-clip--selected' : ''} ${track.locked ? 'timeline-clip--locked' : ''}`}
+      className={`timeline-clip ${selected ? 'timeline-clip--selected' : ''} ${track.locked ? 'timeline-clip--locked' : ''} ${dropActive ? 'timeline-clip--drop' : ''}`}
       style={{
         left: `${left}px`,
         width: `${Math.max(2, width)}px`,
@@ -98,10 +106,11 @@ export function TimelineClip({
         background: `color-mix(in srgb, ${color} 22%, var(--surface-raised))`
       }}
       onPointerDown={handlePointerDown}
+      {...dropProps}
       role="button"
       tabIndex={0}
       aria-label={`${asset?.name ?? clip.label ?? 'clip'} · ${formatClockTime(clip.durationUs, false)}`}
-      title={`${asset?.name ?? clip.label ?? ''}\n${formatClockTime(clip.startUs)} → ${formatClockTime(clip.startUs + clip.durationUs)}`}
+      title={`${asset?.name ?? clip.label ?? ''}\n${formatClockTime(clip.startUs)} → ${formatClockTime(clip.startUs + clip.durationUs)}${tagLines}`}
     >
       {filmstripStyle && <div className="timeline-clip__filmstrip" style={filmstripStyle} />}
 
@@ -123,6 +132,8 @@ export function TimelineClip({
       )}
 
       <span className="timeline-clip__label">{asset?.name ?? clip.label ?? ''}</span>
+
+      <TimelineClipTags clip={clip} />
 
       {!track.locked && (
         <>

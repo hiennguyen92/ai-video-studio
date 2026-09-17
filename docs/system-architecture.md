@@ -224,9 +224,33 @@ Hai công cụ dễ bị bỏ sót nhưng thiếu thì cả nhánh này không r
   **không công cụ nào khác sửa được**. Nhận TỈ LỆ (`9:16`) chứ không nhận hai số
   pixel: mô hình nhớ sai độ phân giải thường xuyên. Cạnh luôn được làm chẵn — h264
   với yuv420p không mã hoá được cạnh lẻ, và lỗi đó chỉ lộ ra lúc xuất.
-- `set_clip_transition` — chuyển cảnh kéo clip đến bắt đầu sớm hơn để phủ lên clip
-  đi, nên nó ăn vào phần nguồn nằm TRƯỚC `sourceInUs`. Dựng bằng `insert_clip` với
-  điểm vào nằm sâu trong file thì luôn đủ handle; dựng từ đầu file thì không.
+- `set_cut_transition` — chuyển cảnh đặt vào CHỖ NỐI giữa hai clip liền nhau, xác
+  định bằng clip đứng trước (`fromClipId`); cuối clip trước nhận hiệu ứng ra, đầu
+  clip sau nhận hiệu ứng vào, cùng kiểu và thời lượng — đúng mô hình của timeline
+  (`timeline-cut-transitions.ts`). Bản tổng quan dự án liệt kê sẵn các chỗ nối.
+  Phần vào kéo clip sau bắt đầu sớm hơn nên ăn vào phần nguồn nằm TRƯỚC
+  `sourceInUs`: dựng bằng `insert_clip` với điểm vào nằm sâu trong file thì đủ
+  handle, dựng từ đầu file thì chỉ còn phần ra của clip trước.
+
+### Effect hình: một công thức, ba nơi vẽ
+
+`clip.effects` là MẢNG `{ id, kind, intensity, params }`, thứ tự mảng là thứ tự áp
+(sau chỉnh màu và look). Mọi thao tác thêm/sửa/gỡ/đổi thứ tự dựng lại cả mảng và
+gửi một lệnh `clip/set-effects` (`clip-effect-commands.ts`) — giao diện, kéo-thả và
+agent dùng chung, mỗi thao tác một bước hoàn tác.
+
+Mỗi `kind` có một công thức thuần theo khung hình (`clip-effect-render-*.ts`) trả
+về primitive SVG, hình mặt nạ, transform và lớp phủ CSS; `buildClipEffectsRender`
+nối tất cả thành MỘT `<filter>` và một chuỗi `<clipPath>` giao nhau.
+`ClipEffectFrame` vẽ chúng quanh media, dùng chung cho composition (preview + bản
+xuất) và thẻ minh hoạ trong Library. Cây DOM giữ nguyên dù thêm/gỡ effect để thẻ
+video không bị gắn lại. Id bộ lọc mang băm nội dung nên effect động (hạt phim,
+glitch) chắc chắn được vẽ lại mỗi khung. Có effect thì buộc xuất bằng Remotion.
+
+Ràng buộc đã kiểm chứng: Chrome bỏ qua `feDisplacementMap` khi bản đồ đến từ
+`feImage`, còn `feImage` data URI tải bất đồng bộ và rơi khỏi bản xuất — nên kính
+lúp dựng bản đồ dịch chuyển hoàn toàn bằng primitive (dải Φ từ blur một chiều,
+hình tròn từ đèn điểm `feDiffuseLighting`).
 
 ### Giọng đọc không cần khoá
 

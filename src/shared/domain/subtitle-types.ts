@@ -141,6 +141,13 @@ export const SUBTITLE_STYLE_PRESETS: SubtitleStylePreset[] = [
   }
 ]
 
+/**
+ * Trần độ dày viền chữ, dùng chung cho thanh trượt của phụ đề, chữ overlay và
+ * công cụ MCP. 20px đủ cho viền kiểu sticker trên chữ 84–120px; dày hơn thì viền
+ * nuốt mất lòng chữ.
+ */
+export const MAX_TEXT_OUTLINE_WIDTH_PX = 20
+
 export function subtitleCueDurationUs(cue: SubtitleCue): Micros {
   return cue.endUs - cue.startUs
 }
@@ -148,10 +155,20 @@ export function subtitleCueDurationUs(cue: SubtitleCue): Micros {
 /**
  * Ngắt dòng theo số ký tự, ưu tiên ngắt ở khoảng trắng.
  * Dùng chung cho preview và cho việc sinh file ASS/SRT.
+ *
+ * Xuống dòng người dùng gõ (Enter) là ngắt CỨNG và luôn được giữ: mỗi đoạn tự
+ * ngắt mềm theo số ký tự bên trong nó. Dòng trống cũng giữ, thành chuỗi rỗng —
+ * nơi vẽ tự chèn khoảng trắng không ngắt để dòng đó còn chiều cao.
  */
 export function wrapSubtitleText(text: string, maxCharsPerLine: number): string[] {
-  const words = text.split(/\s+/).filter(Boolean)
-  if (words.length === 0) return []
+  if (text.trim() === '') return []
+  return text.split(/\r?\n/).flatMap((paragraph) => wrapParagraph(paragraph, maxCharsPerLine))
+}
+
+/** Ngắt mềm một đoạn không có xuống dòng. Đoạn trống ra đúng một dòng trống. */
+function wrapParagraph(paragraph: string, maxCharsPerLine: number): string[] {
+  const words = paragraph.split(/\s+/).filter(Boolean)
+  if (words.length === 0) return ['']
 
   const lines: string[] = []
   let current = ''

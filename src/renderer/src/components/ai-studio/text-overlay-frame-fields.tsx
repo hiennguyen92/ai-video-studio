@@ -3,17 +3,21 @@ import {
   TEXT_FRAME_DECORS,
   TEXT_FRAME_PALETTES,
   TEXT_FRAME_STYLES,
-  findTextFramePalette
+  findTextFrameStyle
 } from '../../../../shared/domain/text-frame-catalog'
 import {
-  applyTextOverlayBox,
-  applyTextOverlayFrame,
+  TEXT_FRAME_PADDING_SCALE_MAX,
+  clampTextFramePaddingScale,
   readTextOverlayBox,
   type TextOverlay,
   type TextOverlayBox
 } from '../../../../shared/domain/text-overlay-types'
-import { useEditorStore } from '../../state/editor-store'
+import {
+  DEFAULT_TEXT_FRAME_PALETTE_ID,
+  useTextOverlayFrameActions
+} from '../../hooks/use-text-overlay-frame-actions'
 import { useLocale } from '../../i18n/use-translation'
+import { TextOverlayFrameThumbnailGrid } from './text-overlay-frame-thumbnail-grid'
 
 /**
  * Ba ô liên quan tới nền chữ.
@@ -38,9 +42,6 @@ const BOXES: Array<{ value: TextOverlayBox; labelKey: 'boxNone' | 'boxDark' | 'b
   { value: 'light', labelKey: 'boxLight' }
 ]
 
-/** Bộ màu mặc định khi vừa bật khung: chọn khung xong phải thấy ngay một cái khung. */
-const PALETTE_MAC_DINH = TEXT_FRAME_PALETTES[0].id
-
 export function TextOverlayFrameFields({
   overlay,
   label
@@ -50,86 +51,10 @@ export function TextOverlayFrameFields({
   label: (base: string) => string
 }): JSX.Element {
   const { t, locale } = useLocale()
-  const run = useEditorStore((state) => state.run)
   const frame = overlay.frame
-
-  /**
-   * Đổi nền là ghi vào HAI chỗ: `frame` trên overlay và màu chữ trong `style`.
-   * Hai lệnh nằm trong MỘT `run` nên chỉ tốn một bước hoàn tác — nếu tách ra thì
-   * người dùng phải nhấn Cmd+Z hai lần mới bỏ được khung, nhìn ra như lỗi.
-   */
-  const doiNen = (value: string): void => {
-    const style = TEXT_FRAME_STYLES.find((item) => item.id === value)
-    if (!style) {
-      // `frame: null` chứ không phải bỏ trống: bỏ trống nghĩa là "giữ nguyên", và
-      // nút tắt khung sẽ không tắt được.
-      run(
-        [
-          { type: 'text/update', overlayId: overlay.id, frame: null },
-          {
-            type: 'text/set-style',
-            overlayId: overlay.id,
-            style: applyTextOverlayBox(overlay.style, value as TextOverlayBox)
-          }
-        ],
-        'Đổi nền chữ'
-      )
-      return
-    }
-
-    const paletteId = frame?.paletteId ?? PALETTE_MAC_DINH
-    const palette = findTextFramePalette(paletteId) ?? TEXT_FRAME_PALETTES[0]
-    run(
-      [
-        {
-          type: 'text/update',
-          overlayId: overlay.id,
-          frame: { styleId: style.id, paletteId: palette.id, decorId: frame?.decorId }
-        },
-        {
-          type: 'text/set-style',
-          overlayId: overlay.id,
-          style: applyTextOverlayFrame(overlay.style, palette)
-        }
-      ],
-      'Đổi khung chữ'
-    )
-  }
-
-  const doiMau = (paletteId: string): void => {
-    if (!frame) return
-    const palette = findTextFramePalette(paletteId)
-    if (!palette) return
-    run(
-      [
-        { type: 'text/update', overlayId: overlay.id, frame: { ...frame, paletteId } },
-        {
-          type: 'text/set-style',
-          overlayId: overlay.id,
-          style: applyTextOverlayFrame(overlay.style, palette)
-        }
-      ],
-      'Đổi màu khung'
-    )
-  }
-
-  const doiTrangTri = (decorId: string): void => {
-    if (!frame) return
-    run(
-      [
-        {
-          type: 'text/update',
-          overlayId: overlay.id,
-          frame: {
-            styleId: frame.styleId,
-            paletteId: frame.paletteId,
-            decorId: decorId || undefined
-          }
-        }
-      ],
-      'Đổi trang trí khung'
-    )
-  }
+  const coBoMau = frame ? findTextFrameStyle(frame.styleId)?.kind === 'vector' : false
+  const { changeBackground, changePalette, changeDecor, changePadding } =
+    useTextOverlayFrameActions(overlay)
 
   return (
     <>
@@ -138,7 +63,7 @@ export function TextOverlayFrameFields({
         <select
           value={frame?.styleId ?? readTextOverlayBox(overlay.style)}
           aria-label={label(t.textOverlay.box)}
-          onChange={(event) => doiNen(event.target.value)}
+          onChange={(event) => changeBackground(event.target.value)}
         >
           {BOXES.map((option) => (
             <option key={option.value} value={option.value}>
@@ -146,7 +71,14 @@ export function TextOverlayFrameFields({
             </option>
           ))}
           <optgroup label={t.textOverlay.frameGroup}>
-            {TEXT_FRAME_STYLES.map((style) => (
+            {TEXT_FRAME_STYLES.filter((style) => style.kind === 'vector').map((style) => (
+              <option key={style.id} value={style.id}>
+                {tenTheoNgonNgu(style, locale)}
+              </option>
+            ))}
+          </optgroup>
+          <optgroup label={t.textOverlay.frameImageGroup}>
+            {TEXT_FRAME_STYLES.filter((style) => style.kind === 'image').map((style) => (
               <option key={style.id} value={style.id}>
                 {tenTheoNgonNgu(style, locale)}
               </option>
@@ -155,17 +87,25 @@ export function TextOverlayFrameFields({
         </select>
       </label>
 
+      <TextOverlayFrameThumbnailGrid
+        selectedStyleId={frame?.styleId}
+        paletteId={frame?.paletteId}
+        label={label}
+        onPick={changeBackground}
+      />
+
       {/*
-        Hai ô dưới KHÔNG TỒN TẠI khi chưa chọn khung, chứ không phải bị làm mờ:
-        một ô "Màu khung" khi không có khung là một ô không có tác dụng.
+        Hai ô dưới KHÔNG TỒN TẠI khi chưa chọn khung vector, chứ không phải bị làm
+        mờ: một ô "Màu khung" khi không có khung — hoặc khi khung là ảnh màu cố
+        định — là một ô không có tác dụng.
       */}
-      {frame && (
+      {coBoMau && frame && (
         <label>
           <span className="field-row__label">{t.textOverlay.frameColor}</span>
           <select
-            value={frame.paletteId}
+            value={frame.paletteId ?? DEFAULT_TEXT_FRAME_PALETTE_ID}
             aria-label={label(t.textOverlay.frameColor)}
-            onChange={(event) => doiMau(event.target.value)}
+            onChange={(event) => changePalette(event.target.value)}
           >
             {TEXT_FRAME_PALETTES.map((palette) => (
               <option key={palette.id} value={palette.id}>
@@ -176,13 +116,13 @@ export function TextOverlayFrameFields({
         </label>
       )}
 
-      {frame && (
+      {coBoMau && frame && (
         <label>
           <span className="field-row__label">{t.textOverlay.frameDecor}</span>
           <select
             value={frame.decorId ?? ''}
             aria-label={label(t.textOverlay.frameDecor)}
-            onChange={(event) => doiTrangTri(event.target.value)}
+            onChange={(event) => changeDecor(event.target.value)}
           >
             <option value="">{t.textOverlay.frameDecorNone}</option>
             {TEXT_FRAME_DECORS.map((decor) => (
@@ -193,6 +133,33 @@ export function TextOverlayFrameFields({
           </select>
         </label>
       )}
+      {/*
+        Đệm khung theo từng chiều, cho mọi loại khung. Không tồn tại khi chưa có
+        khung: nền hộp phẳng có đệm cố định riêng.
+      */}
+      {frame &&
+        (['x', 'y'] as const).map((axis) => {
+          const base = axis === 'x' ? t.textOverlay.framePaddingX : t.textOverlay.framePaddingY
+          const percent = Math.round(
+            clampTextFramePaddingScale(axis === 'x' ? frame.paddingScaleX : frame.paddingScaleY) *
+              100
+          )
+          return (
+            <div key={axis} className="field-row text-overlay-item__wide">
+              <span className="field-row__label">{base}</span>
+              <input
+                type="range"
+                min={0}
+                max={TEXT_FRAME_PADDING_SCALE_MAX * 100}
+                step={10}
+                value={percent}
+                aria-label={label(base)}
+                onChange={(event) => changePadding(axis, Number(event.target.value) / 100)}
+              />
+              <span className="field-row__value">{percent}%</span>
+            </div>
+          )
+        })}
     </>
   )
 }

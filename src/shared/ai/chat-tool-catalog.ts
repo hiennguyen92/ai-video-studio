@@ -1,4 +1,6 @@
 import { z } from 'zod'
+import { MAX_TEXT_ROTATION_DEG } from '../domain/text-placement'
+import { MAX_TEXT_OUTLINE_WIDTH_PX } from '../domain/subtitle-types'
 
 /**
  * Danh mục công cụ mà AI Chat được phép gọi.
@@ -169,8 +171,10 @@ export const chatToolSchemas = {
       .union([
         z.object({
           styleId: z.string().min(1).max(60),
-          paletteId: z.string().min(1).max(60),
-          decorId: z.string().min(1).max(60).optional()
+          paletteId: z.string().min(1).max(60).optional(),
+          decorId: z.string().min(1).max(60).optional(),
+          paddingScaleX: z.number().min(0).max(3).optional(),
+          paddingScaleY: z.number().min(0).max(3).optional()
         }),
         z.null()
       ])
@@ -242,7 +246,7 @@ export const chatToolSchemas = {
     /** Viền phát sáng quanh chữ. */
     glow: z.boolean().optional(),
     /** Góc xoay, tính bằng độ theo chiều kim đồng hồ. */
-    rotationDeg: z.number().min(-45).max(45).optional(),
+    rotationDeg: z.number().min(-MAX_TEXT_ROTATION_DEG).max(MAX_TEXT_ROTATION_DEG).optional(),
     /**
      * Khung nền dễ thương sau chữ, gọi bằng id trong danh mục.
      *
@@ -252,8 +256,10 @@ export const chatToolSchemas = {
       .union([
         z.object({
           styleId: z.string().min(1).max(60),
-          paletteId: z.string().min(1).max(60),
-          decorId: z.string().min(1).max(60).optional()
+          paletteId: z.string().min(1).max(60).optional(),
+          decorId: z.string().min(1).max(60).optional(),
+          paddingScaleX: z.number().min(0).max(3).optional(),
+          paddingScaleY: z.number().min(0).max(3).optional()
         }),
         z.null()
       ])
@@ -279,15 +285,17 @@ export const chatToolSchemas = {
   }),
 
   /**
-   * Đặt hiệu ứng chuyển cảnh vào ĐẦU một clip.
+   * Đặt chuyển cảnh vào CHỖ NỐI giữa hai clip liền nhau trên cùng một track hình.
    *
-   * `none` để gỡ. Thời lượng bị kẹp theo phần nguồn còn lại lúc dựng khung hình,
-   * nên xin 1 giây mà clip chỉ còn 0,4 giây thì nhận được 0,4 giây.
+   * Cùng mô hình với giao diện: cuối clip trước nhận hiệu ứng ra, đầu clip sau
+   * nhận hiệu ứng vào, cùng một kiểu và cùng thời lượng. Chỗ nối xác định bằng
+   * clip ĐỨNG TRƯỚC nó. `none` để gỡ.
+   *
+   * Thời lượng tối đa 2 giây, khớp các mức trong menu chuột phải của timeline.
    */
-  set_clip_transition: z.object({
-    /** Mép nào của clip. Bỏ trống là mép VÀO. */
-    edge: z.enum(['in', 'out']).optional(),
-    clipId: z.string().min(1).max(120).optional(),
+  set_cut_transition: z.object({
+    /** Clip đứng TRƯỚC chỗ nối. Bỏ trống thì lấy clip đang chọn. */
+    fromClipId: z.string().min(1).max(120).optional(),
     kind: z.enum([
       'none',
       'fade',
@@ -305,7 +313,7 @@ export const chatToolSchemas = {
       'spin',
       'flash'
     ]),
-    durationSeconds: z.number().positive().max(5).optional()
+    durationSeconds: z.number().min(0.1).max(2).optional()
   }),
 
   /**
@@ -318,6 +326,41 @@ export const chatToolSchemas = {
     clipId: z.string().min(1).max(120).optional(),
     /** 1 = tốc độ gốc, 2 = nhanh gấp đôi, 0.5 = chậm một nửa. */
     speed: z.number().min(0.25).max(4)
+  }),
+
+  /**
+   * Look màu dựng sẵn (tab LUT) cho clip hình. Id phải có trong danh mục look —
+   * bản tổng quan dự án liệt kê sẵn. `none` để gỡ.
+   */
+  set_clip_look: z.object({
+    clipId: z.string().min(1).max(120).optional(),
+    lookId: z.string().min(1).max(60),
+    /** 0–1, trộn với hình gốc. Bỏ trống thì giữ cường độ đang có (look mới: 1). */
+    intensity: z.number().min(0).max(1).optional()
+  }),
+
+  /**
+   * Effect hình chồng lên clip (tab Effects). Kind phải có trong danh mục — bản
+   * tổng quan liệt kê kèm thông số. Thông số lạ bị bỏ, số ngoài khoảng bị kẹp.
+   */
+  add_clip_effect: z.object({
+    clipId: z.string().min(1).max(120).optional(),
+    kind: z.string().min(1).max(60),
+    intensity: z.number().min(0).max(1).optional(),
+    params: z.record(z.string().max(40), z.union([z.number(), z.string().max(40)])).optional()
+  }),
+
+  update_clip_effect: z.object({
+    clipId: z.string().min(1).max(120).optional(),
+    effectId: z.string().min(1).max(80),
+    intensity: z.number().min(0).max(1).optional(),
+    params: z.record(z.string().max(40), z.union([z.number(), z.string().max(40)])).optional()
+  }),
+
+  /** Bỏ trống `effectId` thì gỡ HẾT effect của clip. */
+  remove_clip_effect: z.object({
+    clipId: z.string().min(1).max(120).optional(),
+    effectId: z.string().min(1).max(80).optional()
   }),
 
   set_clip_motion: z.object({
@@ -399,12 +442,14 @@ export const chatToolSchemas = {
       .string()
       .regex(/^#[0-9a-fA-F]{6}$/, 'Màu phải có dạng #RRGGBB')
       .optional(),
+    /** Độ dày viền, px. Bỏ trống thì giữ nguyên; 0 là bỏ viền. */
+    outlineWidthPx: z.number().int().min(0).max(MAX_TEXT_OUTLINE_WIDTH_PX).optional(),
     overlayId: z.string().min(1).max(120).optional(),
     subtitleTrackId: z.string().min(1).max(120).optional()
   }),
 
   set_text_rotation: z.object({
-    rotationDeg: z.number().min(-45).max(45),
+    rotationDeg: z.number().min(-MAX_TEXT_ROTATION_DEG).max(MAX_TEXT_ROTATION_DEG),
     overlayId: z.string().min(1).max(120).optional(),
     subtitleTrackId: z.string().min(1).max(120).optional()
   }),
@@ -482,26 +527,34 @@ export const chatToolDescriptions: Record<ChatToolName, string> = {
   build_cut_from_shots:
     'Assemble a cut from detected camera shots, laid end to end in the order given. Use this for footage with no speech, where there is no transcript to work from. Call list_shots first to see each shot and its still frame.',
   add_text_overlay:
-    'Put text on top of the video for a stretch of time — a hook, a price, a call to action. Separate from subtitles, which come from speech. Set box to "dark" or "light" when the footage behind the text is bright or busy — an outline alone is not enough to keep it readable. Set exit so the text leaves instead of snapping off, and glow to make it carry over busy footage. For a playful look pass frame with a styleId and paletteId from the project overview — a cute frame replaces the plain box, so do not set both.',
+    'Put text on top of the video for a stretch of time — a hook, a price, a call to action. Use a newline (\\n) in text to break it onto several lines. Separate from subtitles, which come from speech. Set box to "dark" or "light" when the footage behind the text is bright or busy — an outline alone is not enough to keep it readable. Set exit so the text leaves instead of snapping off, and glow to make it carry over busy footage. For a playful look pass frame with a styleId from the project overview: vector frames also need a paletteId (and take an optional decorId), picture frames take styleId only because their colours are baked into the image. A cute frame replaces the plain box and sets a matching text colour, so do not set both. paddingScaleX/paddingScaleY (0 to 3, default 1) set the space between the text and the frame edge: 0 hugs the text, 2 doubles the space.',
   remove_text_overlay: 'Remove a text overlay.',
   set_canvas:
     'Set the project canvas shape. Use 9:16 for TikTok, Reels and Shorts, 16:9 for YouTube, 1:1 for square. Do this before laying out text, because it changes where text sits in frame.',
-  set_clip_transition:
-    'Put an effect on one edge of a clip. edge "in" (the default) blends it out of the clip before it and needs footage before the cut to play over; edge "out" plays the same effect in reverse over the last frames and needs no extra footage. Use kind "none" to remove one.',
+  set_cut_transition:
+    'Put a transition on the cut between two clips that sit back to back on the same visual track. fromClipId is the clip BEFORE the cut (defaults to the selected clip); the Cuts list in the project overview shows every cut and the transition on it. The end of that clip plays out and the start of the next clip plays in, with the same kind and duration. durationSeconds is 0.1 to 2 (keeps the current duration when left out, 0.5 for a new one). Use kind "none" to remove it.',
   set_clip_speed:
     'Change how fast a clip plays. The clip keeps the same stretch of source footage, so speeding it up makes it SHORTER on the timeline and slowing it down makes it longer — a longer clip pushes into whatever sits next to it. Use it to tighten a slow take or to stretch a moment out. Audio pitch shifts in the preview but is corrected in the exported file.',
+  set_clip_look:
+    'Give a visual clip a ready-made colour look (a LUT), such as a warm film, teal and orange, black and white, or a log-to-Rec.709 conversion for flat camera footage. Use a lookId from the Colour looks list in the project overview. intensity 0 to 1 blends it with the original (keeps the current one when left out, 1 for a new look). The look is applied after the clip colour grade. Use lookId "none" to remove it.',
+  add_clip_effect:
+    'Stack a visual effect on a clip: stylize (vignette, film grain, bloom, light leak, retro CRT, edge glow, posterize), distort (RGB split, glitch, mirror, pixelate, handheld shake, magnifier), blur (soft, motion, tilt-shift), masks (rectangle, circle, local mosaic to hide a face or plate), keys (luma key, green/blue screen chroma key) and colour (levels, HSL, colour wheels, clarity, shadows/highlights, duotone, sepia, invert). Effects STACK: each call adds one more at the end, applied after the colour grade and look, in order. Use a kind from the Visual effects list in the project overview, which also lists the params of each effect with their ranges; leave params out for sensible defaults. intensity 0 to 1 (default 0.7) only matters for effects that list it. The reply names the new effect id; the clip line in the project overview lists it too.',
+  update_clip_effect:
+    'Change the intensity or some params of one effect already on a clip. effectId comes from the clip line in the project overview (effects=[id:kind…]). Params you leave out keep their value.',
+  remove_clip_effect:
+    'Remove one effect from a clip by effectId, or every effect on the clip when effectId is left out.',
   set_clip_motion:
     'Move the frame over the whole length of a clip: a slow push in or out, a slow pan, a punch in at the cut, or a shake. Use this on footage that barely moves — a still product shot with a slow push reads as edited, the same shot held still reads as a frozen photo. Use "none" to remove it.',
   set_clip_color:
-    'Grade one clip: brightness, contrast, saturation, warm/cool temperature, and a vignette. Fields are applied on top of what is already set, so changing one does not clear the others. Pass reset to put the clip back to its original colour. There is no LUT support.',
+    'Grade one clip: brightness, contrast, saturation, warm/cool temperature, and a vignette. Fields are applied on top of what is already set, so changing one does not clear the others. Pass reset to put the clip back to its original colour. For a ready-made look use set_clip_look.',
   import_media:
     'Import files from disk into the media pool so they can be placed on the timeline. Paths must be ABSOLUTE. The reply gives the id of each imported asset — pass those to insert_clip. A file already in the project is reported as a duplicate with the id of the existing asset instead of being imported twice. This only fills the media pool; it does not put anything on the timeline.',
   remove_media:
     'Remove one asset from the media library. Refuses if any clip on the timeline still uses it; pass removeClips to delete those clips as well. The file on disk is never touched.',
   set_text_color:
-    'Set the colour of text overlays or a subtitle track, as #RRGGBB. Pass outlineColor too when the text sits on busy footage — the outline is what keeps it readable, and a fill colour alone can disappear into the picture. With no overlayId and no subtitleTrackId it applies to every text overlay. Note that choosing a cute frame or a box background sets its own matching colours, so set the colour AFTER those, not before.',
+    'Set the colour of text overlays or a subtitle track, as #RRGGBB. Pass outlineColor too when the text sits on busy footage — the outline is what keeps it readable, and a fill colour alone can disappear into the picture. outlineWidthPx (0 to 20) sets how thick the outline is; 0 removes it. With no overlayId and no subtitleTrackId it applies to every text overlay. Note that choosing a cute frame or a box background sets its own matching colours, so set the colour AFTER those, not before.',
   set_text_rotation:
-    'Tilt text by an angle, clockwise, from -45 to 45 degrees. Works in the preview and in the exported file alike. With no overlayId and no subtitleTrackId it applies to every text overlay.',
+    'Tilt text by an angle, clockwise, from -180 to 180 degrees (90 stands the text upright, 180 turns it upside down). Works in the preview and in the exported file alike. With no overlayId and no subtitleTrackId it applies to every text overlay.',
   set_text_position:
     'Pin text to an exact spot on the frame. xPct/yPct are fractions of frame width and height (0..1) for the CENTER of the text block, so 0.5/0.5 is dead centre and 0.5/0.85 sits low. Overrides the alignment and margins in both the preview and the exported file. Pass clear:true to unpin and go back to alignment. With no overlayId and no subtitleTrackId it applies to every text overlay.',
   set_text_font:
@@ -537,7 +590,7 @@ export const chatToolParameterHints: Record<ChatToolName, string> = {
   set_clip_transform:
     '{ clipId?: string, x?: number, y?: number, scale?: number, rotationDeg?: number, opacity?: number, reset?: boolean }',
   update_text_overlay:
-    "{ overlayId: string, text?: string, startSeconds?: number, endSeconds?: number, animation?: 'none' | 'fade' | 'pop' | 'slide-up' | 'typewriter', exit?: 'none' | 'fade' | 'shrink' | 'slide-down', glow?: boolean, frame?: { styleId: string, paletteId: string, decorId?: string } | null }",
+    "{ overlayId: string, text?: string, startSeconds?: number, endSeconds?: number, animation?: 'none' | 'fade' | 'pop' | 'slide-up' | 'typewriter', exit?: 'none' | 'fade' | 'shrink' | 'slide-down', glow?: boolean, frame?: { styleId: string, paletteId?: string, decorId?: string, paddingScaleX?: number, paddingScaleY?: number } | null }",
   update_subtitle_cue:
     '{ subtitleTrackId: string, cueId: string, text?: string, startSeconds?: number, endSeconds?: number }',
   move_subtitle_cue: '{ subtitleTrackId: string, toSubtitleTrackId: string, cueId: string }',
@@ -547,12 +600,18 @@ export const chatToolParameterHints: Record<ChatToolName, string> = {
   build_cut_from_shots:
     '{ assetId: string, shotIndexes: number[], trackId?: string, maxShotSeconds?: number }',
   add_text_overlay:
-    "{ text: string, startSeconds: number, endSeconds: number, animation?: 'none' | 'fade' | 'pop' | 'slide-up' | 'typewriter', position?: 'bottom' | 'middle' | 'top', fontSizePx?: number, box?: 'none' | 'dark' | 'light', exit?: 'none' | 'fade' | 'shrink' | 'slide-down', glow?: boolean, rotationDeg?: number, frame?: { styleId: string, paletteId: string, decorId?: string } | null }",
+    "{ text: string, startSeconds: number, endSeconds: number, animation?: 'none' | 'fade' | 'pop' | 'slide-up' | 'typewriter', position?: 'bottom' | 'middle' | 'top', fontSizePx?: number, box?: 'none' | 'dark' | 'light', exit?: 'none' | 'fade' | 'shrink' | 'slide-down', glow?: boolean, rotationDeg?: number, frame?: { styleId: string, paletteId?: string, decorId?: string, paddingScaleX?: number, paddingScaleY?: number } | null }",
   remove_text_overlay: '{ overlayId: string }',
   set_canvas: "{ aspect: '16:9' | '9:16' | '1:1', longEdgePx?: number }",
-  set_clip_transition:
-    "{ clipId?: string, edge?: 'in' | 'out', kind: 'none' | 'fade' | 'slide-left' | 'slide-right' | 'slide-up' | 'slide-down' | 'wipe-left' | 'wipe-right' | 'zoom' | 'whip-left' | 'whip-right' | 'blur' | 'glitch' | 'spin' | 'flash', durationSeconds?: number }",
+  set_cut_transition:
+    "{ fromClipId?: string, kind: 'none' | 'fade' | 'slide-left' | 'slide-right' | 'slide-up' | 'slide-down' | 'wipe-left' | 'wipe-right' | 'zoom' | 'whip-left' | 'whip-right' | 'blur' | 'glitch' | 'spin' | 'flash', durationSeconds?: number }",
   set_clip_speed: '{ clipId?: string, speed: number }',
+  set_clip_look: '{ clipId?: string, lookId: string, intensity?: number }',
+  add_clip_effect:
+    '{ clipId?: string, kind: string, intensity?: number, params?: Record<string, number | string> }',
+  update_clip_effect:
+    '{ clipId?: string, effectId: string, intensity?: number, params?: Record<string, number | string> }',
+  remove_clip_effect: '{ clipId?: string, effectId?: string }',
   set_clip_motion:
     "{ clipId?: string, kind: 'none' | 'zoom-in' | 'zoom-out' | 'pan-left' | 'pan-right' | 'pan-up' | 'pan-down' | 'punch-in' | 'shake', intensity?: number }",
   set_clip_color:
@@ -564,7 +623,7 @@ export const chatToolParameterHints: Record<ChatToolName, string> = {
   set_text_position:
     '{ xPct?: number, yPct?: number, clear?: boolean, overlayId?: string, subtitleTrackId?: string }',
   set_text_color:
-    '{ color: string, outlineColor?: string, overlayId?: string, subtitleTrackId?: string }',
+    '{ color: string, outlineColor?: string, outlineWidthPx?: number, overlayId?: string, subtitleTrackId?: string }',
   set_text_rotation: '{ rotationDeg: number, overlayId?: string, subtitleTrackId?: string }'
 }
 

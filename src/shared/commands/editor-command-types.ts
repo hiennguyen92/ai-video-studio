@@ -4,7 +4,11 @@ import type { Transcript, Translation } from '../domain/transcript-types'
 import type { SubtitleCue, SubtitleStyle, SubtitleTrack } from '../domain/subtitle-types'
 import type { TransitionKind } from '../domain/timeline-track-types'
 import type { DubbingSession } from '../domain/transcript-types'
-import type { TextAnimation, TextOverlay } from '../domain/text-overlay-types'
+import {
+  TEXT_FRAME_PADDING_SCALE_MAX,
+  type TextAnimation,
+  type TextOverlay
+} from '../domain/text-overlay-types'
 
 /**
  * Tập lệnh chỉnh sửa — ĐƯỜNG GHI DUY NHẤT vào project document.
@@ -237,6 +241,42 @@ const setClipSpeed = z.object({
  * Tách khỏi `clip/update` cùng lý do như chuyển cảnh: `transform` trong đó là một
  * giá trị tĩnh cho cả clip, còn cái này đổi theo từng khung hình.
  */
+/**
+ * Đặt hoặc gỡ look màu (LUT dựng sẵn) cho clip hình. Chỉ kiểm HÌNH DẠNG: id lạ
+ * được lớp dựng kế hoạch hạ về "không look", không làm chết bản xuất.
+ */
+const setClipLook = z.object({
+  type: z.literal('clip/set-look'),
+  clipId: z.string(),
+  /** Bỏ trống nghĩa là gỡ look. */
+  look: z
+    .object({
+      id: z.string().min(1).max(60),
+      intensity: z.number().min(0).max(1)
+    })
+    .optional()
+})
+
+/**
+ * Thay CẢ chồng effect của clip hình. Thêm, sửa, gỡ, đổi thứ tự đều đi qua lệnh
+ * này, nên mỗi thao tác là đúng một bước hoàn tác. Chỉ kiểm hình dạng: kind lạ và
+ * thông số ngoài khoảng được lớp dựng kế hoạch hạ về an toàn.
+ */
+const setClipEffects = z.object({
+  type: z.literal('clip/set-effects'),
+  clipId: z.string(),
+  effects: z
+    .array(
+      z.object({
+        id: z.string().min(1).max(80),
+        kind: z.string().min(1).max(60),
+        intensity: z.number().min(0).max(1),
+        params: z.record(z.string().max(40), z.union([z.number(), z.string().max(40)]))
+      })
+    )
+    .max(16)
+})
+
 const setClipMotion = z.object({
   type: z.literal('clip/set-motion'),
   clipId: z.string(),
@@ -599,8 +639,10 @@ const removeTextOverlay = z.object({
  */
 const textOverlayFrameSchema = z.object({
   styleId: z.string(),
-  paletteId: z.string(),
-  decorId: z.string().optional()
+  paletteId: z.string().optional(),
+  decorId: z.string().optional(),
+  paddingScaleX: z.number().min(0).max(TEXT_FRAME_PADDING_SCALE_MAX).optional(),
+  paddingScaleY: z.number().min(0).max(TEXT_FRAME_PADDING_SCALE_MAX).optional()
 })
 
 const updateTextOverlay = z.object({
@@ -652,6 +694,8 @@ export const editorCommandSchema = z.discriminatedUnion('type', [
   updateClip,
   setClipTransition,
   setClipMotion,
+  setClipLook,
+  setClipEffects,
   setClipSpeed,
   setClipColorGrade,
   addTranscript,

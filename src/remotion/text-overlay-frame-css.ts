@@ -6,11 +6,16 @@
  */
 
 import type { CSSProperties } from 'react'
-import type { ResolvedTextFrame } from '../shared/domain/remotion-render-plan'
+import type {
+  ResolvedImageTextFrame,
+  ResolvedTextFrame,
+  ResolvedVectorTextFrame
+} from '../shared/domain/remotion-render-plan'
 import {
   TEXT_FRAME_SLICE_PERCENT,
   buildFrameImageUri
 } from '../shared/domain/text-frame-svg-builders'
+import { textFramePngUrl } from './text-frame-png-urls'
 
 /**
  * Bề dày viền, suy từ cỡ chữ.
@@ -18,7 +23,7 @@ import {
  * Phải theo cỡ chữ chứ không đặt cứng: viền 28px ôm vừa chữ 84px thì nuốt mất
  * chữ 24px. Cùng cách `padding` của khối chữ đang làm.
  */
-export function frameBorderPx(frame: ResolvedTextFrame, fontSizePx: number): number {
+export function frameBorderPx(frame: ResolvedVectorTextFrame, fontSizePx: number): number {
   return Math.round(fontSizePx * frame.style.borderRatio)
 }
 
@@ -43,6 +48,12 @@ export function frameBorderPx(frame: ResolvedTextFrame, fontSizePx: number): num
  * tay. Cần thêm chỗ thì tăng bề dày viền.
  */
 export function frameBoxCss(frame: ResolvedTextFrame, fontSizePx: number): CSSProperties {
+  return frame.kind === 'image'
+    ? imageFrameBoxCss(frame, fontSizePx)
+    : vectorFrameBoxCss(frame, fontSizePx)
+}
+
+function vectorFrameBoxCss(frame: ResolvedVectorTextFrame, fontSizePx: number): CSSProperties {
   const source = buildFrameImageUri(frame.style, frame.palette)
   if (!source) return {}
 
@@ -77,7 +88,83 @@ export function frameBoxCss(frame: ResolvedTextFrame, fontSizePx: number): CSSPr
     backgroundClip: 'padding-box',
     // Vẫn cần đệm dù dải viền đã chừa chỗ: ruột khung phủ kín hộp đệm, nên chữ
     // đặt sát mép sẽ chạm ngay vào nét trong của khung. Cùng tỉ lệ với nền hộp
-    // phẳng đang dùng.
-    padding: fontSizePx * 0.25
+    // phẳng đang dùng. Người dùng co giãn được theo từng chiều (`frame.padding`).
+    padding: `${fontSizePx * 0.25 * frame.padding.y}px ${fontSizePx * 0.25 * frame.padding.x}px`
+  }
+}
+
+/**
+ * Hệ số đổi pixel ảnh khung gốc sang pixel trên khung hình.
+ *
+ * Ảnh khung vẽ trên ô 256px, góc 64px. Chữ 84px thì góc ra khoảng 54px — đủ lớn
+ * để trang trí vẽ sẵn ở góc (mặt trời, vương miện, gáy lò xo) còn nhìn ra, mà
+ * không nuốt mất chữ. Theo cỡ chữ chứ không đặt cứng, cùng lý do với khung vector.
+ */
+export function imageFrameScale(fontSizePx: number): number {
+  return fontSizePx / 100
+}
+
+/** Bề dày viền (cũng là bề rộng góc) của khung ảnh, theo cỡ chữ. Số nguyên. */
+export function imageFrameBorderPx(frame: ResolvedImageTextFrame, fontSizePx: number): number {
+  return Math.round(frame.style.slicePx * imageFrameScale(fontSizePx))
+}
+
+/**
+ * CSS của khung ẢNH: chỉ chừa chỗ, không vẽ gì.
+ *
+ * Hình khung do `TextFrameImageCanvas` vẽ lên một canvas phủ kín hộp viền, không
+ * qua `border-image` — chín mảnh rời của CSS để lại vệt kẻ ở mép mảnh khi khối rơi
+ * vào toạ độ lẻ, ở mọi độ đệm, đã thấy tận mắt trên xem trước. Ở đây chỉ còn:
+ *
+ * - viền trong suốt đúng bề dày góc, để chữ không lấn lên nét khung;
+ * - đệm theo `frames.json`, nhân hệ số người dùng chỉnh;
+ * - `isolation: isolate`, để canvas `z-index: -1` nằm trên nền của khối mà dưới
+ *   chữ. Thiếu nó thì canvas chìm xuống sau cả footage.
+ */
+function imageFrameBoxCss(frame: ResolvedImageTextFrame, fontSizePx: number): CSSProperties {
+  if (!textFramePngUrl(frame.style.id)) return {}
+
+  const scale = imageFrameScale(fontSizePx)
+  const { padding } = frame.style
+  const { x, y } = frame.padding
+  return {
+    position: 'relative',
+    borderWidth: imageFrameBorderPx(frame, fontSizePx),
+    borderStyle: 'solid',
+    borderColor: 'transparent',
+    borderRadius: 0,
+    // Nền hộp phẳng (nếu style còn sót) không được lọt ra sau khung ảnh.
+    backgroundColor: 'transparent',
+    isolation: 'isolate',
+    // Một chuỗi `padding` chứ không bốn thuộc tính rời: khối chữ đặt `padding`
+    // dạng gộp ngay trước, và React cảnh báo lẫn vẽ sai khi gộp và rời trộn nhau
+    // lúc đổi qua lại giữa nền hộp và khung.
+    padding: [padding.top * y, padding.right * x, padding.bottom * y, padding.left * x]
+      .map((value) => `${value * scale}px`)
+      .join(' ')
+  }
+}
+
+/**
+ * Đệm MỘT bên ở hệ số 1, theo từng trục, tính bằng px composition.
+ *
+ * Để khung điều khiển trên xem trước đổi được quãng kéo chuột thành hệ số đệm.
+ * Khung ảnh có đệm trên/dưới (hoặc trái/phải) khác nhau thì lấy trung bình hai
+ * bên: mép kéo lệch con trỏ đôi chút là chấp nhận được, còn tách hai bên thì phải
+ * lưu thêm hai hệ số nữa.
+ */
+export function frameBasePaddingPx(
+  frame: ResolvedTextFrame,
+  fontSizePx: number
+): { x: number; y: number } {
+  if (frame.kind === 'vector') {
+    const side = fontSizePx * 0.25
+    return { x: side, y: side }
+  }
+  const scale = imageFrameScale(fontSizePx)
+  const { padding } = frame.style
+  return {
+    x: ((padding.left + padding.right) / 2) * scale,
+    y: ((padding.top + padding.bottom) / 2) * scale
   }
 }

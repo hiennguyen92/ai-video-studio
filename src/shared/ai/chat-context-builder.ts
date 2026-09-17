@@ -1,7 +1,15 @@
+import { CLIP_EFFECTS } from '../domain/clip-effect-catalog'
+import type { ClipEffect, EffectParamSpec } from '../domain/clip-effect-types'
 import type { ProjectDocument } from '../domain/project-document-types'
 import { projectDurationUs } from '../domain/project-document-types'
 import { clipEndUs } from '../domain/timeline-track-types'
+import {
+  cutTransitionDurationUs,
+  findCutPoints,
+  isJunction
+} from '../domain/timeline-cut-transitions'
 import { SOUND_EFFECTS } from '../domain/sound-effect-catalog'
+import { CLIP_LOOKS } from '../domain/clip-look-catalog'
 import {
   TEXT_FRAME_DECORS,
   TEXT_FRAME_PALETTES,
@@ -39,6 +47,14 @@ export interface ChatContextInput {
   document: ProjectDocument
   selectedClipIds: string[]
   playheadUs: number
+}
+
+/**
+ * Chữ có xuống dòng in ra dạng `\n` trên một dòng: bản tổng quan mỗi mục một
+ * dòng, xuống dòng thật sẽ cắt mục làm đôi và agent đọc nhầm phần sau là mục mới.
+ */
+function oneLine(text: string): string {
+  return text.replace(/\r?\n/g, '\\n')
 }
 
 export function buildProjectContext(input: ChatContextInput): string {
@@ -82,12 +98,30 @@ export function buildProjectContext(input: ChatContextInput): string {
     const asset = document.assets.find((item) => item.id === clip.assetId)
     lines.push(
       `- id=${clip.id} track=${trackId} start=${seconds(clip.startUs)}s end=${seconds(clipEndUs(clip))}s` +
-        ` volume=${clip.volume}${asset ? ` asset="${asset.name}"` : ''}`
+        ` volume=${clip.volume}${clip.look ? ` look=${clip.look.id}@${clip.look.intensity}` : ''}` +
+        `${clip.effects?.length ? ` effects=[${clip.effects.map(describeEffect).join('; ')}]` : ''}` +
+        `${asset ? ` asset="${asset.name}"` : ''}`
     )
   }
   if (allClips.length > MAX_CLIPS_LISTED) {
     // Nói rõ là đã cắt bớt, để mô hình không kết luận rằng dự án chỉ có bấy nhiêu.
     lines.push(`- … và ${allClips.length - MAX_CLIPS_LISTED} clip nữa không liệt kê`)
+  }
+
+  // Chỗ nối giữa hai clip hình: nơi DUY NHẤT đặt được chuyển cảnh. Không liệt kê thì
+  // agent phải tự suy từ mốc start/end của từng clip, và dễ chọn nhầm hai clip có
+  // khe hở ở giữa.
+  const cuts = document.tracks
+    .filter((track) => track.kind === 'video' || track.kind === 'image')
+    .flatMap((track) => findCutPoints(track).filter(isJunction))
+  lines.push('', 'Cuts between back-to-back clips (use set_cut_transition with fromClipId):')
+  if (cuts.length === 0) lines.push('- none')
+  for (const cut of cuts.slice(0, MAX_CLIPS_LISTED)) {
+    const durationUs = cutTransitionDurationUs(cut)
+    lines.push(
+      `- fromClipId=${cut.leftClip!.id} toClipId=${cut.rightClip!.id} at=${seconds(cut.atUs)}s` +
+        ` transition=${cut.kind ? `${cut.kind} ${seconds(durationUs ?? 0)}s` : 'none'}`
+    )
   }
 
   lines.push('', 'Transcripts:')
@@ -112,17 +146,38 @@ export function buildProjectContext(input: ChatContextInput): string {
     // Kèm khung đang dùng: không có nó thì agent ĐẶT được khung nhưng không SỬA
     // được, vì "đổi màu khung sang hồng" buộc phải đoán kiểu khung đang có.
     const frame = overlay.frame
-      ? ` frame=${overlay.frame.styleId}/${overlay.frame.paletteId}${
+      ? ` frame=${overlay.frame.styleId}${overlay.frame.paletteId ? `/${overlay.frame.paletteId}` : ''}${
           overlay.frame.decorId ? `+${overlay.frame.decorId}` : ''
+        }${
+          overlay.frame.paddingScaleX !== undefined || overlay.frame.paddingScaleY !== undefined
+            ? ` padding=${overlay.frame.paddingScaleX ?? 1}x${overlay.frame.paddingScaleY ?? 1}`
+            : ''
         }`
       : ''
     lines.push(
-      `- id=${overlay.id} ${seconds(overlay.startUs)}s–${seconds(overlay.endUs)}s "${overlay.text}"${frame}`
+      `- id=${overlay.id} ${seconds(overlay.startUs)}s–${seconds(overlay.endUs)}s "${oneLine(overlay.text)}"${frame}`
+    )
+  }
+
+  // Danh mục look cũng là hằng số: không in ra thì agent phải đoán id.
+  lines.push('', 'Colour looks (use set_clip_look with the id):')
+  for (const look of CLIP_LOOKS) {
+    lines.push(`- id=${look.id} "${look.nameEn}" [${look.tags.join(', ')}]`)
+  }
+
+  // Danh mục effect hình kèm thông số và khoảng: thiếu khoảng thì agent gửi số ngoài
+  // khoảng, bị kẹp lặng lẽ, và không hiểu vì sao hình không như nó muốn.
+  lines.push('', 'Visual effects (use add_clip_effect with the kind; effects stack in order):')
+  for (const effect of CLIP_EFFECTS) {
+    const params = effect.params.map(describeParamSpec)
+    if (effect.usesIntensity) params.unshift('intensity 0..1')
+    lines.push(
+      `- kind=${effect.kind} "${effect.nameEn}" (${effect.group}) params: ${params.join(', ') || 'none'} [${effect.tags.join(', ')}]`
     )
   }
 
   // Danh mục hiệu ứng là HẰNG SỐ, không phụ thuộc dự án — nhưng agent không có
-  // cách nào biết nếu không nói. Mười hai dòng, đủ ngắn để in thẳng ra.
+  // cách nào biết nếu không nói. Vài chục dòng, vẫn đủ ngắn để in thẳng ra.
   lines.push('', 'Built-in sound effects (use add_sound_effect with the id):')
   for (const effect of SOUND_EFFECTS) {
     lines.push(
@@ -136,13 +191,26 @@ export function buildProjectContext(input: ChatContextInput): string {
   // project overview", tức là chính chỗ này.
   lines.push('', 'Cute text frames (pass as frame on add_text_overlay/update_text_overlay):')
   lines.push(
-    `- styleId: ${TEXT_FRAME_STYLES.map((item) => `${item.id} "${item.nameEn}"`).join(', ')}`
+    `- vector styleId (needs paletteId): ${TEXT_FRAME_STYLES.filter(
+      (item) => item.kind === 'vector'
+    )
+      .map((item) => `${item.id} "${item.nameEn}"`)
+      .join(', ')}`
+  )
+  // Khung ảnh kèm từ khoá: bốn mươi mấy cái tên tiếng Anh ngắn không đủ để agent
+  // chọn đúng "khung giáng sinh" hay "khung bảng đen cho menu".
+  lines.push(
+    `- picture styleId (styleId only, colours baked in): ${TEXT_FRAME_STYLES.filter(
+      (item) => item.kind === 'image'
+    )
+      .map((item) => `${item.id} [${item.tags.join(', ')}]`)
+      .join('; ')}`
   )
   lines.push(
-    `- paletteId: ${TEXT_FRAME_PALETTES.map((item) => `${item.id} "${item.nameEn}"`).join(', ')}`
+    `- paletteId (vector only): ${TEXT_FRAME_PALETTES.map((item) => `${item.id} "${item.nameEn}"`).join(', ')}`
   )
   lines.push(
-    `- decorId (optional): ${TEXT_FRAME_DECORS.map((item) => `${item.id} "${item.nameEn}"`).join(', ')}`
+    `- decorId (optional, vector only): ${TEXT_FRAME_DECORS.map((item) => `${item.id} "${item.nameEn}"`).join(', ')}`
   )
 
   lines.push('', 'Subtitle tracks:')
@@ -152,7 +220,9 @@ export function buildProjectContext(input: ChatContextInput): string {
     // Liệt kê id cue: không có chúng thì agent không sửa hay dời được câu nào.
     // Cắt bớt vì một track phụ đề dài có hàng trăm câu và sẽ nuốt sạch ngữ cảnh.
     for (const cue of track.cues.slice(0, MAX_CUES_LISTED)) {
-      lines.push(`  - cue=${cue.id} ${seconds(cue.startUs)}s–${seconds(cue.endUs)}s "${cue.text}"`)
+      lines.push(
+        `  - cue=${cue.id} ${seconds(cue.startUs)}s–${seconds(cue.endUs)}s "${oneLine(cue.text)}"`
+      )
     }
     if (track.cues.length > MAX_CUES_LISTED) {
       lines.push(`  - … còn ${track.cues.length - MAX_CUES_LISTED} câu nữa`)
@@ -193,4 +263,19 @@ export function buildChatSystemPrompt(): string {
     'Use an empty toolCalls array when the user only asks a question.',
     'Keep "reply" short: say what you are about to change, not how the editor works.'
   ].join('\n')
+}
+
+/** Một effect trên clip, gọn một dòng: `id:kind@cường độ {thông số}`. */
+function describeEffect(effect: ClipEffect): string {
+  const params = Object.entries(effect.params)
+    .map(([key, value]) => `${key}=${value}`)
+    .join(',')
+  return `${effect.id}:${effect.kind}@${effect.intensity}${params ? ` {${params}}` : ''}`
+}
+
+function describeParamSpec(spec: EffectParamSpec): string {
+  if (spec.type === 'number')
+    return `${spec.key} ${spec.min}..${spec.max}${spec.unit ?? ''} (default ${spec.default})`
+  if (spec.type === 'color') return `${spec.key} #RRGGBB (default ${spec.default})`
+  return `${spec.key} ${spec.options.map((option) => option.value).join('|')} (default ${spec.default})`
 }

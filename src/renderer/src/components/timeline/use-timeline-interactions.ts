@@ -55,7 +55,6 @@ export function useTimelineInteractions(options: {
   const { document, pixelsPerSecond, trackAtClientY } = options
   const run = useEditorStore((state) => state.run)
   const snapEnabled = useEditorStore((state) => state.snapEnabled)
-  const playheadUs = useEditorStore((state) => state.playheadUs)
   const toggleClipSelection = useEditorStore((state) => state.toggleClipSelection)
 
   const [preview, setPreview] = useState<ClipDragPreview | null>(null)
@@ -126,7 +125,9 @@ export function useTimelineInteractions(options: {
         document,
         pixelsPerSecond,
         frameRate: document.settings.frameRate,
-        playheadUs,
+        // Đọc lúc bấm chứ không theo dõi: theo dõi thì cả timeline vẽ lại mỗi khung
+        // khi đang phát.
+        playheadUs: useEditorStore.getState().playheadUs,
         enabled: snapEnabled,
         excludeClipIds: [clip.id]
       }
@@ -208,15 +209,7 @@ export function useTimelineInteractions(options: {
       window.addEventListener('pointerup', handleUp)
       window.addEventListener('pointercancel', handleCancel)
     },
-    [
-      document,
-      pixelsPerSecond,
-      playheadUs,
-      snapEnabled,
-      toggleClipSelection,
-      trackAtClientY,
-      commit
-    ]
+    [document, pixelsPerSecond, snapEnabled, toggleClipSelection, trackAtClientY, commit]
   )
 
   return { preview, handleClipPointerDown }

@@ -1,3 +1,7 @@
+import { resolveClipEffects } from './clip-effect-render'
+import type { ClipEffect } from './clip-effect-types'
+import { findClipLook } from './clip-look-catalog'
+import { clampIntensity } from './clip-look-svg'
 import type { ProjectDocument } from './project-document-types'
 import { projectDurationUs } from './project-document-types'
 import {
@@ -10,15 +14,21 @@ import {
 import { isNeutralColorGrade, type ClipColorGrade } from './clip-color-grade'
 import type { ClipMotion } from './clip-motion-types'
 import type { SubtitleStyle } from './subtitle-types'
-import type { TextAnimation, TextExitAnimation, TextOverlay } from './text-overlay-types'
+import {
+  clampTextFramePaddingScale,
+  type TextAnimation,
+  type TextExitAnimation,
+  type TextOverlay
+} from './text-overlay-types'
 import { frameOfMicros, type FrameRate } from './time-units'
 import {
   findTextFrameDecor,
   findTextFramePalette,
   findTextFrameStyle,
   type TextFrameDecor,
+  type ImageTextFrameStyle,
   type TextFramePalette,
-  type TextFrameStyle
+  type VectorTextFrameStyle
 } from './text-frame-catalog'
 
 /**
@@ -65,6 +75,16 @@ export interface RenderPlanVideoClip {
   /** Chuyển động trong clip; lớp vẽ tự tính theo khung hình hiện tại. */
   motion?: ClipMotion
   colorGrade?: ClipColorGrade
+  /**
+   * Look màu ĐÃ TRA danh mục, kèm cường độ đã kẹp. Id lạ (dự án từ bản app khác)
+   * hạ về `undefined` ở đây: clip vẫn hiện, chỉ mất look.
+   */
+  look?: { id: string; intensity: number }
+  /**
+   * Chồng effect đã lọc kind lạ, kẹp cường độ và thông số. Lớp vẽ chỉ việc dựng
+   * bộ lọc theo khung hình, không phải kiểm lại.
+   */
+  effects?: ClipEffect[]
   muted: boolean
   /**
    * Hiệu ứng xuất hiện, tính bằng khung.
@@ -127,13 +147,30 @@ export interface RenderPlanTextOverlay {
   frame: ResolvedTextFrame | null
 }
 
-/** Khung sau khi tra danh mục: lớp vẽ cứ dùng thẳng, không tra cứu, không quyết. */
-export interface ResolvedTextFrame {
-  style: TextFrameStyle
+/** Khung vector sau khi tra danh mục: lớp vẽ cứ dùng thẳng, không tra cứu, không quyết. */
+/** Hệ số đệm đã kẹp, lớp vẽ nhân thẳng vào đệm mặc định. */
+export interface ResolvedTextFramePadding {
+  x: number
+  y: number
+}
+
+export interface ResolvedVectorTextFrame {
+  kind: 'vector'
+  padding: ResolvedTextFramePadding
+  style: VectorTextFrameStyle
   palette: TextFramePalette
   /** Thiếu trang trí không làm mất khung — chỉ mất mỗi điểm trang trí. */
   decor?: TextFrameDecor
 }
+
+/** Khung ảnh: màu nằm trong ảnh, nên không có bộ màu lẫn trang trí. */
+export interface ResolvedImageTextFrame {
+  kind: 'image'
+  padding: ResolvedTextFramePadding
+  style: ImageTextFrameStyle
+}
+
+export type ResolvedTextFrame = ResolvedVectorTextFrame | ResolvedImageTextFrame
 
 export interface RenderPlan {
   width: number
@@ -190,7 +227,8 @@ export function resolveTransitionFrames(
 /**
  * Dự án có dùng thứ mà đường ffmpeg KHÔNG vẽ được không.
  *
- * Filter graph ffmpeg không biết tới chuyển cảnh lẫn chữ overlay. Xuất bằng nó
+ * Filter graph ffmpeg không biết tới chuyển cảnh (vào lẫn ra), chữ overlay, chuyển
+ * động, chỉnh màu hay look màu. Xuất bằng nó
  * khi dự án có hai thứ đó sẽ cho ra file THIẾU hiệu ứng mà không báo gì — kiểu
  * hỏng tệ nhất, vì người dùng chỉ phát hiện khi đã đăng video lên.
  *
@@ -207,7 +245,10 @@ export function requiresRemotionRenderer(document: ProjectDocument): boolean {
       track.clips.some(
         (clip) =>
           clip.transitionIn !== undefined ||
+          clip.transitionOut !== undefined ||
           clip.motion !== undefined ||
+          clip.look !== undefined ||
+          (clip.effects?.length ?? 0) > 0 ||
           !isNeutralColorGrade(clip.colorGrade)
       )
   )
@@ -256,15 +297,29 @@ function audioTrackAudible(track: ProjectDocument['tracks'][number], anySolo: bo
  * thì không tô được, và một bộ màu không có hình thì không có gì để tô lên. Riêng
  * trang trí lạ chỉ bỏ mỗi trang trí — khung vẫn còn nguyên giá trị.
  */
-function resolveTextFrame(overlay: TextOverlay): ResolvedTextFrame | null {
+export function resolveTextFrame(overlay: TextOverlay): ResolvedTextFrame | null {
   if (!overlay.frame) return null
 
   const style = findTextFrameStyle(overlay.frame.styleId)
-  const palette = findTextFramePalette(overlay.frame.paletteId)
-  if (!style || !palette) return null
+  if (!style) return null
+  // Kẹp ở đây chứ không tin project: file sửa tay hay bản app khác có thể ghi số
+  // âm, và đệm âm làm chữ đè lên nét viền.
+  const padding = {
+    x: clampTextFramePaddingScale(overlay.frame.paddingScaleX),
+    y: clampTextFramePaddingScale(overlay.frame.paddingScaleY)
+  }
+  // Khung ảnh bỏ qua bộ màu và trang trí dù project có ghi: màu đã nằm trong ảnh.
+  if (style.kind === 'image') return { kind: 'image', style, padding }
+
+  const palette = overlay.frame.paletteId
+    ? findTextFramePalette(overlay.frame.paletteId)
+    : undefined
+  if (!palette) return null
 
   const decor = overlay.frame.decorId ? findTextFrameDecor(overlay.frame.decorId) : undefined
-  return decor ? { style, palette, decor } : { style, palette }
+  return decor
+    ? { kind: 'vector', style, palette, padding, decor }
+    : { kind: 'vector', style, palette, padding }
 }
 
 export function buildRenderPlan(document: ProjectDocument): RenderPlan {
@@ -321,6 +376,11 @@ export function buildRenderPlan(document: ProjectDocument): RenderPlan {
           transform: clip.transform ?? DEFAULT_CLIP_TRANSFORM,
           motion: clip.motion,
           colorGrade: clip.colorGrade,
+          look:
+            clip.look && findClipLook(clip.look.id)
+              ? { id: clip.look.id, intensity: clampIntensity(clip.look.intensity) }
+              : undefined,
+          effects: resolveClipEffects(clip.effects),
           // Track hình bị tắt tiếng vẫn phải hiện hình, chỉ câm. Ảnh thì không
           // có tiếng để mà bật.
           muted: isImageTrack || !audioTrackAudible(track, anySolo)

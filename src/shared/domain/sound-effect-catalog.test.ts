@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { SOUND_EFFECTS, findSoundEffect, soundEffectFileName } from './sound-effect-catalog'
+import {
+  LEGACY_SOUND_EFFECT_IDS,
+  SOUND_EFFECTS,
+  findSoundEffect,
+  soundEffectFileName
+} from './sound-effect-catalog'
 
 describe('danh mục hiệu ứng âm thanh', () => {
   it('id là duy nhất', () => {
@@ -26,22 +31,26 @@ describe('danh mục hiệu ứng âm thanh', () => {
     }
   })
 
-  it('thời lượng nằm trong khoảng hợp lý của một hiệu ứng', () => {
+  it('thời lượng nằm trong khoảng hợp lý', () => {
+    // Hiệu ứng lặp (gõ phím, đồng hồ) dài cả phút là có chủ ý: người dùng cắt
+    // theo độ dài cảnh. Trần này chỉ chặn nhầm một bản nhạc vào thư viện.
     for (const effect of SOUND_EFFECTS) {
       expect(effect.durationUs).toBeGreaterThan(50_000)
-      expect(effect.durationUs).toBeLessThanOrEqual(3_000_000)
+      expect(effect.durationUs).toBeLessThanOrEqual(90_000_000)
     }
   })
 
-  it('bảng màu giữ nhỏ có chủ đích', () => {
-    // Hai mươi lăm cái dùng được hơn hai trăm cái phải lục. Con số này là một
-    // quyết định, không phải một sự tình cờ — chạm trần thì phải bỏ bớt.
-    expect(SOUND_EFFECTS.length).toBeLessThanOrEqual(25)
+  it('tra được theo id, id lạ trả undefined', () => {
+    expect(findSoundEffect('clean-ding')?.nameEn).toBe('Clean ding')
+    expect(findSoundEffect('khong-co')).toBeUndefined()
   })
 
-  it('tra được theo id, id lạ trả undefined', () => {
-    expect(findSoundEffect('whoosh-fast')?.nameEn).toBe('Fast whoosh')
-    expect(findSoundEffect('khong-co')).toBeUndefined()
+  it('id của bản cũ dẫn sang một hiệu ứng có thật', () => {
+    // Dự án cũ lưu id cũ. Dẫn sang id không tồn tại thì mở lại dự án vẫn báo
+    // thiếu media — đúng thứ bảng ánh xạ này sinh ra để chống.
+    for (const [legacy, current] of Object.entries(LEGACY_SOUND_EFFECT_IDS)) {
+      expect(findSoundEffect(legacy)?.id).toBe(current)
+    }
   })
 
   it('tên file dựng từ id, một chỗ duy nhất', () => {

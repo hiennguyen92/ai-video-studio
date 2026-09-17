@@ -6,10 +6,12 @@ import {
 } from '../../../../shared/domain/text-overlay-types'
 import type { SubtitleAlignment } from '../../../../shared/domain/subtitle-types'
 import { useEditorStore } from '../../state/editor-store'
+import { MAX_TEXT_ROTATION_DEG } from '../../../../shared/domain/text-placement'
 import { useT } from '../../i18n/use-translation'
 import { FontFamilySelect } from './font-family-select'
 import { TextPositionRow } from './text-position-row'
 import { TextOverlayFrameFields } from './text-overlay-frame-fields'
+import { TextOverlayColorFields } from './text-overlay-color-fields'
 
 /**
  * Các ô chỉnh kiểu cho MỘT dòng chữ đè hình.
@@ -68,8 +70,8 @@ export function TextOverlayStyleFields({
         <span className="field-row__label">{t.subtitles.rotation}</span>
         <input
           type="range"
-          min={-45}
-          max={45}
+          min={-MAX_TEXT_ROTATION_DEG}
+          max={MAX_TEXT_ROTATION_DEG}
           step={1}
           value={overlay.style.rotationDeg ?? 0}
           aria-label={label(t.subtitles.rotation)}
@@ -101,7 +103,7 @@ export function TextOverlayStyleFields({
                     animation: event.target.value as TextAnimation
                   }
                 ],
-                'Đổi hiệu ứng chữ'
+                'Đổi animation vào'
               )
             }
           >
@@ -152,7 +154,7 @@ export function TextOverlayStyleFields({
                     exitAnimation: event.target.value as TextExitAnimation
                   }
                 ],
-                'Đổi hiệu ứng ra'
+                'Đổi animation ra'
               )
             }
           >
@@ -181,38 +183,6 @@ export function TextOverlayStyleFields({
 
         <TextOverlayFrameFields overlay={overlay} label={label} />
 
-        {/*
-          Đặt SAU ô nền chữ là có chủ ý: chọn khung hay hộp sẽ ghi đè màu chữ cho
-          hợp bộ, nên thứ tự đọc từ trên xuống đúng bằng thứ tự nên thao tác —
-          chọn nền trước, chỉnh màu sau.
-        */}
-        <label>
-          <span className="field-row__label">{t.textOverlay.color}</span>
-          <input
-            type="color"
-            value={overlay.style.color}
-            aria-label={label(t.textOverlay.color)}
-            onChange={(event) =>
-              setStyle({ ...overlay.style, color: event.target.value.toUpperCase() }, 'Đổi màu chữ')
-            }
-          />
-        </label>
-
-        <label>
-          <span className="field-row__label">{t.textOverlay.outlineColor}</span>
-          <input
-            type="color"
-            value={overlay.style.outlineColor}
-            aria-label={label(t.textOverlay.outlineColor)}
-            onChange={(event) =>
-              setStyle(
-                { ...overlay.style, outlineColor: event.target.value.toUpperCase() },
-                'Đổi màu viền'
-              )
-            }
-          />
-        </label>
-
         <label>
           <span className="field-row__label">{t.textOverlay.fontSize}</span>
           <input
@@ -232,6 +202,8 @@ export function TextOverlayStyleFields({
             }
           />
         </label>
+
+        <TextOverlayColorFields overlay={overlay} label={label} setStyle={setStyle} />
       </div>
     </>
   )

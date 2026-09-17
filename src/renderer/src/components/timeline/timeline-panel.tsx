@@ -1,12 +1,11 @@
 import {
   useCallback,
-  useLayoutEffect,
   useMemo,
   useRef,
   type JSX,
   type PointerEvent as ReactPointerEvent
 } from 'react'
-import { looseLaneHeight } from '../../../../shared/domain/timeline-track-types'
+import { looseLaneHeight, type Track } from '../../../../shared/domain/timeline-track-types'
 import { selectionRemovalCommands } from '../../../../shared/commands/selection-removal'
 import { microsToSeconds } from '../../../../shared/domain/time-units'
 import { selectDocument, selectDurationUs, useEditorStore } from '../../state/editor-store'
@@ -14,6 +13,8 @@ import { useT } from '../../i18n/use-translation'
 import { EmptyState } from '../ui/empty-state'
 import { TimelineToolbar } from './timeline-toolbar'
 import { useTimelineMediaDrop } from './use-timeline-media-drop'
+import { useCutTransitionDrop } from './use-cut-transition-drop'
+import { TimelineCutMarkers } from './timeline-cut-markers'
 import { useTimelineTracks } from './use-timeline-tracks'
 import { useTrackReorder } from './use-track-reorder'
 import { useTimelineTextLanes } from './use-timeline-text-lanes'
@@ -21,6 +22,7 @@ import { TimelineClip, type ClipDragMode } from './timeline-clip'
 import { TimelineRuler } from './timeline-ruler'
 import { TimelineTrackHead } from './timeline-track-head'
 import { pxToUs, usToPx, zoomToFit } from './timeline-geometry'
+import { TimelinePlayhead } from './timeline-playhead'
 import { useTimelineInteractions } from './use-timeline-interactions'
 import './timeline-panel.css'
 
@@ -38,7 +40,6 @@ export function TimelinePanel(): JSX.Element {
   const t = useT()
   const document = useEditorStore(selectDocument)
   const durationUs = useEditorStore(selectDurationUs)
-  const playheadUs = useEditorStore((state) => state.playheadUs)
   const setPlayhead = useEditorStore((state) => state.setPlayhead)
   const setPlaying = useEditorStore((state) => state.setPlaying)
   const pixelsPerSecond = useEditorStore((state) => state.pixelsPerSecond)
@@ -92,6 +93,31 @@ export function TimelinePanel(): JSX.Element {
     pixelsPerSecond,
     clientXToUs
   })
+  const { hover: cutHover, laneCutDropProps } = useCutTransitionDrop({
+    pixelsPerSecond,
+    clientXToUs
+  })
+
+  /**
+   * Lane nhận HAI loại thả: media (chèn clip) và thẻ chuyển cảnh (vào chỗ nối).
+   * Mỗi bên tự kiểm kiểu dữ liệu kéo của mình và bỏ qua kiểu kia, nên gọi lần
+   * lượt cả hai là đủ.
+   */
+  const laneProps = (track: Track): ReturnType<typeof laneDropProps> => {
+    const media = laneDropProps(track)
+    const cut = laneCutDropProps(track)
+    return {
+      onDragOver: (event) => {
+        cut.onDragOver(event)
+        media.onDragOver(event)
+      },
+      onDragLeave: () => media.onDragLeave(),
+      onDrop: (event) => {
+        cut.onDrop(event)
+        media.onDrop(event)
+      }
+    }
+  }
 
   const handleScrub = useCallback(
     (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -155,8 +181,9 @@ export function TimelinePanel(): JSX.Element {
 
   const handleSplit = useCallback(() => {
     if (!selectedClipId) return
-    run([{ type: 'clip/split', clipId: selectedClipId, atUs: playheadUs }], t.timeline.split)
-  }, [selectedClipId, playheadUs, run, t.timeline.split])
+    const atUs = useEditorStore.getState().playheadUs
+    run([{ type: 'clip/split', clipId: selectedClipId, atUs }], t.timeline.split)
+  }, [selectedClipId, run, t.timeline.split])
 
   // Nút thùng rác xoá đúng thứ phím Delete xoá — cùng một hàm, nên không thể lệch
   // nhau kiểu nút mờ đi trong khi phím vẫn xoá được.
@@ -198,20 +225,6 @@ export function TimelinePanel(): JSX.Element {
     trackRowRefs
   })
 
-  // Giữ playhead luôn trong tầm nhìn khi nó chạy ra ngoài vùng cuộn.
-  useLayoutEffect(() => {
-    const body = bodyRef.current
-    if (!body) return
-    const width = laneViewportWidth()
-    if (width <= 0) return
-
-    const playheadX = usToPx(playheadUs, pixelsPerSecond)
-    const left = body.scrollLeft
-    const right = left + width
-    if (playheadX < left + 40) body.scrollLeft = Math.max(0, playheadX - 80)
-    else if (playheadX > right - 60) body.scrollLeft = playheadX - width + 120
-  }, [playheadUs, pixelsPerSecond, laneViewportWidth])
-
   if (!document) {
     return (
       <section className="panel">
@@ -222,8 +235,6 @@ export function TimelinePanel(): JSX.Element {
       </section>
     )
   }
-
-  const playheadX = usToPx(playheadUs, pixelsPerSecond)
 
   return (
     <section className="panel timeline" aria-label={t.timeline.title}>
@@ -297,7 +308,8 @@ export function TimelinePanel(): JSX.Element {
                       : ''
                   }`}
                   style={{ height: track.height }}
-                  {...laneDropProps(track)}
+                  {...laneProps(track)}
+                  onDragLeaveCapture={(event) => laneCutDropProps(track).onDragLeave(event)}
                 >
                   {/*
                     Lane phụ đề vẽ CUE chứ không vẽ clip: cue nằm trong
@@ -343,6 +355,14 @@ export function TimelinePanel(): JSX.Element {
                     )
                   })}
 
+                  {(track.kind === 'video' || track.kind === 'image') && (
+                    <TimelineCutMarkers
+                      track={track}
+                      pixelsPerSecond={pixelsPerSecond}
+                      hoverAtUs={cutHover?.trackId === track.id ? cutHover.atUs : null}
+                    />
+                  )}
+
                   {/* Clip đang được kéo tới track này nhưng vốn thuộc track khác. */}
                   {preview &&
                     preview.targetTrackId === track.id &&
@@ -383,9 +403,11 @@ export function TimelinePanel(): JSX.Element {
               />
             )}
 
-            <div className="timeline__playhead" style={{ left: playheadX }}>
-              <div className="timeline__playhead-handle" />
-            </div>
+            <TimelinePlayhead
+              bodyRef={bodyRef}
+              pixelsPerSecond={pixelsPerSecond}
+              laneViewportWidth={laneViewportWidth}
+            />
           </div>
         </div>
       </div>

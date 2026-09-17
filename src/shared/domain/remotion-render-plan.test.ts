@@ -3,6 +3,7 @@ import { applyEditorCommand } from '../commands/editor-command-reducer'
 import { createEmptyProject } from './project-document-factory'
 import type { ProjectDocument } from './project-document-types'
 import { DEFAULT_SUBTITLE_STYLE } from './subtitle-types'
+import type { Clip } from './timeline-track-types'
 import { buildRenderPlan, requiresRemotionRenderer } from './remotion-render-plan'
 
 /**
@@ -249,6 +250,44 @@ describe('chuyển động trong clip buộc phải dựng bằng Remotion', () 
     // Bỏ sót chỗ này thì xuất bằng ffmpeg cho ra file THIẾU chuyển động mà không
     // báo gì — người dùng chỉ phát hiện sau khi đã đăng video.
     expect(requiresRemotionRenderer(document)).toBe(true)
+  })
+})
+
+describe('look màu và hiệu ứng ra cũng buộc dựng bằng Remotion', () => {
+  function projectWithClip(extra: Partial<Clip>): ProjectDocument {
+    const document = createEmptyProject({ name: 'Look' })
+    document.tracks
+      .find((item) => item.kind === 'video')!
+      .clips.push({
+        id: 'clip_1',
+        assetId: 'asset_1',
+        startUs: 0,
+        durationUs: 3_000_000,
+        sourceInUs: 0,
+        speed: 1,
+        volume: 1,
+        fadeInUs: 0,
+        fadeOutUs: 0,
+        ...extra
+      })
+    return document
+  }
+
+  it('clip có look màu thì không xuất bằng ffmpeg được', () => {
+    // Đo được trên bản xuất thật: ffmpeg cho ra đúng màu gốc, look biến mất
+    // mà không báo gì, trong khi preview vẫn hiện look.
+    expect(requiresRemotionRenderer(projectWithClip({}))).toBe(false)
+    expect(
+      requiresRemotionRenderer(projectWithClip({ look: { id: 'mono-film', intensity: 1 } }))
+    ).toBe(true)
+  })
+
+  it('clip chỉ có hiệu ứng ra cũng không xuất bằng ffmpeg được', () => {
+    expect(
+      requiresRemotionRenderer(
+        projectWithClip({ transitionOut: { kind: 'fade', durationUs: 500_000 } })
+      )
+    ).toBe(true)
   })
 })
 

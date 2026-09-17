@@ -46,7 +46,6 @@ export function useAiChat(): {
 } {
   const document = useEditorStore((state) => state.session?.document ?? null)
   const selection = useEditorStore((state) => state.selection)
-  const playheadUs = useEditorStore((state) => state.playheadUs)
   const run = useEditorStore((state) => state.run)
 
   const [messages, setMessages] = useState<ChatMessageRecord[]>([])
@@ -107,7 +106,9 @@ export function useAiChat(): {
         projectContext: buildProjectContext({
           document: current,
           selectedClipIds: selection.clipIds,
-          playheadUs
+          // Đầu phát lúc GỬI. Đọc thẳng từ store thay vì theo dõi: theo dõi thì
+          // cả panel chat vẽ lại mỗi khung khi đang phát.
+          playheadUs: useEditorStore.getState().playheadUs
         }),
         history: messages.map((item) => ({ role: item.role, content: item.content })),
         userMessage: text
@@ -127,7 +128,7 @@ export function useAiChat(): {
         {
           document: latest,
           selectedClipIds: selection.clipIds,
-          playheadUs,
+          playheadUs: useEditorStore.getState().playheadUs,
           makeId: (prefix) => createId(prefix ?? 'clip')
         },
         result.data.toolCalls
@@ -146,7 +147,7 @@ export function useAiChat(): {
         setProposal({ ...plan, baseRevision })
       }
     },
-    [messages, persist, selection.clipIds, playheadUs]
+    [messages, persist, selection.clipIds]
   )
 
   const applyProposal = useCallback(() => {

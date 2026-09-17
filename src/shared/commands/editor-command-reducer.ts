@@ -302,6 +302,34 @@ export function applyEditorCommand(doc: ProjectDocument, command: EditorCommand)
       return OK
     }
 
+    case 'clip/set-look': {
+      const found = locateClip(doc, command.clipId)
+      if (!found) return fail(`Không tìm thấy clip ${command.clipId}`)
+      const track = doc.tracks[found.trackIndex]
+      if (track.locked) return fail(`Track "${track.name}" đang bị khoá`)
+      // Look là hiệu ứng hình: clip tiếng không có gì để đổi màu.
+      if (!isVisualTrack(track)) return fail('Chỉ đặt được look màu cho clip hình')
+
+      const clip = track.clips[found.clipIndex]
+      clip.look = command.look ? { ...command.look } : undefined
+      return OK
+    }
+
+    case 'clip/set-effects': {
+      const found = locateClip(doc, command.clipId)
+      if (!found) return fail(`Không tìm thấy clip ${command.clipId}`)
+      const track = doc.tracks[found.trackIndex]
+      if (track.locked) return fail(`Track "${track.name}" đang bị khoá`)
+      if (!isVisualTrack(track)) return fail('Chỉ đặt được effect cho clip hình')
+
+      const clip = track.clips[found.clipIndex]
+      // Mảng rỗng lưu thành "không có" để dự án không mang trường thừa.
+      clip.effects = command.effects.length
+        ? command.effects.map((effect) => ({ ...effect, params: { ...effect.params } }))
+        : undefined
+      return OK
+    }
+
     case 'clip/set-color-grade': {
       const found = locateClip(doc, command.clipId)
       if (!found) return fail(`Không tìm thấy clip ${command.clipId}`)

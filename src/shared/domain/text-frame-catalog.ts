@@ -1,6 +1,12 @@
 /**
  * Danh mục khung nền dễ thương cho chữ overlay.
  *
+ * Hai loại khung: VECTOR (vẽ bằng SVG trong mã, đổi được bộ màu và trang trí góc)
+ * và ẢNH (PNG trong `resources/frames/`, màu cố định theo ảnh). Cả hai co giãn
+ * theo nội dung chữ bằng cùng cơ chế `border-image` 9-slice.
+ *
+ * Phần dưới đây nói về loại vector.
+ *
  * Vì sao VẼ BẰNG SVG chứ không gom file ảnh: nhúng ảnh của người khác vào một app
  * đem phát hành là PHÁT HÀNH LẠI, chặt hơn hẳn dùng cá nhân, và mỗi file phải tự
  * kiểm giấy phép rồi giữ vết. Vẽ bằng mã thì không có giấy phép nào để kiểm,
@@ -14,6 +20,10 @@
  * công cụ MCP cho agent. Chép làm ba bản là mời chúng lệch nhau.
  */
 
+import { IMAGE_TEXT_FRAME_STYLES, type ImageTextFrameStyle } from './text-frame-image-styles'
+
+export type { ImageTextFrameStyle } from './text-frame-image-styles'
+
 // Bảng màu nằm ở file riêng nhưng phơi lại qua đây: mọi nơi đang dùng chỉ cần
 // biết một cửa vào duy nhất cho cả danh mục.
 export {
@@ -25,7 +35,8 @@ export {
 /** Cách lát mép khi khung giãn ra. Góc thì KHÔNG bao giờ giãn, dù chọn cách nào. */
 export type TextFrameRepeat = 'round' | 'stretch'
 
-export interface TextFrameStyle {
+export interface VectorTextFrameStyle {
+  kind: 'vector'
   /** Khoá bền: dự án lưu id này, KHÔNG lưu SVG và KHÔNG lưu màu. */
   id: string
   nameVi: string
@@ -51,14 +62,11 @@ export interface TextFrameDecor {
   tags: string[]
 }
 
-/**
- * Năm khung, không phải năm mươi.
- *
- * Con số là có chủ ý, giống danh mục âm thanh: năm cái dùng được hơn năm mươi cái
- * phải lục. Thêm một cái thì nên bỏ một cái.
- */
-export const TEXT_FRAME_STYLES: TextFrameStyle[] = [
+export type TextFrameStyle = VectorTextFrameStyle | ImageTextFrameStyle
+
+const VECTOR_TEXT_FRAME_STYLES: VectorTextFrameStyle[] = [
   {
+    kind: 'vector',
     id: 'bong-bong-thoai',
     nameVi: 'Bong bóng thoại',
     nameEn: 'Speech bubble',
@@ -70,6 +78,7 @@ export const TEXT_FRAME_STYLES: TextFrameStyle[] = [
     tags: ['bong bóng', 'thoại', 'nói', 'bubble', 'speech', 'chat']
   },
   {
+    kind: 'vector',
     id: 'may',
     nameVi: 'Mây',
     nameEn: 'Cloud',
@@ -78,6 +87,7 @@ export const TEXT_FRAME_STYLES: TextFrameStyle[] = [
     tags: ['mây', 'bồng bềnh', 'tròn', 'cloud', 'puffy', 'cute']
   },
   {
+    kind: 'vector',
     id: 'giay-xe',
     nameVi: 'Giấy xé',
     nameEn: 'Torn paper',
@@ -88,6 +98,7 @@ export const TEXT_FRAME_STYLES: TextFrameStyle[] = [
     tags: ['giấy', 'xé', 'rách', 'paper', 'torn', 'scrapbook']
   },
   {
+    kind: 'vector',
     id: 'vien-lap-lanh',
     nameVi: 'Viền lấp lánh',
     nameEn: 'Sparkle border',
@@ -96,6 +107,7 @@ export const TEXT_FRAME_STYLES: TextFrameStyle[] = [
     tags: ['lấp lánh', 'sao', 'long lanh', 'sparkle', 'star', 'glitter']
   },
   {
+    kind: 'vector',
     id: 'net-ve-tay',
     nameVi: 'Nét vẽ tay',
     nameEn: 'Hand-drawn',
@@ -105,7 +117,13 @@ export const TEXT_FRAME_STYLES: TextFrameStyle[] = [
   }
 ]
 
-/** Điểm trang trí ở góc khung. Bỏ trống nghĩa là không có. */
+/** Khung vector đứng trước: chúng là mặc định cũ, dự án cũ đang dùng. */
+export const TEXT_FRAME_STYLES: TextFrameStyle[] = [
+  ...VECTOR_TEXT_FRAME_STYLES,
+  ...IMAGE_TEXT_FRAME_STYLES
+]
+
+/** Điểm trang trí ở góc khung. Bỏ trống nghĩa là không có. Chỉ áp cho khung vector. */
 export const TEXT_FRAME_DECORS: TextFrameDecor[] = [
   {
     id: 'ngoi-sao',
