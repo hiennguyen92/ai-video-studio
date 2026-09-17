@@ -279,7 +279,15 @@ test('bấm vào khối phụ đề thì panel thuộc tính hiện đúng câu 
 
   // Kiểu chữ là của CẢ track, không riêng câu này — panel phải nói ra điều đó
   // thay vì để người dùng tưởng mình đang chỉnh một câu.
-  await expect(inspector.getByText('thuộc về CẢ track phụ đề')).toBeVisible()
+  await inspector.getByRole('tab', { name: 'Style', exact: true }).click()
+  await expect(inspector.getByText('Áp cho cả track "Phụ đề en" · 2 câu')).toBeVisible()
+  await expect(inspector.getByLabel('Cỡ chữ')).toBeVisible()
+  await inspector.getByRole('tab', { name: 'Layout', exact: true }).click()
+  await expect(inspector.getByRole('radio', { name: 'Dưới' })).toHaveAttribute(
+    'aria-checked',
+    'true'
+  )
+  await inspector.getByRole('tab', { name: 'Basic', exact: true }).click()
 })
 
 test('chọn câu phụ đề rồi bấm Delete thì xoá đúng câu đó', async () => {
@@ -329,8 +337,12 @@ test('kéo câu phụ đề trên khung xem trước thì ghim CẢ track', asyn
   ) as { subtitleTracks: Array<{ style: { position?: { xPct: number; yPct: number } } }> }
   expect(document.subtitleTracks[0].style.position).toBeDefined()
 
-  // Trả lại nguyên trạng: bỏ ghim để các phép thử sau vẫn thấy phụ đề ở đáy.
-  await page.getByRole('button', { name: 'Bỏ ghim' }).first().click()
+  // Trả lại nguyên trạng: bỏ ghim để các phép thử sau vẫn thấy phụ đề ở đáy. Hàng
+  // ghim nằm ở tab Layout của panel Thuộc tính (câu vừa kéo đang được chọn).
+  const inspector = page.getByRole('region', { name: 'Thuộc tính' })
+  await inspector.getByRole('tab', { name: 'Layout', exact: true }).click()
+  await inspector.getByRole('button', { name: 'Bỏ ghim' }).click()
+  await inspector.getByRole('tab', { name: 'Basic', exact: true }).click()
   await expect
     .poll(async () => (await page.locator('.subtitle-cue .text-block').boundingBox())!.y)
     .toBeGreaterThan(before!.y - 10)
@@ -410,14 +422,17 @@ test('đổi kiểu chữ được lưu vào dự án', async () => {
   // Phải khoanh vùng: cùng ô "Cỡ chữ" giờ có ở CẢ tab Phụ đề lẫn panel thuộc
   // tính, vì bấm vào một câu trên timeline cũng mở được kiểu chữ của track.
   const fontSize = (): ReturnType<Page['getByLabel']> =>
-    studio().getByRole('spinbutton', { name: 'Cỡ chữ' })
+    studio().getByRole('slider', { name: 'Cỡ chữ' })
 
+  // Kiểu chữ nằm trong nhóm gập sẵn của tab Phụ đề.
+  await studio().getByRole('button', { name: 'Kiểu chữ' }).click()
   await fontSize().fill('72')
   await expect(page.locator('.top-bar__status')).toHaveText('Đã lưu', { timeout: 15_000 })
 
   await page.getByRole('button', { name: 'Về danh sách dự án' }).click()
   await page.locator('.project-card__open', { hasText: 'Dự án phụ đề' }).click()
   await studio().getByRole('tab', { name: 'Phụ đề' }).click()
+  await studio().getByRole('button', { name: 'Kiểu chữ' }).click()
 
   await expect(fontSize()).toHaveValue('72')
   await expect(page.locator('.cue-row')).toHaveCount(2)
@@ -460,6 +475,8 @@ test('kéo cue sang lane phụ đề khác thì nó chuyển hẳn sang track đ
   // Cue đi qua lệnh `subtitle/move-cue` chứ không phải `text/update` như chữ
   // overlay, nên phải kiểm riêng chứ không suy ra từ phép thử kia.
   await studio().getByRole('tab', { name: 'Phụ đề' }).click()
+  // Đã có track thì form tạo gập lại; mở bằng nút "Track mới".
+  await studio().getByRole('button', { name: 'Track mới' }).click()
   await page.getByRole('button', { name: 'Tạo track phụ đề' }).click()
 
   const lanes = page.locator('.timeline-lane--subtitle')

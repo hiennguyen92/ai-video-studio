@@ -241,5 +241,4 @@ test('timeline gắn nhãn LUT và Zoom trước các effect', async () => {
   await expect(clip.locator('.timeline-clip__tag--effect')).toHaveText('Effect ×2')
   // Tên đầy đủ kèm loại nằm trong tooltip của clip, vì nhãn không bắt chuột.
   await expect(clip).toHaveAttribute('title', /Filters: Phim đen trắng/)
-  await page.screenshot({ path: process.env.FX_SHOT ?? 'test-results/timeline-tags.png' })
 })

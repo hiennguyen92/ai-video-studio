@@ -143,6 +143,14 @@
   font-weight: 700;
 }
 
+/* Vùng lane là MỘT lớp xếp chồng riêng, nằm dưới thước thời gian (z-index 2).
+   Không có lớp này thì mọi thứ trong lane mang z-index cao hơn thước — biểu tượng
+   transition ở chỗ nối, khối chữ đang kéo — trồi đè lên thước khi cuộn xuống. */
+.timeline__lanes {
+  position: relative;
+  z-index: 1;
+}
+
 .timeline-lane {
   position: relative;
   border-bottom: 1px solid var(--border-subtle);

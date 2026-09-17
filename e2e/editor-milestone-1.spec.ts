@@ -209,11 +209,38 @@ test('đóng và mở lại dự án giữ nguyên dữ liệu đã dựng', asy
   await expect(page.getByTitle('Video 1')).toBeVisible()
 })
 
+test('nút Thêm track mở menu bốn loại track, Escape đóng mà không thêm gì', async () => {
+  const timeline = page.getByRole('region', { name: 'Timeline' })
+  const button = timeline.getByRole('button', { name: 'Thêm track', exact: true })
+  const laneCount = await page.locator('.timeline-lane').count()
+
+  await button.click()
+  await expect(button).toHaveAttribute('aria-expanded', 'true')
+  const menu = page.getByRole('menu', { name: 'Thêm track' })
+  await expect(menu.getByRole('menuitem')).toHaveCount(4)
+  for (const name of [
+    'Thêm track video',
+    'Thêm track âm thanh',
+    'Thêm track hình ảnh',
+    'Thêm track Text'
+  ]) {
+    await expect(menu.getByRole('menuitem', { name, exact: true })).toBeVisible()
+  }
+  // Mở ra là focus mục đầu, để chọn được ngay bằng bàn phím.
+  await expect(menu.getByRole('menuitem', { name: 'Thêm track video' })).toBeFocused()
+
+  await page.keyboard.press('Escape')
+  await expect(menu).toHaveCount(0)
+  await expect(button).toHaveAttribute('aria-expanded', 'false')
+  await expect(page.locator('.timeline-lane')).toHaveCount(laneCount)
+})
+
 test('kéo clip sang track video khác', async () => {
   // Kéo giữa các track cùng loại là thao tác dựng cơ bản, mà trước giờ không có
   // phép thử nào chạm tới — chỉ có mã nguồn nói rằng nó chạy được.
   const timeline = page.getByRole('region', { name: 'Timeline' })
-  await timeline.getByRole('button', { name: 'Thêm track video' }).click()
+  await timeline.getByRole('button', { name: 'Thêm track', exact: true }).click()
+  await page.getByRole('menuitem', { name: 'Thêm track video' }).click()
 
   const lanes = page.locator('.timeline-lane--video')
   await expect(lanes).toHaveCount(2)
@@ -265,7 +292,8 @@ test('kéo clip âm thanh sang track âm thanh khác', async () => {
   const lanesBefore = await lanes.count()
 
   const timeline = page.getByRole('region', { name: 'Timeline' })
-  await timeline.getByRole('button', { name: 'Thêm track âm thanh' }).click()
+  await timeline.getByRole('button', { name: 'Thêm track', exact: true }).click()
+  await page.getByRole('menuitem', { name: 'Thêm track âm thanh' }).click()
   await expect(lanes).toHaveCount(lanesBefore + 1)
 
   // Tìm đúng lane đang giữ clip thay vì đoán theo thứ tự: dự án mặc định đã có
@@ -301,7 +329,8 @@ test('thêm track thì cuộn tới lane mới, không để nó nằm ngoài t�
 
   // Thêm cho tới khi vùng lane thật sự tràn ra ngoài khung nhìn.
   for (let index = 0; index < 5; index++) {
-    await timeline.getByRole('button', { name: 'Thêm track video' }).click()
+    await timeline.getByRole('button', { name: 'Thêm track', exact: true }).click()
+    await page.getByRole('menuitem', { name: 'Thêm track video' }).click()
   }
 
   const overflow = await page.evaluate(() => {
@@ -389,7 +418,8 @@ test('đổi cỡ lane làm mọi lane thấp xuống và thấy được nhiề
 
   // Thêm vài track để vùng lane thật sự tràn ra ngoài khung.
   for (let index = 0; index < 4; index++) {
-    await timeline.getByRole('button', { name: 'Thêm track video' }).click()
+    await timeline.getByRole('button', { name: 'Thêm track', exact: true }).click()
+    await page.getByRole('menuitem', { name: 'Thêm track video' }).click()
   }
   const before = await fullyVisible()
 
@@ -412,7 +442,8 @@ test('đổi cỡ lane làm mọi lane thấp xuống và thấy được nhiề
   await expect.poll(async () => (await laneHeights())[0]).toBe(40)
 
   // Track thêm sau phải khớp cỡ đang chọn, không quay về cỡ mặc định.
-  await timeline.getByRole('button', { name: 'Thêm track video' }).click()
+  await timeline.getByRole('button', { name: 'Thêm track', exact: true }).click()
+  await page.getByRole('menuitem', { name: 'Thêm track video' }).click()
   await expect.poll(async () => (await laneHeights()).at(-1)).toBe(40)
 
   // Cỡ đã chọn sống sót qua lần mở lại dự án.
@@ -431,7 +462,8 @@ test('lane dưới cùng được VẼ RA thật, không chỉ nằm đúng ch�
   // nền của panel — tức là không có gì được vẽ ở đó.
   const timeline = page.getByRole('region', { name: 'Timeline' })
   for (let index = 0; index < 5; index++) {
-    await timeline.getByRole('button', { name: 'Thêm track video' }).click()
+    await timeline.getByRole('button', { name: 'Thêm track', exact: true }).click()
+    await page.getByRole('menuitem', { name: 'Thêm track video' }).click()
   }
 
   await page.evaluate(() => {
@@ -470,7 +502,8 @@ test('kéo tay nắm ở đầu lane để đổi thứ tự lane', async () => 
   // Thứ tự lane quyết định thứ tự LỚP khi dựng hình, nên đây không phải chuyện
   // sắp cho gọn mắt: nó đổi hẳn cái gì che cái gì.
   const timeline = page.getByRole('region', { name: 'Timeline' })
-  await timeline.getByRole('button', { name: 'Thêm track video' }).click()
+  await timeline.getByRole('button', { name: 'Thêm track', exact: true }).click()
+  await page.getByRole('menuitem', { name: 'Thêm track video' }).click()
 
   const names = async (): Promise<string[]> =>
     page.evaluate(() =>

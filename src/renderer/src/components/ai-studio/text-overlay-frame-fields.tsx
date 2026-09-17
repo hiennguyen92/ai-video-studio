@@ -17,6 +17,7 @@ import {
   useTextOverlayFrameActions
 } from '../../hooks/use-text-overlay-frame-actions'
 import { useLocale } from '../../i18n/use-translation'
+import { StyleSliderRow } from './style-field-rows'
 import { TextOverlayFrameThumbnailGrid } from './text-overlay-frame-thumbnail-grid'
 
 /**
@@ -58,7 +59,7 @@ export function TextOverlayFrameFields({
 
   return (
     <>
-      <label>
+      <div className="field-row">
         <span className="field-row__label">{t.textOverlay.box}</span>
         <select
           value={frame?.styleId ?? readTextOverlayBox(overlay.style)}
@@ -85,7 +86,7 @@ export function TextOverlayFrameFields({
             ))}
           </optgroup>
         </select>
-      </label>
+      </div>
 
       <TextOverlayFrameThumbnailGrid
         selectedStyleId={frame?.styleId}
@@ -100,7 +101,7 @@ export function TextOverlayFrameFields({
         định — là một ô không có tác dụng.
       */}
       {coBoMau && frame && (
-        <label>
+        <div className="field-row">
           <span className="field-row__label">{t.textOverlay.frameColor}</span>
           <select
             value={frame.paletteId ?? DEFAULT_TEXT_FRAME_PALETTE_ID}
@@ -113,11 +114,11 @@ export function TextOverlayFrameFields({
               </option>
             ))}
           </select>
-        </label>
+        </div>
       )}
 
       {coBoMau && frame && (
-        <label>
+        <div className="field-row">
           <span className="field-row__label">{t.textOverlay.frameDecor}</span>
           <select
             value={frame.decorId ?? ''}
@@ -131,7 +132,7 @@ export function TextOverlayFrameFields({
               </option>
             ))}
           </select>
-        </label>
+        </div>
       )}
       {/*
         Đệm khung theo từng chiều, cho mọi loại khung. Không tồn tại khi chưa có
@@ -145,19 +146,17 @@ export function TextOverlayFrameFields({
               100
           )
           return (
-            <div key={axis} className="field-row text-overlay-item__wide">
-              <span className="field-row__label">{base}</span>
-              <input
-                type="range"
-                min={0}
-                max={TEXT_FRAME_PADDING_SCALE_MAX * 100}
-                step={10}
-                value={percent}
-                aria-label={label(base)}
-                onChange={(event) => changePadding(axis, Number(event.target.value) / 100)}
-              />
-              <span className="field-row__value">{percent}%</span>
-            </div>
+            <StyleSliderRow
+              key={axis}
+              label={base}
+              ariaLabel={label(base)}
+              value={percent}
+              min={0}
+              max={TEXT_FRAME_PADDING_SCALE_MAX * 100}
+              step={10}
+              format={(value) => `${value}%`}
+              onChange={(value) => changePadding(axis, value / 100)}
+            />
           )
         })}
     </>

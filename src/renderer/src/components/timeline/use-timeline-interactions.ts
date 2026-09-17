@@ -3,6 +3,8 @@ import type { Clip, Track } from '../../../../shared/domain/timeline-track-types
 import { clipEndUs } from '../../../../shared/domain/timeline-track-types'
 import type { ProjectDocument } from '../../../../shared/domain/project-document-types'
 import type { EditorCommand } from '../../../../shared/commands/editor-command-types'
+import { clipSelectSeekUs } from '../../../../shared/domain/clip-select-seek'
+import { frameDurationUs } from '../../../../shared/domain/time-units'
 import { useEditorStore } from '../../state/editor-store'
 import { collectSnapTargets, pxToUs, snapTime, type SnapContext } from './timeline-geometry'
 import type { ClipDragMode } from './timeline-clip'
@@ -38,6 +40,9 @@ interface DragSession {
 
 const MIN_DRAG_DURATION_US = 1000
 
+/** Di chuột ít hơn chừng này giữa lúc bấm và lúc thả thì coi là bấm chọn, không phải kéo. */
+const CLICK_SLOP_PX = 3
+
 export function useTimelineInteractions(options: {
   document: ProjectDocument | null
   pixelsPerSecond: number
@@ -56,6 +61,8 @@ export function useTimelineInteractions(options: {
   const run = useEditorStore((state) => state.run)
   const snapEnabled = useEditorStore((state) => state.snapEnabled)
   const toggleClipSelection = useEditorStore((state) => state.toggleClipSelection)
+  const setPlayhead = useEditorStore((state) => state.setPlayhead)
+  const setPlaying = useEditorStore((state) => state.setPlaying)
 
   const [preview, setPreview] = useState<ClipDragPreview | null>(null)
   const sessionRef = useRef<DragSession | null>(null)
@@ -109,7 +116,12 @@ export function useTimelineInteractions(options: {
       event.preventDefault()
       event.stopPropagation()
 
-      toggleClipSelection(clip.id, track.id, event.shiftKey || event.metaKey || event.ctrlKey)
+      const additive = event.shiftKey || event.metaKey || event.ctrlKey
+      toggleClipSelection(clip.id, track.id, additive)
+
+      // Chỗ bấm quy ra thời gian, tính ngay lúc bấm: clip còn nằm đúng chỗ cũ.
+      const clipBox = event.currentTarget.getBoundingClientRect()
+      const clickUs = clip.startUs + pxToUs(event.clientX - clipBox.left, pixelsPerSecond)
 
       const session: DragSession = {
         clip,
@@ -193,6 +205,25 @@ export function useTimelineInteractions(options: {
         sessionRef.current = null
         previewRef.current = null
         setPreview(null)
+
+        // Bấm chọn (không kéo, không giữ phím chọn thêm): đưa đầu phát tới clip nếu
+        // nó đang ở ngoài, để preview hiện đúng clip vừa chọn.
+        const movedPx = Math.max(
+          Math.abs(upEvent.clientX - session.pointerStartX),
+          Math.abs(upEvent.clientY - session.pointerStartY)
+        )
+        if (movedPx < CLICK_SLOP_PX && !additive) {
+          const seekUs = clipSelectSeekUs(
+            clip,
+            clickUs,
+            useEditorStore.getState().playheadUs,
+            frameDurationUs(document.settings.frameRate)
+          )
+          if (seekUs !== null) {
+            setPlaying(false)
+            setPlayhead(seekUs)
+          }
+        }
       }
 
       const handleCancel = (): void => {
@@ -209,7 +240,16 @@ export function useTimelineInteractions(options: {
       window.addEventListener('pointerup', handleUp)
       window.addEventListener('pointercancel', handleCancel)
     },
-    [document, pixelsPerSecond, snapEnabled, toggleClipSelection, trackAtClientY, commit]
+    [
+      document,
+      pixelsPerSecond,
+      snapEnabled,
+      toggleClipSelection,
+      trackAtClientY,
+      commit,
+      setPlayhead,
+      setPlaying
+    ]
   )
 
   return { preview, handleClipPointerDown }

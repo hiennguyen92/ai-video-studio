@@ -58,14 +58,20 @@ test('lane thêm sau nằm TRÊN lane thêm trước', async () => {
   await page.locator('.media-card').first().waitFor({ timeout: 90_000 })
 
   // Lane CHỮ trước, rồi lane ẢNH — nên ảnh nằm dưới danh sách, tức vẽ sau.
-  await timeline.getByRole('button', { name: 'Thêm track Text' }).click()
+  await timeline.getByRole('button', { name: 'Thêm track', exact: true }).click()
+  await page.getByRole('menuitem', { name: 'Thêm track Text' }).click()
   await page.getByRole('region', { name: 'AI Studio' }).getByRole('tab', { name: 'Phụ đề' }).click()
+  await page
+    .getByRole('region', { name: 'AI Studio' })
+    .getByRole('tab', { name: 'Text', exact: true })
+    .click()
   await page.getByRole('button', { name: 'Thêm chữ' }).click()
   await page.getByLabel('Nội dung 1').fill('BỊ CHE')
   await page.getByLabel('Bắt đầu (giây) 1').fill('0')
   await page.getByLabel('Kết thúc (giây) 1').fill('4')
 
-  await timeline.getByRole('button', { name: 'Thêm track hình ảnh' }).click()
+  await timeline.getByRole('button', { name: 'Thêm track', exact: true }).click()
+  await page.getByRole('menuitem', { name: 'Thêm track hình ảnh' }).click()
   // Quay lại tab Media: thư viện bị ẩn khi đang ở tab Phụ đề.
   await page.getByRole('region', { name: 'AI Studio' }).getByRole('tab', { name: 'Media' }).click()
   await page.locator('.media-card').first().dblclick()

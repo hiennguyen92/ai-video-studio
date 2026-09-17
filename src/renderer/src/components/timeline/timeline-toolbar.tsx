@@ -7,7 +7,8 @@ import {
 } from '../../state/editor-store'
 import { useT } from '../../i18n/use-translation'
 import { ToolButton } from '../ui/tool-button'
-import { IconMagnet, IconPlus, IconSplit, IconTrash, IconZoomIn, IconZoomOut } from '../ui/icons'
+import { IconMagnet, IconSplit, IconTrash, IconZoomIn, IconZoomOut } from '../ui/icons'
+import { AddTrackMenuButton } from './add-track-menu-button'
 import type { AddableTrackKind } from './use-timeline-tracks'
 
 /**
@@ -75,26 +76,7 @@ export function TimelineToolbar({
 
       <div className="top-bar__divider" />
 
-      <ToolButton
-        label={t.timeline.addVideoTrack}
-        icon={<IconPlus />}
-        onClick={() => onAddTrack('video')}
-      />
-      <ToolButton
-        label={t.timeline.addAudioTrack}
-        icon={<IconPlus />}
-        onClick={() => onAddTrack('audio')}
-      />
-      <ToolButton
-        label={t.timeline.addImageTrack}
-        icon={<IconPlus />}
-        onClick={() => onAddTrack('image')}
-      />
-      <ToolButton
-        label={t.timeline.addTextTrack}
-        icon={<IconPlus />}
-        onClick={() => onAddTrack('text')}
-      />
+      <AddTrackMenuButton onAddTrack={onAddTrack} />
 
       <select
         className="timeline__height-select"

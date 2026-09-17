@@ -117,7 +117,8 @@ test('nút Thêm track hình ảnh tạo lane riêng, và ảnh rơi vào đó',
   await page.locator('.media-card', { hasText: 'canh-quay.mp4' }).dblclick()
   await expect(page.locator('.timeline-lane--video .timeline-clip')).toHaveCount(1)
 
-  await timeline().getByRole('button', { name: 'Thêm track hình ảnh' }).click()
+  await timeline().getByRole('button', { name: 'Thêm track', exact: true }).click()
+  await page.getByRole('menuitem', { name: 'Thêm track hình ảnh' }).click()
   await expect(page.locator('.timeline-lane--image')).toHaveCount(1)
 
   await page.locator('.media-card', { hasText: 'logo-thu.png' }).dblclick()

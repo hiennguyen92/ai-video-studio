@@ -8,6 +8,7 @@ import { ClipAudioSection } from './clip-audio-section'
 import { ClipBasicSection } from './clip-basic-section'
 import { clipInspectorTabs, type ClipInspectorTab } from './clip-inspector-tab-list'
 import { ClipVideoSection } from './clip-video-section'
+import { PanelSubtabs } from '../ui/panel-subtabs'
 
 const TAB_LABEL_KEYS = {
   basic: 'tabBasic',
@@ -49,22 +50,12 @@ export function ClipInspector({
 
   return (
     <div className="inspector">
-      <div className="clip-inspector__subtabs">
-        <div className="subtab-bar" role="tablist" aria-label={t.inspector.clip}>
-          {tabs.map((key) => (
-            <button
-              key={key}
-              type="button"
-              role="tab"
-              aria-selected={active === key}
-              className={`subtab ${active === key ? 'subtab--active' : ''}`}
-              onClick={() => onTabChange(key)}
-            >
-              {t.inspector[TAB_LABEL_KEYS[key]]}
-            </button>
-          ))}
-        </div>
-      </div>
+      <PanelSubtabs<ClipInspectorTab>
+        label={t.inspector.clip}
+        active={active}
+        onChange={onTabChange}
+        tabs={tabs.map((key) => ({ key, label: t.inspector[TAB_LABEL_KEYS[key]] }))}
+      />
 
       <div role="tabpanel" aria-label={t.inspector[TAB_LABEL_KEYS[active]]}>
         {active === 'basic' && <ClipBasicSection clip={clip} track={track} asset={asset} />}

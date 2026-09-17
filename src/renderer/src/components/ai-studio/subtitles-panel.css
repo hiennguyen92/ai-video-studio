@@ -116,9 +116,6 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
-  margin-top: var(--space-3);
-  padding-top: var(--space-2);
-  border-top: 1px solid var(--border);
 }
 
 .text-overlay-list {
@@ -128,62 +125,84 @@
   padding: 0 var(--space-3);
 }
 
+/* Một chữ: hàng tiêu đề gọn (giờ, dòng đầu, tua, xoá); thẻ đang mở có trình chỉnh. */
 .text-overlay-item {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  padding: var(--space-2);
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
-  background: var(--surface-2);
+  background: var(--surface-base);
 }
 
-.text-overlay-item__text {
-  width: 100%;
-  resize: vertical;
-  font-size: var(--text-sm);
-  line-height: 1.5;
+.text-overlay-item--open {
+  border-color: var(--border-strong);
 }
 
-/* Các ô ngắn xếp ngang cho đỡ tốn chiều cao panel. */
-.text-overlay-item__row {
+.text-overlay-item__header {
   display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1);
+}
+
+.text-overlay-item__toggle-button {
+  display: flex;
+  flex: 1;
+  align-items: center;
   gap: var(--space-2);
-  flex-wrap: wrap;
+  min-width: 0;
+  padding: var(--space-1);
+  border: none;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
 }
 
-.text-overlay-item__row label {
+.text-overlay-item__toggle-button:hover {
+  background: var(--surface-hover, rgba(255, 255, 255, 0.04));
+}
+
+.text-overlay-item--open .collapsible__chevron {
+  transform: rotate(90deg);
+}
+
+.text-overlay-item__summary {
   display: flex;
+  flex: 1;
   flex-direction: column;
-  gap: 2px;
-  flex: 1 1 90px;
+  gap: 1px;
   min-width: 0;
 }
 
-.text-overlay-item__row input,
-.text-overlay-item__row select {
-  width: 100%;
+.text-overlay-item__preview {
+  overflow: hidden;
+  font-size: var(--text-sm);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-/* Ô bật viền phát sáng: hộp kiểm và nhãn nằm ngang, canh giữa theo dòng. */
-.text-overlay-item__toggle {
+.text-overlay-item__time {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.text-overlay-item__editor {
   display: flex;
-  flex-direction: row;
-  align-items: center;
+  flex-direction: column;
   gap: var(--space-1);
+  padding: 0 0 var(--space-2);
+  border-top: 1px solid var(--border-subtle);
 }
 
-/* Một ô chiếm trọn dòng trong hàng ô xếp ngang, như thanh trượt đệm khung. */
-/* Hai lớp chọn để thắng `.field-row` chung, vốn chỉ có hai cột và đệm hai bên. */
-.field-row.text-overlay-item__wide {
-  flex: 1 1 100%;
-  grid-template-columns: auto 1fr 44px;
-  padding: 0;
+.text-overlay-item__editor .panel-subtabs--inline {
+  padding: var(--space-2) var(--space-2) 0;
 }
 
 /* Lưới ảnh thu nhỏ để chọn khung: chiếm trọn một dòng của hàng ô xếp ngang. */
 .frame-thumbnail-grid {
   flex: 1 1 100%;
+  padding: 0 var(--space-3);
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
@@ -231,4 +250,29 @@
   background-repeat: no-repeat;
   background-position: center;
   background-size: contain;
+}
+
+/* Hàng chọn track ở đầu tab: ô chọn chiếm hết, nút tạo mới bên phải. */
+.subtitles-panel__track-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0 var(--space-3) var(--space-2);
+}
+
+.subtitles-panel__track-bar select {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Form tạo track: khung riêng để thấy nó là một bước, không lẫn vào phần chỉnh. */
+.subtitles-panel__card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0 var(--space-3) var(--space-2);
+  padding: var(--space-2) 0;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-base);
 }

@@ -74,17 +74,18 @@ export function FontFamilySelect({
     [apply, facesOf]
   )
 
+  // Hai hàng riêng, mỗi hàng một nhãn: ô kiểu chữ đứng lẻ cạnh ô phông trong cùng
+  // một hàng thì không ai biết "Bold" kia là ô gì.
   return (
-    <div className="field-row">
-      <span className="field-row__label">{t.subtitles.fontFamily}</span>
-
-      {families === null ? (
-        // Nói ra thay vì hiện một ô rỗng: người dùng cần biết vì sao không chọn được.
-        <span className="field-row__value">
-          {loading ? t.subtitles.fontLoading : t.subtitles.fontUnavailable}
-        </span>
-      ) : (
-        <>
+    <>
+      <div className="field-row">
+        <span className="field-row__label">{t.subtitles.fontFamily}</span>
+        {families === null ? (
+          // Nói ra thay vì hiện một ô rỗng: người dùng cần biết vì sao không chọn được.
+          <span className="field-row__value">
+            {loading ? t.subtitles.fontLoading : t.subtitles.fontUnavailable}
+          </span>
+        ) : (
           <select
             value={family}
             aria-label={t.subtitles.fontFamily}
@@ -99,25 +100,33 @@ export function FontFamilySelect({
               </option>
             ))}
           </select>
+        )}
+      </div>
 
-          {/* Họ chỉ có một kiểu thì ô chọn kiểu là một ô chỉ có một lựa chọn. */}
-          {faces.length > 1 && (
-            <select
-              value={postScriptName ?? faces[0].postScriptName}
-              aria-label={t.subtitles.fontStyle}
-              onChange={(event) => void apply(family, event.target.value)}
-            >
-              {faces.map((face) => (
-                <option key={face.postScriptName} value={face.postScriptName}>
-                  {face.style}
-                </option>
-              ))}
-            </select>
-          )}
-        </>
+      {/* Họ chỉ có một kiểu thì ô chọn kiểu là một ô chỉ có một lựa chọn: không bày. */}
+      {families !== null && faces.length > 1 && (
+        <div className="field-row">
+          <span className="field-row__label">{t.subtitles.fontStyle}</span>
+          <select
+            value={postScriptName ?? faces[0].postScriptName}
+            aria-label={t.subtitles.fontStyle}
+            onChange={(event) => void apply(family, event.target.value)}
+          >
+            {faces.map((face) => (
+              <option key={face.postScriptName} value={face.postScriptName}>
+                {face.style}
+              </option>
+            ))}
+          </select>
+        </div>
       )}
 
-      {saving && <span className="field-row__value">{t.subtitles.fontSaving}</span>}
-    </div>
+      {saving && (
+        <div className="field-row">
+          <span className="field-row__label" />
+          <span className="field-row__value">{t.subtitles.fontSaving}</span>
+        </div>
+      )}
+    </>
   )
 }

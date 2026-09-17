@@ -423,3 +423,128 @@ input[type='range'] {
   color: var(--text-primary);
   background: var(--surface-active);
 }
+
+/* Ô màu kèm mã hex cùng hàng. */
+.style-color {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.style-color__hex {
+  font-size: var(--text-xs);
+}
+
+/* Ô bị vị trí ghim đè: vẫn chỉnh được nhưng mờ đi để thấy chúng không tác dụng. */
+.style-fields--overridden {
+  opacity: 0.5;
+}
+
+/* Thanh tab con trong panel (Thuộc tính, tab Phụ đề), bám mép trên khi cuộn. */
+.panel-subtabs {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  margin-bottom: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: var(--surface-panel);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+/* Nhóm gập/mở: tiêu đề cả hàng bấm được, mũi tên xoay khi mở. */
+.collapsible {
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.collapsible__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: none;
+  background: none;
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-align: left;
+  cursor: pointer;
+}
+
+.collapsible__header:hover {
+  color: var(--text-primary);
+}
+
+.collapsible__chevron {
+  display: inline-block;
+  transition: transform 120ms ease;
+}
+
+.collapsible--open .collapsible__chevron {
+  transform: rotate(90deg);
+}
+
+.collapsible__title {
+  flex: 1;
+}
+
+.collapsible__meta {
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--text-muted);
+}
+
+.collapsible__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding-bottom: var(--space-3);
+}
+
+/* Thanh tab con lồng trong một thẻ: không bám mép, không kẻ đáy, sát lề thẻ. */
+.panel-subtabs--inline {
+  position: static;
+  margin-bottom: var(--space-1);
+  padding: var(--space-1) 0;
+  border-bottom: none;
+  background: none;
+}
+
+/* Hàng bật/tắt: nhãn bên trái, hộp kiểm ở cột ô chỉnh. */
+.style-toggle {
+  cursor: pointer;
+}
+
+.style-toggle input {
+  justify-self: start;
+}
+
+/* Mũi tên nhỏ sau nhãn của nút mở menu. */
+.button__caret {
+  margin-left: -2px;
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+/* Ô icon cố định bề rộng để nhãn các mục menu thẳng hàng. */
+.context-menu__icon {
+  display: inline-flex;
+  justify-content: center;
+  width: 16px;
+  color: var(--text-muted);
+}
+
+.context-menu__icon svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* Chữ "T" làm icon cho track Text, cùng cỡ với icon vẽ nét. */
+.context-menu__glyph {
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+}

@@ -93,6 +93,11 @@ test.afterAll(async () => {
 
 const studio = (): ReturnType<Page['getByRole']> => page.getByRole('region', { name: 'AI Studio' })
 
+/** Mở tab con của chữ đang mở trong tab Text (Basic / Style / Layout / Animation). */
+async function overlayTab(name: 'Basic' | 'Style' | 'Layout' | 'Animation'): Promise<void> {
+  await studio().getByRole('tab', { name, exact: true }).click()
+}
+
 /**
  * Chữ có THẬT SỰ nhìn thấy được không.
  *
@@ -246,6 +251,7 @@ async function cropTopLeft(png: Buffer, size = 22): Promise<Buffer> {
 
 test('thêm chữ được ngay cả khi chưa có bản phiên âm nào', async () => {
   await studio().getByRole('tab', { name: 'Phụ đề' }).click()
+  await studio().getByRole('tab', { name: 'Text', exact: true }).click()
 
   // Chữ overlay do người dùng tự viết nên không phụ thuộc transcript.
   await expect(page.getByText('Chưa có chữ nào.')).toBeVisible()
@@ -339,7 +345,8 @@ test('bấm vào khối chữ thì panel thuộc tính hiện đúng khối đó
 
   // Panel nói về chữ, và những hàng của clip biến mất — hai thứ không được cùng
   // hiện, nếu không người dùng không biết mình đang sửa cái nào.
-  await expect(inspector.getByText('Text', { exact: true }).first()).toBeVisible()
+  // Tab Style chỉ có ở chữ (clip có Video/Audio), nên thấy nó là panel đã đổi sang chữ.
+  await expect(inspector.getByRole('tab', { name: 'Style', exact: true })).toBeVisible()
   await expect(inspector.getByText('Điểm vào nguồn')).toHaveCount(0)
   await expect(inspector.getByLabel('Nội dung', { exact: true })).toHaveValue(
     'Bạn đang bỏ lỡ thứ này'
@@ -363,6 +370,7 @@ test('sửa chữ ngay trong panel thuộc tính thì preview đổi theo', asyn
 
   // Ô trong tab Phụ đề phải thấy cùng một giá trị: hai chỗ sửa cùng MỘT dữ liệu,
   // không phải hai bản sao trôi khỏi nhau.
+  await overlayTab('Basic')
   await expect(studio().getByLabel('Nội dung 1')).toHaveValue('Đổi từ panel')
 
   await inspector.getByLabel('Nội dung', { exact: true }).fill('Bạn đang bỏ lỡ thứ này')
@@ -379,6 +387,7 @@ test('xoay chữ từ panel thuộc tính làm nghiêng chữ trên preview', as
       .evaluate((node) => getComputedStyle(node).transform)
 
   const before = await rotationOf()
+  await inspector.getByRole('tab', { name: 'Layout', exact: true }).click()
   await inspector.getByLabel('Góc xoay').fill('20')
 
   // Ma trận biến đổi phải ĐỔI. Chỉ đọc thuộc tính style trên DOM thì một góc bị
@@ -387,6 +396,7 @@ test('xoay chữ từ panel thuộc tính làm nghiêng chữ trên preview', as
   expect(await rotationOf()).not.toBe('none')
 
   await inspector.getByLabel('Góc xoay').fill('0')
+  await inspector.getByRole('tab', { name: 'Basic', exact: true }).click()
 })
 
 test('chọn khối chữ rồi bấm Delete thì xoá đúng chữ đó', async () => {
@@ -491,7 +501,8 @@ test('kéo tay nắm tròn thì xoay chữ', async () => {
   expect(style.position).toBeDefined()
 
   // Dọn lại cho các phép thử sau: bỏ ghim và trả góc về 0.
-  await page.getByRole('button', { name: 'Bỏ ghim' }).first().click()
+  await overlayTab('Layout')
+  await studio().getByRole('button', { name: 'Bỏ ghim' }).click()
   await studio()
     .getByLabel(/Góc xoay/)
     .fill('0')
@@ -524,7 +535,8 @@ test('nút Thêm track text tạo một lane chữ thật, và chữ mới rơi 
   const timeline = page.getByRole('region', { name: 'Timeline' })
   await expect(page.locator('.timeline-lane--text')).toHaveCount(0)
 
-  await timeline.getByRole('button', { name: 'Thêm track Text' }).click()
+  await timeline.getByRole('button', { name: 'Thêm track', exact: true }).click()
+  await page.getByRole('menuitem', { name: 'Thêm track Text' }).click()
   await expect(page.locator('.timeline-lane--text')).toHaveCount(1)
   await expect(timeline.getByTitle('Text 1')).toBeVisible()
 
@@ -544,8 +556,9 @@ test('kéo khối chữ sang lane khác thì nó đổi lane', async () => {
   // Lane thứ hai để có chỗ mà kéo sang.
   await page
     .getByRole('region', { name: 'Timeline' })
-    .getByRole('button', { name: 'Thêm track Text' })
+    .getByRole('button', { name: 'Thêm track', exact: true })
     .click()
+  await page.getByRole('menuitem', { name: 'Thêm track Text' }).click()
   await expect(page.locator('.timeline-lane--text')).toHaveCount(2)
 
   const lanes = page.locator('.timeline-lane--text')
@@ -658,6 +671,7 @@ async function savedOverlayRange(): Promise<{ startUs: number; endUs: number }> 
 }
 
 test('kéo cả khối trên timeline thì dời giờ, giữ nguyên độ dài', async () => {
+  await overlayTab('Basic')
   await page.getByLabel('Bắt đầu (giây) 1').fill('1')
   await page.getByLabel('Kết thúc (giây) 1').fill('4')
   await expect(page.locator('.top-bar__status')).toHaveText('Đã lưu', { timeout: 15_000 })
@@ -733,6 +747,7 @@ test('kéo mép trái vượt qua mép phải vẫn để lại một khoảng h
 })
 
 test('ô chọn phông liệt kê phông THẬT của máy, không phải danh sách viết cứng', async () => {
+  await overlayTab('Style')
   const select = studio().getByLabel('Phông chữ')
   await expect(select).toBeVisible()
 
@@ -743,8 +758,10 @@ test('ô chọn phông liệt kê phông THẬT của máy, không phải danh s
 })
 
 test('đổi phông làm đổi hình trên preview', async () => {
+  await overlayTab('Basic')
   await page.getByLabel('Bắt đầu (giây) 1').fill('1')
   await page.getByLabel('Kết thúc (giây) 1').fill('4')
+  await overlayTab('Animation')
   await page.getByLabel('Animation vào 1').selectOption('none')
   await page.getByLabel('Animation ra 1').selectOption('none')
   await page.getByRole('button', { name: 'Tua tới đây' }).click()
@@ -754,6 +771,7 @@ test('đổi phông làm đổi hình trên preview', async () => {
   const before = await stage.screenshot()
 
   // Phông đẳng khoảng khác hẳn phông mặc định, nên khác biệt nhìn rõ.
+  await overlayTab('Style')
   await studio().getByLabel('Phông chữ').selectOption('Courier New')
   await page.waitForTimeout(900)
 
@@ -794,9 +812,11 @@ test('chọn được KIỂU trong họ, và đổi kiểu làm đổi hình', a
   // Tên họ chỉ chọn được họ. Đo thật trong Chromium: đặt font-family theo tên đầy
   // đủ ("American Typewriter Bold") cho ra cùng bề rộng với hai kiểu khác — tức
   // là không phân biệt được. Tên PostScript thì phân biệt.
+  await overlayTab('Style')
   await studio().getByLabel('Phông chữ').selectOption('American Typewriter')
   await page.waitForTimeout(900)
 
+  await overlayTab('Style')
   const styleSelect = studio().getByLabel('Kiểu chữ')
   await expect(styleSelect).toBeVisible()
   expect(await styleSelect.locator('option').count()).toBeGreaterThan(1)
@@ -855,6 +875,7 @@ test('chữ hiện trên preview trong khoảng đã đặt và biến mất ngo
 
   // Tự đặt lại giờ thay vì dựa vào trạng thái các phép thử trước để lại: nhóm
   // phép thử kéo phía trên đã dời chữ đi chỗ khác.
+  await overlayTab('Basic')
   await page.getByLabel('Bắt đầu (giây) 1').fill('1')
   await page.getByLabel('Kết thúc (giây) 1').fill('4')
 
@@ -885,6 +906,7 @@ test('đổi hiệu ứng làm đổi hình, ở cùng một thời điểm', as
   }
   await page.waitForTimeout(700)
 
+  await overlayTab('Animation')
   await page.getByLabel('Animation vào 1').selectOption('typewriter')
   await page.waitForTimeout(700)
   const typewriter = await stage.screenshot()
@@ -899,11 +921,13 @@ test('đổi hiệu ứng làm đổi hình, ở cùng một thời điểm', as
 
 test('bật nền hộp làm đổi hình, ở cùng một thời điểm', async () => {
   const stage = page.locator('.preview__stage')
+  await overlayTab('Animation')
   await page.getByLabel('Animation vào 1').selectOption('none')
   await page.getByRole('button', { name: 'Tua tới đây' }).click()
   await page.waitForTimeout(700)
   const noBox = await stage.screenshot()
 
+  await overlayTab('Style')
   await page.getByLabel('Nền chữ 1').selectOption('dark')
   await page.waitForTimeout(700)
   const darkBox = await stage.screenshot()
@@ -922,11 +946,13 @@ test('bật nền hộp làm đổi hình, ở cùng một thời điểm', asyn
 
 test('hiệu ứng ra làm chữ biến mất dần thay vì tắt phụt', async () => {
   const stage = page.locator('.preview__stage')
+  await overlayTab('Animation')
   await page.getByLabel('Animation vào 1').selectOption('none')
 
   // Cửa sổ hiệu ứng ra chỉ dài khoảng một phần ba giây, nên click vào thước để
   // rơi trúng nó là trò may rủi. Cách chắc chắn: tua tới ĐÚNG đầu khoảng chữ rồi
   // DỜI khoảng chữ lùi lại, để đầu phát nằm sẵn ở cuối khoảng mới.
+  await overlayTab('Basic')
   await page.getByLabel('Bắt đầu (giây) 1').fill('3')
   await page.getByLabel('Kết thúc (giây) 1').fill('4')
   // "Tua tới đây" nhích vào một phần ba khối, tức đầu phát dừng ở 3,33s.
@@ -941,6 +967,7 @@ test('hiệu ứng ra làm chữ biến mất dần thay vì tắt phụt', asyn
 
   const shots = new Map<string, string>()
   for (const exit of ['none', 'fade', 'shrink', 'slide-down']) {
+    await overlayTab('Animation')
     await page.getByLabel('Animation ra 1').selectOption(exit)
     await page.waitForTimeout(700)
     shots.set(exit, (await stage.screenshot()).toString('base64'))
@@ -955,14 +982,17 @@ test('hiệu ứng ra làm chữ biến mất dần thay vì tắt phụt', asyn
 
 test('viền phát sáng làm đổi hình, ở cùng một thời điểm', async () => {
   const stage = page.locator('.preview__stage')
+  await overlayTab('Animation')
   await page.getByLabel('Animation vào 1').selectOption('none')
   await page.getByLabel('Animation ra 1').selectOption('none')
+  await overlayTab('Basic')
   await page.getByLabel('Bắt đầu (giây) 1').fill('1')
   await page.getByLabel('Kết thúc (giây) 1').fill('4')
   await page.getByRole('button', { name: 'Tua tới đây' }).click()
   await page.waitForTimeout(700)
   const plain = await stage.screenshot()
 
+  await overlayTab('Style')
   await page.getByLabel('Viền phát sáng 1').check()
   await page.waitForTimeout(700)
   expect((await stage.screenshot()).equals(plain)).toBe(false)
@@ -975,12 +1005,14 @@ test('viền phát sáng làm đổi hình, ở cùng một thời điểm', asy
 
 test('đổi vị trí đưa chữ xuống dưới khung hình', async () => {
   const stage = page.locator('.preview__stage')
+  await overlayTab('Animation')
   await page.getByLabel('Animation vào 1').selectOption('none')
   await page.getByRole('button', { name: 'Tua tới đây' }).click()
   await page.waitForTimeout(700)
   const middle = await stage.screenshot()
 
-  await page.getByLabel('Vị trí 1').selectOption('2')
+  await overlayTab('Layout')
+  await studio().getByRole('radio', { name: 'Dưới' }).click()
   await page.waitForTimeout(700)
   const bottom = await stage.screenshot()
 
@@ -997,8 +1029,10 @@ test('đổi vị trí đưa chữ xuống dưới khung hình', async () => {
  */
 test('năm khung cho năm hình khác nhau', async () => {
   const stage = page.locator('.preview__stage')
+  await overlayTab('Animation')
   await page.getByLabel('Animation vào 1').selectOption('none')
   await page.getByLabel('Animation ra 1').selectOption('none')
+  await overlayTab('Basic')
   await page.getByLabel('Bắt đầu (giây) 1').fill('1')
   await page.getByLabel('Kết thúc (giây) 1').fill('4')
   await page.getByRole('button', { name: 'Tua tới đây' }).click()
@@ -1006,6 +1040,7 @@ test('năm khung cho năm hình khác nhau', async () => {
 
   const shots = new Map<string, Buffer>()
   for (const id of ['bong-bong-thoai', 'may', 'giay-xe', 'vien-lap-lanh', 'net-ve-tay']) {
+    await overlayTab('Style')
     await page.getByLabel('Nền chữ 1').selectOption(id)
     await page.waitForTimeout(700)
     shots.set(id, await stage.screenshot())
@@ -1024,6 +1059,7 @@ test('bỏ khung trả về đúng khung hình cũ', async () => {
   await page.waitForTimeout(700)
   const plain = await stage.screenshot()
 
+  await overlayTab('Style')
   await page.getByLabel('Nền chữ 1').selectOption('may')
   await page.waitForTimeout(700)
   expect((await stage.screenshot()).equals(plain)).toBe(false)
@@ -1036,6 +1072,7 @@ test('bỏ khung trả về đúng khung hình cũ', async () => {
 
 test('đổi bộ màu và trang trí góc đều làm đổi hình', async () => {
   const stage = page.locator('.preview__stage')
+  await overlayTab('Style')
   await page.getByLabel('Nền chữ 1').selectOption('may')
   await page.waitForTimeout(700)
   const hong = await stage.screenshot()
@@ -1063,6 +1100,7 @@ test('khung ảnh đổi hình, đổi màu chữ, và không có ô bộ màu',
   await page.waitForTimeout(700)
   const plain = await stage.screenshot()
 
+  await overlayTab('Style')
   await page.getByLabel('Nền chữ 1').selectOption('chalkboard')
   await page.waitForTimeout(700)
   const board = await stage.screenshot()
@@ -1092,6 +1130,7 @@ test('lưới ảnh thu nhỏ chọn được khung và đánh dấu khung đang
   await page.waitForTimeout(700)
   const plain = await stage.screenshot()
 
+  await overlayTab('Style')
   await page.getByRole('button', { name: 'Chọn khung bằng hình 1' }).click()
   const anh = page.getByRole('group', { name: 'Khung ảnh 1' })
   await expect(anh.getByRole('button')).toHaveCount(42)
@@ -1128,6 +1167,7 @@ test('lưới ảnh thu nhỏ chọn được khung và đánh dấu khung đang
  */
 test('thanh trượt đệm khung làm khung ôm sát hoặc rộng ra', async () => {
   await page.getByRole('button', { name: 'Tua tới đây' }).click()
+  await overlayTab('Style')
   await expect(page.getByLabel('Đệm ngang khung 1')).toHaveCount(0)
 
   await page.getByLabel('Nền chữ 1').selectOption('sticky-note')
@@ -1173,6 +1213,7 @@ test('kéo mép khung trên xem trước làm khung rộng ra hoặc ôm sát ch
   // Chưa có khung thì không có tay nắm mép: tay nắm không làm gì là tệ hơn không có.
   await expect(page.locator('.preview-gizmo__edge')).toHaveCount(0)
 
+  await overlayTab('Style')
   await page.getByLabel('Nền chữ 1').selectOption('sticky-note')
   await expect(page.locator('.preview-gizmo__edge')).toHaveCount(4)
   const block = page.locator('.text-overlay .text-block')
@@ -1207,6 +1248,7 @@ test('kéo mép khung trên xem trước làm khung rộng ra hoặc ôm sát ch
 })
 
 test('chỉnh độ dày viền chữ, và nó tới được chữ trên hình', async () => {
+  await overlayTab('Style')
   const slider = studio().getByLabel('Độ dày viền 1')
   await expect(slider).toHaveAttribute('max', '20')
   const strokeOf = async (): Promise<string> =>
@@ -1228,6 +1270,7 @@ test('chỉnh độ dày viền chữ, và nó tới được chữ trên hình'
 })
 
 test('góc xoay không còn kẹp ở 45°: xoay dựng đứng và lộn ngược được', async () => {
+  await overlayTab('Layout')
   const slider = studio().getByLabel('Góc xoay 1')
   await expect(slider).toHaveAttribute('min', '-180')
   await expect(slider).toHaveAttribute('max', '180')
@@ -1248,6 +1291,7 @@ test('góc xoay không còn kẹp ở 45°: xoay dựng đứng và lộn ngư�
 
 test('kéo chữ sát mép khung hình không làm chữ tự xuống hàng', async () => {
   await page.getByRole('button', { name: 'Tua tới đây' }).click()
+  await overlayTab('Basic')
   const content = page.getByLabel('Nội dung 1')
   const original = await content.inputValue()
   await content.fill('Chốt đơn hôm nay')
@@ -1280,12 +1324,15 @@ test('kéo chữ sát mép khung hình không làm chữ tự xuống hàng', as
   expect(Math.abs(after.height - before.height)).toBeLessThan(2)
 
   // Dọn lại cho các phép thử sau.
-  await page.getByRole('button', { name: 'Bỏ ghim' }).first().click()
+  await overlayTab('Layout')
+  await studio().getByRole('button', { name: 'Bỏ ghim' }).click()
+  await overlayTab('Basic')
   await content.fill(original)
 })
 
 test('xuống dòng trong nội dung thì preview cũng xuống dòng', async () => {
   await page.getByRole('button', { name: 'Tua tới đây' }).click()
+  await overlayTab('Basic')
   const content = page.getByLabel('Nội dung 1')
   const original = await content.inputValue()
   const lines = page.locator('.text-overlay .text-block span')
@@ -1314,6 +1361,7 @@ test('xuống dòng trong nội dung thì preview cũng xuống dòng', async ()
 test('hai ô của khung không tồn tại khi chưa chọn khung', async () => {
   // KHÔNG TỒN TẠI, không phải bị làm mờ: một ô "Màu khung" khi không có khung là
   // một ô không có tác dụng.
+  await overlayTab('Style')
   await expect(page.getByLabel('Màu khung 1')).toHaveCount(0)
 
   await page.getByLabel('Nền chữ 1').selectOption('may')
@@ -1325,7 +1373,9 @@ test('hai ô của khung không tồn tại khi chưa chọn khung', async () =>
 
 test('góc khung không méo khi chữ dài ra', async () => {
   const block = page.locator('.text-block')
+  await overlayTab('Style')
   await page.getByLabel('Nền chữ 1').selectOption('may')
+  await overlayTab('Basic')
   await page.getByLabel('Nội dung 1').fill('Sale')
   await page.waitForTimeout(700)
   const ngan = await block.screenshot()
@@ -1342,10 +1392,12 @@ test('góc khung không méo khi chữ dài ra', async () => {
   expect(lech, `góc lệch ${lech} điểm`).toBeLessThan(30)
 
   await page.getByLabel('Nội dung 1').fill('Chốt đơn ngay')
+  await overlayTab('Style')
   await page.getByLabel('Nền chữ 1').selectOption('none')
 })
 
 test('khung đi tới file xuất ra, không chỉ sống trong preview', async () => {
+  await overlayTab('Style')
   await page.getByLabel('Nền chữ 1').selectOption('may')
   await page.waitForTimeout(300)
 

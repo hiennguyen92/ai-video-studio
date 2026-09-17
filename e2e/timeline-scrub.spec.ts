@@ -216,3 +216,42 @@ test('tua tới hai chỗ khác nhau cho hai khung hình khác nhau', async () =
   // trước cũng là một cách "không sập".
   expect(early.equals(later)).toBe(false)
 })
+
+test('bấm chọn clip nằm ngoài đầu phát thì đầu phát và preview tới đúng chỗ bấm', async () => {
+  const ruler = page.locator('.timeline__ruler-row')
+  const rulerBox = (await ruler.boundingBox())!
+  const playhead = page.locator('.timeline__playhead')
+  const stage = page.locator('.preview__stage')
+
+  // Đầu phát về gần đầu timeline, rồi chụp preview ở đó.
+  await page.mouse.click(rulerBox.x + 2, rulerBox.y + 12)
+  await page.waitForTimeout(700)
+  const atStart = await stage.screenshot()
+
+  // Phóng timeline cho clip đủ rộng: clip ngắn thì biểu tượng transition ở hai đầu
+  // che gần hết, bấm giữa clip là trúng biểu tượng.
+  const timeline = page.getByRole('region', { name: 'Timeline' })
+  for (let i = 0; i < 3; i += 1) await timeline.getByRole('button', { name: 'Phóng to' }).click()
+
+  // Clip thứ ba nằm xa đầu phát: bấm vào giữa nó.
+  const clip = page.locator('.timeline-clip').nth(2)
+  await clip.scrollIntoViewIfNeeded()
+  const clipBox = (await clip.boundingBox())!
+  const clickX = clipBox.x + clipBox.width / 2
+  await clip.click({ position: { x: clipBox.width / 2, y: clipBox.height / 2 } })
+  await expect(clip).toHaveClass(/timeline-clip--selected/)
+
+  await expect
+    .poll(async () => Math.abs((await playhead.boundingBox())!.x - clickX))
+    .toBeLessThan(4)
+  await page.waitForTimeout(700)
+  expect((await stage.screenshot()).equals(atStart)).toBe(false)
+
+  // Đầu phát đã nằm trong clip: bấm chỗ khác trong CÙNG clip thì giữ nguyên, để
+  // "đặt đầu phát → chọn clip → cắt" không bị xô điểm cắt.
+  const before = (await playhead.boundingBox())!.x
+  // Tránh hai đầu clip: biểu tượng transition ở chỗ nối che mất phần mép.
+  await clip.click({ position: { x: 40, y: clipBox.height / 2 } })
+  await page.waitForTimeout(300)
+  expect(Math.abs((await playhead.boundingBox())!.x - before)).toBeLessThan(1)
+})

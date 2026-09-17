@@ -107,14 +107,21 @@
   grid-column: 2 / 4;
 }
 
-/* Thanh tab con Basic / Video / Audio / Animation, bám mép trên khi cuộn các mục dài
-   (chồng effect, chỉnh màu). */
-.clip-inspector__subtabs {
-  position: sticky;
-  top: 0;
-  z-index: 5;
-  margin-bottom: var(--space-2);
-  padding: var(--space-2) var(--space-3);
-  background: var(--surface-panel);
-  border-bottom: 1px solid var(--border-subtle);
+/* Dòng nói phạm vi ở đầu tab kiểu chữ phụ đề: sửa ở đây là cả track đổi. */
+.inspector__scope {
+  margin: 0 var(--space-3) var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--surface-base);
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+}
+
+.inspector__badge {
+  margin-left: var(--space-2);
+  padding: 0 5px;
+  border-radius: 3px;
+  background: var(--surface-active);
+  font-size: 10px;
+  color: var(--text-secondary);
 }
