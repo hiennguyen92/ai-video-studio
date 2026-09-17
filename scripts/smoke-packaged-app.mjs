@@ -121,10 +121,10 @@ await page.locator('.timeline-clip').first().waitFor()
 
 // Đặt chuyển động để buộc app dùng đường Remotion, không rơi về ffmpeg.
 await page.locator('.timeline-clip').first().click()
-await page
-  .getByRole('region', { name: 'Thuộc tính' })
-  .getByLabel('Chuyển động', { exact: true })
-  .selectOption('zoom-in')
+// Zoom nằm ở tab con Animation của panel Thuộc tính.
+const inspector = page.getByRole('region', { name: 'Thuộc tính' })
+await inspector.getByRole('tab', { name: 'Animation', exact: true }).click()
+await inspector.getByLabel('Zoom', { exact: true }).selectOption('zoom-in')
 
 await page.getByRole('button', { name: 'Xuất video' }).click()
 const dialog = page.getByRole('dialog', { name: 'Xuất video' })
