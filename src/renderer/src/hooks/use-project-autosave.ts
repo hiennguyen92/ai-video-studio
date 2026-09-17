@@ -44,8 +44,10 @@ export function useProjectAutosave(): void {
         }
 
         // Chỉ chuyển sang "đã lưu" nếu chưa có thay đổi mới xen vào giữa chừng.
+        // So DANH TÍNH chứ không so revision: hoàn tác trả revision lùi về, nên một
+        // lần sửa mới sau undo có thể trùng số với bản đang ghi dở mà nội dung khác.
         const current = useEditorStore.getState()
-        if (current.session?.document.revision === documentToSave.revision) {
+        if (current.session?.document === documentToSave) {
           setSaveState('saved')
         }
 
