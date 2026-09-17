@@ -283,7 +283,7 @@ export const dictionaryEn: Dictionary = {
     engine: 'Render engine',
     engineFfmpeg: 'ffmpeg (fast)',
     engineRemotion: 'Remotion (matches preview)',
-    engineForced: 'Transitions, Text and effects need Remotion — ffmpeg cannot draw them.',
+    engineForced: 'Transitions, Text and Effects need Remotion — ffmpeg cannot draw them.',
     engineHint:
       'ffmpeg is ~6.7× faster. Remotion shares the preview composition, so the export cannot drift.',
     previewModeWarning:

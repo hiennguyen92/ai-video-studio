@@ -283,7 +283,7 @@ export const dictionaryVi = {
     engine: 'Bộ dựng hình',
     engineFfmpeg: 'ffmpeg (nhanh)',
     engineRemotion: 'Remotion (khớp preview)',
-    engineForced: 'Transition, Text và hiệu ứng phải dựng bằng Remotion — ffmpeg không vẽ được.',
+    engineForced: 'Transition, Text và Effect phải dựng bằng Remotion — ffmpeg không vẽ được.',
     engineHint:
       'ffmpeg nhanh hơn ~6,7×. Remotion dùng chung bản dựng với preview nên bản xuất không lệch.',
     previewModeWarning:
