@@ -36,12 +36,6 @@ import { PreviewGizmoFrameEdgeHandles } from './preview-gizmo-frame-edge-handles
 /** Bốn góc của khung, theo thứ tự trên-trái → dưới-phải. */
 const CORNERS = ['tl', 'tr', 'bl', 'br'] as const
 
-/** Cạnh của tay nắm, khớp với CSS. */
-const HANDLE_PX = 14
-
-/** Chỗ chừa phía trên khung cho tay nắm xoay đang treo ở đó. */
-const ROTATE_GAP_PX = 22
-
 const MIN_SCALE = 0.1
 const MAX_SCALE = 4
 
@@ -329,15 +323,17 @@ export function PreviewTextGizmo({ document }: { document: ProjectDocument }): J
    * luôn cú bấm, không tài nào xoay hay đổi cỡ được nữa.
    *
    * Kẹp lại thì khung ôm đúng phần NHÌN THẤY, và mọi tay nắm luôn bấm tới được.
+   *
+   * Kẹp ĐÚNG mép khung hình, không chừa thêm lề. Chừa lề thì clip phủ kín khung
+   * hình cũng bị vẽ một cái khung thụt vào trong — trông như clip không phủ hết.
+   * Bản thân tay nắm được phép lòi ra ngoài: vùng xem trước có sẵn khoảng đệm
+   * quanh khung hình và lớp phủ không cắt, nên lòi ra vẫn thấy và vẫn bấm được.
    */
   const clampToStage = (value: GizmoBox): GizmoBox => {
-    // Chừa đúng nửa tay nắm: tay nắm đặt tâm ngay trên góc khung, nên khung sát
-    // mép quá thì nửa tay nắm lòi ra ngoài và bấm không tới.
-    const inset = HANDLE_PX / 2
-    const left = Math.max(inset, value.centerXPx - value.widthPx / 2)
-    const top = Math.max(ROTATE_GAP_PX, value.centerYPx - value.heightPx / 2)
-    const right = Math.min(value.stageWidthPx - inset, value.centerXPx + value.widthPx / 2)
-    const bottom = Math.min(value.stageHeightPx - inset, value.centerYPx + value.heightPx / 2)
+    const left = Math.max(0, value.centerXPx - value.widthPx / 2)
+    const top = Math.max(0, value.centerYPx - value.heightPx / 2)
+    const right = Math.min(value.stageWidthPx, value.centerXPx + value.widthPx / 2)
+    const bottom = Math.min(value.stageHeightPx, value.centerYPx + value.heightPx / 2)
     if (right <= left || bottom <= top) return value
     return {
       ...value,

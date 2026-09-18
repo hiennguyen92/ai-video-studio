@@ -75,7 +75,11 @@ export function PreviewPanel(): JSX.Element {
               backgroundColor: settings.backgroundColor
             }}
           >
-            <RemotionPreviewStage document={document} />
+            {/* Lớp cắt riêng cho khung hình. Cắt ở ngay thẻ ngoài thì khung điều
+                khiển — vẽ sát mép khung hình — bị xén mất nửa tay nắm. */}
+            <div className="preview__stage-clip">
+              <RemotionPreviewStage document={document} />
+            </div>
             {/* Sau Player để nằm ĐÈ lên khung hình; đặt trước thì Player phủ mất. */}
             <PreviewTextGizmo document={document} />
           </div>

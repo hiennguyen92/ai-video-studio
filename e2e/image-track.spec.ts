@@ -219,17 +219,18 @@ test('có tay nắm ở CẢ BỐN góc, và tay nắm nào cũng bấm tới đ
   const handles = page.locator('.preview-gizmo__resize')
   await expect(handles).toHaveCount(4)
 
-  // Tay nắm nằm ngoài vùng xem trước là tay nắm không bấm được: đo được là
-  // thanh tiêu đề của app chặn luôn cú bấm.
+  // Tay nắm ĐƯỢC PHÉP lòi ra ngoài khung hình — khung điều khiển bám sát mép để
+  // clip phủ kín trông đúng là phủ kín. Nhưng lòi ra khỏi cả VÙNG xem trước thì
+  // lại không bấm được: đo được là thanh tiêu đề của app chặn luôn cú bấm.
   const inside = await page.evaluate(() => {
-    const stage = document.querySelector('.preview__stage')!.getBoundingClientRect()
+    const area = document.querySelector('.preview__stage-wrap')!.getBoundingClientRect()
     return [...document.querySelectorAll('.preview-gizmo__resize')].every((node) => {
       const r = node.getBoundingClientRect()
       return (
-        r.left >= stage.left - 1 &&
-        r.right <= stage.right + 1 &&
-        r.top >= stage.top - 1 &&
-        r.bottom <= stage.bottom + 1
+        r.left >= area.left - 1 &&
+        r.right <= area.right + 1 &&
+        r.top >= area.top - 1 &&
+        r.bottom <= area.bottom + 1
       )
     })
   })

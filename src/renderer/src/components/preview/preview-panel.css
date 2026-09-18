@@ -19,7 +19,10 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: var(--space-4);
+  /* Rộng hơn một nhịp so với thang đệm chuẩn: khung điều khiển bám sát mép khung
+     hình, nên tay nắm và nút xoay lòi ra ngoài — chỗ lòi ra phải có đất mà nằm,
+     nếu không phần đệm này xén mất. */
+  padding: calc(var(--space-4) + 4px);
   overflow: hidden;
 }
 
@@ -30,11 +33,22 @@
   max-height: 100%;
   width: auto;
   height: auto;
-  overflow: hidden;
+  /* KHÔNG cắt ở đây: khung điều khiển vẽ sát mép khung hình, và tay nắm đặt tâm
+     ngay trên mép thì nửa tay nắm nằm ngoài. Cắt ở đây là xén mất nửa đó. Phần
+     khung hình được cắt bởi `.preview__stage-clip` bên trong. */
+  overflow: visible;
   border-radius: var(--radius-sm);
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
   /* Mốc để phụ đề quy cỡ chữ theo chiều cao khung, không theo chiều cao cửa sổ. */
   container-type: size;
+}
+
+/* Chỉ khung hình bị cắt theo bo góc; khung điều khiển nằm ngoài lớp này. */
+.preview__stage-clip {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: inherit;
 }
 
 /* Giữ tỉ lệ khung: khi panel thấp thì chiều cao quyết định, khi hẹp thì chiều rộng. */
@@ -90,59 +104,93 @@
   Trước đây khung có `padding: 4px; margin: -5px` cho viền khỏi đè lên chữ. Với
   tay nắm đặt ngay trên bốn góc thì mẹo đó đẩy chúng ra ngoài vùng xem trước —
   đo được: tay nắm trên-trái nằm cao hơn mép khung 9px và bấm không tới.
+
+  Viền một nét liền mảnh, kèm một nét tối chồng ngoài: nền video sáng thì nét
+  xanh một mình chìm mất, còn nét đứt trông rối khi khung ôm sát mép khung hình.
 */
 .preview-gizmo {
+  /* Cỡ phần NHÌN THẤY của tay nắm; vùng bấm to hơn, đặt riêng bên dưới. */
+  --gizmo-dot: 8px;
+  /* Vùng bấm. Giữ ≤ 16px: tay nắm đặt tâm trên mép nên nửa vùng bấm lòi ra
+     ngoài khung hình, và chỗ lòi ra phải nằm gọn trong phần đệm của panel. */
+  --gizmo-hit: 16px;
+
   position: absolute;
   pointer-events: auto;
   cursor: move;
-  border: 1px dashed var(--accent);
+  border: 1px solid var(--accent);
+  outline: 1px solid rgba(0, 0, 0, 0.35);
   box-sizing: border-box;
 }
 
 .preview-gizmo--dragging {
-  border-style: solid;
-  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
 }
 
 /*
-  Tay nắm xoay nằm TRONG khung, góc trên-trái.
-  
-  Treo phía trên khung thì với clip phủ kín khung hình nó luôn rơi ra ngoài vùng
-  xem trước và không bao giờ bấm tới được — đo được: thanh tiêu đề của app chặn
-  luôn cú bấm. Nằm trong khung thì hễ khung còn thấy là tay nắm còn bấm được.
-*/
-/*
-  Tay nắm xoay treo ngay TRÊN mép khung.
+  Tay nắm xoay treo ngay TRÊN mép khung, nối xuống khung bằng một nét mảnh.
   
   Đặt nó trong khung thì với khối chữ một dòng, nó phủ luôn phần giữa và cú bấm
   để KÉO lại trúng nút xoay — đo được: kéo giữa khối chữ ra một bước hoàn tác
-  mang nhãn "Xoay chữ". Phần kẹp khung chừa sẵn chỗ phía trên cho nó.
+  mang nhãn "Xoay chữ".
 */
 .preview-gizmo__rotate {
   position: absolute;
   left: 50%;
-  top: -20px;
-  width: 14px;
-  height: 14px;
-  margin-left: -7px;
+  top: 0;
+  width: var(--gizmo-hit);
+  height: var(--gizmo-hit);
+  /* Tâm vùng bấm nằm cách mép trên 12px — vừa trong phần đệm của panel. */
+  transform: translate(-50%, calc(-50% - 12px));
+  cursor: grab;
+}
+
+/* Nét nối từ mép khung lên tay nắm: không có nó, cái chấm trông như rời ra. */
+.preview-gizmo__rotate::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 1px;
+  height: 12px;
+  transform: translateX(-50%);
+  background: var(--accent);
+}
+
+.preview-gizmo__rotate::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 10px;
+  height: 10px;
+  transform: translate(-50%, -50%);
   border-radius: 50%;
   background: var(--accent);
-  border: 2px solid #fff;
+  border: 1.5px solid #fff;
   box-sizing: border-box;
-  cursor: grab;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
+  transition: transform 90ms ease;
+}
+
+.preview-gizmo__rotate:hover::after {
+  transform: translate(-50%, -50%) scale(1.25);
 }
 
 /* Số đọc trong lúc kéo: không có nó thì không biết mình đang đặt chữ ở đâu. */
 .preview-gizmo__readout {
   position: absolute;
   left: 50%;
-  bottom: 4px;
+  bottom: 6px;
   transform: translateX(-50%);
-  padding: 1px 6px;
-  border-radius: 4px;
+  padding: 2px 7px;
+  border-radius: 999px;
   background: var(--accent);
   color: #fff;
+  font-family: var(--font-mono);
   font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
   white-space: nowrap;
 }
 
@@ -153,38 +201,59 @@
   đo trên ảnh chụp: nó chỉ là một chấm 12px giữa nền ảnh. Nền trắng viền accent
   thì nổi lên trên mọi nền, và đặt tâm ngay trên góc thì đúng chỗ tay người dùng
   với tới.
+
+  Phần NHÌN THẤY nhỏ (8px) cho khung gọn mắt, còn VÙNG BẤM vẫn 16px — tách hai
+  thứ này ra thì không phải đánh đổi giữa đẹp và bấm trúng.
 */
 .preview-gizmo__resize {
   position: absolute;
-  width: 14px;
-  height: 14px;
-  border-radius: 3px;
+  width: var(--gizmo-hit);
+  height: var(--gizmo-hit);
+  /* Tâm vùng bấm đặt đúng trên góc khung, bất kể vùng bấm to nhỏ thế nào. */
+  transform: translate(-50%, -50%);
+}
+
+.preview-gizmo__resize::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: var(--gizmo-dot);
+  height: var(--gizmo-dot);
+  transform: translate(-50%, -50%);
+  border-radius: 2px;
   background: #fff;
-  border: 2px solid var(--accent);
+  border: 1px solid var(--accent);
   box-sizing: border-box;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
+  transition: transform 90ms ease;
+}
+
+.preview-gizmo__resize:hover::after {
+  transform: translate(-50%, -50%) scale(1.3);
 }
 
 .preview-gizmo__resize--tl {
-  left: -7px;
-  top: -7px;
+  left: 0;
+  top: 0;
   cursor: nwse-resize;
 }
 
 .preview-gizmo__resize--tr {
-  right: -7px;
-  top: -7px;
+  left: 100%;
+  top: 0;
   cursor: nesw-resize;
 }
 
 .preview-gizmo__resize--bl {
-  left: -7px;
-  bottom: -7px;
+  left: 0;
+  top: 100%;
   cursor: nesw-resize;
 }
 
 .preview-gizmo__resize--br {
-  right: -7px;
-  bottom: -7px;
+  left: 100%;
+  top: 100%;
   cursor: nwse-resize;
 }
 
@@ -194,44 +263,67 @@
 */
 .preview-gizmo__edge {
   position: absolute;
+  width: var(--gizmo-hit);
+  height: var(--gizmo-hit);
+  transform: translate(-50%, -50%);
+}
+
+.preview-gizmo__edge::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
   background: #fff;
-  border: 2px solid var(--accent);
-  border-radius: 4px;
+  border: 1px solid var(--accent);
+  border-radius: 999px;
   box-sizing: border-box;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
+  transition: transform 90ms ease;
+}
+
+.preview-gizmo__edge:hover::after {
+  transform: translate(-50%, -50%) scale(1.2);
 }
 
 .preview-gizmo__edge--left,
 .preview-gizmo__edge--right {
   top: 50%;
-  width: 8px;
-  height: 22px;
-  margin-top: -11px;
   cursor: ew-resize;
 }
 
+.preview-gizmo__edge--left::after,
+.preview-gizmo__edge--right::after {
+  width: 5px;
+  height: 18px;
+}
+
 .preview-gizmo__edge--left {
-  left: -4px;
+  left: 0;
 }
 
 .preview-gizmo__edge--right {
-  right: -4px;
+  left: 100%;
 }
 
 .preview-gizmo__edge--top,
 .preview-gizmo__edge--bottom {
   left: 50%;
-  width: 22px;
-  height: 8px;
-  margin-left: -11px;
   cursor: ns-resize;
 }
 
+.preview-gizmo__edge--top::after,
+.preview-gizmo__edge--bottom::after {
+  width: 18px;
+  height: 5px;
+}
+
 .preview-gizmo__edge--top {
-  top: -4px;
+  top: 0;
 }
 
 .preview-gizmo__edge--bottom {
-  bottom: -4px;
+  top: 100%;
 }
 
 /* Khung xem trước nhỏ khi lướt chuột trên timeline: góc phải dưới VÙNG preview (không
