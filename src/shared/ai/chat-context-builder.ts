@@ -1,4 +1,11 @@
 import { CLIP_EFFECTS } from '../domain/clip-effect-catalog'
+import { parseEffectPath } from '../domain/keyframe-property-catalog'
+import type { KeyframeTracks } from '../domain/keyframe-types'
+import {
+  CLIP_KEYFRAME_PROPERTIES,
+  TEXT_KEYFRAME_PROPERTIES,
+  keyframeSpanLabel
+} from './chat-tool-keyframes'
 import type { ClipEffect, EffectParamSpec } from '../domain/clip-effect-types'
 import type { ProjectDocument } from '../domain/project-document-types'
 import { projectDurationUs } from '../domain/project-document-types'
@@ -156,7 +163,7 @@ export function buildProjectContext(input: ChatContextInput): string {
         }`
       : ''
     lines.push(
-      `- id=${overlay.id} ${seconds(overlay.startUs)}s–${seconds(overlay.endUs)}s "${oneLine(overlay.text)}"${frame}`
+      `- id=${overlay.id} ${seconds(overlay.startUs)}s–${seconds(overlay.endUs)}s "${oneLine(overlay.text)}"${frame}${describeKeyframes(overlay.keyframes)}`
     )
   }
 
@@ -298,7 +305,39 @@ function describeClipState(clip: Clip): string {
   if (clip.look) parts.push(`filter=${clip.look.id}@${clip.look.intensity}`)
   if (clip.motion) parts.push(`zoom=${clip.motion.kind}@${clip.motion.intensity}`)
   if (clip.effects?.length) parts.push(`effects=[${clip.effects.map(describeEffect).join('; ')}]`)
-  return parts.map((part) => ` ${part}`).join('')
+  return parts.map((part) => ` ${part}`).join('') + describeKeyframes(clip.keyframes)
+}
+
+/**
+ * Keyframe của một chủ thể, in thật gọn.
+ *
+ * In từng giá trị sẽ làm phần tổng quan phình đúng thứ mà chỗ này đang tránh.
+ * Agent cần biết CÓ GÌ, BAO NHIÊU và TRẢI TỪ ĐÂU TỚI ĐÂU để quyết định đặt thêm
+ * hay sửa cái đang có — ba thứ đó đủ, phần còn lại nó hỏi bằng cách nhìn hình.
+ *
+ * Tên thuộc tính in theo cách CÔNG CỤ gọi (`opacity`), không theo đường dẫn nội
+ * bộ (`transform.opacity`): agent đọc được gì thì phải gửi lại được đúng thứ đó.
+ */
+function describeKeyframes(keyframes: KeyframeTracks | undefined): string {
+  if (!keyframes) return ''
+  const parts = Object.keys(keyframes)
+    .filter((path) => keyframes[path].length > 0)
+    .map((path) => `${toolPropertyName(path)}:${keyframeSpanLabel(keyframes[path])}`)
+  return parts.length ? ` keyframes=[${parts.join('; ')}]` : ''
+}
+
+/** Đường dẫn nội bộ → tên mà công cụ `set_keyframe` nhận. */
+function toolPropertyName(path: string): string {
+  const effect = parseEffectPath(path)
+  if (effect) {
+    return effect.paramKey
+      ? `${effect.effectId}.${effect.paramKey}`
+      : `${effect.effectId}.intensity`
+  }
+  const clipEntry = Object.entries(CLIP_KEYFRAME_PROPERTIES).find(([, value]) => value === path)
+  if (clipEntry) return clipEntry[0]
+  const textEntry = Object.entries(TEXT_KEYFRAME_PROPERTIES).find(([, value]) => value === path)
+  return textEntry ? textEntry[0] : path
 }
 
 function describeEffect(effect: ClipEffect): string {

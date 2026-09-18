@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { KEYFRAME_TOOL_PROPERTIES } from './chat-tool-keyframes'
 import { MAX_TEXT_ROTATION_DEG } from '../domain/text-placement'
 import { MAX_TEXT_OUTLINE_WIDTH_PX, SUBTITLE_STYLE_PRESETS } from '../domain/subtitle-types'
 
@@ -31,6 +32,26 @@ const optionalClipId = z.string().min(1).max(120).optional()
 const hexColor = z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Màu phải có dạng #RRGGBB')
 
 export const chatToolSchemas = {
+  set_keyframe: z.object({
+    clipId: optionalClipId,
+    overlayId: z.string().min(1).max(120).optional(),
+    property: z.enum(KEYFRAME_TOOL_PROPERTIES),
+    effectId: z.string().min(1).max(80).optional(),
+    paramKey: z.string().min(1).max(40).optional(),
+    /** Đếm TỪ ĐẦU clip hoặc khối chữ, không phải giờ trên timeline. */
+    atSeconds: seconds,
+    value: z.number().finite(),
+    easing: z.enum(['linear', 'hold', 'ease-in', 'ease-out', 'ease-in-out']).optional()
+  }),
+
+  remove_keyframe: z.object({
+    clipId: optionalClipId,
+    overlayId: z.string().min(1).max(120).optional(),
+    property: z.enum(KEYFRAME_TOOL_PROPERTIES),
+    effectId: z.string().min(1).max(80).optional(),
+    paramKey: z.string().min(1).max(40).optional(),
+    atSeconds: seconds
+  }),
   split_clip: z.object({
     clipId: optionalClipId,
     atSeconds: seconds
@@ -588,6 +609,10 @@ export function isChatToolName(value: string): value is ChatToolName {
  * người dùng gõ tiếng Việt. Phần hiện cho người dùng luôn là tiếng Việt.
  */
 export const chatToolDescriptions: Record<ChatToolName, string> = {
+  set_keyframe:
+    'Make a property CHANGE OVER TIME instead of holding one value. Each call sets one keyframe; two keyframes at different times make the value travel between them. property is opacity, scale, x, y or rotation for a clip, effect_intensity or effect_param for an effect on it (pass effectId, and paramKey for effect_param), or text_x, text_y, font_size or text_rotation for a text overlay (pass overlayId). atSeconds counts FROM THE START of that clip or text, not from the start of the timeline. easing shapes the run up to the NEXT keyframe: "linear" moves evenly, "hold" freezes the value and then jumps at the next keyframe — use hold to switch something on or off cleanly, such as covering a region only while it is needed — and the ease options start or end gently. Setting a keyframe where one already exists replaces it.',
+  remove_keyframe:
+    'Remove one keyframe from a property. Addressed the same way as set_keyframe, and atSeconds again counts from the start of the clip or text. Removing the last keyframe of a property hands it back to the fixed value it had before.',
   split_clip: 'Split a clip in two at a time position, in seconds on the timeline.',
   trim_clip: 'Move one edge of a clip to a new timeline position, in seconds.',
   ripple_trim_clip:
@@ -690,6 +715,10 @@ export const chatToolDescriptions: Record<ChatToolName, string> = {
 
 /** Mô tả tham số cho mô hình — dựng thủ công để không phải kéo thêm thư viện. */
 export const chatToolParameterHints: Record<ChatToolName, string> = {
+  set_keyframe:
+    "{ clipId?: string, overlayId?: string, property: 'opacity' | 'scale' | 'x' | 'y' | 'rotation' | 'effect_intensity' | 'effect_param' | 'text_x' | 'text_y' | 'font_size' | 'text_rotation', effectId?: string, paramKey?: string, atSeconds: number /* from the start of the clip or text, NOT the timeline */, value: number, easing?: 'linear' | 'hold' | 'ease-in' | 'ease-out' | 'ease-in-out' }",
+  remove_keyframe:
+    '{ clipId?: string, overlayId?: string, property: same list as set_keyframe, effectId?: string, paramKey?: string, atSeconds: number /* from the start of the clip or text, NOT the timeline */ }',
   split_clip: '{ clipId?: string, atSeconds: number }',
   trim_clip: "{ clipId?: string, edge: 'start' | 'end', toSeconds: number }",
   ripple_trim_clip: "{ clipId?: string, edge: 'start' | 'end', toSeconds: number }",

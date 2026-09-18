@@ -43,6 +43,7 @@ import {
 import { guessDuckingTracks, planAutoDucking } from '../domain/auto-ducking-planner'
 import { roundHalfUp } from '../domain/time-units'
 import { CLIP_LOOKS, findClipLook } from '../domain/clip-look-catalog'
+import { resolveKeyframeTool } from './chat-tool-keyframes'
 import { chatToolSchemas, isChatToolName, type ChatToolName } from './chat-tool-catalog'
 import {
   planAddClipEffect,
@@ -197,6 +198,46 @@ function planOne(context: ChatEditContext, tool: ChatToolName, args: unknown): P
   const { document } = context
 
   switch (tool) {
+    case 'set_keyframe': {
+      const input = chatToolSchemas.set_keyframe.parse(args)
+      const resolved = resolveKeyframeTool(document, input, (clipId) =>
+        resolveClipId(context, clipId)
+      )
+      return {
+        tool,
+        description: `Đặt keyframe ${resolved.label} tại ${formatSeconds(resolved.atUs)} trong clip`,
+        commands: [
+          {
+            type: 'keyframe/set',
+            target: resolved.target,
+            path: resolved.path,
+            atUs: resolved.atUs,
+            value: input.value,
+            easing: input.easing
+          }
+        ]
+      }
+    }
+
+    case 'remove_keyframe': {
+      const input = chatToolSchemas.remove_keyframe.parse(args)
+      const resolved = resolveKeyframeTool(document, input, (clipId) =>
+        resolveClipId(context, clipId)
+      )
+      return {
+        tool,
+        description: `Xoá keyframe ${resolved.label} tại ${formatSeconds(resolved.atUs)}`,
+        commands: [
+          {
+            type: 'keyframe/remove',
+            target: resolved.target,
+            path: resolved.path,
+            atUs: resolved.atUs
+          }
+        ]
+      }
+    }
+
     case 'split_clip': {
       const input = chatToolSchemas.split_clip.parse(args)
       const clipId = resolveClipId(context, input.clipId)
