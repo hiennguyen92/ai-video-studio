@@ -37,6 +37,7 @@ import {
 import { wrapSubtitleText } from '../shared/domain/subtitle-types'
 import { textOverlayLines } from '../shared/domain/text-overlay-types'
 import { transformValuesAt } from '../shared/domain/keyframe-transform-at'
+import { effectsAtFrame } from '../shared/domain/keyframe-effects-at'
 import {
   alignmentToFlex,
   textTransformOrigin,
@@ -163,7 +164,20 @@ function VideoClip({
 
   // Chuyển động trong clip đi SAU biến đổi tĩnh: nó là chuyển động của khung hình
   // đã đặt đúng chỗ, không phải một cách đặt chỗ khác.
-  const motion = motionTransformCss(motionTransformAt(clip.motion, frame, clip.durationInFrames))
+  //
+  // Tính theo MÉP CLIP, không theo chỗ Sequence bắt đầu. Clip có chuyển cảnh vào
+  // thì Sequence chạy sớm hơn mép, nên đưa thẳng `frame` vào là chuyển động khởi
+  // động sớm và kết thúc sớm đúng bằng độ dài chuyển cảnh — nửa giây ở cấu hình
+  // mặc định. Chính chú thích của `motionTransformAt` cũng nói "0 ở đầu clip":
+  // đây là chỗ làm cho lời đó thành thật. Phần tiến độ được kẹp hai đầu, nên
+  // trong lúc chuyển cảnh clip đứng ở giá trị đầu của chuyển động.
+  const motion = motionTransformCss(
+    motionTransformAt(
+      clip.motion,
+      frame - clip.leadInFrames,
+      clip.durationInFrames - clip.leadInFrames
+    )
+  )
   const offset = clipOffsetPx(transform, frameSize)
   // Ảnh vẽ đúng bằng chỗ nó chiếm, không căng ra cả khung: khung điều khiển trên
   // bản xem trước đo theo thẻ này.
@@ -206,7 +220,9 @@ function VideoClip({
         // Id bộ lọc phải khác giữa hai Player trên cùng trang: `url(#id)` trỏ tới phần
         // tử ĐẦU TIÊN mang id đó, và bộ lọc của khung thu nhỏ tính theo cỡ khác.
         clipKey={markers ? clip.key : `thumb-${clip.key}`}
-        effects={clip.effects}
+        // Thông số effect TẠI khung này. Không effect nào chạy keyframe thì nhận
+        // lại đúng mảng cũ, nên id bộ lọc giữ nguyên và không có gì dựng lại.
+        effects={effectsAtFrame(clip.effects, clip.keyframes, frame)}
         frame={frame}
         fps={fps}
         width={fitted.width}

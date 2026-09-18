@@ -103,11 +103,17 @@ export function resolveClipProperty(clip: Clip, path: string): ResolvedProperty 
   const effect = clip.effects?.find((item) => item.id === effectPath.effectId)
   if (!effect) return null
 
+  const definition = findClipEffect(effect.kind)
+
   if (effectPath.paramKey === undefined) {
+    // Mặt nạ và tách nền không có thanh cường độ (`usesIntensity: false`), nên
+    // cho đặt keyframe cường độ ở đó là bày ra một đường chuyển động không tác
+    // động tới cái gì — cùng lý do giao diện không vẽ thanh trượt cho chúng.
+    if (!definition?.usesIntensity) return null
+    // Khớp `clampEffectIntensity` trong clip-effect-types.ts.
     return { min: 0, max: 1, staticValue: effect.intensity }
   }
 
-  const definition = findClipEffect(effect.kind)
   const spec = definition?.params.find((item) => item.key === effectPath.paramKey)
   // Chỉ thông số kiểu SỐ mới nội suy được. Màu và ô chọn không có "giá trị ở
   // giữa" nào có nghĩa, nên chúng đứng ngoài hệ này thay vì được đỡ nửa vời.

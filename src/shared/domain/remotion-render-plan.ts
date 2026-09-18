@@ -83,6 +83,16 @@ export interface RenderPlanVideoClip {
    * dưới để biết vì sao phải cộng.
    */
   keyframes?: ResolvedKeyframeTracks
+  /**
+   * Số khung mà `<Sequence>` bắt đầu SỚM hơn mép clip, để phủ lên clip trước.
+   *
+   * Nói cách khác: `useCurrentFrame()` bằng 0 ở đây, còn mép clip — cái người
+   * dùng nhìn thấy trên timeline — nằm ở khung `leadInFrames`. Mọi thứ tính
+   * theo "vị trí trong clip" đều phải trừ số này ra.
+   *
+   * Riêng `keyframes` ở trên thì KHÔNG cần trừ: mốc của chúng đã cộng sẵn.
+   */
+  leadInFrames: number
   /** Chuyển động trong clip; lớp vẽ tự tính theo khung hình hiện tại. */
   motion?: ClipMotion
   colorGrade?: ClipColorGrade
@@ -398,6 +408,7 @@ export function buildRenderPlan(document: ProjectDocument): RenderPlan {
           // thì mọi chuyển động chạy sớm đúng nửa giây ở cấu hình mặc định —
           // thấy rõ nhưng không tài nào đoán ra nguyên nhân.
           keyframes: resolveKeyframeTracks(clip.keyframes, fps, transitionFrames),
+          leadInFrames: transitionFrames,
           motion: clip.motion,
           colorGrade: clip.colorGrade,
           look:

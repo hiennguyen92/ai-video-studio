@@ -76,6 +76,17 @@ describe('đưa keyframe vào kế hoạch dựng hình', () => {
     expect(plan.video[0].keyframes?.['transform.opacity'][0].f).toBe(45)
   })
 
+  it('kế hoạch mang theo số khung dôi ra, để chuyển động dựng sẵn cũng tính từ mép clip', () => {
+    // `keyframes` đã cộng sẵn phần dôi, nhưng `motion` thì lớp vẽ tự tính mỗi
+    // khung nên nó cần con số này. Trước đây chuyển động của clip có chuyển cảnh
+    // khởi động sớm nửa giây — đúng lỗi mà bù lead-in sinh ra để tránh.
+    const withTransition = buildRenderPlan(
+      project({ transitionIn: { kind: 'fade', durationUs: 500_000 } })
+    )
+    expect(withTransition.video[0].leadInFrames).toBe(15)
+    expect(buildRenderPlan(project({})).video[0].leadInFrames).toBe(0)
+  })
+
   it('chuyển cảnh RA không đẩy mốc, vì Sequence không bắt đầu sớm hơn', () => {
     const plan = buildRenderPlan(
       project({
