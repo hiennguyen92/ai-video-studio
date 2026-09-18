@@ -11,6 +11,7 @@ import {
   type ClipTransform,
   type TransitionKind
 } from './timeline-track-types'
+import { hasAnyKeyframe } from './keyframe-clip-edits'
 import { isNeutralColorGrade, type ClipColorGrade } from './clip-color-grade'
 import type { ClipMotion } from './clip-motion-types'
 import type { SubtitleStyle } from './subtitle-types'
@@ -249,6 +250,9 @@ export function requiresRemotionRenderer(document: ProjectDocument): boolean {
           clip.motion !== undefined ||
           clip.look !== undefined ||
           (clip.effects?.length ?? 0) > 0 ||
+          // Filter graph ffmpeg đọc transform và âm lượng dạng HẰNG SỐ, nên một
+          // clip có keyframe xuất bằng nó sẽ ra file đứng hình mà không báo gì.
+          hasAnyKeyframe(clip) ||
           !isNeutralColorGrade(clip.colorGrade)
       )
   )

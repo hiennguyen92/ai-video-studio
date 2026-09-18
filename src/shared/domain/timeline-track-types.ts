@@ -1,5 +1,6 @@
 import type { ClipColorGrade } from './clip-color-grade'
 import type { ClipEffect } from './clip-effect-types'
+import type { KeyframeTracks } from './keyframe-types'
 import type { ClipMotion } from './clip-motion-types'
 
 /**
@@ -127,6 +128,22 @@ export interface Clip {
   look?: ClipLook
   /** Effect hình (tab Effects), áp SAU look, theo đúng thứ tự trong mảng. */
   effects?: ClipEffect[]
+  /**
+   * Những thuộc tính đang ĐỔI GIÁ TRỊ theo thời gian, tra theo đường dẫn.
+   *
+   * Nằm ngay trên clip chứ không phải một bảng riêng cấp tài liệu: cắt, tách,
+   * nhân bản, xoá clip đều đã bê nguyên object này đi rồi, nên keyframe đi theo
+   * miễn phí và trạng thái "keyframe mồ côi" không biểu diễn được. Để bảng riêng
+   * thì mỗi lệnh xoá clip phải nhớ dọn, và quên một chỗ là file phình dần bằng
+   * dữ liệu không ai đọc.
+   *
+   * Mốc thời gian bên trong tính từ MÉP ĐẦU clip, nên kéo clip đi chỗ khác không
+   * phải sửa con số nào. Xem `keyframe-types.ts`.
+   *
+   * Có keyframe ở một thuộc tính thì giá trị tĩnh tương ứng (`transform.opacity`
+   * chẳng hạn) bị che — nó vẫn được giữ để còn quay về khi gỡ hết keyframe.
+   */
+  keyframes?: KeyframeTracks
   /**
    * Hiệu ứng khi clip này xuất hiện.
    *

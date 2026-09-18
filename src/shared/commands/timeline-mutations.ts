@@ -1,5 +1,6 @@
 import type { Micros } from '../domain/time-units'
 import { clipEndUs, clipSourceSpanUs, type Clip, type Track } from '../domain/timeline-track-types'
+import { shiftKeyframes, splitKeyframes } from '../domain/keyframe-clip-edits'
 
 /**
  * Phép biến đổi thuần trên track/clip, dùng chung cho mọi command.
@@ -22,7 +23,11 @@ function trimClipStart(clip: Clip, toUs: Micros): Clip {
     ...clip,
     startUs: toUs,
     durationUs: clip.durationUs - delta,
-    sourceInUs: clip.sourceInUs + Math.round(delta * clip.speed)
+    sourceInUs: clip.sourceInUs + Math.round(delta * clip.speed),
+    // Mốc keyframe tính từ mép đầu, nên dời mép đầu là dời gốc toạ độ: không trừ
+    // lại thì cả chuyển động trôi đi đúng bằng đoạn vừa cắt. Mốc âm được giữ để
+    // kéo mép trả ra còn khôi phục được.
+    keyframes: shiftKeyframes(clip.keyframes, -delta)
   }
 }
 
@@ -169,11 +174,16 @@ export function trimClipEdgeTo(
 export function splitClipAt(clip: Clip, atUs: Micros, newId: string): [Clip, Clip] | null {
   if (atUs <= clip.startUs || atUs >= clipEndUs(clip)) return null
 
+  // Mỗi nửa nhận một keyframe ngay tại chỗ nối, mang giá trị nội suy tại đó —
+  // nếu không, giá trị nhảy bậc đúng chỗ vừa cắt và chuyển động giật một cái.
+  const cutKeyframes = splitKeyframes(clip.keyframes, atUs - clip.startUs)
+
   const head: Clip = {
     ...clip,
     durationUs: atUs - clip.startUs,
     // Fade-out thuộc về nửa sau.
-    fadeOutUs: 0
+    fadeOutUs: 0,
+    keyframes: cutKeyframes.head
   }
   const tail: Clip = {
     ...clip,
@@ -182,7 +192,8 @@ export function splitClipAt(clip: Clip, atUs: Micros, newId: string): [Clip, Cli
     durationUs: clipEndUs(clip) - atUs,
     sourceInUs: clip.sourceInUs + Math.round((atUs - clip.startUs) * clip.speed),
     // Fade-in thuộc về nửa đầu.
-    fadeInUs: 0
+    fadeInUs: 0,
+    keyframes: cutKeyframes.tail
   }
 
   // Fade không được dài hơn mảnh chứa nó.

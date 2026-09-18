@@ -19,6 +19,22 @@ import {
   trimClipEdgeTo
 } from './timeline-mutations'
 import { rateStretchClip, rippleTrimTrackClips, slipClip } from './timeline-edit-tools'
+import {
+  cloneKeyframes,
+  compactKeyframes,
+  pruneEffectKeyframes,
+  scaleKeyframes
+} from '../domain/keyframe-clip-edits'
+import {
+  normalizeKeyframeTrack,
+  type Keyframe,
+  type KeyframeTracks
+} from '../domain/keyframe-types'
+import {
+  resolveClipProperty,
+  resolveTextProperty,
+  type ResolvedProperty
+} from '../domain/keyframe-property-catalog'
 
 /**
  * Reducer thuần: áp một command lên draft của project document.
@@ -78,6 +94,50 @@ function locateClip(
  */
 function isVisualTrack(track: { kind: string }): boolean {
   return track.kind === 'video' || track.kind === 'image'
+}
+
+/**
+ * Chủ thể mang keyframe, kèm cách tra khoảng giá trị của một đường dẫn.
+ *
+ * Gom hai nhánh (clip / chữ overlay) về một chỗ để ba lệnh keyframe không phải
+ * lặp lại cùng một bộ kiểm tra ba lần — và để lời từ chối luôn cùng một câu chữ
+ * dù người dùng đang đụng vào clip hay đụng vào chữ.
+ */
+function locateKeyframeSubject(
+  doc: ProjectDocument,
+  target: { kind: 'clip'; clipId: string } | { kind: 'text'; overlayId: string },
+  path: string
+):
+  | { ok: true; subject: { keyframes?: KeyframeTracks }; property: ResolvedProperty }
+  | { ok: false; error: string } {
+  if (target.kind === 'clip') {
+    const found = locateClip(doc, target.clipId)
+    if (!found) return { ok: false, error: `Không tìm thấy clip ${target.clipId}` }
+    const track = doc.tracks[found.trackIndex]
+    if (track.locked) return { ok: false, error: `Track "${track.name}" đang bị khoá` }
+    const clip = track.clips[found.clipIndex]
+    const property = resolveClipProperty(snapshot(clip), path)
+    if (!property) return { ok: false, error: `Thuộc tính "${path}" không đặt keyframe được` }
+    return { ok: true, subject: clip, property }
+  }
+
+  const overlay = doc.textOverlays.find((item) => item.id === target.overlayId)
+  if (!overlay) return { ok: false, error: `Không tìm thấy chữ overlay ${target.overlayId}` }
+  const property = resolveTextProperty(snapshot(overlay), path)
+  if (!property) return { ok: false, error: `Thuộc tính "${path}" không đặt keyframe được` }
+  return { ok: true, subject: overlay, property }
+}
+
+/** Ghi lại một đường keyframe đã sửa, dọn luôn khoá rỗng. */
+function writeKeyframeTrack(
+  subject: { keyframes?: KeyframeTracks },
+  path: string,
+  track: Keyframe[]
+): void {
+  const tracks: KeyframeTracks = { ...snapshot(subject.keyframes) }
+  if (track.length > 0) tracks[path] = track
+  else delete tracks[path]
+  subject.keyframes = compactKeyframes(tracks)
 }
 
 export function applyEditorCommand(doc: ProjectDocument, command: EditorCommand): CommandResult {
@@ -278,6 +338,9 @@ export function applyEditorCommand(doc: ProjectDocument, command: EditorCommand)
       const clip = snapshot(track.clips[found.clipIndex])
       const stretched = rateStretchClip(clip, command.edge, command.toUs, MIN_CLIP_DURATION_US)
       if (!stretched) return fail('Tốc độ này làm clip ngắn quá')
+      // Cùng bản chất với đổi tốc độ: thang thời gian của clip co lại hay giãn
+      // ra, nên mốc keyframe phải đi theo.
+      stretched.keyframes = scaleKeyframes(clip.keyframes, clip.durationUs, stretched.durationUs)
       const others = snapshot(track.clips).filter((item) => item.id !== clip.id)
       track.clips = placeClip({ ...track, clips: others }, stretched, () => createId('clip'))
       return OK
@@ -335,7 +398,15 @@ export function applyEditorCommand(doc: ProjectDocument, command: EditorCommand)
       const others = snapshot(track.clips).filter((item) => item.id !== clip.id)
       track.clips = placeClip(
         { ...track, clips: others },
-        { ...clip, speed: command.speed, durationUs: nextDuration },
+        {
+          ...clip,
+          speed: command.speed,
+          durationUs: nextDuration,
+          // Clip phát nhanh gấp đôi thì keyframe đặt "ở cuối clip" phải vẫn nằm
+          // ở cuối. Không co giãn theo là mọi chuyển động dồn về nửa đầu còn
+          // nửa sau đứng hình.
+          keyframes: scaleKeyframes(clip.keyframes, clip.durationUs, nextDuration)
+        },
         () => createId('clip')
       )
       return OK
@@ -379,6 +450,10 @@ export function applyEditorCommand(doc: ProjectDocument, command: EditorCommand)
       clip.effects = command.effects.length
         ? command.effects.map((effect) => ({ ...effect, params: { ...effect.params } }))
         : undefined
+      // Lệnh này thay CẢ chồng effect, nên nó là nguồn keyframe mồ côi duy nhất
+      // trong hệ: gỡ một effect mà không dọn thì đường keyframe của nó nằm lại
+      // mãi, và thêm lại đúng id đó sẽ thấy chuyển động cũ sống dậy.
+      clip.keyframes = pruneEffectKeyframes(snapshot(clip.keyframes), clip.effects)
       return OK
     }
 
@@ -444,7 +519,11 @@ export function applyEditorCommand(doc: ProjectDocument, command: EditorCommand)
         ...clip,
         id: command.newClipId ?? createId('clip'),
         startUs: clipEndUs(clip),
-        linkGroupId: undefined
+        linkGroupId: undefined,
+        // Sao chép SÂU. Spread chỉ chép một tầng, nên bản sao sẽ dùng chung mảng
+        // keyframe với bản gốc — immer che được chuyện đó khi ghi qua draft,
+        // nhưng đây là loại phụ thuộc không nên bắt người đọc sau phải suy ra.
+        keyframes: cloneKeyframes(clip.keyframes)
       }
       track.clips = placeClip({ ...track, clips: snapshot(track.clips) }, copy, () =>
         createId('clip')
@@ -800,6 +879,59 @@ export function applyEditorCommand(doc: ProjectDocument, command: EditorCommand)
       const asset = doc.assets.find((item) => item.id === command.assetId)
       if (!asset) return fail(`Không tìm thấy media ${command.assetId}`)
       asset.tags = command.tags
+      return OK
+    }
+
+    case 'keyframe/set': {
+      const located = locateKeyframeSubject(doc, command.target, command.path)
+      if (!located.ok) return fail(located.error)
+
+      const current = snapshot(located.subject.keyframes)?.[command.path] ?? []
+      // Kẹp ngay lúc GHI, không kẹp lại lúc vẽ: hai đầu mút đã nằm trong khoảng
+      // và mọi hàm easing đều đơn điệu trên [0,1], nên giá trị nội suy không thể
+      // ra ngoài. Kẹp lại mỗi khung là một phép tính thừa nhân với số thuộc tính
+      // nhân với số khung hình.
+      const next = normalizeKeyframeTrack(
+        [...current, { atUs: command.atUs, v: command.value, e: command.easing }],
+        located.property.min,
+        located.property.max
+      )
+      writeKeyframeTrack(located.subject, command.path, next)
+      return OK
+    }
+
+    case 'keyframe/remove': {
+      const located = locateKeyframeSubject(doc, command.target, command.path)
+      if (!located.ok) return fail(located.error)
+
+      const current = snapshot(located.subject.keyframes)?.[command.path] ?? []
+      const next = current.filter((frame) => frame.atUs !== command.atUs)
+      // Không có gì để xoá thì báo hẳn ra: một bước hoàn tác rỗng mang nhãn "Xoá
+      // keyframe" trông như lệnh đã chạy, và người dùng đi tìm thứ không tồn tại.
+      if (next.length === current.length) {
+        return fail(`Không có keyframe nào của "${command.path}" ở mốc này`)
+      }
+      writeKeyframeTrack(located.subject, command.path, next)
+      return OK
+    }
+
+    case 'keyframe/move': {
+      const located = locateKeyframeSubject(doc, command.target, command.path)
+      if (!located.ok) return fail(located.error)
+
+      const current = snapshot(located.subject.keyframes)?.[command.path] ?? []
+      const moving = current.find((frame) => frame.atUs === command.fromAtUs)
+      if (!moving) return fail(`Không có keyframe nào của "${command.path}" ở mốc này`)
+
+      const rest = current.filter((frame) => frame.atUs !== command.fromAtUs)
+      // Đặt cuối mảng để luật "bản sau thắng" của phần chuẩn hoá xử giúp ca kéo
+      // một keyframe đè lên một keyframe khác.
+      const next = normalizeKeyframeTrack(
+        [...rest, { atUs: command.toAtUs, v: moving.v, e: command.easing ?? moving.e }],
+        located.property.min,
+        located.property.max
+      )
+      writeKeyframeTrack(located.subject, command.path, next)
       return OK
     }
 

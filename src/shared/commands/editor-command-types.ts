@@ -33,6 +33,14 @@ export const clipTransformSchema = z.object({
   opacity: z.number().min(0).max(1)
 })
 
+/** Chủ thể mang keyframe: một clip trên timeline, hoặc một khối chữ overlay. */
+export const keyframeTargetSchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('clip'), clipId: z.string() }),
+  z.object({ kind: z.literal('text'), overlayId: z.string() })
+])
+
+export const keyframeEasingSchema = z.enum(['linear', 'hold', 'ease-in', 'ease-out', 'ease-in-out'])
+
 export const frameRateSchema = z.object({
   num: z.number().int().positive(),
   den: z.number().int().positive()
@@ -703,6 +711,48 @@ const setTextOverlayStyle = z.object({
   })
 })
 
+/**
+ * Đặt hoặc ghi đè một keyframe.
+ *
+ * `atUs` là offset TỪ MÉP ĐẦU chủ thể, không phải giờ trên timeline: chỗ gọi
+ * chịu trách nhiệm trừ `clip.startUs`. Để lệnh tự đoán thì cùng một lệnh gửi từ
+ * nút kim cương và gửi từ agent sẽ mang hai nghĩa khác nhau.
+ *
+ * `path` được đối chiếu với danh mục thuộc tính lúc chạy (`keyframe-property-catalog`),
+ * nên đường dẫn bịa ra bị từ chối chứ không lặng lẽ tạo một khoá rác.
+ */
+const setKeyframe = z.object({
+  type: z.literal('keyframe/set'),
+  target: keyframeTargetSchema,
+  path: z.string().min(1).max(120),
+  atUs: z.number().int().min(0),
+  value: z.number(),
+  easing: keyframeEasingSchema.optional()
+})
+
+const removeKeyframe = z.object({
+  type: z.literal('keyframe/remove'),
+  target: keyframeTargetSchema,
+  path: z.string().min(1).max(120),
+  atUs: z.number().int().min(0)
+})
+
+/**
+ * Dời một keyframe sang mốc khác, tiện thể đổi kiểu nội suy của nó.
+ *
+ * Gộp hai việc vào một lệnh vì menu trên chấm keyframe làm cả hai, và một lệnh
+ * riêng chỉ để đổi `easing` sẽ là lệnh thứ tư cho cùng một thao tác của người
+ * dùng.
+ */
+const moveKeyframe = z.object({
+  type: z.literal('keyframe/move'),
+  target: keyframeTargetSchema,
+  path: z.string().min(1).max(120),
+  fromAtUs: z.number().int().min(0),
+  toAtUs: z.number().int().min(0),
+  easing: keyframeEasingSchema.optional()
+})
+
 export const editorCommandSchema = z.discriminatedUnion('type', [
   setProjectSettings,
   renameProject,
@@ -727,6 +777,9 @@ export const editorCommandSchema = z.discriminatedUnion('type', [
   setClipEffects,
   setClipSpeed,
   setClipColorGrade,
+  setKeyframe,
+  removeKeyframe,
+  moveKeyframe,
   addTranscript,
   removeTranscript,
   updateTranscriptSegment,

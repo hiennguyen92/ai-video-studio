@@ -1,5 +1,6 @@
 import type { Micros } from './time-units'
 import { DEFAULT_SUBTITLE_STYLE, wrapSubtitleText, type SubtitleStyle } from './subtitle-types'
+import type { KeyframeTracks } from './keyframe-types'
 
 /**
  * Chữ đè lên hình: hook đầu video, giá, lời kêu gọi hành động.
@@ -62,6 +63,18 @@ export interface TextOverlay {
    * ở đó sẽ là một ô không có tác dụng.
    */
   frame?: TextOverlayFrame
+  /**
+   * Những thuộc tính của khối chữ đang ĐỔI GIÁ TRỊ theo thời gian.
+   *
+   * Cùng lối với `Clip.keyframes`: nằm ngay trên chủ thể, mốc thời gian tính từ
+   * lúc chữ bắt đầu hiện (`startUs`), nên dời khối chữ trên timeline không phải
+   * sửa con số nào. Xem `keyframe-types.ts`.
+   *
+   * Chỉ chữ overlay có, phụ đề thì không: bản nung phụ đề đi qua ASS, mà ASS
+   * không tả được một đường giá trị tuỳ ý theo thời gian — bày ra ở đó sẽ là một
+   * ô chỉnh được trên xem trước rồi biến mất trong file xuất.
+   */
+  keyframes?: KeyframeTracks
 }
 
 /**

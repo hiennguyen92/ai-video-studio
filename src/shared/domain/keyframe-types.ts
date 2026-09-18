@@ -79,14 +79,17 @@ export type ResolvedKeyframeTrack = ResolvedKeyframe[]
  * vào CSS thì clip biến mất mà không có lỗi nào — cùng vai trò với
  * `normalizeEffectParams` trong `clip-effect-types.ts`.
  *
+ * Bỏ trống `min`/`max` khi giá trị đã hợp lệ sẵn — ví dụ lúc tách đôi một đường
+ * đã nằm trong tài liệu.
+ *
  * Trùng `atUs` thì bản SAU thắng: đặt lại keyframe ngay tại đầu phát là thao tác
  * thường xuyên, và người dùng hiểu nó là "ghi đè", không phải "thêm cái thứ hai
  * vào cùng một chỗ".
  */
 export function normalizeKeyframeTrack(
   track: readonly Keyframe[],
-  min: number,
-  max: number
+  min = Number.NEGATIVE_INFINITY,
+  max = Number.POSITIVE_INFINITY
 ): KeyframeTrack {
   const sorted = [...track]
     .filter((frame) => Number.isFinite(frame.atUs) && Number.isFinite(frame.v))
