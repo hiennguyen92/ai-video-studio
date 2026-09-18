@@ -36,6 +36,7 @@ import {
 } from '../shared/domain/clip-transition-style'
 import { wrapSubtitleText } from '../shared/domain/subtitle-types'
 import { textOverlayLines } from '../shared/domain/text-overlay-types'
+import { transformValuesAt } from '../shared/domain/keyframe-transform-at'
 import {
   alignmentToFlex,
   textTransformOrigin,
@@ -156,7 +157,9 @@ function VideoClip({
     useEnterStyle(clip.transition),
     useExitStyle(clip.exitTransition, clip.durationInFrames)
   )
-  const { transform } = clip
+  // Chỗ đặt clip TẠI khung này: keyframe thay chỗ giá trị tĩnh, không thêm một
+  // tầng gộp nào. Clip không có keyframe nhận lại đúng object cũ.
+  const transform = transformValuesAt(clip.keyframes, frame, clip.transform)
 
   // Chuyển động trong clip đi SAU biến đổi tĩnh: nó là chuyển động của khung hình
   // đã đặt đúng chỗ, không phải một cách đặt chỗ khác.

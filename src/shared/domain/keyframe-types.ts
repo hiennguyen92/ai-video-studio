@@ -70,6 +70,9 @@ export interface ResolvedKeyframe {
 
 export type ResolvedKeyframeTrack = ResolvedKeyframe[]
 
+/** Bảng keyframe đã quy về khung hình, tra theo cùng đường dẫn như lúc lưu. */
+export type ResolvedKeyframeTracks = Record<string, ResolvedKeyframeTrack>
+
 /**
  * Đưa một đường keyframe về dạng bất biến: sắp tăng dần, mỗi mốc một keyframe,
  * giá trị nằm trong khoảng hợp lệ.

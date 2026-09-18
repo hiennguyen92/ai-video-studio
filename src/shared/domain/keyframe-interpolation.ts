@@ -2,8 +2,10 @@ import { frameOfMicros, type FrameRate } from './time-units'
 import type {
   Keyframe,
   KeyframeEasing,
+  KeyframeTracks,
   ResolvedKeyframe,
-  ResolvedKeyframeTrack
+  ResolvedKeyframeTrack,
+  ResolvedKeyframeTracks
 } from './keyframe-types'
 
 /**
@@ -135,4 +137,25 @@ export function resolveKeyframeTrack(
     resolved.push(next)
   }
   return resolved
+}
+
+/**
+ * Quy đổi CẢ BẢNG keyframe của một chủ thể sang khung hình.
+ *
+ * Làm một lần lúc dựng kế hoạch, không làm trong vòng vẽ: quy đổi micro giây →
+ * khung là phép nhân chia có làm tròn, chạy lại mỗi khung thì vừa phí vừa mở
+ * đường cho hai lần làm tròn khác nhau ở preview và bản xuất.
+ */
+export function resolveKeyframeTracks(
+  tracks: KeyframeTracks | undefined,
+  fps: FrameRate,
+  leadInFrames = 0
+): ResolvedKeyframeTracks | undefined {
+  if (!tracks) return undefined
+  const result: ResolvedKeyframeTracks = {}
+  for (const path of Object.keys(tracks)) {
+    const resolved = resolveKeyframeTrack(tracks[path], fps, leadInFrames)
+    if (resolved) result[path] = resolved
+  }
+  return Object.keys(result).length > 0 ? result : undefined
 }

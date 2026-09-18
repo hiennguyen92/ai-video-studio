@@ -12,6 +12,8 @@ import {
   type TransitionKind
 } from './timeline-track-types'
 import { hasAnyKeyframe } from './keyframe-clip-edits'
+import { resolveKeyframeTracks } from './keyframe-interpolation'
+import type { ResolvedKeyframeTracks } from './keyframe-types'
 import { isNeutralColorGrade, type ClipColorGrade } from './clip-color-grade'
 import type { ClipMotion } from './clip-motion-types'
 import type { SubtitleStyle } from './subtitle-types'
@@ -73,6 +75,14 @@ export interface RenderPlanVideoClip {
   /** Track càng dưới trong danh sách càng vẽ sau, tức là nằm trên. */
   layerIndex: number
   transform: ClipTransform
+  /**
+   * Những thuộc tính đang chạy keyframe, ĐÃ quy về khung hình.
+   *
+   * Mốc khung ở đây đã cộng sẵn phần dôi ra của chuyển cảnh, nên lớp vẽ đưa
+   * thẳng `useCurrentFrame()` vào mà không phải trừ bớt gì. Xem chỗ dựng bên
+   * dưới để biết vì sao phải cộng.
+   */
+  keyframes?: ResolvedKeyframeTracks
   /** Chuyển động trong clip; lớp vẽ tự tính theo khung hình hiện tại. */
   motion?: ClipMotion
   colorGrade?: ClipColorGrade
@@ -378,6 +388,16 @@ export function buildRenderPlan(document: ProjectDocument): RenderPlan {
           fadeOutFrames: frameOfMicros(clip.fadeOutUs, fps),
           layerIndex,
           transform: clip.transform ?? DEFAULT_CLIP_TRANSFORM,
+          // Cộng `transitionFrames` vào mốc keyframe, và đây là chỗ DUY NHẤT
+          // biết phải cộng.
+          //
+          // `<Sequence>` của clip này bắt đầu ở `fromFrame`, tức SỚM hơn mép clip
+          // đúng bằng độ dài chuyển cảnh vào — clip phải xuất hiện trước để phủ
+          // lên clip phía trước. Nhưng `useCurrentFrame()` đếm từ `fromFrame`,
+          // còn mốc keyframe người dùng đặt thì đếm từ mép clip. Không cộng bù
+          // thì mọi chuyển động chạy sớm đúng nửa giây ở cấu hình mặc định —
+          // thấy rõ nhưng không tài nào đoán ra nguyên nhân.
+          keyframes: resolveKeyframeTracks(clip.keyframes, fps, transitionFrames),
           motion: clip.motion,
           colorGrade: clip.colorGrade,
           look:
