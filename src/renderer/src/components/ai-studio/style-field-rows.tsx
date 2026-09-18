@@ -1,4 +1,6 @@
 import type { JSX } from 'react'
+import { KeyframeDiamondButton } from '../inspector/keyframe-diamond-button'
+import type { KeyframeField } from '../inspector/use-keyframe-field'
 
 /**
  * Hàng ô chỉnh kiểu chữ dùng chung: thanh trượt có số NGAY CÙNG HÀNG (không rơi
@@ -16,7 +18,8 @@ export function StyleSliderRow({
   max,
   step = 1,
   format,
-  onChange
+  onChange,
+  keyframe
 }: {
   label: string
   /** Nhãn cho trình đọc màn hình khi khác nhãn hiện ra (ví dụ kèm số thứ tự). */
@@ -27,9 +30,11 @@ export function StyleSliderRow({
   step?: number
   format(value: number): string
   onChange(value: number): void
+  /** Có thì hàng mọc nút kim cương; thiếu thì hàng giữ nguyên như cũ. */
+  keyframe?: KeyframeField
 }): JSX.Element {
   return (
-    <div className="field-row">
+    <div className={`field-row${keyframe ? ' field-row--keyframable' : ''}`}>
       <span className="field-row__label">{label}</span>
       <div className="inspector__slider">
         <input
@@ -39,10 +44,15 @@ export function StyleSliderRow({
           step={step}
           value={value}
           aria-label={ariaLabel ?? label}
-          onChange={(event) => onChange(Number(event.target.value))}
+          onChange={(event) => {
+            const next = Number(event.target.value)
+            if (keyframe?.animated) keyframe.commit(next)
+            else onChange(next)
+          }}
         />
         <span className="field-row__value inspector__slider-value">{format(value)}</span>
       </div>
+      {keyframe && <KeyframeDiamondButton field={keyframe} value={value} label={label} />}
     </div>
   )
 }

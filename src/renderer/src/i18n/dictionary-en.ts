@@ -87,6 +87,9 @@ export const dictionaryEn: Dictionary = {
     framePaddingY: 'Drag frame top/bottom padding'
   },
   inspector: {
+    keyframeAdd: 'Set a keyframe at the playhead',
+    keyframeRemove: 'Remove the keyframe at the playhead',
+    keyframeOutside: 'Move the playhead inside the clip to set a keyframe',
     tabBasic: 'Basic',
     tabVideo: 'Video',
     tabAudio: 'Audio',

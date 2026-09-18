@@ -54,7 +54,7 @@ export interface Selection {
  */
 export type TimelineTool = 'select' | 'trim' | 'slip' | 'rate-stretch' | 'blade'
 
-interface EditorState {
+export interface EditorState {
   session: ProjectSessionState | null
   selection: Selection
   playheadUs: number

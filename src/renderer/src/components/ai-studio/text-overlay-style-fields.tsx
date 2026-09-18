@@ -5,6 +5,7 @@ import { useT } from '../../i18n/use-translation'
 import { useEditorStore } from '../../state/editor-store'
 import { FontFamilySelect } from './font-family-select'
 import { ColorRow, StyleSliderRow } from './style-field-rows'
+import { useKeyframeField } from '../inspector/use-keyframe-field'
 import { TextOverlayFrameFields } from './text-overlay-frame-fields'
 
 /**
@@ -24,6 +25,11 @@ export function TextOverlayStyleFields({
   const t = useT()
   const run = useEditorStore((state) => state.run)
   const style = overlay.style
+  const fontSizeKeyframe = useKeyframeField(
+    { kind: 'text', overlayId: overlay.id },
+    ['style.fontSizePx'],
+    t.subtitles.fontSize
+  )
   const setStyle = (changes: Partial<TextOverlay['style']>, historyLabel: string): void => {
     run(
       [{ type: 'text/set-style', overlayId: overlay.id, style: { ...style, ...changes } }],
@@ -46,6 +52,7 @@ export function TextOverlayStyleFields({
         max={300}
         format={(value) => `${value}px`}
         onChange={(value) => setStyle({ fontSizePx: value }, 'Đổi cỡ chữ')}
+        keyframe={fontSizeKeyframe}
       />
 
       <p className="field-group__title">{t.textOverlay.backgroundGroup}</p>

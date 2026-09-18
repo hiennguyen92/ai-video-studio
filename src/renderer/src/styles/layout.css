@@ -296,6 +296,57 @@
   padding: 3px var(--space-3);
 }
 
+/*
+  Biến thể có thêm cột cho nút kim cương.
+
+  KHÔNG đụng `.field-row` ở trên: nó dùng ở hàng chục file, đổi lưới chung là
+  đổi bố cục tất cả những chỗ đó cùng lúc để phục vụ một nhúm hàng.
+*/
+.field-row--keyframable {
+  grid-template-columns: 96px 1fr 22px;
+}
+
+/*
+  Ba trạng thái phải phân biệt được bằng mắt: chưa có gì · có keyframe nhưng đầu
+  phát ở chỗ khác · đang đứng đúng trên một keyframe. Bấm ở trạng thái thứ ba là
+  XOÁ, nên nhầm lẫn ở đây là mất dữ liệu.
+*/
+.keyframe-diamond {
+  width: 14px;
+  height: 14px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  /* Hình thoi dựng bằng chính ô vuông xoay 45°, không cần ảnh hay ký tự. */
+  clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
+  transition: background 90ms ease;
+}
+
+.keyframe-diamond--none {
+  background: var(--text-muted);
+  opacity: 0.45;
+}
+
+.keyframe-diamond--off {
+  background: var(--accent);
+  opacity: 0.55;
+}
+
+.keyframe-diamond--on {
+  background: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.keyframe-diamond:hover:not(:disabled) {
+  opacity: 1;
+}
+
+.keyframe-diamond:disabled {
+  cursor: default;
+  opacity: 0.2;
+}
+
 .field-row__label {
   font-size: var(--text-sm);
   color: var(--text-muted);

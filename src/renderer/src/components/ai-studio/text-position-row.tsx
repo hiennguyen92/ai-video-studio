@@ -2,6 +2,8 @@ import type { JSX } from 'react'
 import type { SubtitleStyle } from '../../../../shared/domain/subtitle-types'
 import { useT } from '../../i18n/use-translation'
 import { ToolButton } from '../ui/tool-button'
+import { KeyframeDiamondButton } from '../inspector/keyframe-diamond-button'
+import type { KeyframeField } from '../inspector/use-keyframe-field'
 
 /**
  * Hàng hiện vị trí tự do, kèm nút bỏ ghim.
@@ -15,10 +17,19 @@ import { ToolButton } from '../ui/tool-button'
 
 export function TextPositionRow({
   style,
-  onChange
+  onChange,
+  keyframe
 }: {
   style: SubtitleStyle
   onChange(next: SubtitleStyle): void
+  /**
+   * Nút chốt vị trí hiện tại thành keyframe.
+   *
+   * Nằm ở hàng này chứ không phải một hàng riêng vì nó chỉ có nghĩa khi chữ đã
+   * ghim — chữ chưa ghim thì vị trí do alignment và lề quyết định, và "keyframe
+   * cho một thứ được tính ra" là câu không có nghĩa.
+   */
+  keyframe?: KeyframeField
 }): JSX.Element | null {
   const t = useT()
   if (!style.position) return null
@@ -29,6 +40,13 @@ export function TextPositionRow({
       <span className="field-row__value">
         {Math.round(style.position.xPct * 100)}% · {Math.round(style.position.yPct * 100)}%
       </span>
+      {keyframe && (
+        <KeyframeDiamondButton
+          field={keyframe}
+          value={[style.position.xPct, style.position.yPct]}
+          label={t.subtitles.pinnedPosition}
+        />
+      )}
       <ToolButton
         label={t.subtitles.unpinPosition}
         variant="outline"

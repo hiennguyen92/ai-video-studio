@@ -11,6 +11,7 @@ import { ClipColorControls } from './clip-color-controls'
 import { ClipEffectStackControls } from './clip-effect-stack-controls'
 import { ClipLookControls } from './clip-look-controls'
 import { SliderRow } from './inspector-slider-row'
+import { useKeyframeField } from './use-keyframe-field'
 
 /**
  * Tab Video: những gì đổi HÌNH của clip, theo đúng thứ tự người dùng nghĩ về nó —
@@ -27,6 +28,13 @@ export function ClipVideoSection({
 }): JSX.Element {
   const t = useT()
   const transform = clip.transform ?? DEFAULT_CLIP_TRANSFORM
+  // Một hook cho mỗi thuộc tính. Gọi ở thân component chứ không trong vòng lặp:
+  // số lượng và thứ tự cố định, đúng quy tắc hook của React.
+  const target = { kind: 'clip' as const, clipId: clip.id }
+  const opacityKeyframe = useKeyframeField(target, ['transform.opacity'], t.inspector.opacity)
+  const scaleKeyframe = useKeyframeField(target, ['transform.scale'], t.inspector.scale)
+  const xKeyframe = useKeyframeField(target, ['transform.x'], t.inspector.positionX)
+  const yKeyframe = useKeyframeField(target, ['transform.y'], t.inspector.positionY)
 
   return (
     <>
@@ -53,6 +61,7 @@ export function ClipVideoSection({
         step={0.01}
         format={(value) => `${Math.round(value * 100)}%`}
         onCommit={(value) => onTransform({ ...transform, opacity: value }, t.inspector.opacity)}
+        keyframe={opacityKeyframe}
       />
       <SliderRow
         label={t.inspector.scale}
@@ -62,6 +71,7 @@ export function ClipVideoSection({
         step={0.01}
         format={(value) => `${value.toFixed(2)}×`}
         onCommit={(value) => onTransform({ ...transform, scale: value }, t.inspector.scale)}
+        keyframe={scaleKeyframe}
       />
       <SliderRow
         label={t.inspector.positionX}
@@ -71,6 +81,7 @@ export function ClipVideoSection({
         step={0.005}
         format={(value) => `${Math.round(value * 100)}%`}
         onCommit={(value) => onTransform({ ...transform, x: value }, t.inspector.positionX)}
+        keyframe={xKeyframe}
       />
       <SliderRow
         label={t.inspector.positionY}
@@ -80,6 +91,7 @@ export function ClipVideoSection({
         step={0.005}
         format={(value) => `${Math.round(value * 100)}%`}
         onCommit={(value) => onTransform({ ...transform, y: value }, t.inspector.positionY)}
+        keyframe={yKeyframe}
       />
       <div className="inspector__actions">
         <ToolButton

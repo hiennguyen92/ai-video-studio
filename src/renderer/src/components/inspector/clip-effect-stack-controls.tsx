@@ -7,8 +7,11 @@ import {
   updateClipEffectCommands
 } from '../../../../shared/domain/clip-effect-commands'
 import type { Clip } from '../../../../shared/domain/timeline-track-types'
-import { useLocale } from '../../i18n/use-translation'
+import { useLocale, useT } from '../../i18n/use-translation'
 import { ClipEffectParamField } from './clip-effect-param-field'
+import { KeyframeDiamondButton } from './keyframe-diamond-button'
+import { useKeyframeField } from './use-keyframe-field'
+import { effectIntensityPath } from '../../../../shared/domain/keyframe-property-catalog'
 
 /**
  * Chồng effect của clip đang chọn, theo đúng thứ tự áp (trên cùng áp trước).
@@ -81,7 +84,7 @@ export function ClipEffectStackControls({
             </div>
 
             {definition?.usesIntensity && (
-              <div className="field-row">
+              <div className="field-row field-row--keyframable">
                 <span className="field-row__label">{t.inspector.effectIntensity}</span>
                 <input
                   type="range"
@@ -99,6 +102,7 @@ export function ClipEffectStackControls({
                   }
                 />
                 <span className="field-row__value">{percent}%</span>
+                <EffectIntensityDiamond clipId={clip.id} effectId={effect.id} value={percent} />
               </div>
             )}
 
@@ -108,6 +112,8 @@ export function ClipEffectStackControls({
                 spec={spec}
                 value={effect.params[spec.key]}
                 locale={locale}
+                clipId={clip.id}
+                effectId={effect.id}
                 onChange={(value) =>
                   apply(
                     updateClipEffectCommands(clip, effect.id, { params: { [spec.key]: value } })
@@ -119,5 +125,34 @@ export function ClipEffectStackControls({
         )
       })}
     </>
+  )
+}
+
+/**
+ * Nút kim cương cho thanh cường độ.
+ *
+ * Tách thành component riêng vì chỗ dùng nằm trong một vòng lặp qua các effect:
+ * gọi hook thẳng trong thân vòng lặp là vi phạm quy tắc hook của React, còn một
+ * component thì mỗi effect có phiên bản riêng của nó.
+ */
+function EffectIntensityDiamond({
+  clipId,
+  effectId,
+  value
+}: {
+  clipId: string
+  effectId: string
+  value: number
+}): JSX.Element {
+  const t = useT()
+  const field = useKeyframeField(
+    { kind: 'clip', clipId },
+    [effectIntensityPath(effectId)],
+    t.inspector.effectIntensity
+  )
+  // Thanh hiện theo phần trăm còn tài liệu lưu 0..1 — chuyển ngay ở đây để chỗ
+  // ghi không phải biết chuyện hiển thị.
+  return (
+    <KeyframeDiamondButton field={field} value={value / 100} label={t.inspector.effectIntensity} />
   )
 }

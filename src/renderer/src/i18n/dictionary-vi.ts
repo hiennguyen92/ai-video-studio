@@ -91,6 +91,9 @@ export const dictionaryVi = {
     framePaddingY: 'Kéo đệm dọc khung'
   },
   inspector: {
+    keyframeAdd: 'Chốt keyframe tại đầu phát',
+    keyframeRemove: 'Xoá keyframe ở đầu phát',
+    keyframeOutside: 'Đưa đầu phát vào trong clip để đặt keyframe',
     tabBasic: 'Basic',
     tabVideo: 'Video',
     tabAudio: 'Audio',

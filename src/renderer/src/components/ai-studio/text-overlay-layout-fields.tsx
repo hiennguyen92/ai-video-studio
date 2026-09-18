@@ -5,6 +5,7 @@ import type { TextOverlay } from '../../../../shared/domain/text-overlay-types'
 import { useT } from '../../i18n/use-translation'
 import { useEditorStore } from '../../state/editor-store'
 import { SegmentedRow, StyleSliderRow } from './style-field-rows'
+import { useKeyframeField } from '../inspector/use-keyframe-field'
 import { TextPositionRow } from './text-position-row'
 
 /**
@@ -21,13 +22,26 @@ export function TextOverlayLayoutFields({
   const t = useT()
   const run = useEditorStore((state) => state.run)
   const style = overlay.style
+  const target = { kind: 'text' as const, overlayId: overlay.id }
+  const rotationKeyframe = useKeyframeField(target, ['style.rotationDeg'], t.subtitles.rotation)
+  // Hai trục của vị trí đi chung một nút: với người dùng, "ghim chỗ này" là một
+  // thao tác, không phải hai.
+  const positionKeyframe = useKeyframeField(
+    target,
+    ['style.position.xPct', 'style.position.yPct'],
+    t.subtitles.pinnedPosition
+  )
   const setStyle = (next: TextOverlay['style'], historyLabel: string): void => {
     run([{ type: 'text/set-style', overlayId: overlay.id, style: next }], historyLabel)
   }
 
   return (
     <>
-      <TextPositionRow style={style} onChange={(next) => setStyle(next, 'Bỏ ghim chữ')} />
+      <TextPositionRow
+        style={style}
+        onChange={(next) => setStyle(next, 'Bỏ ghim chữ')}
+        keyframe={positionKeyframe}
+      />
 
       <div className={style.position ? 'style-fields--overridden' : undefined}>
         <SegmentedRow<SubtitleAlignment>
@@ -57,6 +71,7 @@ export function TextOverlayLayoutFields({
         max={MAX_TEXT_ROTATION_DEG}
         format={(value) => `${value}°`}
         onChange={(value) => setStyle({ ...style, rotationDeg: value }, 'Xoay chữ')}
+        keyframe={rotationKeyframe}
       />
     </>
   )
