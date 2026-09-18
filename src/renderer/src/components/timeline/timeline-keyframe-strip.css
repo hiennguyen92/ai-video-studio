@@ -1,0 +1,39 @@
+/*
+  Dải chấm keyframe.
+
+  PHỦ lên đáy clip, không chiếm chiều cao lane: cột đầu track và cột lane là hai
+  cây DOM riêng khớp nhau chỉ nhờ cùng một con số chiều cao, nên thêm hàng ở một
+  bên là phải nhớ thêm ở bên kia. `bottom` khớp với `.timeline-clip` để dải nằm
+  đúng trong lòng clip.
+*/
+.timeline-keyframes {
+  position: absolute;
+  bottom: 3px;
+  height: 12px;
+  /* Trong suốt với chuột ở khoảng giữa các chấm: bấm vào chỗ trống trên dải vẫn
+     phải là bấm vào clip. */
+  pointer-events: none;
+  z-index: 3;
+}
+
+.timeline-keyframe-dot {
+  position: absolute;
+  bottom: 1px;
+  width: 9px;
+  height: 9px;
+  margin-left: -4.5px;
+  background: #fff;
+  border: 1px solid var(--accent);
+  box-sizing: border-box;
+  /* Hình thoi, cùng dáng với nút kim cương ở panel Thuộc tính — cùng một khái
+     niệm thì phải cùng một hình, nếu không người dùng phải học hai lần. */
+  clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
+  pointer-events: auto;
+  cursor: ew-resize;
+}
+
+.timeline-keyframe-dot:hover,
+.timeline-keyframe-dot--dragging {
+  background: var(--accent);
+  border-color: #fff;
+}

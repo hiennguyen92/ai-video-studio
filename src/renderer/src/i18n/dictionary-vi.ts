@@ -205,6 +205,15 @@ export const dictionaryVi = {
     missingLibrary: 'Bản cài này thiếu bộ sound effect. Bản build đóng gói sai.'
   },
   timeline: {
+    keyframeDot: 'Keyframe',
+    keyframeMove: 'Dời keyframe',
+    keyframeRemove: 'Xoá keyframe',
+    keyframeEasing: 'Kiểu chuyển',
+    easingLinear: 'Đều',
+    easingHold: 'Giữ nguyên',
+    easingIn: 'Chậm đầu',
+    easingOut: 'Chậm cuối',
+    easingInOut: 'Chậm hai đầu',
     effectsTag: 'Effect',
     cutTransition: 'Transition: {name}',
     cutTransitionDuration: 'Thời lượng transition',
@@ -286,7 +295,8 @@ export const dictionaryVi = {
     engine: 'Bộ dựng hình',
     engineFfmpeg: 'ffmpeg (nhanh)',
     engineRemotion: 'Remotion (khớp preview)',
-    engineForced: 'Transition, Text và Effect phải dựng bằng Remotion — ffmpeg không vẽ được.',
+    engineForced:
+      'Transition, Text, Effect và chuyển động keyframe phải dựng bằng Remotion — ffmpeg không vẽ được.',
     engineHint:
       'ffmpeg nhanh hơn ~6,7×. Remotion dùng chung bản dựng với preview nên bản xuất không lệch.',
     previewModeWarning:

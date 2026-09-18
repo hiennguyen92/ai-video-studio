@@ -1,4 +1,5 @@
 import {
+  Fragment,
   useCallback,
   useMemo,
   useRef,
@@ -15,6 +16,7 @@ import { TimelineToolbar } from './timeline-toolbar'
 import { useTimelineMediaDrop } from './use-timeline-media-drop'
 import { useCutTransitionDrop } from './use-cut-transition-drop'
 import { TimelineCutMarkers } from './timeline-cut-markers'
+import { TimelineKeyframeStrip } from './timeline-keyframe-strip'
 import { useTimelineTracks } from './use-timeline-tracks'
 import { useTrackReorder } from './use-track-reorder'
 import { useTimelineTextLanes } from './use-timeline-text-lanes'
@@ -347,9 +349,23 @@ export function TimelinePanel(): JSX.Element {
                     `track.clips`, nên thiếu nhánh này thì lane luôn trống.
                   */}
                   {track.kind === 'text' &&
-                    overlaysOnLane(track.id).map((overlay) =>
-                      renderOverlayBlock(overlay, track.id)
-                    )}
+                    overlaysOnLane(track.id).map((overlay) => (
+                      <Fragment key={overlay.id}>
+                        {renderOverlayBlock(overlay, track.id)}
+                        {selection.text?.kind === 'overlay' &&
+                          selection.text.overlayId === overlay.id && (
+                            <TimelineKeyframeStrip
+                              owner={{
+                                target: { kind: 'text', overlayId: overlay.id },
+                                startUs: overlay.startUs,
+                                durationUs: overlay.endUs - overlay.startUs,
+                                keyframes: overlay.keyframes
+                              }}
+                              pixelsPerSecond={pixelsPerSecond}
+                            />
+                          )}
+                      </Fragment>
+                    ))}
 
                   {track.clips.map((clip) => {
                     const isDragging = preview?.clipId === clip.id
@@ -367,18 +383,36 @@ export function TimelinePanel(): JSX.Element {
                     if (isDragging && preview && preview.targetTrackId !== track.id) return null
 
                     return (
-                      <TimelineClip
-                        key={clip.id}
-                        clip={shown}
-                        track={track}
-                        asset={document.assets.find((item) => item.id === clip.assetId)}
-                        pixelsPerSecond={pixelsPerSecond}
-                        selected={selection.clipIds.includes(clip.id)}
-                        dragBadge={isDragging ? preview?.badge : undefined}
-                        onPointerDown={(event, target, mode: ClipDragMode) =>
-                          handleClipPointerDown(event, target, track, mode)
-                        }
-                      />
+                      <Fragment key={clip.id}>
+                        <TimelineClip
+                          clip={shown}
+                          track={track}
+                          asset={document.assets.find((item) => item.id === clip.assetId)}
+                          pixelsPerSecond={pixelsPerSecond}
+                          selected={selection.clipIds.includes(clip.id)}
+                          dragBadge={isDragging ? preview?.badge : undefined}
+                          onPointerDown={(event, target, mode: ClipDragMode) =>
+                            handleClipPointerDown(event, target, track, mode)
+                          }
+                        />
+                        {/*
+                          ANH EM của clip, không phải con: `.timeline-clip` có
+                          `contain: paint` nên mọi thứ vẽ bên trong đều bị cắt
+                          theo khung clip. Và chỉ hiện cho clip ĐANG CHỌN —
+                          hiện cho mọi clip thì timeline thành một rừng chấm.
+                        */}
+                        {selection.clipIds.includes(clip.id) && (
+                          <TimelineKeyframeStrip
+                            owner={{
+                              target: { kind: 'clip', clipId: clip.id },
+                              startUs: shown.startUs,
+                              durationUs: shown.durationUs,
+                              keyframes: clip.keyframes
+                            }}
+                            pixelsPerSecond={pixelsPerSecond}
+                          />
+                        )}
+                      </Fragment>
                     )
                   })}
 

@@ -204,6 +204,15 @@ export const dictionaryEn: Dictionary = {
     missingLibrary: 'This install is missing the sound effects. The build is packaged wrong.'
   },
   timeline: {
+    keyframeDot: 'Keyframe',
+    keyframeMove: 'Move keyframe',
+    keyframeRemove: 'Remove keyframe',
+    keyframeEasing: 'Interpolation',
+    easingLinear: 'Linear',
+    easingHold: 'Hold',
+    easingIn: 'Ease in',
+    easingOut: 'Ease out',
+    easingInOut: 'Ease in and out',
     effectsTag: 'Effect',
     cutTransition: 'Transition: {name}',
     cutTransitionDuration: 'Transition duration',
@@ -286,7 +295,8 @@ export const dictionaryEn: Dictionary = {
     engine: 'Render engine',
     engineFfmpeg: 'ffmpeg (fast)',
     engineRemotion: 'Remotion (matches preview)',
-    engineForced: 'Transitions, Text and Effects need Remotion — ffmpeg cannot draw them.',
+    engineForced:
+      'Transitions, text, effects and keyframe animation must be rendered with Remotion — ffmpeg cannot draw them.',
     engineHint:
       'ffmpeg is ~6.7× faster. Remotion shares the preview composition, so the export cannot drift.',
     previewModeWarning:
