@@ -47,6 +47,12 @@ export function TimelineToolbar({
   const setPixelsPerSecond = useEditorStore((state) => state.setPixelsPerSecond)
   const snapEnabled = useEditorStore((state) => state.snapEnabled)
   const toggleSnap = useEditorStore((state) => state.toggleSnap)
+  // Selector trả BOOLEAN: thanh công cụ không được vẽ lại theo từng thay đổi
+  // của tài liệu khi đang phát.
+  const hasClipboard = useEditorStore((state) => state.keyframeClipboard !== null)
+  const hasSelection = useEditorStore(
+    (state) => state.selection.clipIds.length > 0 || state.selection.text !== undefined
+  )
 
   return (
     <div className="timeline__toolbar">
@@ -67,6 +73,19 @@ export function TimelineToolbar({
         iconOnly
         onClick={onDelete}
         disabled={!canDelete}
+      />
+
+      <div className="top-bar__divider" />
+
+      <ToolButton
+        label={t.timeline.keyframeCopy}
+        onClick={() => useEditorStore.getState().copyKeyframes()}
+        disabled={!hasSelection}
+      />
+      <ToolButton
+        label={t.timeline.keyframePaste}
+        onClick={() => useEditorStore.getState().pasteKeyframes(t.timeline.keyframePaste)}
+        disabled={!hasClipboard || !hasSelection}
       />
 
       <div className="top-bar__divider" />

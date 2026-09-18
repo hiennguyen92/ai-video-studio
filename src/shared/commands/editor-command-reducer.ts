@@ -900,6 +900,35 @@ export function applyEditorCommand(doc: ProjectDocument, command: EditorCommand)
       return OK
     }
 
+    case 'keyframe/set-tracks': {
+      const paths = Object.keys(command.tracks)
+      if (paths.length === 0) return fail('Không có keyframe nào để dán')
+
+      // Kiểm TỪNG đường trước khi ghi bất cứ thứ gì: dán một cụm mà nửa đường
+      // hợp lệ nửa không thì người dùng nhận một clip nửa vời, khó lần ra chỗ
+      // hỏng hơn hẳn so với bị từ chối thẳng.
+      const located = paths.map((path) => ({
+        path,
+        found: locateKeyframeSubject(doc, command.target, path)
+      }))
+      const bad = located.find((item) => !item.found.ok)
+      if (bad && !bad.found.ok) return fail(bad.found.error)
+
+      for (const item of located) {
+        if (!item.found.ok) continue
+        writeKeyframeTrack(
+          item.found.subject,
+          item.path,
+          normalizeKeyframeTrack(
+            command.tracks[item.path],
+            item.found.property.min,
+            item.found.property.max
+          )
+        )
+      }
+      return OK
+    }
+
     case 'keyframe/remove': {
       const located = locateKeyframeSubject(doc, command.target, command.path)
       if (!located.ok) return fail(located.error)

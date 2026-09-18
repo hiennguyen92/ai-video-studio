@@ -730,6 +730,30 @@ const setKeyframe = z.object({
   easing: keyframeEasingSchema.optional()
 })
 
+/**
+ * Thay CẢ đường keyframe của từng khoá được nêu — dùng cho việc dán cụm.
+ *
+ * Không dùng nhiều `keyframe/set` vì cách đó chỉ THÊM: keyframe cũ trên cùng
+ * đường vẫn nằm lại, và kết quả là trộn hai cụm của hai clip khác nhau ra một
+ * thứ không ai đoán được. Cùng lối `clip/set-effects`, vốn cũng thay cả mảng.
+ */
+const setKeyframeTracks = z.object({
+  type: z.literal('keyframe/set-tracks'),
+  target: keyframeTargetSchema,
+  tracks: z.record(
+    z.string().min(1).max(120),
+    z
+      .array(
+        z.object({
+          atUs: z.number().int(),
+          v: z.number(),
+          e: keyframeEasingSchema.optional()
+        })
+      )
+      .max(500)
+  )
+})
+
 const removeKeyframe = z.object({
   type: z.literal('keyframe/remove'),
   target: keyframeTargetSchema,
@@ -778,6 +802,7 @@ export const editorCommandSchema = z.discriminatedUnion('type', [
   setClipSpeed,
   setClipColorGrade,
   setKeyframe,
+  setKeyframeTracks,
   removeKeyframe,
   moveKeyframe,
   addTranscript,

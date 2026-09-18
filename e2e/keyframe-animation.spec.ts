@@ -97,6 +97,24 @@ async function seekInClip(ratio: number): Promise<void> {
   await page.waitForTimeout(400)
 }
 
+async function savedOpacityKeyframesOf(
+  index: number
+): Promise<Array<{ atUs: number; v: number; e?: string }>> {
+  await expect(page.locator('.top-bar__status')).toHaveText('Đã lưu', { timeout: 15_000 })
+  const projectsRoot = join(userDataDir, 'projects')
+  const [projectId] = await readdir(projectsRoot)
+  const document = JSON.parse(
+    await readFile(join(projectsRoot, projectId, 'project.json'), 'utf8')
+  ) as {
+    tracks: Array<{
+      kind: string
+      clips: Array<{ keyframes?: Record<string, Array<{ atUs: number; v: number; e?: string }>> }>
+    }>
+  }
+  const clip = document.tracks.find((track) => track.kind === 'video')!.clips[index]
+  return clip?.keyframes?.['transform.opacity'] ?? []
+}
+
 async function savedOpacityKeyframes(): Promise<Array<{ atUs: number; v: number; e?: string }>> {
   await expect(page.locator('.top-bar__status')).toHaveText('Đã lưu', { timeout: 15_000 })
   const projectsRoot = join(userDataDir, 'projects')
@@ -237,6 +255,31 @@ test('tách clip giữa hai keyframe: dải bám theo clip ĐANG CHỌN', async 
   await page.locator('.timeline-clip').first().click()
   await expect(dots().first()).toBeVisible()
   expect(await dotsInsideClip(0)).toBe(true)
+})
+
+test('chép keyframe ở một clip rồi dán ĐÈ sang clip khác', async () => {
+  // Đây là thứ biến việc che vùng phụ đề trên hàng chục clip từ "đặt tay từng
+  // cái" thành hai cú bấm.
+  const toolbar = page.getByRole('region', { name: 'Timeline' })
+  const source = await savedOpacityKeyframesOf(0)
+  const targetBefore = await savedOpacityKeyframesOf(1)
+  expect(source.length).toBeGreaterThan(0)
+  // Hai nửa sau khi tách mang cụm khác nhau — nhờ vậy phép thử phân biệt được
+  // "đã dán" với "vốn đã giống sẵn".
+  expect(targetBefore).not.toEqual(source)
+
+  await page.locator('.timeline-clip').first().click()
+  await toolbar.getByRole('button', { name: 'Chép keyframe' }).click()
+
+  await page.locator('.timeline-clip').nth(1).click()
+  await toolbar.getByRole('button', { name: 'Dán keyframe' }).click()
+
+  // Dán là THAY cả đường, không phải trộn hai cụm.
+  await expect.poll(async () => await savedOpacityKeyframesOf(1)).toEqual(source)
+
+  // Và một lần hoàn tác trả lại đúng cụm cũ.
+  await page.getByRole('button', { name: /Hoàn tác: Dán keyframe/ }).click()
+  await expect.poll(async () => await savedOpacityKeyframesOf(1)).toEqual(targetBefore)
 })
 
 test('keyframe sống sót qua lưu, đóng dự án và mở lại', async () => {

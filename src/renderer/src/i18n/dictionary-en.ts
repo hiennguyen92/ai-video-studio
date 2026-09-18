@@ -204,6 +204,8 @@ export const dictionaryEn: Dictionary = {
     missingLibrary: 'This install is missing the sound effects. The build is packaged wrong.'
   },
   timeline: {
+    keyframeCopy: 'Copy keyframes',
+    keyframePaste: 'Paste keyframes',
     keyframeDot: 'Keyframe',
     keyframeMove: 'Move keyframe',
     keyframeRemove: 'Remove keyframe',
