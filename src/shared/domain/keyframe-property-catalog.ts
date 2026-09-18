@@ -1,5 +1,6 @@
 import { findClipEffect } from './clip-effect-catalog'
 import { DEFAULT_CLIP_TRANSFORM, type Clip } from './timeline-track-types'
+import { alignmentPosition } from './text-placement'
 import type { TextOverlay } from './text-overlay-types'
 
 /**
@@ -135,12 +136,10 @@ export function resolveTextProperty(overlay: TextOverlay, path: string): Resolve
   if (path === 'style.fontSizePx') return { ...plain, staticValue: style.fontSizePx }
   if (path === 'style.rotationDeg') return { ...plain, staticValue: style.rotationDeg ?? 0 }
 
-  // Chữ chưa ghim vị trí thì `position` vắng mặt, và lấy 0 làm nền sẽ quăng chữ
-  // lên góc trên-trái ngay lần đặt keyframe đầu tiên. Lấy giữa khung làm nền:
-  // đó là chỗ `alignment` mặc định (5) đang đặt chữ, và là chỗ ít sai nhất cho
-  // các alignment khác — lệnh đặt keyframe vị trí luôn kèm giá trị đo từ màn
-  // hình, nên nền này chỉ là lưới an toàn.
-  const position = style.position ?? { xPct: 0.5, yPct: 0.5 }
+  // Chữ chưa ghim vị trí thì `position` vắng mặt. Lấy 0 làm nền sẽ quăng chữ lên
+  // góc trên-trái ngay lần đặt keyframe đầu tiên, nên nền phải là chỗ chữ ĐANG
+  // đứng — suy từ alignment.
+  const position = style.position ?? alignmentPosition(style.alignment)
   return {
     ...plain,
     staticValue: path === 'style.position.xPct' ? position.xPct : position.yPct

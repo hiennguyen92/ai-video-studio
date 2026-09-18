@@ -43,6 +43,27 @@ export function alignmentToFlex(alignment: SubtitleAlignment): {
 }
 
 /**
+ * Vị trí mà khối chữ ĐANG đứng khi nó chưa được ghim, suy từ alignment.
+ *
+ * Dùng làm giá trị nền cho keyframe vị trí. Không có hàm này thì lần đặt keyframe
+ * đầu tiên trên một khối chữ chưa ghim sẽ lấy nền là 0 và quăng chữ lên góc
+ * trên-trái — nhìn đúng như hỏng, ngay giữa thao tác mà người dùng tưởng là vô
+ * hại.
+ *
+ * Chỉ tính theo alignment, KHÔNG trừ lề: lề tính bằng pixel của khung hình còn
+ * hàm này trả tỉ lệ, mà ở đây không biết khung hình rộng bao nhiêu. Sai số đó
+ * nhỏ hơn nhiều so với việc nhảy về góc, và chỉ tồn tại đúng tới lần kéo đầu
+ * tiên — mọi lệnh đặt keyframe vị trí đều kèm toạ độ đo từ màn hình.
+ */
+export function alignmentPosition(alignment: SubtitleAlignment): TextPosition {
+  const { vertical, horizontal } = alignmentToFlex(alignment)
+  return {
+    xPct: horizontal === 'flex-start' ? 0 : horizontal === 'center' ? 0.5 : 1,
+    yPct: vertical === 'flex-start' ? 0 : vertical === 'center' ? 0.5 : 1
+  }
+}
+
+/**
  * `transform-origin` cho khối chữ.
  *
  * Phải khớp điểm mà ASS xoay quanh, và ASS xoay quanh ĐIỂM NEO của alignment chứ

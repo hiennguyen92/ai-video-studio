@@ -149,6 +149,14 @@ export interface RenderPlanTextOverlay {
   durationInFrames: number
   text: string
   style: SubtitleStyle
+  /**
+   * Thuộc tính chữ đang chạy keyframe, đã quy về khung hình.
+   *
+   * KHÔNG có phần bù lead-in như clip: `<Sequence>` của khối chữ bắt đầu đúng
+   * tại `fromFrame = frameOfMicros(startUs)`, không bị trừ đi đoạn chuyển cảnh
+   * nào. Chép cách làm của clip sang đây là đẩy chữ chạy trễ mất nửa giây.
+   */
+  keyframes?: ResolvedKeyframeTracks
   animation: TextAnimation
   /** Đã kẹp theo độ dài chính overlay, lớp vẽ cứ dùng thẳng. */
   animationFrames: number
@@ -520,6 +528,8 @@ export function buildRenderPlan(document: ProjectDocument): RenderPlan {
       fromFrame,
       durationInFrames,
       text: overlay.text,
+      // Lead-in 0: khối chữ không bắt đầu sớm hơn mốc của nó như clip.
+      keyframes: resolveKeyframeTracks(overlay.keyframes, fps, 0),
       style: overlay.style,
       animation: overlay.animation,
       // Hiệu ứng vào dài hơn chính overlay là vô nghĩa; kẹp lại.

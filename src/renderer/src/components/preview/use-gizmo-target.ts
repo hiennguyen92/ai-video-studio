@@ -4,6 +4,7 @@ import { frameBasePaddingPx } from '../../../../remotion/text-overlay-frame-css'
 import type { TextBlockRef } from '../../../../shared/domain/text-block-drag'
 import type { TextPosition } from '../../../../shared/domain/text-placement'
 import { DEFAULT_CLIP_TRANSFORM } from '../../../../shared/domain/timeline-track-types'
+import { textGizmoWriteCommands } from '../../../../shared/commands/text-gizmo-write-commands'
 import { useEditorStore, type Selection } from '../../state/editor-store'
 
 /**
@@ -84,15 +85,17 @@ function textTarget(document: ProjectDocument, block: TextBlockRef): GizmoTarget
       position: overlay.style.position ?? null,
       rotationDeg: overlay.style.rotationDeg ?? 0,
       scale: null,
+      // Thuộc tính đã có keyframe thì cú kéo ghi vào keyframe tại đầu phát, còn
+      // lại vẫn ghi giá trị tĩnh. Đọc đầu phát bằng `getState()` chứ KHÔNG theo
+      // dõi: panel này chứa Player, và theo dõi đầu phát ở đây làm Player tụt
+      // khung — đo được còn ≈24/30 khung/giây, tiếng bị kéo lùi nghe như lặp.
       write: ({ position, rotationDeg }, label) =>
         void run(
-          [
-            {
-              type: 'text/set-style',
-              overlayId: overlay.id,
-              style: { ...overlay.style, position, rotationDeg }
-            }
-          ],
+          textGizmoWriteCommands(
+            overlay,
+            { position, rotationDeg },
+            useEditorStore.getState().playheadUs
+          ),
           label
         )
     }

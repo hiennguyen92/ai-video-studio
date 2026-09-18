@@ -38,6 +38,7 @@ import { wrapSubtitleText } from '../shared/domain/subtitle-types'
 import { textOverlayLines } from '../shared/domain/text-overlay-types'
 import { transformValuesAt } from '../shared/domain/keyframe-transform-at'
 import { effectsAtFrame } from '../shared/domain/keyframe-effects-at'
+import { textStyleAt } from '../shared/domain/keyframe-text-style-at'
 import {
   alignmentToFlex,
   textTransformOrigin,
@@ -472,7 +473,9 @@ function SubtitleCue({ cue, height }: { cue: RenderPlanSubtitleCue; height: numb
 function TextOverlayLayer({ overlay }: { overlay: RenderPlanTextOverlay }): JSX.Element {
   const markers = useCompositionMarkers()
   const frame = useCurrentFrame()
-  const { style } = overlay
+  // Kiểu chữ TẠI khung này. Hiệu ứng vào/ra vẫn nhân và nối chồng lên kết quả
+  // này ở bên dưới, nên chữ trượt bằng keyframe mà vẫn mờ dần vào ở đầu.
+  const style = textStyleAt(overlay.keyframes, frame, overlay.style)
 
   const progress =
     overlay.animationFrames > 0
