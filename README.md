@@ -102,6 +102,12 @@ Phím tắt **không** kích hoạt khi con trỏ đang ở trong ô nhập li�
   xoá, bắt dính (mép clip + playhead + lưới frame), zoom, ẩn/tắt tiếng/solo/khoá track
 - **Xem trước**: phát, tạm dừng, tua, đi từng frame, xếp lớp nhiều clip, trộn tiếng nhiều track,
   timecode, đồng bộ bằng một đồng hồ chủ duy nhất
+- **Keyframe**: cho một thuộc tính đổi giá trị theo thời gian thay vì một giá trị cho cả clip.
+  Phủ transform clip (x, y, phóng, xoay, độ mờ), cường độ + thông số **kiểu số** của effect, và
+  vị trí / cỡ chữ / góc xoay của chữ overlay. Đặt bằng nút kim cương trong panel Thuộc tính,
+  kéo/xoá/đổi kiểu nội suy bằng dải chấm dưới clip, hoặc bằng câu lệnh cho agent. Năm kiểu nội
+  suy: đều, giữ nguyên, chậm đầu, chậm cuối, chậm hai đầu. Keyframe đi theo clip khi cắt mép,
+  tách đôi, đổi tốc độ, nhân bản — và **đi tới file xuất**, đã soi bằng pixel
 - **Hoàn tác/làm lại**: dựa trên patch, một nhóm lệnh chỉ tạo một bước hoàn tác
 - **Xuất**: MP4 (H.264 + AAC), chọn độ phân giải và fps, tăng tốc phần cứng khi máy hỗ trợ,
   tiến trình thật từ ffmpeg, huỷ giữa chừng, nung phụ đề, xuất SRT riêng
@@ -171,6 +177,14 @@ Vì vậy siêu dữ liệu model giờ **đọc từ `/v1/models`**, không vi�
 - **Chưa đóng gói cài đặt.** `electron-builder` đã có cấu hình nhưng chưa dựng bản cài.
   Bản ffmpeg đi kèm hiện tại được build với `--enable-nonfree`, **không phát hành lại được** —
   trước khi phát hành phải thay bằng bản build hợp lệ về giấy phép.
+- **Dự án có keyframe bắt buộc xuất bằng Remotion**, và hộp thoại Xuất tự khoá lựa chọn đó.
+  Filter graph ffmpeg đọc transform dạng hằng số nên nó sẽ cho ra file đứng hình mà không báo
+  gì. Remotion chậm hơn đáng kể — đó là cái giá của việc không rơi mất chuyển động.
+- **Keyframe chưa phủ**: chỉnh màu, âm lượng clip, đệm khung chữ, cường độ filter (LUT). Thông
+  số effect **kiểu màu và kiểu lựa chọn** cũng không animate được — "màu ở giữa hai màu" và
+  "lựa chọn ở giữa hai lựa chọn" là hai bài toán khác hẳn, không phải quên.
+- **Chưa có đường cong bezier tuỳ biến** cho keyframe, và chưa sao chép/dán được cụm keyframe
+  giữa các clip.
 - **Tốc độ clip** lưu được và export xử lý đúng, nhưng bản xem trước chưa co giãn cao độ âm thanh.
 - Clip audio hiện chèn vào track âm thanh trống đầu tiên khi nhấn đúp; kéo thả cho phép chọn track chính xác.
 
@@ -229,15 +243,16 @@ Xem [`docs/system-architecture.md`](docs/system-architecture.md) để biết ch
 | Provider thật | 7 | **Gọi ElevenLabs thật** ở tầng adapter. Chỉ chạy khi có `ELEVENLABS_API_KEY` |
 | Đầu-cuối provider thật | 7 | **Trọn luồng qua giao diện với API thật**: khoá → giọng → sinh audio → clip → cắt → hoàn tác |
 | Máy chủ tự host | 21 | 16 unit + 5 đầu-cuối chạy trên **máy chủ HTTP thật** dựng trong test, trả audio WAV thật |
-| Đầu-cuối | 20 | **Chạy Electron thật đã build**: nhập media, dựng timeline, cắt, hoàn tác, đổi ngôn ngữ, lưu/mở lại, xuất MP4 rồi soi bằng ffprobe, lưu khoá qua keychain thật, tham số đổi theo model, nhạc nền chạy khi không có khoá |
+| Keyframe | 96 + 15 | 96 unit cho nội suy, biến đổi khi cắt/tách, đường vẽ, công cụ agent; 15 đầu-cuối cho nút kim cương và dải chấm trên timeline |
+| Đầu-cuối | 28 spec | **Chạy Electron thật đã build**: nhập media, dựng timeline, cắt, hoàn tác, đổi ngôn ngữ, lưu/mở lại, xuất MP4 rồi soi bằng ffprobe, lưu khoá qua keychain thật, tham số đổi theo model, nhạc nền chạy khi không có khoá |
 
 ```bash
-npm test          # 104 đạt + 7 bỏ qua (nhóm gọi API thật)
-npm run test:e2e  # 25 đạt + 7 bỏ qua (nhóm gọi API thật)
+npm test          # 960 đạt + 21 bỏ qua (nhóm gọi API thật)
+npm run test:e2e  # 228 đạt + 12 bỏ qua (nhóm gọi API thật)
 
 # Chạy đầy đủ kể cả phần gọi provider thật — khoá KHÔNG bao giờ ghi vào repo:
-ELEVENLABS_API_KEY=... npx vitest run          # 111 đạt
-ELEVENLABS_API_KEY=... npx playwright test     # 32 đạt
+ELEVENLABS_API_KEY=... npx vitest run
+ELEVENLABS_API_KEY=... npx playwright test
 ```
 
 Kiểm thử cố tình **không giả lập ffmpeg**: giá trị nằm ở chỗ tham số dòng lệnh có đúng không, mà đó

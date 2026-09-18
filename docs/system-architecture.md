@@ -654,3 +654,136 @@ cũng là **lỗi biên dịch** vì nó được ràng buộc kiểu theo từ 
 dạng chuỗi nên cả hai lỗi đó chỉ lộ ra lúc chạy.
 
 Tiếng Việt luôn là mặc định, không suy ra từ ngôn ngữ hệ điều hành.
+
+## Keyframe: thuộc tính đổi giá trị theo thời gian
+
+Trước đây mọi thứ vẽ ra hình đều là MỘT giá trị cho cả clip. Keyframe cho phép một thuộc tính
+chạy theo thời gian. Bản đầu phủ ba nhóm: transform của clip (x, y, phóng, xoay, độ mờ),
+cường độ và thông số **kiểu số** của effect, và vị trí / cỡ chữ / góc xoay của chữ overlay.
+
+### Dữ liệu nằm ở đâu, và vì sao
+
+Keyframe là trường `keyframes` **ngay trên** `Clip` và `TextOverlay`
+(`src/shared/domain/timeline-track-types.ts`, `text-overlay-types.ts`), tra theo đường dẫn
+thuộc tính dạng chuỗi phẳng:
+
+```
+clip.keyframes = {
+  'transform.opacity':            [{ atUs: 0, v: 0 }, { atUs: 2_000_000, v: 1, e: 'hold' }],
+  'effect.<effectId>.params.hue': [...]
+}
+```
+
+Không phải một bảng riêng ở cấp tài liệu. Lý do: cắt, tách, nhân bản, xoá clip đều đã bê
+nguyên object clip đi rồi, nên keyframe đi theo miễn phí và trạng thái **mồ côi không biểu
+diễn được**. Để bảng riêng thì mỗi lệnh xoá clip phải nhớ dọn, và quên một chỗ là file phình
+dần bằng dữ liệu không ai đọc.
+
+Effect tra theo `effectId` chứ không theo chỉ số mảng: lệnh `clip/set-effects` thay CẢ mảng
+effect và giao diện cho kéo đổi thứ tự, nên theo chỉ số thì keyframe lặng lẽ nhảy sang effect
+khác — hỏng không truy ra được.
+
+**Mốc `atUs` đếm từ mép đầu chủ thể**, không phải giờ tuyệt đối trên timeline. Nhờ vậy kéo clip
+sang chỗ khác tốn 0 dòng mã. Đổi lại, mọi chỗ ghi phải tự trừ `startUs` ra — kể cả công cụ cho
+agent, nơi đây là cái bẫy lớn nhất (xem bên dưới).
+
+### Khung 0 của Sequence KHÔNG phải mép clip
+
+Đây là cạm bẫy đắt nhất của cả tính năng, và nó chỉ lộ ra với clip **có chuyển cảnh vào**:
+
+```
+remotion-render-plan.ts   fromFrame = startFrame − transitionFrames
+project-composition.tsx   <Sequence from={clip.fromFrame}>
+project-composition.tsx   useCurrentFrame()   // = 0 tại fromFrame, tức SỚM hơn mép clip
+```
+
+Clip phải xuất hiện sớm để phủ lên clip phía trước. Đưa thẳng `useCurrentFrame()` vào phép
+đánh giá là cả chuyển động chạy sớm đúng bằng độ dài chuyển cảnh — nửa giây ở cấu hình mặc
+định 30fps. Thấy rõ trên màn hình nhưng gần như không đoán ra nguyên nhân.
+
+Phần bù cộng **một lần duy nhất** lúc dựng kế hoạch (`resolveKeyframeTracks(..., transitionFrames)`),
+nên lớp vẽ đưa thẳng `useCurrentFrame()` vào mà không phải biết gì. Khối chữ overlay thì
+`fromFrame` KHÔNG bị trừ, nên lead-in của nó là 0 — chép cách làm của clip sang đó là đẩy chữ
+chạy trễ.
+
+Chuyển động dựng sẵn (`motionTransformAt`) trước đây chịu cùng độ lệch này; nay đã tính theo
+mép clip qua `RenderPlanVideoClip.leadInFrames`.
+
+### Quy tắc gộp: keyframe THAY số hạng, không thêm tầng
+
+```
+opacity = valueAtFrame(...) × fade × opacityCủaChuyểnCảnh
+```
+
+Giá trị tĩnh bị **che** chứ không bị xoá — gỡ hết keyframe là nó quay lại. Nhờ cách này,
+`combineTransitionStyles` và toàn bộ phần hiệu ứng vào/ra không phải sửa một dòng, và không
+thể đẻ ra nguồn sự thật thứ hai.
+
+### Keyframe đi theo clip khi clip bị sửa
+
+| Thao tác | Tác động lên keyframe | Lý do |
+|---|---|---|
+| Kéo clip sang chỗ khác | không đụng | mốc tương đối |
+| Cắt mép **đầu** | mọi mốc dời theo | gốc toạ độ dời |
+| Cắt mép **cuối** | không đụng | gốc toạ độ không đổi |
+| Trượt nguồn (slip) | không đụng | keyframe neo theo timeline, không theo vật liệu |
+| Đổi tốc độ / kéo giãn nhịp | co giãn theo tỉ lệ độ dài | mốc "ở cuối clip" phải vẫn ở cuối |
+| Tách đôi | mỗi nửa nhận một mốc nội suy ngay chỗ nối | không có nó thì giá trị nhảy bậc đúng chỗ vừa cắt |
+| Thả clip khác đè lên | như cắt mép (dùng lại đúng hai hàm đó) | |
+| Nhân bản | sao chép sâu | |
+| Thay chồng effect | dọn mốc của effect đã gỡ | nguồn mồ côi DUY NHẤT trong cả hệ |
+
+**Mốc rơi ra ngoài `[0, độ dài]` được GIỮ, không xoá.** Cắt mép là thao tác đảo được: kéo mép
+vào rồi kéo trả ra phải thấy chuyển động y như cũ. Xoá lúc cắt thì không khôi phục nổi, và
+lịch sử hoàn tác không cứu được nếu người dùng đã làm mười việc khác ở giữa. Phần đánh giá kẹp
+hai đầu nên mốc ngoài biên vô hại về hình. Ngoại lệ: **kéo chấm** trên timeline thì kẹp trong
+lòng clip, vì đó là thao tác cố ý với chính mốc đó.
+
+### Cổng chọn bộ dựng — chỗ hỏng im lặng nhất
+
+App có hai đường xuất, và hộp thoại Xuất mặc định chọn **ffmpeg**. Filter graph ffmpeg đọc
+transform và âm lượng dạng **hằng số**, nên một dự án có keyframe mà xuất bằng nó sẽ ra file
+đứng hình **mà không báo gì**. Vì vậy `requiresRemotionRenderer` (`remotion-render-plan.ts`)
+trả `true` khi tài liệu có bất kỳ keyframe nào, và câu giải thích trong hộp thoại nhắc cả
+chuyển động keyframe.
+
+Cổng này được đóng ngay ở phase thêm trường dữ liệu, trước cả phase vẽ — nếu để sau thì có một
+cửa sổ thời gian mà bản xuất im lặng rơi mất chuyển động.
+
+### Ràng buộc hiệu năng của giao diện
+
+Panel Thuộc tính và timeline **không được theo dõi đầu phát**. Đo được trong repo này: một
+panel theo dõi `playheadUs` làm Player tụt còn ≈24/30 khung mỗi giây, hình chậm hơn tiếng, và
+Remotion kéo tiếng lùi ~0,7 giây cho khớp — nghe như tiếng lặp.
+
+Hai kỹ thuật bắt buộc, dùng ở cả nút kim cương lẫn dải chấm:
+
+- selector trả **boolean** (`use-keyframe-field.ts`) — component chỉ vẽ lại lúc boolean lật,
+  tức lúc đầu phát đi vào/ra một keyframe, không phải 30 lần mỗi giây;
+- đọc đầu phát bằng `getState()` **trong handler**, không theo dõi.
+
+### Muốn cho một nhóm thuộc tính MỚI chạy keyframe thì sửa những gì
+
+Ví dụ âm lượng clip. Đúng bốn chỗ, không hơn:
+
+1. `src/shared/domain/keyframe-property-catalog.ts` — thêm một dòng vào bảng thuộc tính
+   (đường dẫn, khoảng giá trị, cách đọc giá trị tĩnh làm nền).
+2. `src/shared/domain/remotion-render-plan.ts` — bảng keyframe đã có sẵn trong kế hoạch dựng
+   hình; chỉ cần chỗ tiêu thụ đọc thêm đường dẫn mới.
+3. Lớp vẽ — gọi `valueAtFrame(plan.keyframes?.['...'], frame, giáTrịTĩnh)` tại chỗ đang dùng
+   giá trị tĩnh.
+4. Giao diện — truyền `useKeyframeField(target, ['<đường dẫn>'], nhãn)` vào hàng tương ứng.
+
+Không phải sửa: lệnh, reducer, migrate, dải chấm trên timeline, công cụ cho agent (chỉ cần
+thêm tên vào bảng danh sách trắng trong `chat-tool-keyframes.ts` nếu muốn agent gọi được).
+
+### Nợ kỹ thuật đã biết
+
+- **`LookFilterDefs` memo theo `[plan.video]`** (`src/remotion/project-composition.tsx`).
+  Nếu pha sau cho `look.intensity` chạy keyframe, `<defs>` sẽ không được dựng lại mỗi khung và
+  bộ lọc bị **thiếu** — clip mất look mà không báo gì. Phải xử chỗ này TRƯỚC khi animate look.
+- **Thông số effect kiểu màu và kiểu lựa chọn chưa animate được.** Không phải quên: "màu ở
+  giữa hai màu" và "lựa chọn ở giữa hai lựa chọn" là hai bài toán khác hẳn, và giữ chuỗi đứng
+  ngoài đường đi vào bộ lọc SVG cũng là một lý do thực chất.
+- **`project.json` vẫn ghi dạng pretty-print.** Keyframe làm tài liệu phình nhanh hơn trước;
+  ngưỡng theo dõi là 5 MB, quá đó thì cân nhắc bỏ indent hoặc lưu keyframe dạng tuple.

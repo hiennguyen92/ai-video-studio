@@ -239,6 +239,24 @@ test('tách clip giữa hai keyframe: dải bám theo clip ĐANG CHỌN', async 
   expect(await dotsInsideClip(0)).toBe(true)
 })
 
+test('keyframe sống sót qua lưu, đóng dự án và mở lại', async () => {
+  // Keyframe phải nằm trong file dự án, không phải state tạm của panel. Mở lại
+  // là phép thử duy nhất chứng minh điều đó đi hết vòng — đọc project.json chỉ
+  // chứng minh nửa đường ra, không chứng minh nửa đường về.
+  const before = await savedOpacityKeyframes()
+  expect(before.length).toBeGreaterThan(0)
+
+  await page.getByRole('button', { name: 'Về danh sách dự án' }).click()
+  await expect(page.getByRole('heading', { name: 'AI Video Studio' })).toBeVisible()
+  await page.locator('.project-card__open', { hasText: 'Dự án chuyển động' }).click()
+  await page.getByRole('region', { name: 'Timeline' }).waitFor({ timeout: 30_000 })
+
+  // Chọn lại clip: dải chấm chỉ hiện cho clip đang chọn.
+  await page.locator('.timeline-clip').first().click()
+  await expect(dots()).toHaveCount(before.length)
+  expect(await savedOpacityKeyframes()).toEqual(before)
+})
+
 test('dự án có keyframe thì hộp thoại Xuất tự chọn Remotion', async () => {
   // Nhánh ffmpeg đọc transform dạng hằng số: để nó chạy là xuất ra file đứng
   // hình mà không báo gì.
