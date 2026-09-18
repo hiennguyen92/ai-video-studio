@@ -3,7 +3,8 @@ import {
   applyTextOverlayBox,
   applyTextOverlayFrame,
   createDefaultTextOverlayStyle,
-  readTextOverlayBox
+  readTextOverlayBox,
+  textOverlayLines
 } from './text-overlay-types'
 import { TEXT_FRAME_PALETTES } from './text-frame-catalog'
 
@@ -70,5 +71,29 @@ describe('khung nền cho chữ', () => {
 
     expect(framed.fontSizePx).toBe(120)
     expect(framed.alignment).toBe(2)
+  })
+})
+
+/**
+ * Chữ overlay xuống dòng theo ĐÚNG những gì người dùng gõ.
+ *
+ * Trước đây nó dùng chung phép ngắt mềm với phụ đề (22 ký tự một dòng), nên một
+ * câu hook gõ liền bị bẻ đôi trên hình mà không có ô nào chỉnh được chỗ bẻ.
+ */
+describe('ngắt dòng chữ overlay', () => {
+  it('câu dài không có Enter vẫn nằm một dòng', () => {
+    expect(textOverlayLines('Chốt đơn hôm nay, số lượng có hạn nhé cả nhà')).toEqual([
+      'Chốt đơn hôm nay, số lượng có hạn nhé cả nhà'
+    ])
+  })
+
+  it('xuống dòng đúng chỗ người dùng gõ Enter', () => {
+    expect(textOverlayLines('Chốt đơn\nhôm nay')).toEqual(['Chốt đơn', 'hôm nay'])
+    expect(textOverlayLines('Tiêu đề\n\nGiá 99k')).toEqual(['Tiêu đề', '', 'Giá 99k'])
+  })
+
+  it('không có chữ nào thì không có dòng nào', () => {
+    expect(textOverlayLines('')).toEqual([])
+    expect(textOverlayLines(' \n  ')).toEqual([])
   })
 })

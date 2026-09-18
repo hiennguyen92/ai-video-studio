@@ -1,5 +1,5 @@
 import type { Micros } from './time-units'
-import { DEFAULT_SUBTITLE_STYLE, type SubtitleStyle } from './subtitle-types'
+import { DEFAULT_SUBTITLE_STYLE, wrapSubtitleText, type SubtitleStyle } from './subtitle-types'
 
 /**
  * Chữ đè lên hình: hook đầu video, giá, lời kêu gọi hành động.
@@ -119,9 +119,24 @@ export function createDefaultTextOverlayStyle(): SubtitleStyle {
     ...DEFAULT_SUBTITLE_STYLE,
     fontSizePx: 84,
     alignment: 5,
-    marginVerticalPx: 0,
-    maxCharsPerLine: 22
+    marginVerticalPx: 0
   }
+}
+
+/**
+ * Các dòng của một chữ overlay: CHỈ ngắt ở chỗ người dùng gõ Enter.
+ *
+ * Khác phụ đề, và khác có chủ ý. Phụ đề chạy từ lời nói ra, dài ngắn không đoán
+ * trước được, nên phải tự ngắt theo số ký tự để khỏi tràn khung hình. Chữ overlay
+ * thì người dùng gõ từng chữ một và nhìn thấy ngay trên hình: tự ngắt hộ là bẻ
+ * đôi một câu hook mà người gõ muốn nó nằm trọn một dòng, và không có ô nào trong
+ * giao diện chỉnh được chỗ ngắt đó.
+ *
+ * Lớp vẽ còn đặt `white-space: nowrap` cho từng dòng: cắt ngắt mềm ở đây mà để
+ * trình duyệt tự xuống hàng khi chữ chạm mép thì chỉ là đổi người ngắt.
+ */
+export function textOverlayLines(text: string): string[] {
+  return wrapSubtitleText(text, Number.POSITIVE_INFINITY)
 }
 
 /**

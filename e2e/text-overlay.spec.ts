@@ -1358,6 +1358,29 @@ test('xuống dòng trong nội dung thì preview cũng xuống dòng', async ()
   await content.fill(original)
 })
 
+test('câu dài không có Enter vẫn nằm trên MỘT dòng', async () => {
+  await page.getByRole('button', { name: 'Tua tới đây' }).click()
+  await overlayTab('Basic')
+  const content = page.getByLabel('Nội dung 1')
+  const original = await content.inputValue()
+  const lines = page.locator('.text-overlay .text-block span')
+
+  // Dài hơn hẳn mức ngắt mềm cũ của phụ đề (22 ký tự). Chữ overlay do người dùng
+  // gõ ra và nhìn thẳng trên hình, nên chỉ Enter mới được ngắt dòng.
+  await content.fill('Chốt đơn hôm nay, số lượng có hạn nhé cả nhà')
+  await expect(lines).toHaveCount(1)
+  await expect(lines.first()).toHaveText('Chốt đơn hôm nay, số lượng có hạn nhé cả nhà')
+
+  // Và trình duyệt cũng không được ngắt hộ khi chữ chạm mép khung hình: một dòng
+  // bị bẻ đôi cao gấp đôi.
+  const oneLine = (await lines.first().boundingBox())!
+  await content.fill('Ngắn')
+  const shortLine = (await lines.first().boundingBox())!
+  expect(Math.abs(oneLine.height - shortLine.height)).toBeLessThan(4)
+
+  await content.fill(original)
+})
+
 test('hai ô của khung không tồn tại khi chưa chọn khung', async () => {
   // KHÔNG TỒN TẠI, không phải bị làm mờ: một ô "Màu khung" khi không có khung là
   // một ô không có tác dụng.
@@ -1380,7 +1403,10 @@ test('góc khung không méo khi chữ dài ra', async () => {
   await page.waitForTimeout(700)
   const ngan = await block.screenshot()
 
-  await page.getByLabel('Nội dung 1').fill('Ba dong chu dai hon nua de xuong dong o day nhe')
+  // Ba dòng, ngắt bằng Enter. Chữ overlay không tự xuống hàng theo số ký tự nữa,
+  // nên muốn khối chữ cao lên thì phải gõ Enter — mà cao lên mới là thứ phép thử
+  // này cần: khung phải giãn phần MÉP, còn góc thì giữ nguyên.
+  await page.getByLabel('Nội dung 1').fill('Ba dong chu\ndai hon nua\nde xuong dong')
   await page.waitForTimeout(700)
   const dai = await block.screenshot()
 

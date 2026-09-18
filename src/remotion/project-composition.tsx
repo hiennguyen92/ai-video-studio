@@ -35,6 +35,7 @@ import {
   type TransitionStyle
 } from '../shared/domain/clip-transition-style'
 import { wrapSubtitleText } from '../shared/domain/subtitle-types'
+import { textOverlayLines } from '../shared/domain/text-overlay-types'
 import {
   alignmentToFlex,
   textTransformOrigin,
@@ -318,8 +319,9 @@ function freePlacementCss(position: TextPosition | undefined): CSSProperties {
     top: `${position.yPct * 100}%`,
     // Rộng đúng bằng nội dung. Phần tử đặt tuyệt đối mặc định chỉ được rộng tới
     // mép phải khung hình tính từ `left`, nên kéo chữ lại gần mép là trình duyệt
-    // ép nó xuống hàng thành một cột. Ngắt dòng đã do `wrapSubtitleText` quyết
-    // (số ký tự, Enter) — kéo chữ đi đâu cũng phải giữ nguyên các dòng đó.
+    // ép nó xuống hàng thành một cột. Ngắt dòng đã quyết xong ở tầng trên (Enter
+    // người dùng gõ, thêm số ký tự với phụ đề) — kéo chữ đi đâu cũng phải giữ
+    // nguyên các dòng đó.
     width: 'max-content'
   }
 }
@@ -515,7 +517,9 @@ function TextOverlayLayer({ overlay }: { overlay: RenderPlanTextOverlay }): JSX.
       break
   }
 
-  const lines = wrapSubtitleText(visibleText, style.maxCharsPerLine)
+  // Chữ overlay KHÔNG tự ngắt theo số ký tự — chỉ xuống dòng ở chỗ người dùng
+  // gõ Enter. Xem `textOverlayLines`.
+  const lines = textOverlayLines(visibleText)
   const { vertical, horizontal } = alignmentToFlex(style.alignment)
   const placement = freePlacementCss(style.position)
 
@@ -579,6 +583,11 @@ function TextOverlayLayer({ overlay }: { overlay: RenderPlanTextOverlay }): JSX.
               fontStyle: style.fontPostScriptName ? 'normal' : style.italic ? 'italic' : 'normal',
               color: style.color,
               lineHeight: 1.15,
+              // Không để trình duyệt ngắt hộ khi dòng chạm mép khung hình: dòng
+              // nào người dùng gõ ra thì dòng đó nằm nguyên một dòng, dài quá thì
+              // tràn ra ngoài — thấy ngay để còn hạ cỡ chữ, chứ không âm thầm bị
+              // bẻ đôi.
+              whiteSpace: 'nowrap',
               WebkitTextStroke:
                 style.outlineWidthPx > 0
                   ? `${style.outlineWidthPx}px ${style.outlineColor}`
