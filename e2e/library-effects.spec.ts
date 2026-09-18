@@ -143,14 +143,14 @@ test('Inspector: chỉnh cường độ, thông số, đổi thứ tự, gỡ', 
   const items = inspector.locator('.effect-stack__item')
   await expect(items).toHaveCount(4)
 
-  await inspector.getByLabel('Cường độ Đảo màu').fill('100')
+  await inspector.getByRole('slider', { name: 'Cường độ Đảo màu' }).fill('100')
   expect((await savedClip()).effects![0].intensity).toBe(1)
 
   // Mặt nạ: hộp nhỏ ở giữa, bo góc 0 — dùng để đo file xuất ra.
   const mask = items.nth(3)
-  await mask.getByLabel('Rộng').fill('40')
-  await mask.getByLabel('Cao').fill('40')
-  await mask.getByLabel('Bo góc').fill('0')
+  await mask.getByRole('slider', { name: 'Rộng' }).fill('40')
+  await mask.getByRole('slider', { name: 'Cao' }).fill('40')
+  await mask.getByRole('slider', { name: 'Bo góc' }).fill('0')
   expect((await savedClip()).effects![3].params).toMatchObject({ width: 40, height: 40, radius: 0 })
 
   // Gỡ hai effect tối góc, rồi đưa mặt nạ lên đầu.

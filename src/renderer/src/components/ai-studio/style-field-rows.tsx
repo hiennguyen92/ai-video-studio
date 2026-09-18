@@ -52,7 +52,12 @@ export function StyleSliderRow({
         />
         <span className="field-row__value inspector__slider-value">{format(value)}</span>
       </div>
-      {keyframe && <KeyframeDiamondButton field={keyframe} value={value} label={label} />}
+      {/* Dùng nhãn trợ năng ĐẦY ĐỦ của hàng: panel liệt kê nhiều khối chữ thì mỗi
+          khối có một hàng "Góc xoay", và ba cái nút cùng tên là ba cái nút không
+          phân biệt được với trình đọc màn hình. */}
+      {keyframe && (
+        <KeyframeDiamondButton field={keyframe} value={value} label={ariaLabel ?? label} />
+      )}
     </div>
   )
 }

@@ -281,7 +281,7 @@ test('bấm vào khối phụ đề thì panel thuộc tính hiện đúng câu 
   // thay vì để người dùng tưởng mình đang chỉnh một câu.
   await inspector.getByRole('tab', { name: 'Style', exact: true }).click()
   await expect(inspector.getByText('Áp cho cả track "Phụ đề en" · 2 câu')).toBeVisible()
-  await expect(inspector.getByLabel('Cỡ chữ')).toBeVisible()
+  await expect(inspector.getByRole('slider', { name: 'Cỡ chữ' })).toBeVisible()
   await inspector.getByRole('tab', { name: 'Layout', exact: true }).click()
   await expect(inspector.getByRole('radio', { name: 'Dưới' })).toHaveAttribute(
     'aria-checked',

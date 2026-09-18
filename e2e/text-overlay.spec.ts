@@ -388,14 +388,14 @@ test('xoay chữ từ panel thuộc tính làm nghiêng chữ trên preview', as
 
   const before = await rotationOf()
   await inspector.getByRole('tab', { name: 'Layout', exact: true }).click()
-  await inspector.getByLabel('Góc xoay').fill('20')
+  await inspector.getByRole('slider', { name: 'Góc xoay' }).fill('20')
 
   // Ma trận biến đổi phải ĐỔI. Chỉ đọc thuộc tính style trên DOM thì một góc bị
   // ghi vào chỗ không có tác dụng vẫn cho ra chuỗi "đúng".
   await expect.poll(rotationOf).not.toBe(before)
   expect(await rotationOf()).not.toBe('none')
 
-  await inspector.getByLabel('Góc xoay').fill('0')
+  await inspector.getByRole('slider', { name: 'Góc xoay' }).fill('0')
   await inspector.getByRole('tab', { name: 'Basic', exact: true }).click()
 })
 
@@ -504,7 +504,7 @@ test('kéo tay nắm tròn thì xoay chữ', async () => {
   await overlayTab('Layout')
   await studio().getByRole('button', { name: 'Bỏ ghim' }).click()
   await studio()
-    .getByLabel(/Góc xoay/)
+    .getByRole('slider', { name: /Góc xoay/ })
     .fill('0')
 })
 
@@ -1271,7 +1271,7 @@ test('chỉnh độ dày viền chữ, và nó tới được chữ trên hình'
 
 test('góc xoay không còn kẹp ở 45°: xoay dựng đứng và lộn ngược được', async () => {
   await overlayTab('Layout')
-  const slider = studio().getByLabel('Góc xoay 1')
+  const slider = studio().getByRole('slider', { name: 'Góc xoay 1' })
   await expect(slider).toHaveAttribute('min', '-180')
   await expect(slider).toHaveAttribute('max', '180')
 
