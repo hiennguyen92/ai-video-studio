@@ -26,6 +26,15 @@ export function ClipAudioSection({
         format={(value) => `${Math.round(value * 100)}%`}
         onCommit={(value) => onUpdate({ volume: value }, t.inspector.volume)}
       />
+      {/*
+        Trên 100% thì BẢN XEM TRƯỚC không to thêm được, còn file xuất ra thì có.
+
+        Không phải lỗi sửa được bằng một dòng: thẻ media của trình duyệt chỉ nhận
+        âm lượng trong khoảng 0..1, muốn to hơn phải dựng cả một đồ thị WebAudio
+        cho lớp phát. Nói thẳng ra rẻ hơn nhiều so với để người dùng kéo lên 150%,
+        nghe không thấy khác, rồi chỉ phát hiện khi đã xuất file.
+      */}
+      {clip.volume > 1 && <p className="inspector__hint">{t.inspector.volumeAbovePreviewCap}</p>}
       <SliderRow
         label={t.inspector.fadeIn}
         value={clip.fadeInUs}

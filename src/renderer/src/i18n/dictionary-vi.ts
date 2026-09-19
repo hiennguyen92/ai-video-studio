@@ -91,6 +91,7 @@ export const dictionaryVi = {
     framePaddingY: 'Kéo đệm dọc khung'
   },
   inspector: {
+    volumeAbovePreviewCap: `Trên 100% chỉ nghe được ở file xuất ra — bản xem trước không to hơn 100% được.`,
     keyframeAdd: 'Chốt keyframe tại đầu phát',
     keyframeRemove: 'Xoá keyframe ở đầu phát',
     keyframeOutside: 'Đưa đầu phát vào trong clip để đặt keyframe',

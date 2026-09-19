@@ -87,6 +87,7 @@ export const dictionaryEn: Dictionary = {
     framePaddingY: 'Drag frame top/bottom padding'
   },
   inspector: {
+    volumeAbovePreviewCap: `Above 100% only affects the exported file — the preview cannot play louder than 100%.`,
     keyframeAdd: 'Set a keyframe at the playhead',
     keyframeRemove: 'Remove the keyframe at the playhead',
     keyframeOutside: 'Move the playhead inside the clip to set a keyframe',
