@@ -17,7 +17,19 @@ import { ensureProjectDirs, projectPaths } from './workspace-paths'
  * phục.
  */
 
-const MAX_VERSION_SNAPSHOTS = 20
+/**
+ * Trần số bản chụp, TÍNH RIÊNG theo lý do.
+ *
+ * Một trần chung thì bản tự động (5 phút một bản) đẩy mất bản lưu tay và bản
+ * "trước khi khôi phục" sau chừng trăm phút làm việc — đúng hai loại người dùng
+ * cố ý giữ lại, và bản "trước khi khôi phục" là đường lui duy nhất khi khôi phục
+ * nhầm.
+ */
+const MAX_SNAPSHOTS_BY_REASON: Record<ProjectVersionReason, number> = {
+  auto: 20,
+  manual: 20,
+  'before-restore': 10
+}
 
 /**
  * Tên file hợp lệ: đúng dạng do `writeVersionSnapshot` sinh ra.
@@ -39,12 +51,16 @@ export async function writeVersionSnapshot(
   const file = join(paths.versionsDir, `${stamp}-rev${document.revision}${suffix}.json`)
   await writeFile(file, JSON.stringify(document), 'utf8')
 
-  const entries = (await readdir(paths.versionsDir))
-    .filter((name) => SNAPSHOT_FILE.test(name))
+  // Chỉ dọn bản CÙNG lý do với bản vừa ghi, cũ nhất trước.
+  const sameReason = (await readdir(paths.versionsDir))
+    .filter((name) => {
+      const match = SNAPSHOT_FILE.exec(name)
+      return match !== null && ((match[3] as ProjectVersionReason | undefined) ?? 'auto') === reason
+    })
     .sort()
-  const excess = entries.length - MAX_VERSION_SNAPSHOTS
+  const excess = sameReason.length - MAX_SNAPSHOTS_BY_REASON[reason]
   for (let index = 0; index < excess; index += 1) {
-    await rm(join(paths.versionsDir, entries[index]), { force: true })
+    await rm(join(paths.versionsDir, sameReason[index]), { force: true })
   }
   return file
 }

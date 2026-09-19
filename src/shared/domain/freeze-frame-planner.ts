@@ -4,6 +4,7 @@ import type { MediaAsset } from './media-asset-types'
 import type { ProjectDocument } from './project-document-types'
 import { clipEndUs, type Clip } from './timeline-track-types'
 import { snapMicrosToFrame, type Micros } from './time-units'
+import { subtitleTracksFollowingLanes } from './subtitle-ripple'
 
 /**
  * Chèn một đoạn đứng hình tại đầu phát.
@@ -54,7 +55,7 @@ export function planFreezeFrame(
   source: FreezeFrameSource,
   freezeAsset: MediaAsset,
   durationUs: Micros,
-  makeId: (prefix: 'clip') => string
+  makeId: (prefix: 'clip' | 'group') => string
 ): EditorCommand[] {
   const { atUs, clip } = source
   const commands: EditorCommand[] = []
@@ -71,19 +72,41 @@ export function planFreezeFrame(
 
   // Tách mọi thành viên của nhóm đang vắt qua mốc; nửa sau bắt đầu đúng tại mốc.
   const moves: Array<{ clipId: string; toStartUs: Micros }> = []
+  const splitTails = new Set<string>()
   for (const track of document.tracks) {
     if (!laneIds.has(track.id)) continue
     for (const item of track.clips) {
       if (item.startUs < atUs && clipEndUs(item) > atUs) {
         const tailId = makeId('clip')
         commands.push({ type: 'clip/split', clipId: item.id, atUs, newClipId: tailId })
+        if (members.includes(item.id)) splitTails.add(tailId)
         moves.push({ clipId: tailId, toStartUs: atUs + durationUs })
       } else if (item.startUs >= atUs) {
         moves.push({ clipId: item.id, toStartUs: item.startUs + durationUs })
       }
     }
   }
+  // Nửa sau của các thành viên nhóm gom thành một nhóm mới, như khi cắt thường.
+  const memberTails = moves.filter((move) => splitTails.has(move.clipId)).map((move) => move.clipId)
+  if (memberTails.length >= 2) {
+    commands.push({
+      type: 'clip/set-link-group',
+      clipIds: memberTails,
+      linkGroupId: makeId('group')
+    })
+  }
   if (moves.length > 0) commands.push({ type: 'clip/move-many', moves })
+
+  // Phụ đề của lời nói trên các lane này dời theo, không thì lệch khỏi lời sau mốc.
+  const followingSubtitles = subtitleTracksFollowingLanes(document, [...laneIds])
+  if (followingSubtitles.length > 0) {
+    commands.push({
+      type: 'subtitle/insert-time',
+      subtitleTrackIds: followingSubtitles.map((track) => track.id),
+      atUs,
+      durationUs
+    })
+  }
 
   // Clip đứng hình mang cùng "diện mạo" với clip gốc — cùng vị trí, màu, effect,
   // nền mờ — để chỗ nối không nhảy hình. Chuyển động, keyframe, chuyển cảnh và

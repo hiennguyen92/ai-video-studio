@@ -218,7 +218,14 @@ ghi vào backlog rõ ràng."
   (`freeze_frame`), nhân bản dự án. Soát giao diện: sửa lỗi MẤT sửa đổi khi rời dự án hoặc
   đóng app trong 1,2 s sau lần sửa cuối (ghi nốt trước khi rời, mọi lần ghi xếp
   một hàng đợi); nút Xuất video bị đẩy ra ngoài cửa sổ hẹp; thêm
-  `e2e/layout-guards.spec.ts` đo toạ độ ở cỡ cửa sổ nhỏ nhất, cả hai ngôn ngữ
+  `e2e/layout-guards.spec.ts` đo toạ độ ở cỡ cửa sổ nhỏ nhất, cả hai ngôn ngữ. Soát mã vòng 1 (ba agent review, mọi phát hiện được kiểm
+  lại): khôi phục bản cũ nhất tự xoá nó; nhiều lời gọi trong một câu trả lời chat
+  lập trên cùng bản chụp (xoá nhầm clip); MCP quá hạn rồi vẫn áp muộn; đóng cửa sổ
+  bỏ qua lỗi ghi; nhân bản trỏ cache về bản gốc; xuất đoạn sai phụ đề và dài hơn;
+  giọng sạch lệch khi luồng tiếng bắt đầu trễ; đứng hình hỏng ở khung cuối và lấy
+  nhầm khung kế; cắt clip trong nhóm; ripple nhóm dài khác nhau; cắt khoảng lặng
+  cắt lời của clip chưa dò; xuất MCP trùng tên. Phụ đề nay đi theo lane lời nói
+  (ripple xoá clip, cắt khoảng lặng theo lane, đứng hình)
 - Xuất: thêm định dạng ngoài MP4/H.264 (MOV, WebM, HEVC), xuất chỉ tiếng, hàng
   đợi nhiều bản. **Đã xong:** chất lượng, mẫu nền tảng, xuất đoạn, ảnh PNG
 - Bám đối tượng và tự cắt khung theo chủ thể

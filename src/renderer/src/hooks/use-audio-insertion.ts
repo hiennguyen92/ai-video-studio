@@ -1,3 +1,4 @@
+import { singleSelectedClipId } from '../../../shared/domain/clip-link-groups'
 import { useCallback } from 'react'
 import type { EditorCommand } from '../../../shared/commands/editor-command-types'
 import type { TrackRole } from '../../../shared/domain/timeline-track-types'
@@ -32,11 +33,13 @@ export function useAudioInsertion(): {
   const selection = useEditorStore((state) => state.selection)
   const session = useEditorStore((state) => state.session)
 
+  const selectedClipId = session
+    ? singleSelectedClipId(session.document, selection.clipIds)
+    : undefined
   const canReplaceSelection = Boolean(
-    selection.clipIds.length === 1 &&
+    selectedClipId &&
     session?.document.tracks.some(
-      (track) =>
-        track.kind === 'audio' && track.clips.some((clip) => clip.id === selection.clipIds[0])
+      (track) => track.kind === 'audio' && track.clips.some((clip) => clip.id === selectedClipId)
     )
   )
 

@@ -1,3 +1,4 @@
+import { splitClipAt } from '../../state/clip-group-actions'
 import {
   Fragment,
   useCallback,
@@ -213,8 +214,8 @@ export function TimelinePanel(): JSX.Element {
   const handleSplit = useCallback(() => {
     if (!selectedClipId) return
     const atUs = useEditorStore.getState().playheadUs
-    run([{ type: 'clip/split', clipId: selectedClipId, atUs }], 'Cắt clip')
-  }, [selectedClipId, run])
+    splitClipAt(selectedClipId, atUs, 'Cắt clip')
+  }, [selectedClipId])
 
   // Nút thùng rác xoá đúng thứ phím Delete xoá — cùng một hàm, nên không thể lệch
   // nhau kiểu nút mờ đi trong khi phím vẫn xoá được.

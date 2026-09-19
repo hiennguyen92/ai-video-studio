@@ -834,6 +834,17 @@ const moveKeyframe = z.object({
   easing: keyframeEasingSchema.optional()
 })
 
+/**
+ * Chèn một khoảng thời gian vào các track phụ đề đi theo lời nói (đứng hình).
+ * Câu sau mốc lùi, câu đang hiện tại mốc kéo dài qua khoảng chèn.
+ */
+const insertSubtitleTime = z.object({
+  type: z.literal('subtitle/insert-time'),
+  subtitleTrackIds: z.array(z.string()).min(1),
+  atUs: nonNegativeMicros,
+  durationUs: positiveMicros
+})
+
 /* ── Marker ────────────────────────────────────────────────────── */
 
 const markerColorSchema = z.enum(MARKER_COLORS)
@@ -877,6 +888,7 @@ export const editorCommandSchema = z.discriminatedUnion('type', [
   moveClips,
   setClipLinkGroup,
   addMarker,
+  insertSubtitleTime,
   updateMarker,
   removeMarker,
   trimClip,

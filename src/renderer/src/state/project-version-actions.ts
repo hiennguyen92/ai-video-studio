@@ -23,11 +23,13 @@ export async function restoreProjectVersion(
   const current = store.session?.document
   if (!current) return { ok: false, error: 'Chưa mở dự án nào' }
 
-  const backup = await window.api.project.snapshot(current, 'before-restore')
-  if (!backup.ok) return { ok: false, error: backup.error }
-
+  // Đọc bản cần khôi phục TRƯỚC khi chụp bản dự phòng: ghi bản dự phòng có thể
+  // dọn mất bản cũ nhất, và bản cũ nhất có khi chính là bản đang định khôi phục.
   const loaded = await window.api.project.loadVersion(current.id, fileName)
   if (!loaded.ok) return { ok: false, error: loaded.error }
+
+  const backup = await window.api.project.snapshot(current, 'before-restore')
+  if (!backup.ok) return { ok: false, error: backup.error }
 
   const restored = {
     ...loaded.data,

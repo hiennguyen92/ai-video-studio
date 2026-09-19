@@ -31,13 +31,17 @@ const execFileAsync = promisify(execFile)
 /**
  * Chuỗi lọc.
  *
+ * - `aresample` (xem dưới): giữ đúng độ trễ của luồng tiếng so với hình.
  * - `highpass=f=80`: cắt ù điện, rung bàn, gió — dưới 80 Hz không có giọng người.
  * - `afftdn` với `tn=1`: giảm nhiễu phổ, TỰ THEO DÕI nền nhiễu thay vì bắt người
  *   dùng chọn một đoạn im làm mẫu. `nf=-40` là mức nền khởi đầu hợp với phòng
  *   thường; bộ theo dõi tự chỉnh từ đó.
  */
 export function voiceCleanupFilter(strength: VoiceCleanupStrength): string {
-  return `highpass=f=80,afftdn=nr=${VOICE_CLEANUP_STRENGTHS[strength]}:nf=-40:tn=1`
+  // `aresample=async=1:first_pts=0` đi ĐẦU: luồng tiếng của nhiều file (điện thoại,
+  // máy quay) bắt đầu trễ hơn hình vài trăm mili giây. FLAC ghi ra bắt đầu từ 0 nên
+  // nếu không đệm phần trễ đó bằng im lặng, tiếng sạch phát SỚM hơn hình đúng chừng ấy.
+  return `aresample=async=1:first_pts=0,highpass=f=80,afftdn=nr=${VOICE_CLEANUP_STRENGTHS[strength]}:nf=-40:tn=1`
 }
 
 async function exists(path: string): Promise<boolean> {
@@ -54,8 +58,12 @@ export async function cleanVoice(request: VoiceCleanupRequest): Promise<MediaAss
   if (!source.probe.hasAudio) throw new Error(`"${source.name}" không có tiếng để làm sạch`)
 
   const { mediaDir } = await ensureProjectDirs(request.projectId)
-  // Tên theo asset gốc + mức: làm lại cùng mức thì dùng luôn file đã có.
-  const outputPath = join(mediaDir, `${source.id}-voice-${strength}.flac`)
+  // Tên theo NỘI DUNG file gốc + mức: làm lại cùng mức thì dùng luôn file đã có.
+  // Chỉ theo id asset thì liên kết lại sang file khác (cùng id, nội dung mới) vẫn
+  // dùng bản sạch của file CŨ; và bản dựng bởi phiên bản lỗi (lệch giờ) không bao
+  // giờ được dựng lại.
+  const fingerprint = source.source.contentHash.slice(0, 12)
+  const outputPath = join(mediaDir, `${source.id}-${fingerprint}-voice-${strength}.flac`)
 
   if (!(await exists(outputPath))) {
     const tempPath = `${outputPath}.tmp.flac`

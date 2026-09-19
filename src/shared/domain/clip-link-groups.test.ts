@@ -8,6 +8,7 @@ import {
   isGroupedClip,
   planGroupClips,
   planMoveClips,
+  planSplitClip,
   planUngroupClips
 } from './clip-link-groups'
 
@@ -168,5 +169,35 @@ describe('nhóm clip', () => {
       linkGroupId: 'group_1'
     })
     expect(result.ok).toBe(false)
+  })
+})
+
+describe('cắt clip trong nhóm', () => {
+  it('cắt cả nhóm: nửa đầu ở nhóm cũ, nửa sau thành nhóm MỚI — không phình thành ba clip', () => {
+    const document = project()
+    insert(document, 0, 'v', 0)
+    insert(document, 1, 'a', 0)
+    apply(document, planGroupClips(['v', 'a'], 'g'))
+
+    let next = 0
+    const { commands, tailIds } = planSplitClip(document, 'v', 1_000_000, (prefix) =>
+      prefix === 'group' ? 'g2' : `tail${(next += 1)}`
+    )
+    for (const command of commands) apply(document, command)
+
+    expect(expandToLinkGroups(document, ['v']).sort()).toEqual(['a', 'v'])
+    const tails = Object.values(tailIds)
+    expect(tails).toHaveLength(2)
+    expect(expandToLinkGroups(document, [tails[0]]).sort()).toEqual([...tails].sort())
+  })
+
+  it('lệnh cắt trơn không để nửa sau ở lại nhóm cũ', () => {
+    const document = project()
+    insert(document, 0, 'v', 0)
+    insert(document, 1, 'a', 0)
+    apply(document, planGroupClips(['v', 'a'], 'g'))
+    apply(document, { type: 'clip/split', clipId: 'v', atUs: 1_000_000, newClipId: 'vt' })
+    // Trước đây: nhóm của nửa sau là [vt, v, a] — xoá nửa hỏng xoá luôn cả nhóm.
+    expect(expandToLinkGroups(document, ['vt'])).toEqual(['vt'])
   })
 })

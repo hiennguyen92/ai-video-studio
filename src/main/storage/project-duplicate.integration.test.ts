@@ -54,6 +54,11 @@ describe('duplicateProject', () => {
     )
     original.revision = 42
     await saveProjectDocument(original)
+    // Kết quả job lưu trong cache trỏ vào media của bản gốc.
+    await writeFile(
+      join(paths.cacheDir, 'job-results.json'),
+      JSON.stringify({ tts: { outputPath: generated } })
+    )
     await writeVersionSnapshot(original)
 
     const summary = await duplicateProject(original.id, '(bản sao)')
@@ -71,6 +76,10 @@ describe('duplicateProject', () => {
     // Lịch sử phiên bản là của bản gốc.
     const copyRoot = join(paths.root, '..', summary.id)
     expect(await readdir(join(copyRoot, 'versions')).catch(() => [])).toEqual([])
+
+    // Cache của bản sao trỏ vào media của CHÍNH nó, không phải bản gốc.
+    const cached = JSON.parse(await readFile(join(copyRoot, 'cache', 'job-results.json'), 'utf8'))
+    expect(cached.tts.outputPath).toContain(summary.id)
 
     // Xoá bản gốc: bản sao vẫn đủ file của nó.
     await deleteProject(original.id)

@@ -109,6 +109,54 @@ describe('cleanVoice', () => {
     expect(Math.abs(cleaned.probe.durationUs - source.probe.durationUs)).toBeLessThan(50_000)
   })
 
+  it('tiếng của file nguồn bắt đầu TRỄ (start_time > 0): bản sạch vẫn khớp hình', async () => {
+    // Luồng tiếng đặt trễ 0,5 s so với hình — điện thoại, máy quay hay ghi thế.
+    const late = join(workDir, 'tieng-tre.mp4')
+    await execFileAsync(resolveFfmpegBinaries().ffmpegPath, [
+      '-v',
+      'error',
+      '-y',
+      '-f',
+      'lavfi',
+      '-i',
+      'testsrc2=size=320x180:rate=30:duration=5',
+      '-itsoffset',
+      '0.5',
+      '-f',
+      'lavfi',
+      '-i',
+      "aevalsrc='0.4*sin(2*PI*300*t)*between(t,1,2)':s=48000:d=4",
+      '-map',
+      '0:v',
+      '-map',
+      '1:a',
+      '-c:v',
+      'libx264',
+      '-preset',
+      'ultrafast',
+      '-pix_fmt',
+      'yuv420p',
+      '-c:a',
+      'aac',
+      late
+    ])
+    const lateSource = (await importMediaFile({ projectId, filePath: late }, [])).asset
+    const cleaned = await cleanVoice({
+      projectId,
+      source: lateSource,
+      strength: 'light',
+      existing: [lateSource]
+    })
+
+    // Tiếng "nói" nằm ở 1–2 s của luồng tiếng, tức 1,5–2,5 s trên trục của file.
+    // Bản sạch phát từ 0 nên tiếng phải nằm đúng 1,5–2,5 s, không phải 1–2 s.
+    const request = { startUs: 0, endUs: 4_000_000, noiseDb: -30, minSilenceUs: 300_000 }
+    const silences = (await detectSilences({ ...request, sourcePath: cleaned.source.path }))
+      .intervals
+    const speechStartsAt = silences[0].endUs
+    expect(Math.abs(speechStartsAt - 1_500_000)).toBeLessThan(60_000)
+  })
+
   it('làm lại cùng mức thì dùng lại asset cũ, không thêm bản thứ hai', async () => {
     const first = await cleanVoice({ projectId, source, strength: 'light', existing: [source] })
     const again = await cleanVoice({

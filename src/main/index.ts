@@ -92,20 +92,44 @@ function createMainWindow(): BrowserWindow {
   // đóng thật. Không có bước này thì đóng app trong 1,2 s sau lần sửa cuối là mất
   // sửa đổi đó. Chờ tối đa FLUSH_TIMEOUT_MS: renderer treo thì vẫn phải đóng được.
   let closeAllowed = false
+  // Đang chờ renderer: bấm đóng lần nữa thì chỉ hoãn tiếp, không đăng ký thêm.
+  let flushing = false
   window.on('close', (event) => {
     if (closeAllowed || window.webContents.isDestroyed()) return
     event.preventDefault()
-    const finish = (): void => {
+    if (flushing) return
+    flushing = true
+
+    const cleanup = (): void => {
       clearTimeout(timer)
+      ipcMain.removeListener(IPC.appFlushAck, onAck)
       ipcMain.removeListener(IPC.appFlushDone, onDone)
+      flushing = false
+    }
+    const proceed = (): void => {
+      cleanup()
       closeAllowed = true
       if (quitRequested) app.quit()
       else window.close()
     }
-    const onDone = (ipcEvent: Electron.IpcMainEvent): void => {
-      if (ipcEvent.sender === window.webContents) finish()
+    // Renderer đã nhận yêu cầu: bỏ hạn giờ. Ghi hỏng thì nó hỏi người dùng, và
+    // hạn 5 s không được đóng cửa sổ ngay giữa lúc câu hỏi đang hiện.
+    const onAck = (ipcEvent: Electron.IpcMainEvent): void => {
+      if (ipcEvent.sender === window.webContents) clearTimeout(timer)
     }
-    const timer = setTimeout(finish, FLUSH_TIMEOUT_MS)
+    const onDone = (ipcEvent: Electron.IpcMainEvent, shouldClose: boolean): void => {
+      if (ipcEvent.sender !== window.webContents) return
+      if (shouldClose) {
+        proceed()
+        return
+      }
+      // Người dùng chọn ở lại để không mất sửa đổi: huỷ luôn lần thoát app.
+      cleanup()
+      quitRequested = false
+    }
+    // Renderer không phản hồi chút nào (treo) thì vẫn phải đóng được.
+    const timer = setTimeout(proceed, FLUSH_TIMEOUT_MS)
+    ipcMain.on(IPC.appFlushAck, onAck)
     ipcMain.on(IPC.appFlushDone, onDone)
     window.webContents.send(IPC_EVENT.flushBeforeClose)
   })

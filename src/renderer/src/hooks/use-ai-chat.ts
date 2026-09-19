@@ -131,6 +131,8 @@ export function useAiChat(): {
       // Công cụ cần ffmpeg (dò khoảng lặng, làm sạch giọng) chạy phần nặng TRƯỚC,
       // rồi mới lập kế hoạch trên tài liệu mới nhất.
       const beforeResolve = useEditorStore.getState().session?.document ?? current
+      // Đầu phát đọc MỘT lần cho cả phần dựng khung đứng hình lẫn phần lập kế hoạch.
+      const playheadAtReply = useEditorStore.getState().playheadUs
       const [silences, cleanedVoices, freezeFrames] = await Promise.all([
         resolveSilences(result.data.toolCalls, beforeResolve, selection.clipIds),
         resolveCleanedVoices(result.data.toolCalls, beforeResolve, selection.clipIds),
@@ -138,7 +140,7 @@ export function useAiChat(): {
           result.data.toolCalls,
           beforeResolve,
           selection.clipIds,
-          useEditorStore.getState().playheadUs
+          playheadAtReply
         )
       ])
       const latest = useEditorStore.getState().session?.document ?? current
@@ -146,7 +148,7 @@ export function useAiChat(): {
         {
           document: latest,
           selectedClipIds: selection.clipIds,
-          playheadUs: useEditorStore.getState().playheadUs,
+          playheadUs: playheadAtReply,
           makeId: (prefix) => createId(prefix ?? 'clip'),
           silences,
           cleanedVoices,

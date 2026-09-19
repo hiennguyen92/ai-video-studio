@@ -5,6 +5,7 @@ import type { ProjectDocument } from '../../../../shared/domain/project-document
 import { clipSelectSeekUs } from '../../../../shared/domain/clip-select-seek'
 import { planMoveClips } from '../../../../shared/domain/clip-link-groups'
 import { collectGroupDragClips, groupDragPreview } from './clip-group-drag'
+import { splitClipAt } from '../../state/clip-group-actions'
 import { frameDurationUs, snapMicrosToFrame } from '../../../../shared/domain/time-units'
 import { useEditorStore } from '../../state/editor-store'
 import { collectSnapTargets, pxToUs, snapTime, type SnapContext } from './timeline-geometry'
@@ -107,7 +108,7 @@ export function useTimelineInteractions(options: {
         const snapped = snapTime(clickUs, collectSnapTargets(snapContext), snapContext)
         const atUs = snapMicrosToFrame(snapped.us, document.settings.frameRate)
         if (atUs > clip.startUs && atUs < clipEndUs(clip)) {
-          run([{ type: 'clip/split', clipId: clip.id, atUs }], 'Cắt clip')
+          splitClipAt(clip.id, atUs, 'Cắt clip')
         }
         return
       }

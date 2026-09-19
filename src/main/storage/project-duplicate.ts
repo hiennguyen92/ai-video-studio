@@ -1,5 +1,5 @@
-import { cp, readFile } from 'node:fs/promises'
-import { sep } from 'node:path'
+import { cp, readFile, readdir, rm, writeFile } from 'node:fs/promises'
+import { join, sep } from 'node:path'
 import { createId } from '../../shared/domain/project-document-factory'
 import type { ProjectDocument } from '../../shared/domain/project-document-types'
 import { migrateProjectDocument } from '../../shared/domain/project-document-migrations'
@@ -36,6 +36,31 @@ export function rebaseProjectPaths<T>(value: T, fromRoot: string, toRoot: string
   return walk(value) as T
 }
 
+/** Mọi file JSON dưới `dir` (kết quả job, cú máy đã dò…), đổi đường dẫn tại chỗ. */
+async function rebaseJsonFiles(dir: string, fromRoot: string, toRoot: string): Promise<void> {
+  let entries
+  try {
+    entries = await readdir(dir, { withFileTypes: true })
+  } catch {
+    return
+  }
+  for (const entry of entries) {
+    const path = join(dir, entry.name)
+    if (entry.isDirectory()) {
+      await rebaseJsonFiles(path, fromRoot, toRoot)
+      continue
+    }
+    if (!entry.name.endsWith('.json')) continue
+    try {
+      const data: unknown = JSON.parse(await readFile(path, 'utf8'))
+      await writeFile(path, JSON.stringify(rebaseProjectPaths(data, fromRoot, toRoot)), 'utf8')
+    } catch {
+      // Cache hỏng: bỏ đi, nó sẽ được dựng lại — còn hơn trỏ về dự án gốc.
+      await rm(path, { force: true })
+    }
+  }
+}
+
 export async function duplicateProject(
   projectId: string,
   nameSuffix: string
@@ -45,20 +70,36 @@ export async function duplicateProject(
 
   const newId = createId('proj')
   const target = projectPaths(newId)
-  await cp(source.root, target.root, {
-    recursive: true,
-    filter: (path) => path !== source.versionsDir && !path.startsWith(`${source.versionsDir}${sep}`)
-  })
+  try {
+    // KHÔNG chép project.json của bản gốc: chép hỏng giữa chừng thì thư mục mới
+    // mang một project.json cùng id với bản gốc — hiện ra như dự án thứ hai, và xoá
+    // nó là xoá nhầm bản gốc. Tài liệu của bản sao chỉ được ghi ở bước CUỐI.
+    await cp(source.root, target.root, {
+      recursive: true,
+      filter: (path) =>
+        path !== source.documentFile &&
+        path !== `${source.documentFile}.tmp` &&
+        path !== source.versionsDir &&
+        !path.startsWith(`${source.versionsDir}${sep}`)
+    })
+    // Cache (kết quả job, cú máy đã dò) cũng ghi đường dẫn tuyệt đối vào media của
+    // bản gốc; không đổi thì bản sao dùng lại file của bản gốc, xoá bản gốc là hỏng.
+    await rebaseJsonFiles(target.cacheDir, source.root, target.root)
 
-  const now = new Date().toISOString()
-  const copy: ProjectDocument = {
-    ...rebaseProjectPaths(original, source.root, target.root),
-    id: newId,
-    name: `${original.name} ${nameSuffix}`,
-    createdAt: now,
-    updatedAt: now,
-    revision: 0
+    const now = new Date().toISOString()
+    const copy: ProjectDocument = {
+      ...rebaseProjectPaths(original, source.root, target.root),
+      id: newId,
+      name: `${original.name} ${nameSuffix}`,
+      createdAt: now,
+      updatedAt: now,
+      revision: 0
+    }
+    await saveProjectDocument(copy)
+    return { id: copy.id, name: copy.name, createdAt: copy.createdAt, updatedAt: copy.updatedAt }
+  } catch (error) {
+    // Không để lại bản sao dở dang.
+    await rm(target.root, { recursive: true, force: true })
+    throw error
   }
-  await saveProjectDocument(copy)
-  return { id: copy.id, name: copy.name, createdAt: copy.createdAt, updatedAt: copy.updatedAt }
 }

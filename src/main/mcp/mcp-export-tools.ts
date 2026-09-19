@@ -44,13 +44,43 @@ async function exists(path: string): Promise<boolean> {
   }
 }
 
-/** Đường dẫn chưa bị chiếm trong thư mục Videos, theo tên dự án. */
+/**
+ * File đang (hoặc sắp) có job ghi vào → id job, hoặc `pending` khi job chưa kịp nhận id.
+ *
+ * "Chưa có file thì dùng được" là không đủ: file ra chỉ xuất hiện khi bộ dựng bắt
+ * đầu ghi — với Remotion là vài giây sau. Hai lời gọi xuất liền nhau (xuất chương 1
+ * rồi chương 2) cùng thấy "chưa có" và cùng ghi vào MỘT file; cả hai báo xong, một
+ * chương mất.
+ */
+const reservedOutputs = new Map<string, string>()
+
+function isReserved(path: string): boolean {
+  const owner = reservedOutputs.get(path)
+  if (!owner) return false
+  if (owner === 'pending' || exportJobStatus(owner)?.status === 'running') return true
+  reservedOutputs.delete(path)
+  return false
+}
+
+/** Giữ chỗ NGAY (đồng bộ) — trước bất kỳ lần chờ nào, để hai lời gọi không cùng chọn một tên. */
+function reserve(path: string): void {
+  reservedOutputs.set(path, 'pending')
+}
+
+function release(path: string): void {
+  reservedOutputs.delete(path)
+}
+
+/** Đường dẫn chưa bị chiếm trong thư mục Videos, theo tên dự án — đã được giữ chỗ. */
 async function defaultOutputPath(projectName: string, extension = '.mp4'): Promise<string> {
   const safeName = projectName.replace(/[/\\:*?"<>|]/g, '-').trim() || 'video'
   for (let attempt = 0; attempt < 1000; attempt += 1) {
     const suffix = attempt === 0 ? '' : ` (${attempt})`
     const candidate = join(defaultExportDir(), `${safeName}${suffix}${extension}`)
+    if (isReserved(candidate)) continue
+    reserve(candidate)
     if (!(await exists(candidate))) return candidate
+    release(candidate)
   }
   throw new Error('Không tìm được tên file trống trong thư mục Videos')
 }
@@ -69,9 +99,13 @@ async function checkedOutputPath(
   if (!folder?.isDirectory()) throw new Error(`Thư mục "${dirname(path)}" không tồn tại`)
   // Hộp thoại lưu của hệ điều hành hỏi trước khi ghi đè; agent không có hộp thoại
   // đó nên phải nói rõ ý muốn, không thì một bản xuất cũ mất mà không ai hay.
+  if (isReserved(path)) {
+    throw new Error(`Đang có một bản xuất khác ghi vào "${basename(path)}". Chọn tên khác`)
+  }
   if (!overwrite && (await exists(path))) {
     throw new Error(`File "${basename(path)}" đã có. Đặt overwrite:true hoặc chọn tên khác`)
   }
+  reserve(path)
   return path
 }
 
@@ -123,9 +157,10 @@ export function registerMcpExportTools(server: McpServer): void {
       }
     },
     async (input) => {
+      let outputPath: string | undefined
       try {
         const document = await requestFromRenderer<ProjectDocument>('document-snapshot', {})
-        const outputPath = input.outputPath
+        outputPath = input.outputPath
           ? await checkedOutputPath(input.outputPath, input.overwrite ?? false)
           : await defaultOutputPath(document.name)
 
@@ -165,6 +200,8 @@ export function registerMcpExportTools(server: McpServer): void {
           quality: input.quality,
           rangeUs
         })
+        // Giữ chỗ tới khi job xong (hết `running`), không chỉ tới lúc nó bắt đầu.
+        reservedOutputs.set(outputPath, jobId)
 
         return text(
           [
@@ -176,6 +213,8 @@ export function registerMcpExportTools(server: McpServer): void {
           ].join('\n')
         )
       } catch (error) {
+        // Job không bắt đầu được: trả chỗ lại, không thì tên file bị giữ vĩnh viễn.
+        if (outputPath && reservedOutputs.get(outputPath) === 'pending') release(outputPath)
         return {
           ...text(`Không xuất được: ${error instanceof Error ? error.message : String(error)}`),
           isError: true
@@ -227,9 +266,10 @@ export function registerMcpExportTools(server: McpServer): void {
       }
     },
     async (input) => {
+      let outputPath: string | undefined
       try {
         const document = await requestFromRenderer<ProjectDocument>('document-snapshot', {})
-        const outputPath = input.outputPath
+        outputPath = input.outputPath
           ? await checkedOutputPath(input.outputPath, input.overwrite ?? false, '.png')
           : await defaultOutputPath(document.name, '.png')
         const factor = SCALE_FACTORS[input.scale ?? 'full']
@@ -243,6 +283,9 @@ export function registerMcpExportTools(server: McpServer): void {
         return text(`Đã lưu ảnh: ${written}`)
       } catch (error) {
         return { ...text(error instanceof Error ? error.message : String(error)), isError: true }
+      } finally {
+        // Ảnh ghi xong (hoặc hỏng) là hết giữ chỗ.
+        if (outputPath) release(outputPath)
       }
     }
   )

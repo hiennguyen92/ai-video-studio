@@ -179,6 +179,29 @@ describe('planSilenceCuts', () => {
     expect(plan).toMatchObject({ cutCount: 1, removedUs: 4_000_000 })
   })
 
+  it('chỉ track của clip: clip KHÁC trên lane bị kéo vào mà không được dò thì không bị cắt', () => {
+    const document = project()
+    // "loi" (lane 1, 0–10 s) im 3–6 s. "sau" (lane 2, 20–30 s) được dò, không im chỗ
+    // nào — nó kéo lane 2 vào diện cắt. "nhac" (lane 2, 0–20 s) KHÔNG được dò và
+    // đang phát suốt 3–6 s.
+    applyEditorCommand(document, {
+      type: 'clip/insert',
+      clipId: 'sau',
+      trackId: document.tracks[2].id,
+      assetId: 'asset_1',
+      startUs: 20_000_000,
+      durationUs: 10_000_000,
+      sourceInUs: 0
+    })
+    const plan = planSilenceCuts(
+      document,
+      { loi: [{ startUs: 3_000_000, endUs: 6_000_000 }], sau: [] },
+      { paddingUs: 0, scope: 'clip-tracks', frameRate: FPS }
+    )
+    // Trước đây: cắt 3–6 s trên cả lane 2, mất 3 giây của "nhac".
+    expect(plan.cutCount).toBe(0)
+  })
+
   it('không có khoảng lặng thì không có lệnh', () => {
     expect(
       planSilenceCuts(project(), { loi: [] }, { paddingUs: 0, scope: 'all-tracks', frameRate: FPS })

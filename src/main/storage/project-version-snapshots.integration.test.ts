@@ -74,6 +74,22 @@ describe('bản chụp phiên bản', () => {
     expect(await listVersionSnapshots(document.id)).toHaveLength(1)
   })
 
+  it('bản tự động không đẩy mất bản lưu tay và bản trước khi khôi phục', async () => {
+    const document = project(0)
+    await writeVersionSnapshot({ ...document, revision: 1 }, 'manual')
+    await writeVersionSnapshot({ ...document, revision: 2 }, 'before-restore')
+    for (let index = 0; index < 25; index += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 2))
+      await writeVersionSnapshot({ ...document, revision: 10 + index })
+    }
+    const versions = await listVersionSnapshots(document.id)
+    // Trước đây: trần chung 20 bản, bản lưu tay và bản dự phòng là hai bản cũ nhất
+    // nên bị dọn trước tiên.
+    expect(versions.filter((item) => item.reason === 'auto')).toHaveLength(20)
+    expect(versions.some((item) => item.reason === 'manual')).toBe(true)
+    expect(versions.some((item) => item.reason === 'before-restore')).toBe(true)
+  })
+
   it('chỉ giữ 20 bản gần nhất', async () => {
     const document = project(0)
     for (let index = 0; index < 23; index += 1) {

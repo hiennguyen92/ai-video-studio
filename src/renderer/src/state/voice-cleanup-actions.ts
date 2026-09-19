@@ -39,7 +39,9 @@ export async function cleanVoiceForClip(
 
   const store = useEditorStore.getState()
   const latest = store.session?.document
-  if (!latest) return { ok: false, error: 'Dự án đã bị đóng trong lúc làm sạch' }
+  if (!latest || latest.id !== document.id) {
+    return { ok: false, error: 'Dự án đã đổi trong lúc làm sạch — chưa áp dụng gì' }
+  }
   try {
     const target = resolveVoiceCleanupTarget(latest, clipId)
     const commands = planVoiceCleanup(latest, target, cleaned.data, (prefix) => createId(prefix))

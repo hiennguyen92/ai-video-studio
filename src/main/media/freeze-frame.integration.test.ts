@@ -101,6 +101,77 @@ describe('createFreezeFrame', () => {
     expect(exact).toBeGreaterThan((await psnr(frozen.source.path, 30, source.source.path, 61)) + 10)
   })
 
+  it('mốc rơi GIỮA hai khung: lấy khung đang hiện (trước mốc), không lấy khung kế', async () => {
+    // 2,02 s ở 30 fps nằm giữa khung 60 (2,000 s) và khung 61 (2,033 s).
+    const frozen = await createFreezeFrame({
+      projectId,
+      source,
+      sourceUs: 2_020_000,
+      frameRate: FPS,
+      existing: [source]
+    })
+    const shown = await psnr(frozen.source.path, 30, source.source.path, 60)
+    expect(shown).toBeGreaterThan((await psnr(frozen.source.path, 30, source.source.path, 61)) + 10)
+  })
+
+  it('mốc nằm trong KHUNG CUỐI của file: vẫn đóng băng được khung đó', async () => {
+    // File 6 s ở 30 fps, khung cuối là khung 179 (5,967 s). Trước đây: ffmpeg thoát
+    // 0 mà không ghi ảnh, rồi bước sau hỏng với "No such file".
+    const frozen = await createFreezeFrame({
+      projectId,
+      source,
+      sourceUs: 5_990_000,
+      frameRate: FPS,
+      existing: [source]
+    })
+    const last = await psnr(frozen.source.path, 30, source.source.path, 179)
+    expect(last).toBeGreaterThan((await psnr(frozen.source.path, 30, source.source.path, 178)) + 10)
+  })
+
+  it('nguồn 24 fps trong dự án 30 fps, mốc ở khung cuối', async () => {
+    const path24 = join(workDir, 'phim-24.mp4')
+    await execFileAsync(resolveFfmpegBinaries().ffmpegPath, [
+      '-v',
+      'error',
+      '-y',
+      '-f',
+      'lavfi',
+      '-i',
+      'testsrc2=size=320x180:rate=24:duration=3',
+      '-c:v',
+      'libx264',
+      '-preset',
+      'ultrafast',
+      '-crf',
+      '12',
+      '-pix_fmt',
+      'yuv420p',
+      path24
+    ])
+    const source24 = (await importMediaFile({ projectId, filePath: path24 }, [])).asset
+    // Khung cuối 71 (2,958 s); mốc 2,99 s nằm trong nó.
+    const frozen = await createFreezeFrame({
+      projectId,
+      source: source24,
+      sourceUs: 2_990_000,
+      frameRate: FPS,
+      existing: [source24]
+    })
+    expect(await psnr(frozen.source.path, 30, source24.source.path, 71)).toBeGreaterThan(35)
+  })
+
+  it('mốc ngoài phần có hình: báo lỗi nói rõ, không phải "No such file"', async () => {
+    await expect(
+      createFreezeFrame({
+        projectId,
+        source,
+        sourceUs: 9_000_000,
+        frameRate: FPS,
+        existing: [source]
+      })
+    ).rejects.toThrow(/ngoài phần có hình/)
+  })
+
   it('đóng băng lại đúng mốc cũ thì dùng lại asset, không dựng lần hai', async () => {
     const first = await createFreezeFrame({
       projectId,

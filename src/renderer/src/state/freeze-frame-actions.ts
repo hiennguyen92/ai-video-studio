@@ -38,7 +38,11 @@ export async function freezeFrameAtPlayhead(
   if (!created.ok) return { ok: false, error: created.error }
 
   const latest = useEditorStore.getState().session?.document
-  if (!latest) return { ok: false, error: 'Dự án đã bị đóng trong lúc dựng khung' }
+  // Đổi sang dự án khác (kể cả bản nhân bản, cùng id clip) trong lúc chờ: kết quả
+  // thuộc dự án cũ, file nằm trong thư mục media của dự án cũ.
+  if (!latest || latest.id !== document.id) {
+    return { ok: false, error: 'Dự án đã đổi trong lúc dựng khung — chưa áp dụng gì' }
+  }
   try {
     const again = resolveFreezeFrameSource(latest, clipId, source.atUs)
     const commands = planFreezeFrame(latest, again, created.data, DEFAULT_FREEZE_US, (prefix) =>

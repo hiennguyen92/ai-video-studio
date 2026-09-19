@@ -1,3 +1,4 @@
+import { singleSelectedClipId } from '../../../../shared/domain/clip-link-groups'
 import { useCallback, useMemo, useState, type JSX } from 'react'
 import type { MediaAsset } from '../../../../shared/domain/media-asset-types'
 import { mediaFileUrl } from '../../../../shared/ipc/ipc-contract'
@@ -58,11 +59,11 @@ export function MusicPanel({
     [insertAudio, insertMode, t.media.importedOne]
   )
 
+  const selectedClipId = document ? singleSelectedClipId(document, selection.clipIds) : undefined
   const hasMusicClipSelected = Boolean(
-    selection.clipIds.length === 1 &&
+    selectedClipId &&
     document?.tracks.some(
-      (track) =>
-        track.kind === 'audio' && track.clips.some((clip) => clip.id === selection.clipIds[0])
+      (track) => track.kind === 'audio' && track.clips.some((clip) => clip.id === selectedClipId)
     )
   )
 

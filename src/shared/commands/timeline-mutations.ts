@@ -193,7 +193,11 @@ export function splitClipAt(clip: Clip, atUs: Micros, newId: string): [Clip, Cli
     sourceInUs: clip.sourceInUs + Math.round((atUs - clip.startUs) * clip.speed),
     // Fade-in thuộc về nửa đầu.
     fadeInUs: 0,
-    keyframes: cutKeyframes.tail
+    keyframes: cutKeyframes.tail,
+    // Nửa sau KHÔNG ở lại nhóm của nửa đầu: ở lại thì nhóm phình thành ba clip, và
+    // "cắt rồi xoá nửa hỏng" xoá luôn nửa tốt cùng tiếng đi kèm. Tách cả nhóm cho
+    // đúng thì dùng `planSplitClip` — nó gom các nửa sau thành một nhóm mới.
+    linkGroupId: undefined
   }
 
   // Fade không được dài hơn mảnh chứa nó.

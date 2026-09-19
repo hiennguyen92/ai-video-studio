@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { groupSelectedClips, ungroupSelectedClips } from '../state/clip-group-actions'
+import { groupSelectedClips, splitClipAt, ungroupSelectedClips } from '../state/clip-group-actions'
 import {
   addMarkerAtPlayhead,
   jumpToMarker,
@@ -133,10 +133,7 @@ export function useKeyboardShortcuts(): void {
         case 'S': {
           if (modifier || !selectedClipId) return
           event.preventDefault()
-          store.run(
-            [{ type: 'clip/split', clipId: selectedClipId, atUs: store.playheadUs }],
-            'Cắt clip'
-          )
+          splitClipAt(selectedClipId, store.playheadUs, 'Cắt clip')
           return
         }
         case 'd':

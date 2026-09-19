@@ -43,33 +43,92 @@ async function exists(path: string): Promise<boolean> {
   }
 }
 
+/** Mốc bắt đầu của luồng hình (giây) — thường 0, nhưng có file bắt đầu lệch. */
+async function videoStartSeconds(sourcePath: string): Promise<number> {
+  const { stdout } = await execFileAsync(resolveFfmpegBinaries().ffprobePath, [
+    '-v',
+    'error',
+    '-select_streams',
+    'v:0',
+    '-show_entries',
+    'stream=start_time',
+    '-of',
+    'csv=p=0',
+    sourcePath
+  ])
+  const value = Number.parseFloat(stdout.trim())
+  return Number.isFinite(value) ? value : 0
+}
+
+/**
+ * Lấy khung ĐANG HIỆN tại `atUs`: khung cuối cùng có mốc ≤ `atUs` — đúng khung
+ * mà bản xem trước vẽ.
+ *
+ * Không dùng `-ss atUs -frames:v 1`: cách đó lấy khung ĐẦU TIÊN có mốc ≥ `atUs`,
+ * tức khung kế tiếp khi mốc rơi giữa hai khung, và không lấy được gì khi mốc nằm
+ * trong khung cuối (ffmpeg vẫn thoát 0, không ghi file).
+ *
+ * Ở đây giữ nguyên mốc gốc của file (`-copyts`), lọc khung theo mốc TUYỆT ĐỐI
+ * (`select=lte(t, …)`), và `-update 1` ghi đè ảnh mỗi khung — ảnh còn lại là khung
+ * cuối cùng không quá mốc. Không giữ mốc gốc thì sau khi tua ffmpeg dời khung đầu
+ * về 0, và phép so theo mốc lệch đi tới một khung. Đã kiểm bằng PSNR trên
+ * `testsrc2`: 2,02 s → khung 60, 5,99 s → khung cuối 179.
+ */
+async function extractFrameAtOrBefore(
+  ffmpegPath: string,
+  sourcePath: string,
+  atUs: number,
+  outputPath: string
+): Promise<void> {
+  const target = (await videoStartSeconds(sourcePath)) + atUs / 1_000_000
+  // Tua tới trước mốc một giây cho nhanh; dừng giải mã ngay sau mốc.
+  const seek = Math.max(0, target - 1)
+  await rm(outputPath, { force: true })
+  await execFileAsync(ffmpegPath, [
+    '-v',
+    'error',
+    '-y',
+    '-ss',
+    String(seek),
+    '-copyts',
+    '-i',
+    sourcePath,
+    '-an',
+    // Nửa mili giây dôi ra để khung nằm ĐÚNG tại mốc cũng được tính.
+    '-vf',
+    `select=lte(t\\,${target + 0.0005})`,
+    '-fps_mode',
+    'passthrough',
+    '-to',
+    String(target + 0.1),
+    '-update',
+    '1',
+    outputPath
+  ])
+  if (!(await exists(outputPath))) {
+    throw new Error('Không có khung hình nào tại mốc này — mốc nằm ngoài phần có hình của file')
+  }
+}
+
 export async function createFreezeFrame(request: FreezeFrameRequest): Promise<MediaAsset> {
   const { source, sourceUs } = request
   if (!source.probe.hasVideo) throw new Error(`"${source.name}" không có hình để đóng băng`)
 
   const { mediaDir } = await ensureProjectDirs(request.projectId)
   const ms = Math.round(sourceUs / 1000)
-  const outputPath = join(mediaDir, `${source.id}-freeze-${ms}ms.mp4`)
-  const stillPath = join(mediaDir, `${source.id}-freeze-${ms}ms.png`)
+  const fps = frameRateToNumber(request.frameRate)
+  // Tên theo nội dung file gốc, mốc và nhịp khung: liên kết lại sang file khác hay
+  // đổi nhịp khung dự án thì không dùng nhầm khung đứng hình cũ.
+  const fingerprint = source.source.contentHash.slice(0, 12)
+  const base = `${source.id}-${fingerprint}-freeze-${ms}ms-${fps}fps`
+  const outputPath = join(mediaDir, `${base}.mp4`)
+  const stillPath = join(mediaDir, `${base}.png`)
   const { ffmpegPath } = resolveFfmpegBinaries()
 
   if (!(await exists(outputPath))) {
     const tempPath = `${outputPath}.tmp.mp4`
     try {
-      // `-ss` trước `-i` vẫn chính xác từng khung khi có giải mã lại (ffmpeg ≥ 2.1),
-      // và nhanh hơn hẳn với file dài.
-      await execFileAsync(ffmpegPath, [
-        '-v',
-        'error',
-        '-y',
-        '-ss',
-        String(sourceUs / 1_000_000),
-        '-i',
-        source.source.path,
-        '-frames:v',
-        '1',
-        stillPath
-      ])
+      await extractFrameAtOrBefore(ffmpegPath, source.source.path, sourceUs, stillPath)
       await execFileAsync(ffmpegPath, [
         '-v',
         'error',

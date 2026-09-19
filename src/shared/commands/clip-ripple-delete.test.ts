@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { applyEditorCommand } from './editor-command-reducer'
 import { createEmptyProject } from '../domain/project-document-factory'
 import type { ProjectDocument } from '../domain/project-document-types'
-import { planRippleDeleteClips } from './clip-ripple-delete'
+import { planRippleDeleteClips, UNEVEN_GROUP_ERROR } from './clip-ripple-delete'
 
 function project(): ProjectDocument {
   const document = createEmptyProject({ name: 'Thử' })
@@ -40,7 +40,9 @@ function insert(
 }
 
 function runAll(document: ProjectDocument, clipIds: string[]): void {
-  for (const command of planRippleDeleteClips(document, clipIds) ?? []) {
+  const plan = planRippleDeleteClips(document, clipIds)
+  if (!plan || 'error' in plan) throw new Error(plan?.error ?? 'không có kế hoạch')
+  for (const command of plan.commands) {
     const result = applyEditorCommand(document, command)
     if (!result.ok) throw new Error(result.error)
   }
@@ -83,5 +85,42 @@ describe('planRippleDeleteClips', () => {
 
   it('không có clip nào khớp thì không sinh lệnh', () => {
     expect(planRippleDeleteClips(project(), ['khong_co'])).toBeNull()
+  })
+
+  it('nhóm có thành viên dài khác nhau thì từ chối thay vì làm lệch phần sau', () => {
+    const document = project()
+    // Hình 2–4 s, tiếng bắt đầu sớm 1 s (1–4 s): cắt mép riêng một bên.
+    insert(document, 0, 'hinh', 2_000_000)
+    insert(document, 1, 'tieng', 1_000_000)
+    applyEditorCommand(document, {
+      type: 'clip/trim',
+      clipId: 'tieng',
+      edge: 'end',
+      toUs: 4_000_000
+    })
+    applyEditorCommand(document, {
+      type: 'clip/set-link-group',
+      clipIds: ['hinh', 'tieng'],
+      linkGroupId: 'g'
+    })
+    expect(planRippleDeleteClips(document, ['hinh', 'tieng'])).toEqual({
+      error: UNEVEN_GROUP_ERROR
+    })
+  })
+
+  it('nhóm có thành viên dài bằng nhau thì mỗi lane co đúng một lượng', () => {
+    const document = project()
+    insert(document, 0, 'hinh', 2_000_000)
+    insert(document, 1, 'tieng', 2_000_000)
+    insert(document, 0, 'hinh-sau', 6_000_000)
+    insert(document, 1, 'tieng-sau', 6_000_000)
+    applyEditorCommand(document, {
+      type: 'clip/set-link-group',
+      clipIds: ['hinh', 'tieng'],
+      linkGroupId: 'g'
+    })
+    runAll(document, ['hinh', 'tieng'])
+    expect(starts(document, 0)).toEqual([['hinh-sau', 4_000_000]])
+    expect(starts(document, 1)).toEqual([['tieng-sau', 4_000_000]])
   })
 })

@@ -106,3 +106,60 @@ export function planUngroupClips(
   if (members.length === 0) return null
   return { type: 'clip/set-link-group', clipIds: members, linkGroupId: null }
 }
+
+/**
+ * Cắt một clip tại `atUs` — và nếu nó nằm trong nhóm, cắt CẢ NHÓM tại đó.
+ *
+ * Nửa đầu các thành viên ở lại nhóm cũ, nửa sau gom thành một nhóm MỚI: hình và
+ * tiếng của phần sau vẫn đi cùng nhau, nhưng không dính vào phần trước. Cắt riêng
+ * một thành viên thì phần sau của hình với phần sau của tiếng rời nhau, dời một
+ * bên là lệch khẩu hình.
+ *
+ * Thành viên không vắt qua mốc (ngắn hơn, kết thúc trước) thì để nguyên.
+ */
+export function planSplitClip(
+  document: ProjectDocument,
+  clipId: string,
+  atUs: Micros,
+  makeId: (prefix: 'clip' | 'group') => string
+): { commands: EditorCommand[]; tailIds: Record<string, string> } {
+  const members = expandToLinkGroups(document, [clipId])
+  const spanning = allClips(document)
+    .map((item) => item.clip)
+    .filter(
+      (clip) =>
+        members.includes(clip.id) && clip.startUs < atUs && clip.startUs + clip.durationUs > atUs
+    )
+
+  const commands: EditorCommand[] = []
+  const tailIds: Record<string, string> = {}
+  for (const clip of spanning) {
+    const tailId = makeId('clip')
+    tailIds[clip.id] = tailId
+    commands.push({ type: 'clip/split', clipId: clip.id, atUs, newClipId: tailId })
+  }
+  const tails = Object.values(tailIds)
+  if (tails.length >= 2) {
+    commands.push({ type: 'clip/set-link-group', clipIds: tails, linkGroupId: makeId('group') })
+  }
+  return { commands, tailIds }
+}
+
+/**
+ * Clip "đang chọn" cho những việc chỉ làm trên MỘT clip.
+ *
+ * Bấm vào clip trong nhóm là chọn cả nhóm, nên vùng chọn có hai, ba clip. Đòi đúng
+ * một clip thì mọi công cụ một-clip ngừng chạy trên clip trong nhóm — mà sau khi
+ * làm sạch giọng, clip hình nào cũng nằm trong nhóm. Vùng chọn là ĐÚNG MỘT nhóm
+ * thì lấy clip người dùng bấm (luôn đứng đầu vùng chọn). Chọn lẫn nhiều clip rời
+ * thì không đoán — trả `undefined`.
+ */
+export function singleSelectedClipId(
+  document: ProjectDocument,
+  clipIds: readonly string[]
+): string | undefined {
+  if (clipIds.length === 0) return undefined
+  if (clipIds.length === 1) return clipIds[0]
+  const group = expandToLinkGroups(document, [clipIds[0]])
+  return clipIds.every((id) => group.includes(id)) ? clipIds[0] : undefined
+}

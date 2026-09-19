@@ -20,7 +20,12 @@ function AppRoutes(): JSX.Element {
   useEffect(
     () =>
       window.api.app.onFlushBeforeClose(async () => {
-        await flushPendingSave()
+        const saved = await flushPendingSave()
+        if (saved.ok) return true
+        // Ghi hỏng: hỏi, như lúc về danh sách dự án — đóng lặng lẽ là mất sửa đổi.
+        return window.confirm(
+          `Không lưu được dự án: ${saved.error}\n\nVẫn đóng và bỏ sửa đổi chưa lưu?`
+        )
       }),
     []
   )

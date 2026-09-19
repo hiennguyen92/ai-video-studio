@@ -2,6 +2,7 @@ import {
   expandToLinkGroups,
   isGroupedClip,
   planGroupClips,
+  planSplitClip,
   planUngroupClips
 } from '../../../shared/domain/clip-link-groups'
 import type { ProjectDocument } from '../../../shared/domain/project-document-types'
@@ -53,4 +54,16 @@ export function selectionCanGroup({ session, selection }: GroupSelectionState): 
     sameGroup.length === selection.clipIds.length &&
     selection.clipIds.every((id) => sameGroup.includes(id))
   return !alreadyOneGroup
+}
+
+/**
+ * Cắt clip tại `atUs` — cả nhóm của nó nếu có. Dùng chung cho nút kéo, phím S và
+ * công cụ Blade, để ba lối không cắt nhóm theo ba kiểu.
+ */
+export function splitClipAt(clipId: string, atUs: number, label: string): boolean {
+  const store = useEditorStore.getState()
+  const document = store.session?.document
+  if (!document) return false
+  const { commands } = planSplitClip(document, clipId, atUs, (prefix) => createId(prefix))
+  return commands.length > 0 && store.run(commands, label)
 }

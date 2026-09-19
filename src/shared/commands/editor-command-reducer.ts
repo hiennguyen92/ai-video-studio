@@ -1,4 +1,9 @@
 import { NEUTRAL_COLOR_GRADE, clampColorGrade } from '../domain/clip-color-grade'
+import {
+  insertIntoSubtitleCues,
+  rippleSubtitleCues,
+  subtitleTracksFollowingLanes
+} from '../domain/subtitle-ripple'
 import { rippleTextOverlays } from '../domain/text-overlay-ripple'
 import { rippleMarkers } from '../domain/timeline-marker-types'
 import { current, isDraft } from 'immer'
@@ -301,6 +306,18 @@ export function applyEditorCommand(doc: ProjectDocument, command: EditorCommand)
       return OK
     }
 
+    case 'subtitle/insert-time': {
+      for (const subtitleTrack of doc.subtitleTracks) {
+        if (!command.subtitleTrackIds.includes(subtitleTrack.id)) continue
+        subtitleTrack.cues = insertIntoSubtitleCues(
+          snapshot(subtitleTrack.cues),
+          command.atUs,
+          command.durationUs
+        )
+      }
+      return OK
+    }
+
     case 'marker/add': {
       if (doc.markers.some((marker) => marker.id === command.marker.id)) {
         return fail(`Marker ${command.marker.id} đã tồn tại`)
@@ -587,6 +604,12 @@ export function applyEditorCommand(doc: ProjectDocument, command: EditorCommand)
       const locked = targets.find((track) => track.locked)
       if (locked) return fail(`Track "${locked.name}" đang bị khoá`)
 
+      // Xác định TRƯỚC khi xoá clip: luật "phụ đề đi theo lane lời nói" nhìn vào
+      // clip đang nằm trên lane.
+      const followingSubtitles = command.trackIds
+        ? subtitleTracksFollowingLanes(doc, command.trackIds)
+        : doc.subtitleTracks
+
       for (const track of targets) {
         track.clips = rippleDeleteRange(snapshot(track.clips), command.fromUs, command.toUs, {
           makeId: () => createId('clip')
@@ -603,21 +626,19 @@ export function applyEditorCommand(doc: ProjectDocument, command: EditorCommand)
         inScope(overlay) ? rippleTextOverlays([overlay], command.fromUs, command.toUs) : [overlay]
       )
 
-      // Cue phụ đề cũng phải trôi theo, nếu không phụ đề sẽ lệch hẳn khỏi hình.
-      // Chỉ làm khi ripple áp cho toàn bộ track; ripple lệch track là chủ ý của
-      // người dùng, không nên tự ý đụng vào phụ đề.
+      // Marker đánh dấu cả video: chỉ trôi khi cả video co lại.
       if (!command.trackIds) {
-        const span = command.toUs - command.fromUs
         doc.markers = rippleMarkers(snapshot(doc.markers), command.fromUs, command.toUs)
-        for (const subtitleTrack of doc.subtitleTracks) {
-          subtitleTrack.cues = snapshot(subtitleTrack.cues)
-            .filter((cue) => !(cue.startUs >= command.fromUs && cue.endUs <= command.toUs))
-            .map((cue) =>
-              cue.startUs >= command.toUs
-                ? { ...cue, startUs: cue.startUs - span, endUs: cue.endUs - span }
-                : cue
-            )
-        }
+      }
+      // Phụ đề đi theo LỜI NÓI: cả video co thì mọi track phụ đề trôi theo; chỉ vài
+      // lane co thì những track phụ đề của lời nói trên các lane đó (xác định trước
+      // khi xoá clip, ở trên).
+      for (const subtitleTrack of followingSubtitles) {
+        subtitleTrack.cues = rippleSubtitleCues(
+          snapshot(subtitleTrack.cues),
+          command.fromUs,
+          command.toUs
+        )
       }
       return OK
     }

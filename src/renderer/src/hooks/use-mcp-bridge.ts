@@ -228,7 +228,12 @@ function formatShots(
   return [header + note, '', ...lines].join('\n')
 }
 
+/** Yêu cầu main đã tuyên bố quá hạn — không được áp nữa dù phần nặng đã chạy xong. */
+const cancelledRequests = new Set<string>()
+
 export function useMcpBridge(): void {
+  useEffect(() => window.api.mcp.onCancel((requestId) => cancelledRequests.add(requestId)), [])
+
   useEffect(() => {
     return window.api.mcp.onRequest((request: McpBridgeRequest) => {
       const respond = (ok: boolean, data?: unknown, error?: string): void =>
@@ -352,29 +357,39 @@ export function useMcpBridge(): void {
             // Chép file phông TRƯỚC khi lập kế hoạch: planner là hàm thuần, chỉ
             // nhận đường dẫn có sẵn chứ không tự đọc byte phông được.
             const selected = useEditorStore.getState().selection.clipIds
+            // Đầu phát đọc MỘT lần: phần dựng khung đứng hình và phần lập kế hoạch phải
+            // cùng một mốc, dù đầu phát có chạy trong lúc chờ ffmpeg.
+            const playheadAtRequest = useEditorStore.getState().playheadUs
             void Promise.all([
               resolveFontFiles(calls),
               resolveSoundEffects(calls),
               resolveImportedMedia(calls),
               resolveSilences(calls, document, selected),
               resolveCleanedVoices(calls, document, selected),
-              resolveFreezeFrames(calls, document, selected, useEditorStore.getState().playheadUs)
+              resolveFreezeFrames(calls, document, selected, playheadAtRequest)
             ]).then(
               ([fontFiles, soundEffects, importedMedia, silences, cleanedVoices, freezeFrames]) => {
                 // Đọc lại trạng thái SAU khi chờ: phông, hiệu ứng âm thanh và nhập media
                 // tốn thời gian, và một lời gọi khác (undo chẳng hạn) có thể đã đổi
                 // dự án. Lập kế hoạch trên bản chụp cũ sẽ ghi đè thay đổi đó.
+                // Quá hạn trong lúc chạy ffmpeg: agent đã nhận lỗi và sẽ gọi lại.
+                if (cancelledRequests.delete(request.requestId)) return
                 const latest = useEditorStore.getState()
                 const latestDocument = latest.session?.document
                 if (!latestDocument) {
                   respond(false, undefined, 'Dự án đã bị đóng trong lúc xử lý.')
                   return
                 }
+                // Đổi sang dự án khác trong lúc chờ: kết quả thuộc về dự án cũ.
+                if (latestDocument.id !== document.id) {
+                  respond(false, undefined, 'Dự án đã đổi trong lúc xử lý — chưa áp dụng gì.')
+                  return
+                }
                 const plan = planChatToolCalls(
                   {
                     document: latestDocument,
                     selectedClipIds: latest.selection.clipIds,
-                    playheadUs: latest.playheadUs,
+                    playheadUs: playheadAtRequest,
                     makeId: (prefix) => createId(prefix ?? 'clip'),
                     shots: Object.fromEntries(shotCache),
                     fontFiles,

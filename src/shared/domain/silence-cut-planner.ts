@@ -122,12 +122,6 @@ export function planSilenceCuts(
     )
   }
 
-  const snap = (us: Micros): Micros => snapMicrosToFrame(us, options.frameRate)
-  const ranges = subtractIntervals(mergeIntervals(silent), mergeIntervals(sounding))
-    .map((range) => ({ startUs: snap(range.startUs), endUs: snap(range.endUs) }))
-    .filter((range) => range.endUs - range.startUs >= MIN_CUT_US)
-  if (ranges.length === 0) return { commands: [], cutCount: 0, removedUs: 0 }
-
   // Cả nhóm của clip co cùng lúc: cắt tiếng mà để hình nguyên là lệch khẩu hình.
   const members = expandToLinkGroups(document, Object.keys(silencesByClip))
   const trackIds =
@@ -138,6 +132,23 @@ export function planSilenceCuts(
           )
         ]
       : undefined
+
+  // Chỉ vài lane co thì MỌI clip đang phát tiếng trên các lane đó đều tính — kể cả
+  // clip không được dò. Không dò thì không biết nó im chỗ nào, nên coi cả clip là
+  // có tiếng: thà cắt ít đi còn hơn cắt mất lời của một clip chưa ai nghe qua.
+  if (trackIds) {
+    for (const { clip, trackId } of clips) {
+      if (!trackIds.includes(trackId) || clip.id in silencesByClip || isMuted(clip)) continue
+      if (!document.assets.find((asset) => asset.id === clip.assetId)?.probe.hasAudio) continue
+      sounding.push({ startUs: clip.startUs, endUs: clipEndUs(clip) })
+    }
+  }
+
+  const snap = (us: Micros): Micros => snapMicrosToFrame(us, options.frameRate)
+  const ranges = subtractIntervals(mergeIntervals(silent), mergeIntervals(sounding))
+    .map((range) => ({ startUs: snap(range.startUs), endUs: snap(range.endUs) }))
+    .filter((range) => range.endUs - range.startUs >= MIN_CUT_US)
+  if (ranges.length === 0) return { commands: [], cutCount: 0, removedUs: 0 }
 
   const commands: EditorCommand[] = [...ranges]
     .sort((left, right) => right.startUs - left.startUs)

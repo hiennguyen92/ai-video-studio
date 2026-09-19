@@ -1,3 +1,4 @@
+import { singleSelectedClipId } from '../../../../shared/domain/clip-link-groups'
 import {
   STT_SEGMENTATION_MODES,
   type SttSegmentationMode
@@ -53,10 +54,11 @@ function findSelectedClipWithAsset(
   document: ProjectDocument | null,
   clipIds: string[]
 ): { clip: Clip; asset: MediaAsset } | null {
-  if (!document || clipIds.length !== 1) return null
+  const selectedId = document ? singleSelectedClipId(document, clipIds) : undefined
+  if (!document || !selectedId) return null
 
   for (const track of document.tracks) {
-    const clip = track.clips.find((item) => item.id === clipIds[0])
+    const clip = track.clips.find((item) => item.id === selectedId)
     if (!clip?.assetId) continue
     const asset = document.assets.find((item) => item.id === clip.assetId)
     if (asset) return { clip, asset }

@@ -1,6 +1,6 @@
 import { chatToolSchemas } from '../../../shared/ai/chat-tool-catalog'
 import type { ChatEditContext } from '../../../shared/ai/chat-tool-planner'
-import { expandToLinkGroups } from '../../../shared/domain/clip-link-groups'
+import { expandToLinkGroups, singleSelectedClipId } from '../../../shared/domain/clip-link-groups'
 import type { ProjectDocument } from '../../../shared/domain/project-document-types'
 import { clipSourceSpanUs } from '../../../shared/domain/timeline-track-types'
 import { resolveVoiceCleanupTarget } from '../../../shared/domain/voice-cleanup-planner'
@@ -18,8 +18,12 @@ import { resolveFreezeFrameSource } from '../../../shared/domain/freeze-frame-pl
 type Calls = Array<{ name: string; arguments: unknown }>
 
 /** Clip mà công cụ nhắm tới — cùng luật với `resolveClipId` của planner. */
-function targetClipId(clipId: string | undefined, selectedClipIds: string[]): string | undefined {
-  return clipId ?? (selectedClipIds.length === 1 ? selectedClipIds[0] : undefined)
+function targetClipId(
+  document: ProjectDocument,
+  clipId: string | undefined,
+  selectedClipIds: string[]
+): string | undefined {
+  return clipId ?? singleSelectedClipId(document, selectedClipIds)
 }
 
 const message = (error: unknown): string => (error instanceof Error ? error.message : String(error))
@@ -35,7 +39,7 @@ export async function resolveSilences(
     if (call.name !== 'remove_silences') continue
     const parsed = chatToolSchemas.remove_silences.safeParse(call.arguments)
     if (!parsed.success) continue
-    const clipId = targetClipId(parsed.data.clipId, selectedClipIds)
+    const clipId = targetClipId(document, parsed.data.clipId, selectedClipIds)
     if (!clipId) continue
 
     for (const id of expandToLinkGroups(document, [clipId])) {
@@ -77,7 +81,7 @@ export async function resolveCleanedVoices(
     if (call.name !== 'clean_voice') continue
     const parsed = chatToolSchemas.clean_voice.safeParse(call.arguments)
     if (!parsed.success) continue
-    const clipId = targetClipId(parsed.data.clipId, selectedClipIds)
+    const clipId = targetClipId(document, parsed.data.clipId, selectedClipIds)
     if (!clipId || result[clipId]) continue
 
     try {
@@ -110,7 +114,7 @@ export async function resolveFreezeFrames(
     if (call.name !== 'freeze_frame') continue
     const parsed = chatToolSchemas.freeze_frame.safeParse(call.arguments)
     if (!parsed.success) continue
-    const clipId = targetClipId(parsed.data.clipId, selectedClipIds)
+    const clipId = targetClipId(document, parsed.data.clipId, selectedClipIds)
     if (!clipId || result[clipId]) continue
 
     try {

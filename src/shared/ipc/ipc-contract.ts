@@ -92,6 +92,7 @@ export const IPC = {
   exportCapabilities: 'export:capabilities',
 
   appInfo: 'app:info',
+  appFlushAck: 'app:flush-ack',
   appFlushDone: 'app:flush-done'
 } as const
 
@@ -99,6 +100,8 @@ export const IPC = {
 export const IPC_EVENT = {
   /** Máy chủ MCP hỏi renderer vì tài liệu chỉ nằm ở đó. */
   mcpRequest: 'mcp:request',
+  /** Main báo một yêu cầu MCP đã quá hạn: renderer KHÔNG được áp nó nữa. */
+  mcpCancel: 'mcp:cancel',
   exportProgress: 'export:progress',
   jobChanged: 'job:changed',
   whisperDownloadProgress: 'whisper:download-progress',
@@ -562,6 +565,7 @@ export interface RendererApi {
     /** Renderer trả lời một yêu cầu do máy chủ MCP gửi tới. */
     respond(response: McpBridgeResponse): void
     onRequest(listener: (request: McpBridgeRequest) => void): () => void
+    onCancel(listener: (requestId: string) => void): () => void
     status(): Promise<IpcResult<McpServerStatus>>
     setTokenRequired(requireToken: boolean): Promise<IpcResult<McpServerStatus>>
   }
@@ -604,7 +608,7 @@ export interface RendererApi {
      * Đăng ký việc cần làm khi cửa sổ sắp đóng; `done` phải được gọi (kể cả khi
      * ghi hỏng) để main đóng tiếp. Trả hàm huỷ đăng ký.
      */
-    onFlushBeforeClose(handler: () => Promise<void>): () => void
+    onFlushBeforeClose(handler: () => Promise<boolean>): () => void
   }
   /** Nền tảng hệ điều hành, đọc đồng bộ để bố cục dựng đúng ngay lần render đầu. */
   platform: string

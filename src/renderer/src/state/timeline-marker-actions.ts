@@ -43,11 +43,16 @@ export function rippleDeleteSelection(label: string): boolean {
   const store = useEditorStore.getState()
   const document = store.session?.document
   if (!document || store.selection.clipIds.length === 0) return false
-  const commands = planRippleDeleteClips(
+  const plan = planRippleDeleteClips(
     document,
     expandToLinkGroups(document, store.selection.clipIds)
   )
-  if (!commands || !store.run(commands, label)) return false
+  if (!plan) return false
+  if ('error' in plan) {
+    store.setError(plan.error)
+    return false
+  }
+  if (!store.run(plan.commands, label)) return false
   store.clearSelection()
   return true
 }

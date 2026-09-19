@@ -1,4 +1,5 @@
 import type { EditorCommand } from '../commands/editor-command-types'
+import { applyEditorCommand } from '../commands/editor-command-reducer'
 import type { MediaAsset } from '../domain/media-asset-types'
 import type { ProjectDocument } from '../domain/project-document-types'
 import { findSoundEffect } from '../domain/sound-effect-catalog'
@@ -54,6 +55,8 @@ import {
   expandToLinkGroups,
   planGroupClips,
   planMoveClips,
+  planSplitClip,
+  singleSelectedClipId,
   planUngroupClips
 } from '../domain/clip-link-groups'
 import { roundHalfUp } from '../domain/time-units'
@@ -200,11 +203,11 @@ function resolveClipId(context: ChatEditContext, clipId?: string): string {
   if (context.selectedClipIds.length === 0) {
     throw new Error('Chưa chọn clip nào trên timeline')
   }
-  // Nhiều clip đang chọn thì không đoán; hỏi lại rẻ hơn sửa nhầm.
-  if (context.selectedClipIds.length > 1) {
-    throw new Error('Đang chọn nhiều clip — hãy chọn đúng một clip')
-  }
-  return context.selectedClipIds[0]
+  // Nhiều clip RỜI đang chọn thì không đoán; hỏi lại rẻ hơn sửa nhầm. Một nhóm
+  // thì là một clip — clip người dùng bấm.
+  const single = singleSelectedClipId(context.document, context.selectedClipIds)
+  if (!single) throw new Error('Đang chọn nhiều clip — hãy chọn đúng một clip')
+  return single
 }
 
 function requireTrack(context: ChatEditContext, trackId: string): void {
@@ -286,7 +289,7 @@ function planOne(context: ChatEditContext, tool: ChatToolName, args: unknown): P
       return {
         tool,
         description: `Cắt clip tại ${formatSeconds(atUs)}`,
-        commands: [{ type: 'clip/split', clipId, atUs, newClipId: context.makeId() }]
+        commands: planSplitClip(document, clipId, atUs, (prefix) => context.makeId(prefix)).commands
       }
     }
 
@@ -346,7 +349,10 @@ function planOne(context: ChatEditContext, tool: ChatToolName, args: unknown): P
       const input = chatToolSchemas.ripple_delete_clip.parse(args)
       const clipId = resolveClipId(context, input.clipId)
       const members = expandToLinkGroups(document, [clipId])
-      const commands = planRippleDeleteClips(document, members)!
+      const plan = planRippleDeleteClips(document, members)
+      if (!plan) throw new Error('Không tìm thấy clip để xoá')
+      if ('error' in plan) throw new Error(plan.error)
+      const commands = plan.commands
       return {
         tool,
         description:
@@ -1838,6 +1844,12 @@ export function planChatToolCalls(
 ): ChatToolPlan {
   const steps: PlannedToolCall[] = []
   const failures: ToolPlanFailure[] = []
+  // Tài liệu SAU các bước đã lập — mỗi bước lập trên kết quả của bước trước.
+  //
+  // Lập mọi bước trên cùng một bản chụp ban đầu là sai với mọi công cụ theo vị
+  // trí: "ripple xoá clip a" rồi "ripple xoá clip c" thì bước hai tính toạ độ của c
+  // TRƯỚC khi a được xoá, và áp vào thực tế nó xoá nhầm clip đứng sau c.
+  let working = context.document
 
   for (const call of calls) {
     if (!isChatToolName(call.name)) {
@@ -1847,7 +1859,19 @@ export function planChatToolCalls(
     }
 
     try {
-      steps.push(planOne(context, call.name, call.arguments))
+      const step = planOne({ ...context, document: working }, call.name, call.arguments)
+      // Áp thử lên bản sao. Chỉ một bước thì khỏi — không bước nào đứng sau nó.
+      if (calls.length > 1 && step.commands.length > 0) {
+        const next = structuredClone(working)
+        for (const command of step.commands) {
+          const applied = applyEditorCommand(next, command)
+          // Bước không áp được thì bỏ HẲN: để lại nó là để các bước sau lập trên
+          // một trạng thái không bao giờ có thật.
+          if (!applied.ok) throw new Error(applied.error)
+        }
+        working = next
+      }
+      steps.push(step)
     } catch (error) {
       failures.push({
         tool: call.name,

@@ -88,6 +88,11 @@ const api: RendererApi = {
       ipcRenderer.on(IPC_EVENT.mcpRequest, handler)
       return () => ipcRenderer.removeListener(IPC_EVENT.mcpRequest, handler)
     },
+    onCancel: (listener) => {
+      const handler = (_event: unknown, requestId: string): void => listener(requestId)
+      ipcRenderer.on(IPC_EVENT.mcpCancel, handler)
+      return () => ipcRenderer.removeListener(IPC_EVENT.mcpCancel, handler)
+    },
     status: () => ipcRenderer.invoke(IPC.mcpStatus),
     setTokenRequired: (requireToken: boolean) =>
       ipcRenderer.invoke(IPC.mcpSetTokenRequired, requireToken)
@@ -139,7 +144,11 @@ const api: RendererApi = {
     info: () => ipcRenderer.invoke(IPC.appInfo),
     onFlushBeforeClose: (handler) => {
       const listener = (): void => {
-        void handler().finally(() => ipcRenderer.send(IPC.appFlushDone))
+        // Báo NGAY là đã nhận, để main bỏ hạn giờ trong lúc có thể phải hỏi người dùng.
+        ipcRenderer.send(IPC.appFlushAck)
+        void handler()
+          .catch(() => true)
+          .then((shouldClose) => ipcRenderer.send(IPC.appFlushDone, shouldClose))
       }
       ipcRenderer.on(IPC_EVENT.flushBeforeClose, listener)
       return () => ipcRenderer.removeListener(IPC_EVENT.flushBeforeClose, listener)
