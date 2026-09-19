@@ -9,6 +9,7 @@ export const dictionaryEn: Dictionary = {
   },
   topbar: {
     project: 'Project',
+    versions: 'Versions',
     import: 'Import media',
     undo: 'Undo',
     redo: 'Redo',
@@ -607,6 +608,38 @@ export const dictionaryEn: Dictionary = {
     fromCache: 'Reused an earlier result instead of calling the provider again',
     unverified:
       'Note: the ElevenLabs Music call has not been verified with a real key — only against a server that follows the documented protocol.'
+  },
+  silenceCut: {
+    open: 'Cut silences',
+    title: 'Cut silences',
+    hint: 'Finds the quiet parts in the selected clips and cuts them out, closing the gaps. Detect first to see how much will go; one undo restores everything.',
+    noAudio: 'The selected clips have no sound to analyse.',
+    threshold: 'Silence threshold (dB)',
+    minSilence: 'Minimum silence (seconds)',
+    padding: 'Keep on each side (seconds)',
+    scope: 'Scope',
+    scopeClipTracks: 'Only the clip’s lanes (music stays put)',
+    scopeAllTracks: 'Every lane (subtitles, text and markers follow)',
+    detect: 'Detect silences',
+    detecting: 'Detecting…',
+    found: 'Found {count} silences — {seconds} s will be cut',
+    nothingFound: 'No silence long enough. Try a higher threshold (e.g. -30 dB) for a noisy room.',
+    apply: 'Cut'
+  },
+  versions: {
+    title: 'Saved versions',
+    hint: 'A snapshot is taken automatically every 5 minutes while you edit. Restoring snapshots the current state first, so you can always go back.',
+    empty: 'No snapshots yet',
+    emptyHint: 'The first one is written after the first autosave, or press "Save a version now".',
+    summary: '{clips} clips · {duration}',
+    reasonAuto: 'Automatic',
+    reasonManual: 'Saved by hand',
+    reasonBeforeRestore: 'Before restoring',
+    restore: 'Restore',
+    confirmRestore: 'Click again to restore',
+    saveNow: 'Save a version now',
+    savedNow: 'Version saved',
+    restoredMissing: 'Restored, but {count} media files of this version are no longer on disk'
   },
   ducking: {
     section: 'Lower music under speech',

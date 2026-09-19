@@ -1,4 +1,6 @@
 import { ipcMain, type WebContents } from 'electron'
+import { detectSilences } from '../media/silence-detection'
+import type { SilenceDetectionRequest } from '../../shared/ipc/silence-detection-types'
 import type {
   ChatMessageRecord,
   ChatSendRequest,
@@ -91,6 +93,10 @@ export function registerTranscriptionIpcHandlers(): void {
       _event,
       request: { projectId: string; assetId: string; sourcePath: string; force?: boolean }
     ) => guard(async () => (await detectShotsForAsset(request)).shots)
+  )
+
+  ipcMain.handle(IPC.mediaDetectSilences, (_event, request: SilenceDetectionRequest) =>
+    guard(() => detectSilences(request))
   )
 
   ipcMain.handle(IPC.mediaRegisterLocal, (_event, entries: Array<{ id: string; path: string }>) =>

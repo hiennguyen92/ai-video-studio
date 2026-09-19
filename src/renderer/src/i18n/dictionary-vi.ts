@@ -13,6 +13,7 @@ export const dictionaryVi = {
   },
   topbar: {
     project: 'Dự án',
+    versions: 'Phiên bản',
     import: 'Nhập media',
     undo: 'Hoàn tác',
     redo: 'Làm lại',
@@ -605,6 +606,38 @@ export const dictionaryVi = {
     fromCache: 'Dùng lại kết quả đã tạo trước đó, không gọi lại provider',
     unverified:
       'Lưu ý: đường gọi tới ElevenLabs Music chưa được kiểm chứng bằng khoá thật — mới kiểm bằng máy chủ giả lập đúng giao thức.'
+  },
+  silenceCut: {
+    open: 'Cắt khoảng lặng',
+    title: 'Cắt khoảng lặng',
+    hint: 'Dò chỗ im trong tiếng của clip đang chọn rồi cắt bỏ, dồn phần sau lên. Dò trước để xem sẽ cắt bao nhiêu; hoàn tác một lần là trả lại nguyên trạng.',
+    noAudio: 'Clip đang chọn không có tiếng để dò.',
+    threshold: 'Ngưỡng im (dB)',
+    minSilence: 'Im tối thiểu (giây)',
+    padding: 'Chừa lại mỗi bên (giây)',
+    scope: 'Phạm vi',
+    scopeClipTracks: 'Chỉ track của clip (nhạc nền đứng yên)',
+    scopeAllTracks: 'Mọi track (phụ đề, chữ, marker trôi theo)',
+    detect: 'Dò khoảng lặng',
+    detecting: 'Đang dò…',
+    found: 'Tìm thấy {count} khoảng lặng — sẽ cắt bớt {seconds} giây',
+    nothingFound: 'Không có khoảng lặng nào đủ dài. Thử nâng ngưỡng (vd. -30 dB) nếu phòng thu ồn.',
+    apply: 'Cắt'
+  },
+  versions: {
+    title: 'Phiên bản đã lưu',
+    hint: 'Bản chụp được ghi tự động mỗi 5 phút khi có thay đổi. Khôi phục sẽ chụp lại bản hiện tại trước, nên luôn quay lại được.',
+    empty: 'Chưa có bản chụp nào',
+    emptyHint: 'Bản đầu tiên được ghi sau lần lưu tự động đầu tiên, hoặc bấm "Lưu phiên bản ngay".',
+    summary: '{clips} clip · {duration}',
+    reasonAuto: 'Tự động',
+    reasonManual: 'Lưu tay',
+    reasonBeforeRestore: 'Trước khi khôi phục',
+    restore: 'Khôi phục',
+    confirmRestore: 'Bấm lần nữa để khôi phục',
+    saveNow: 'Lưu phiên bản ngay',
+    savedNow: 'Đã lưu một phiên bản',
+    restoredMissing: 'Đã khôi phục, nhưng {count} file media của bản này không còn trên đĩa'
   },
   ducking: {
     section: 'Giảm nhạc khi có lời nói',

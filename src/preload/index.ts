@@ -28,7 +28,10 @@ const api: RendererApi = {
     remove: (projectId) => ipcRenderer.invoke(IPC.projectDelete, projectId),
     scanGarbage: (document) => ipcRenderer.invoke(IPC.projectScanGarbage, document),
     removeGarbage: (document) => ipcRenderer.invoke(IPC.projectRemoveGarbage, document),
-    snapshot: (document) => ipcRenderer.invoke(IPC.projectSnapshot, document),
+    snapshot: (document, reason) => ipcRenderer.invoke(IPC.projectSnapshot, document, reason),
+    listVersions: (projectId) => ipcRenderer.invoke(IPC.projectListVersions, projectId),
+    loadVersion: (projectId, fileName) =>
+      ipcRenderer.invoke(IPC.projectLoadVersion, projectId, fileName),
     checkMedia: (document) => ipcRenderer.invoke(IPC.projectCheckMedia, document)
   },
   fonts: {
@@ -44,6 +47,7 @@ const api: RendererApi = {
     relink: (asset, newPath) => ipcRenderer.invoke(IPC.mediaRelink, asset, newPath),
     registerLocal: (entries) => ipcRenderer.invoke(IPC.mediaRegisterLocal, entries),
     detectShots: (request) => ipcRenderer.invoke(IPC.mediaDetectShots, request),
+    detectSilences: (request) => ipcRenderer.invoke(IPC.mediaDetectSilences, request),
     readWaveform: (waveformPath) => ipcRenderer.invoke(IPC.mediaReadWaveform, waveformPath)
   },
   subtitle: {

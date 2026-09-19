@@ -166,3 +166,49 @@
   color: var(--success);
   word-break: break-all;
 }
+
+/* Chú thích và thông báo dùng chung cho các hộp thoại dựng trên khung này. */
+.dialog-note {
+  margin: 0 0 var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.dialog-note--strong {
+  color: var(--text-primary);
+}
+
+.project-versions__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.project-versions__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+}
+
+.project-versions__meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.project-versions__time {
+  font-weight: 600;
+}
+
+.project-versions__detail {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}

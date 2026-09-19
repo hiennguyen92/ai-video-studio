@@ -204,7 +204,11 @@ ghi vào backlog rõ ràng."
   chuyển track được khi kéo — dồn về một track là đè lên nhau. Nút ripple delete
   clip (chỉ track của clip) và marker cấp tài liệu, chép được danh sách chương
   YouTube; ripple xoá THEO KHOẢNG trên mọi track dời marker theo, xoá marker nằm
-  trong khoảng
+  trong khoảng. Cắt khoảng lặng (ffmpeg `silencedetect`, dò trước rồi mới cắt) và
+  khôi phục phiên bản từ `versions/` (chụp bản hiện tại trước khi khôi phục,
+  revision đi tiếp chứ không lùi). **Chưa có:** công cụ agent cho cắt khoảng lặng
+  — dò là việc bất đồng bộ, cần đi theo lối `list_shots` (dò qua MCP, giữ kết quả
+  cho công cụ ghi)
 - Xuất: thêm định dạng ngoài MP4/H.264, chọn chất lượng, preset nền tảng, xuất
   riêng đoạn đang chọn, hàng đợi nhiều bản
 - Bám đối tượng và tự cắt khung theo chủ thể

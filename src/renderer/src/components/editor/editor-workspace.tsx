@@ -17,6 +17,7 @@ import { PreviewPanel } from '../preview/preview-panel'
 import { InspectorPanel } from '../inspector/inspector-panel'
 import { TimelinePanel } from '../timeline/timeline-panel'
 import { ExportDialog } from '../export/export-dialog'
+import { ProjectVersionsDialog } from './project-versions-dialog'
 import { EditorTopBar } from './editor-top-bar'
 import { ToolButton } from '../ui/tool-button'
 
@@ -48,6 +49,7 @@ export function EditorWorkspace({
   const [missingMedia, setMissingMedia] = useState<MissingMediaReport[]>([])
   const [loadError, setLoadError] = useState<string | null>(null)
   const [exportOpen, setExportOpen] = useState(false)
+  const [versionsOpen, setVersionsOpen] = useState(false)
 
   const { importing, pickAndImport } = useMediaImport()
   const { relinking, relink } = useMediaRelink()
@@ -138,6 +140,7 @@ export function EditorWorkspace({
         onBackToProjects={onBackToProjects}
         onImportMedia={() => void pickAndImport()}
         onExport={handleExport}
+        onOpenVersions={() => setVersionsOpen(true)}
         importing={importing}
       />
 
@@ -205,6 +208,7 @@ export function EditorWorkspace({
       </PanelGroup>
 
       {exportOpen && <ExportDialog onClose={() => setExportOpen(false)} />}
+      {versionsOpen && <ProjectVersionsDialog onClose={() => setVersionsOpen(false)} />}
     </div>
   )
 }

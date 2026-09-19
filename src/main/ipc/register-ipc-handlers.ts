@@ -1,4 +1,10 @@
 import { storeFontForBurnIn } from '../storage/font-store'
+import {
+  listVersionSnapshots,
+  loadVersionSnapshot,
+  writeVersionSnapshot
+} from '../storage/project-version-snapshots'
+import type { ProjectVersionReason } from '../../shared/ipc/project-version-types'
 import { removeProjectGarbage, scanProjectGarbage } from '../storage/project-garbage-service'
 import { app, dialog, ipcMain } from 'electron'
 import { readFile } from 'node:fs/promises'
@@ -20,8 +26,7 @@ import {
   findMissingMedia,
   listProjects,
   loadProjectDocument,
-  saveProjectDocument,
-  writeVersionSnapshot
+  saveProjectDocument
 } from '../storage/project-storage'
 import { importMediaFile, relinkMediaAsset } from '../media/media-import-service'
 import {
@@ -131,8 +136,18 @@ export function registerIpcHandlers(): void {
     guard(() => removeProjectGarbage(document.id, document))
   )
 
-  ipcMain.handle(IPC.projectSnapshot, (_event, document: ProjectDocument) =>
-    guard(() => writeVersionSnapshot(document))
+  ipcMain.handle(
+    IPC.projectSnapshot,
+    (_event, document: ProjectDocument, reason?: ProjectVersionReason) =>
+      guard(() => writeVersionSnapshot(document, reason))
+  )
+
+  ipcMain.handle(IPC.projectListVersions, (_event, projectId: string) =>
+    guard(() => listVersionSnapshots(projectId))
+  )
+
+  ipcMain.handle(IPC.projectLoadVersion, (_event, projectId: string, fileName: string) =>
+    guard(() => loadVersionSnapshot(projectId, fileName))
   )
 
   ipcMain.handle(IPC.projectCheckMedia, (_event, document: ProjectDocument) =>

@@ -29,6 +29,7 @@ import {
 } from '../../state/timeline-marker-actions'
 import { TimelineToolButtons } from './timeline-tool-buttons'
 import { AddTrackMenuButton } from './add-track-menu-button'
+import { SilenceCutDialog } from './silence-cut-dialog'
 import type { AddableTrackKind } from './use-timeline-tracks'
 
 /**
@@ -75,6 +76,7 @@ export function TimelineToolbar({
   const hasClipSelection = useEditorStore((state) => state.selection.clipIds.length > 0)
   const hasMarkers = useEditorStore((state) => (state.session?.document.markers.length ?? 0) > 0)
   const [chaptersCopied, setChaptersCopied] = useState(false)
+  const [silenceOpen, setSilenceOpen] = useState(false)
   const canGroup = useEditorStore(selectionCanGroup)
   const hasGroup = useEditorStore(selectionHasGroup)
 
@@ -105,6 +107,12 @@ export function TimelineToolbar({
         onClick={() => rippleDeleteSelection(t.timeline.rippleDelete)}
         disabled={!hasClipSelection}
       />
+      <ToolButton
+        label={t.silenceCut.open}
+        onClick={() => setSilenceOpen(true)}
+        disabled={!hasClipSelection}
+      />
+      {silenceOpen && <SilenceCutDialog onClose={() => setSilenceOpen(false)} />}
 
       <div className="top-bar__divider" />
 

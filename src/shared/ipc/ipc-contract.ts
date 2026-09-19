@@ -1,4 +1,6 @@
 import type { SttSegmentationMode } from '../ai/stt-segmentation'
+import type { ProjectVersionReason, ProjectVersionSummary } from './project-version-types'
+import type { SilenceDetectionRequest, SilenceInterval } from './silence-detection-types'
 import type { SoundEffectLibraryStatus } from '../domain/sound-effect-catalog'
 import type { MediaAsset } from '../domain/media-asset-types'
 import type { ProjectDocument } from '../domain/project-document-types'
@@ -31,6 +33,8 @@ export const IPC = {
   projectRemoveGarbage: 'project:remove-garbage',
   projectDelete: 'project:delete',
   projectSnapshot: 'project:snapshot',
+  projectListVersions: 'project:list-versions',
+  projectLoadVersion: 'project:load-version',
   projectCheckMedia: 'project:check-media',
 
   mediaPickFiles: 'media:pick-files',
@@ -58,6 +62,7 @@ export const IPC = {
   musicGenerate: 'music:generate',
   mediaRegisterLocal: 'media:register-local',
   mediaDetectShots: 'media:detect-shots',
+  mediaDetectSilences: 'media:detect-silences',
   mcpRespond: 'mcp:respond',
   mcpStatus: 'mcp:status',
   mcpSetTokenRequired: 'mcp:set-token-required',
@@ -422,7 +427,10 @@ export interface RendererApi {
     /** Đếm file rác do ứng dụng sinh ra mà không còn ai dùng. Chưa xoá gì. */
     scanGarbage(document: ProjectDocument): Promise<IpcResult<GarbageReportDto>>
     removeGarbage(document: ProjectDocument): Promise<IpcResult<GarbageReportDto>>
-    snapshot(document: ProjectDocument): Promise<IpcResult<string>>
+    snapshot(document: ProjectDocument, reason?: ProjectVersionReason): Promise<IpcResult<string>>
+    /** Bản chụp phiên bản của dự án, mới nhất trước. */
+    listVersions(projectId: string): Promise<IpcResult<ProjectVersionSummary[]>>
+    loadVersion(projectId: string, fileName: string): Promise<IpcResult<ProjectDocument>>
     checkMedia(document: ProjectDocument): Promise<IpcResult<MissingMediaReport[]>>
   }
   fonts: {
@@ -468,6 +476,8 @@ export interface RendererApi {
       sourcePath: string
       force?: boolean
     }): Promise<IpcResult<DetectedShotDto[]>>
+    /** Khoảng lặng trong tiếng của một đoạn file nguồn, mốc trên trục nguồn. */
+    detectSilences(request: SilenceDetectionRequest): Promise<IpcResult<SilenceInterval[]>>
     readWaveform(waveformPath: string): Promise<IpcResult<WaveformData>>
   }
   subtitle: {

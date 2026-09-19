@@ -19,8 +19,6 @@ import {
  * cả project (DESCRIPTION §7).
  */
 
-const MAX_VERSION_SNAPSHOTS = 20
-
 export interface ProjectSummary {
   id: string
   name: string
@@ -44,21 +42,6 @@ export async function loadProjectDocument(projectId: string): Promise<ProjectDoc
   const raw = await readFile(paths.documentFile, 'utf8')
   const parsed = JSON.parse(raw) as ProjectDocument
   return migrateProjectDocument(parsed)
-}
-
-/** Lưu một bản chụp vào versions/ và dọn bớt bản cũ. */
-export async function writeVersionSnapshot(document: ProjectDocument): Promise<string> {
-  const paths = await ensureProjectDirs(document.id)
-  const stamp = new Date().toISOString().replace(/[:.]/g, '-')
-  const file = join(paths.versionsDir, `${stamp}-rev${document.revision}.json`)
-  await writeFile(file, JSON.stringify(document), 'utf8')
-
-  const entries = (await readdir(paths.versionsDir)).filter((name) => name.endsWith('.json')).sort()
-  const excess = entries.length - MAX_VERSION_SNAPSHOTS
-  for (let index = 0; index < excess; index += 1) {
-    await rm(join(paths.versionsDir, entries[index]), { force: true })
-  }
-  return file
 }
 
 export async function listProjects(): Promise<ProjectSummary[]> {

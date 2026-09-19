@@ -124,6 +124,11 @@ Phím tắt **không** kích hoạt khi con trỏ đang ở trong ô nhập li�
 - **Keyframe**: transform clip, âm lượng clip, thông số effect kiểu số, vị trí/cỡ/góc chữ
   overlay; năm kiểu nội suy; chép/dán cụm keyframe giữa các clip
 - **Chép/dán clip** bằng Cmd+C / Cmd+V, giữ nguyên mọi thuộc tính
+- **Cắt khoảng lặng**: dò chỗ im trong tiếng của clip đang chọn bằng ffmpeg `silencedetect`
+  (không cần phiên âm), báo trước sẽ cắt bao nhiêu giây, chừa lại hơi cạnh lời nói; chọn chỉ co
+  track của clip (nhạc nền đứng yên) hoặc cả video (phụ đề, chữ, marker trôi theo)
+- **Khôi phục phiên bản**: nút Phiên bản trên thanh trên cùng liệt kê bản chụp tự động (mỗi 5 phút)
+  và bản lưu tay; khôi phục luôn chụp lại bản hiện tại trước nên khôi phục nhầm vẫn quay lại được
 - **Ripple delete** clip (nút + `Shift+Delete`): xoá rồi dồn clip sau **trên cùng track** lên —
   track khác đứng yên, cùng luật với ripple trim
 - **Marker**: đặt bằng `M`, kéo để dời, nháy đúp để đặt tên/màu/xoá, nhảy qua lại bằng

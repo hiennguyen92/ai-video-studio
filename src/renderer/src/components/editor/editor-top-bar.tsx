@@ -17,11 +17,13 @@ export function EditorTopBar({
   onBackToProjects,
   onImportMedia,
   onExport,
+  onOpenVersions,
   importing
 }: {
   onBackToProjects(): void
   onImportMedia(): void
   onExport(): void
+  onOpenVersions(): void
   importing: boolean
 }): JSX.Element {
   const t = useT()
@@ -108,6 +110,7 @@ export function EditorTopBar({
         onClick={handleSave}
         disabled={saveState === 'saving'}
       />
+      <ToolButton label={t.topbar.versions} onClick={onOpenVersions} />
 
       <div className="top-bar__spacer" />
 
