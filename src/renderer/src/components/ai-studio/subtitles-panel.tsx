@@ -8,6 +8,7 @@ import { IconPlus } from '../ui/icons'
 import { PanelSubtabs } from '../ui/panel-subtabs'
 import { ToolButton } from '../ui/tool-button'
 import { SubtitleCreateForm } from './subtitle-create-form'
+import { SubtitleImportButton } from './subtitle-import-button'
 import { SubtitleCueList } from './subtitle-cue-list'
 import { SubtitleStyleControls } from './subtitle-style-controls'
 import { SubtitleTrackSettings } from './subtitle-track-settings'
@@ -75,17 +76,31 @@ export function SubtitlesPanel(): JSX.Element {
                 variant={creating ? 'outline' : 'ghost'}
                 onClick={() => setCreating((value) => !value)}
               />
+              <SubtitleImportButton document={document} onImported={setActiveTrackId} />
             </div>
           )}
 
           {(!track || creating) && (
-            <SubtitleCreateForm
-              document={document}
-              onCreated={(trackId) => {
-                setActiveTrackId(trackId)
-                setCreating(false)
-              }}
-            />
+            <>
+              <SubtitleCreateForm
+                document={document}
+                onCreated={(trackId) => {
+                  setActiveTrackId(trackId)
+                  setCreating(false)
+                }}
+              />
+              {/*
+                Nút nhập phải có mặt CẢ khi chưa có track nào: dự án chưa phiên âm
+                thì form tạo chỉ nói "chưa có transcript", và đó đúng là lúc người
+                dùng có sẵn file .srt muốn đưa vào.
+              */}
+              {!track && (
+                <div className="subtitles-panel__card">
+                  <p className="subtitles-panel__hint">{t.subtitles.importHint}</p>
+                  <SubtitleImportButton document={document} onImported={setActiveTrackId} />
+                </div>
+              )}
+            </>
           )}
 
           {track && (

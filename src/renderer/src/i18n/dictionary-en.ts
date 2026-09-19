@@ -454,6 +454,10 @@ export const dictionaryEn: Dictionary = {
     segmentCount: '{count} segments'
   },
   subtitles: {
+    importFile: 'Import subtitle file',
+    importHint: 'Already have an .srt or .vtt file? Bring it straight in, no transcription needed.',
+    importEmpty: 'No readable cues in that file',
+    importSkipped: 'Skipped {count} unreadable blocks in the file',
     title: 'Subtitles',
     createSection: 'Create subtitles',
     tabSubtitles: 'Subtitles',

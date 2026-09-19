@@ -2,7 +2,7 @@ import { storeFontForBurnIn } from '../storage/font-store'
 import { removeProjectGarbage, scanProjectGarbage } from '../storage/project-garbage-service'
 import { app, dialog, ipcMain } from 'electron'
 import { readFile } from 'node:fs/promises'
-import { join } from 'node:path'
+import { basename, join } from 'node:path'
 import type { MediaAsset } from '../../shared/domain/media-asset-types'
 import type { ProjectDocument } from '../../shared/domain/project-document-types'
 import { createEmptyProject } from '../../shared/domain/project-document-factory'
@@ -147,6 +147,20 @@ export function registerIpcHandlers(): void {
         filters: MEDIA_FILE_FILTERS
       })
       return result.canceled ? [] : result.filePaths
+    })
+  )
+
+  ipcMain.handle(IPC.subtitlePickFile, () =>
+    guard(async () => {
+      const result = await dialog.showOpenDialog({
+        title: 'Chọn file phụ đề',
+        properties: ['openFile'],
+        filters: [{ name: 'Phụ đề', extensions: ['srt', 'vtt'] }]
+      })
+      if (result.canceled || result.filePaths.length === 0) return null
+      const path = result.filePaths[0]
+      // Đọc luôn ở đây: tiến trình vẽ không chạm được đĩa, và file phụ đề nhỏ.
+      return { name: basename(path), content: await readFile(path, 'utf8') }
     })
   )
 

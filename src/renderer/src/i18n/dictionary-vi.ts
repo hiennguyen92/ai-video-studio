@@ -453,6 +453,10 @@ export const dictionaryVi = {
     segmentCount: '{count} đoạn'
   },
   subtitles: {
+    importFile: 'Nhập file phụ đề',
+    importHint: 'Có sẵn file .srt hoặc .vtt thì đưa thẳng vào đây, không cần phiên âm.',
+    importEmpty: 'File không có câu phụ đề nào đọc được',
+    importSkipped: 'Đã bỏ qua {count} khối không đọc được trong file',
     title: 'Phụ đề',
     createSection: 'Tạo phụ đề',
     tabSubtitles: 'Subtitles',

@@ -37,6 +37,7 @@ export const IPC = {
   mediaImport: 'media:import',
   mediaRelink: 'media:relink',
   mediaReadWaveform: 'media:read-waveform',
+  subtitlePickFile: 'subtitle:pick-file',
 
   aiProviders: 'ai:providers',
   aiCredentialStatus: 'ai:credential-status',
@@ -468,6 +469,16 @@ export interface RendererApi {
       force?: boolean
     }): Promise<IpcResult<DetectedShotDto[]>>
     readWaveform(waveformPath: string): Promise<IpcResult<WaveformData>>
+  }
+  subtitle: {
+    /**
+     * Chọn một file phụ đề rồi trả về NỘI DUNG đã đọc.
+     *
+     * Trả nội dung chứ không trả đường dẫn: tiến trình vẽ không đọc được đĩa,
+     * và một file phụ đề chỉ vài chục KB nên không đáng dựng thêm đường truyền
+     * theo luồng.
+     */
+    pickFile(): Promise<IpcResult<{ name: string; content: string } | null>>
   }
   ai: {
     settings(): Promise<IpcResult<AiSettingsSnapshot>>

@@ -46,6 +46,9 @@ const api: RendererApi = {
     detectShots: (request) => ipcRenderer.invoke(IPC.mediaDetectShots, request),
     readWaveform: (waveformPath) => ipcRenderer.invoke(IPC.mediaReadWaveform, waveformPath)
   },
+  subtitle: {
+    pickFile: () => ipcRenderer.invoke(IPC.subtitlePickFile)
+  },
   ai: {
     settings: () => ipcRenderer.invoke(IPC.aiProviders),
     setCredential: (providerId, apiKey) =>
