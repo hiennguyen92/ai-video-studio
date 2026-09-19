@@ -8,6 +8,10 @@ import { interpolate, useT } from '../../i18n/use-translation'
 import { ToolButton } from '../ui/tool-button'
 import { EmptyState } from '../ui/empty-state'
 import './export-dialog.css'
+import { findExportPreset } from '../../../../shared/domain/export-presets'
+import { ExportOutputOptions } from './export-output-options'
+import { resolveExportRange, type ExportOutputChoice } from './export-output-choice'
+import { ExportStillButton } from './export-still-button'
 
 /**
  * Hộp thoại xuất video (DESCRIPTION §8).
@@ -71,6 +75,28 @@ export function ExportDialog({ onClose }: { onClose(): void }): JSX.Element {
   // Mặc định -14 LUFS: mức YouTube, TikTok, Instagram và Spotify cùng dùng, nên
   // đa số người dùng không phải nghĩ tới ô này.
   const [loudness, setLoudness] = useState<string>('-14')
+  const [output, setOutput] = useState<ExportOutputChoice>(() => ({
+    presetId: 'custom',
+    quality: 'standard',
+    rangeKey: 'all',
+    customFromSeconds: 0,
+    customToSeconds: Math.round(durationUs / 100_000) / 10
+  }))
+  const range = document ? resolveExportRange(output, document, durationUs) : undefined
+
+  // Mẫu chỉ điền sẵn các ô; người dùng vẫn sửa từng ô sau đó.
+  const applyPreset = (presetId: string): void => {
+    const preset = findExportPreset(presetId)
+    setOutput((current) => ({
+      ...current,
+      presetId,
+      ...(preset ? { quality: preset.quality } : {})
+    }))
+    if (!preset) return
+    setScaleKey('full')
+    setFrameRateKey(preset.frameRate)
+    setLoudness(String(preset.loudnessLufs))
+  }
   const [jobId, setJobId] = useState<string | null>(null)
   const [progress, setProgress] = useState<ExportProgressEvent | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -127,7 +153,9 @@ export function ExportDialog({ onClose }: { onClose(): void }): JSX.Element {
       exportSrtTrackId: exportSrt
         ? burnSubtitleTrackId || document.subtitleTracks[0]?.id
         : undefined,
-      loudnessLufs: loudness === 'off' ? null : Number(loudness)
+      loudnessLufs: loudness === 'off' ? null : Number(loudness),
+      quality: output.quality,
+      rangeUs: range ?? undefined
     })
 
     if (result.ok) setJobId(result.data.jobId)
@@ -135,6 +163,8 @@ export function ExportDialog({ onClose }: { onClose(): void }): JSX.Element {
   }, [
     document,
     loudness,
+    output.quality,
+    range,
     outputPath,
     targetSize,
     frameRateKey,
@@ -184,6 +214,20 @@ export function ExportDialog({ onClose }: { onClose(): void }): JSX.Element {
                 <span>
                   {interpolate(t.export.previewModeWarning, { count: clipsInPreviewMode })}
                 </span>
+              </div>
+            )}
+
+            <ExportOutputOptions
+              document={document!}
+              durationUs={durationUs}
+              choice={output}
+              disabled={running}
+              onChange={(patch) => setOutput((current) => ({ ...current, ...patch }))}
+              onApplyPreset={applyPreset}
+            />
+            {range === null && (
+              <div className="notice notice--warning" role="status">
+                <span>{t.export.rangeInvalid}</span>
               </div>
             )}
 
@@ -369,6 +413,14 @@ export function ExportDialog({ onClose }: { onClose(): void }): JSX.Element {
         )}
 
         <footer className="export-dialog__footer">
+          {document && !isEmpty && (
+            <ExportStillButton
+              document={document}
+              size={targetSize}
+              frameRate={FRAME_RATE_PRESETS[frameRateKey]}
+              disabled={running}
+            />
+          )}
           {running ? (
             <ToolButton
               label={t.export.cancel}
@@ -380,7 +432,7 @@ export function ExportDialog({ onClose }: { onClose(): void }): JSX.Element {
               label={t.export.start}
               variant="primary"
               onClick={() => void handleStart()}
-              disabled={!outputPath || isEmpty}
+              disabled={!outputPath || isEmpty || range === null}
             />
           )}
         </footer>

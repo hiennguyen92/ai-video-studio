@@ -10,6 +10,7 @@ import { ToolButton } from '../ui/tool-button'
 import { ClipColorControls } from './clip-color-controls'
 import { ClipEffectStackControls } from './clip-effect-stack-controls'
 import { ClipLookControls } from './clip-look-controls'
+import { ClipBackgroundFillControl } from './clip-background-fill-control'
 import { SliderRow } from './inspector-slider-row'
 import { useKeyframeField } from './use-keyframe-field'
 
@@ -51,6 +52,8 @@ export function ClipVideoSection({
           run([{ type: 'clip/set-color-grade', clipId: clip.id, grade }], 'Chỉnh Adjust')
         }
       />
+
+      <ClipBackgroundFillControl clip={clip} run={run} />
 
       <p className="field-group__title">{t.inspector.transform}</p>
       <SliderRow

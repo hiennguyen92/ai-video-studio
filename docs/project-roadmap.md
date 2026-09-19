@@ -210,9 +210,12 @@ ghi vào backlog rõ ràng."
   `clean_voice`: phần ffmpeg chạy TRƯỚC khi lập kế hoạch, dùng chung cho AI Chat
   và MCP. Chỉ cắt chỗ MỌI nguồn tiếng đang phát cùng im (máy quay thu xa không
   được làm mất lời của micro cài áo). Chuẩn hoá độ to khi xuất (-14 LUFS mặc
-  định, đo lại bằng `ebur128` trên file ra)
-- Xuất: thêm định dạng ngoài MP4/H.264, chọn chất lượng, preset nền tảng, xuất
-  riêng đoạn đang chọn, hàng đợi nhiều bản
+  định, đo lại bằng `ebur128` trên file ra). Vòng xuất video ngắn: nền mờ sau
+  clip, mẫu xuất, chất lượng, xuất đoạn (cắt bản sao tài liệu bằng ripple xoá
+  nên cả hai bộ dựng dùng được), ảnh PNG bằng `renderStill`. Ripple xoá nay dời
+  cả chữ overlay (trước đây bỏ quên)
+- Xuất: thêm định dạng ngoài MP4/H.264 (MOV, WebM, HEVC), xuất chỉ tiếng, hàng
+  đợi nhiều bản. **Đã xong:** chất lượng, mẫu nền tảng, xuất đoạn, ảnh PNG
 - Bám đối tượng và tự cắt khung theo chủ thể
 - Đa camera
 - Đóng gói bản cài cho **Windows và Linux** — cấu hình có sẵn nhưng chưa chạy thử

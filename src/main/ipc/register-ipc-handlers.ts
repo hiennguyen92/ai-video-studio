@@ -1,4 +1,5 @@
 import { storeFontForBurnIn } from '../storage/font-store'
+import { renderStillFrame } from '../export/remotion-still-renderer'
 import {
   listVersionSnapshots,
   loadVersionSnapshot,
@@ -17,6 +18,7 @@ import {
   type CreateProjectRequest,
   type ImportMediaRequest,
   type ExportRequest,
+  type ExportStillRequest,
   type ImportMediaResponse,
   type IpcResult,
   type WaveformData
@@ -220,15 +222,24 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle(IPC.exportCapabilities, () => guard(() => detectExportCapabilities()))
 
-  ipcMain.handle(IPC.exportPickPath, (_event, defaultFileName: string) =>
-    guard(async () => {
-      const result = await dialog.showSaveDialog({
-        title: 'Chọn nơi lưu video',
-        defaultPath: join(defaultExportDir(), defaultFileName),
-        filters: [{ name: 'Video MP4', extensions: ['mp4'] }]
+  ipcMain.handle(
+    IPC.exportPickPath,
+    (_event, defaultFileName: string, kind: 'video' | 'image' = 'video') =>
+      guard(async () => {
+        const result = await dialog.showSaveDialog({
+          title: kind === 'image' ? 'Chọn nơi lưu ảnh' : 'Chọn nơi lưu video',
+          defaultPath: join(defaultExportDir(), defaultFileName),
+          filters:
+            kind === 'image'
+              ? [{ name: 'Ảnh PNG', extensions: ['png'] }]
+              : [{ name: 'Video MP4', extensions: ['mp4'] }]
+        })
+        return result.canceled || !result.filePath ? null : result.filePath
       })
-      return result.canceled || !result.filePath ? null : result.filePath
-    })
+  )
+
+  ipcMain.handle(IPC.exportStill, (_event, request: ExportStillRequest) =>
+    guard(() => renderStillFrame(request.document, request))
   )
 
   ipcMain.handle(IPC.exportStart, (event, request: ExportRequest) =>

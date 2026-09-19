@@ -120,7 +120,9 @@ const api: RendererApi = {
   },
   export: {
     capabilities: () => ipcRenderer.invoke(IPC.exportCapabilities),
-    pickOutputPath: (defaultFileName) => ipcRenderer.invoke(IPC.exportPickPath, defaultFileName),
+    pickOutputPath: (defaultFileName, kind) =>
+      ipcRenderer.invoke(IPC.exportPickPath, defaultFileName, kind),
+    still: (request) => ipcRenderer.invoke(IPC.exportStill, request),
     start: (request) => ipcRenderer.invoke(IPC.exportStart, request),
     cancel: (jobId) => ipcRenderer.invoke(IPC.exportCancel, jobId),
     onProgress: (listener) => {

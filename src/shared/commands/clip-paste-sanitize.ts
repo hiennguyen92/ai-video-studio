@@ -42,6 +42,12 @@ export function sanitizeClipForPaste(
   if (source.label) clip.label = String(source.label).slice(0, 200)
   if (source.transform) clip.transform = { ...source.transform }
   if (source.motion) clip.motion = { ...source.motion }
+  if (source.backgroundFill?.kind === 'blur') {
+    clip.backgroundFill = {
+      kind: 'blur',
+      amount: clamp(numberOr(source.backgroundFill.amount, 0.5), 0, 1)
+    }
+  }
   if (source.colorGrade) clip.colorGrade = { ...source.colorGrade }
   if (source.look) clip.look = { ...source.look }
   if (source.transitionIn) clip.transitionIn = { ...source.transitionIn }

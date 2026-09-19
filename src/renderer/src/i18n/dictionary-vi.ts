@@ -93,6 +93,12 @@ export const dictionaryVi = {
     framePaddingY: 'Kéo đệm dọc khung'
   },
   inspector: {
+    backgroundFill: 'Nền phía sau',
+    backgroundFillBlur: 'Nền mờ',
+    backgroundFillAmount: 'Độ mờ',
+    backgroundFillHint:
+      'Phủ kín khung bằng chính hình của clip, làm mờ — cảnh ngang trong khung dọc 9:16 không còn hai dải đen. Xuất bằng Remotion.',
+    backgroundFillAll: 'Áp nền mờ cho mọi clip hình',
     volumeAbovePreviewCap: `Trên 100% chỉ nghe được ở file xuất ra — bản xem trước không to hơn 100% được.`,
     keyframeAdd: 'Chốt keyframe tại đầu phát',
     keyframeRemove: 'Xoá keyframe ở đầu phát',
@@ -306,6 +312,27 @@ export const dictionaryVi = {
     back: 'Về danh sách dự án'
   },
   export: {
+    preset: 'Mẫu xuất',
+    presetCustom: 'Tuỳ chỉnh',
+    presetVertical: 'TikTok · Reels · Shorts (9:16)',
+    presetYoutube: 'YouTube (16:9)',
+    presetSquare: 'Instagram vuông (1:1)',
+    presetAspectMismatch:
+      'Mẫu này cần khung {preset}, dự án đang là {project}. Đổi khung ở cài đặt dự án để thấy chữ và clip dời theo trước khi xuất.',
+    quality: 'Chất lượng',
+    qualityHigh: 'Cao — nơi đăng sẽ nén lại, nên gửi bản đẹp',
+    qualityStandard: 'Tiêu chuẩn',
+    qualityCompact: 'Nhỏ gọn — gửi xem nháp',
+    range: 'Đoạn xuất',
+    rangeAll: 'Cả video',
+    rangeCustom: 'Tự chọn…',
+    rangeFromTo: 'Từ – đến (giây)',
+    rangeFrom: 'Từ giây',
+    rangeTo: 'Đến giây',
+    rangeInvalid: 'Đoạn xuất không hợp lệ: điểm cuối phải sau điểm đầu và nằm trong video.',
+    still: 'Lưu khung PNG tại đầu phát',
+    stillWorking: 'Đang dựng ảnh…',
+    stillSaved: 'Đã lưu ảnh: {path}',
     loudness: 'Chuẩn hoá âm lượng',
     loudnessStreaming: '-14 LUFS · YouTube, TikTok, Instagram',
     loudnessPodcast: '-16 LUFS · Podcast, Apple',

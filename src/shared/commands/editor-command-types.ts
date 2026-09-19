@@ -416,7 +416,11 @@ const updateClip = z.object({
       fadeOutUs: nonNegativeMicros,
       speed: z.number().min(0.25).max(4),
       label: z.string().max(200),
-      transform: clipTransformSchema
+      transform: clipTransformSchema,
+      /** `null` bỏ nền mờ. */
+      backgroundFill: z
+        .object({ kind: z.literal('blur'), amount: z.number().min(0).max(1) })
+        .nullable()
     })
     .partial()
 })

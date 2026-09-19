@@ -1,4 +1,6 @@
 import { fontsDirectory } from '../storage/font-store'
+import { documentForExportRange } from '../../shared/domain/export-range'
+import { EXPORT_QUALITIES, hardwareBitrate } from '../../shared/domain/export-presets'
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
 import { dirname, join, parse } from 'node:path'
@@ -76,7 +78,14 @@ export async function runExport(
   request: ExportRequest
 ): Promise<{ jobId: string }> {
   const jobId = createId('export')
-  const { document } = request
+  // Xuất một đoạn: cắt bản sao tài liệu về đúng đoạn đó, rồi mọi bước sau (phụ
+  // đề, dựng hình, chuẩn hoá độ to) chạy như với một dự án bình thường.
+  const document = request.rangeUs
+    ? documentForExportRange(request.document, request.rangeUs)
+    : request.document
+  const quality = request.quality ?? 'standard'
+  const crf = EXPORT_QUALITIES[quality].crf
+  const videoBitrate = hardwareBitrate(quality, request.width, request.height)
 
   // File phụ đề được ghi TRƯỚC khi chạy ffmpeg vì filter graph cần đường dẫn của nó.
   let assPath: string | undefined
@@ -106,7 +115,9 @@ export async function runExport(
             width: request.width,
             height: request.height,
             frameRate: request.frameRate,
-            useHardwareEncoder: request.useHardwareEncoder
+            useHardwareEncoder: request.useHardwareEncoder,
+            crf,
+            videoBitrate
           },
           // Remotion báo tỉ lệ chứ không báo mốc thời gian như ffmpeg.
           (progress) =>
@@ -120,8 +131,8 @@ export async function runExport(
             height: request.height,
             frameRate: request.frameRate,
             sampleRate: document.settings.sampleRate,
-            crf: 21,
-            hardwareBitrate: '10M',
+            crf,
+            hardwareBitrate: videoBitrate,
             useHardwareEncoder: request.useHardwareEncoder,
             burnSubtitlesAssPath: assPath,
             burnSubtitlesFontsDir: fontsDirectory()

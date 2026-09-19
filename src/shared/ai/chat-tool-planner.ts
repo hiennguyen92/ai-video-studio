@@ -400,6 +400,38 @@ function planOne(context: ChatEditContext, tool: ChatToolName, args: unknown): P
       }
     }
 
+    case 'set_background_fill': {
+      const input = chatToolSchemas.set_background_fill.parse(args)
+      const clipIds = input.all
+        ? document.tracks
+            .filter((track) => track.kind === 'video' || track.kind === 'image')
+            .flatMap((track) => track.clips.map((clip) => clip.id))
+        : [resolveClipId(context, input.clipId)]
+      if (clipIds.length === 0) throw new Error('Dự án chưa có clip hình nào')
+      if (!input.all) {
+        const track = document.tracks.find((item) =>
+          item.clips.some((clip) => clip.id === clipIds[0])
+        )
+        if (track?.kind !== 'video' && track?.kind !== 'image') {
+          throw new Error('Nền mờ chỉ dùng cho clip trên lane hình hoặc lane ảnh')
+        }
+      }
+      const backgroundFill =
+        input.kind === 'none' ? null : { kind: 'blur' as const, amount: input.amount ?? 0.5 }
+      return {
+        tool,
+        description:
+          input.kind === 'none'
+            ? `Bỏ nền mờ (${clipIds.length} clip)`
+            : `Đặt nền mờ cho ${clipIds.length} clip`,
+        commands: clipIds.map((clipId) => ({
+          type: 'clip/update' as const,
+          clipId,
+          patch: { backgroundFill }
+        }))
+      }
+    }
+
     case 'remove_silences': {
       const input = chatToolSchemas.remove_silences.parse(args)
       const clipId = resolveClipId(context, input.clipId)

@@ -124,6 +124,11 @@ Phím tắt **không** kích hoạt khi con trỏ đang ở trong ô nhập li�
 - **Keyframe**: transform clip, âm lượng clip, thông số effect kiểu số, vị trí/cỡ/góc chữ
   overlay; năm kiểu nội suy; chép/dán cụm keyframe giữa các clip
 - **Chép/dán clip** bằng Cmd+C / Cmd+V, giữ nguyên mọi thuộc tính
+- **Xuất video ngắn**: nền mờ phía sau clip (cảnh ngang trong khung 9:16 không còn dải đen,
+  áp cho một clip hoặc mọi clip); mẫu xuất TikTok·Reels·Shorts / YouTube / Instagram vuông;
+  ba mức chất lượng; xuất một đoạn (giữa hai marker hoặc tự chọn giây); lưu khung PNG tại
+  đầu phát làm ảnh bìa — dựng bằng cùng composition nên khớp từng điểm ảnh với video. Agent
+  dùng `set_background_fill`, `export_frame` và `start_export` với đoạn/chất lượng
 - **Làm sạch giọng nói** (tab Audio): lọc ù dưới 80 Hz và giảm nhiễu nền (`afftdn`, tự theo dõi
   nền nhiễu), ba mức. Ra file FLAC mới — file gốc không bị sửa, không lệch khẩu hình. Clip hình
   mang tiếng thì tiếng sạch được thêm ở lane lời thoại, gộp nhóm, tiếng gốc bị tắt

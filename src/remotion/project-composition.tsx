@@ -192,24 +192,33 @@ function VideoClip({
   const vignette = vignetteBackgroundCss(clip.colorGrade)
 
   return (
-    <AbsoluteFill
-      // Biến đổi của chuyển cảnh đi TRƯỚC biến đổi của clip: hiệu ứng vào phải
-      // tác động lên khung hình đã đặt đúng vị trí, không phải ngược lại.
-      style={{
-        // Ảnh vẽ đúng cỡ của nó nên phải canh giữa; `AbsoluteFill` là flex cột,
-        // để mặc định thì ảnh dính góc trên-trái.
-        justifyContent: 'center',
-        alignItems: 'center',
-        opacity: transform.opacity * fade * enter.opacity,
-        clipPath: enter.clipPath,
-        filter: enter.filter,
-        // Dịch chuyển tính theo TỈ LỆ khung hình, không phải pixel: một đơn vị
-        // là nửa khung. Dùng thẳng con số làm pixel thì kéo hết thanh trượt chỉ
-        // dịch được một pixel, và ô chỉnh coi như không có tác dụng.
-        transform: `${enter.transform ?? ''} translate(${offset.width}px, ${offset.height}px) scale(${transform.scale}) rotate(${transform.rotationDeg}deg) ${motion}`
-      }}
-    >
-      {/*
+    <>
+      {clip.backgroundFill && (
+        <BackgroundFillLayer
+          clip={clip}
+          url={url}
+          frameSize={frameSize}
+          opacity={fade * enter.opacity}
+        />
+      )}
+      <AbsoluteFill
+        // Biến đổi của chuyển cảnh đi TRƯỚC biến đổi của clip: hiệu ứng vào phải
+        // tác động lên khung hình đã đặt đúng vị trí, không phải ngược lại.
+        style={{
+          // Ảnh vẽ đúng cỡ của nó nên phải canh giữa; `AbsoluteFill` là flex cột,
+          // để mặc định thì ảnh dính góc trên-trái.
+          justifyContent: 'center',
+          alignItems: 'center',
+          opacity: transform.opacity * fade * enter.opacity,
+          clipPath: enter.clipPath,
+          filter: enter.filter,
+          // Dịch chuyển tính theo TỈ LỆ khung hình, không phải pixel: một đơn vị
+          // là nửa khung. Dùng thẳng con số làm pixel thì kéo hết thanh trượt chỉ
+          // dịch được một pixel, và ô chỉnh coi như không có tác dụng.
+          transform: `${enter.transform ?? ''} translate(${offset.width}px, ${offset.height}px) scale(${transform.scale}) rotate(${transform.rotationDeg}deg) ${motion}`
+        }}
+      >
+        {/*
         Ảnh tĩnh phải đi bằng `Img`, không phải `OffthreadVideo`.
         
         Đưa một tấm PNG cho `OffthreadVideo` thì Remotion không dựng ra gì cả —
@@ -218,58 +227,107 @@ function VideoClip({
         bao: khung bao đã mang bộ lọc của chuyển cảnh, hai chỗ cùng đặt `filter`
         thì cái sau đè mất cái trước.
       */}
-      <ClipEffectFrame
-        // Id bộ lọc phải khác giữa hai Player trên cùng trang: `url(#id)` trỏ tới phần
-        // tử ĐẦU TIÊN mang id đó, và bộ lọc của khung thu nhỏ tính theo cỡ khác.
-        clipKey={markers ? clip.key : `thumb-${clip.key}`}
-        // Thông số effect TẠI khung này. Không effect nào chạy keyframe thì nhận
-        // lại đúng mảng cũ, nên id bộ lọc giữ nguyên và không có gì dựng lại.
-        effects={effectsAtFrame(clip.effects, clip.keyframes, frame)}
-        frame={frame}
-        fps={fps}
-        width={fitted.width}
-        height={fitted.height}
-      >
-        {clip.media === 'image' ? (
-          <Img
-            src={url}
-            data-clip-id={markers ? clip.key : undefined}
+        <ClipEffectFrame
+          // Id bộ lọc phải khác giữa hai Player trên cùng trang: `url(#id)` trỏ tới phần
+          // tử ĐẦU TIÊN mang id đó, và bộ lọc của khung thu nhỏ tính theo cỡ khác.
+          clipKey={markers ? clip.key : `thumb-${clip.key}`}
+          // Thông số effect TẠI khung này. Không effect nào chạy keyframe thì nhận
+          // lại đúng mảng cũ, nên id bộ lọc giữ nguyên và không có gì dựng lại.
+          effects={effectsAtFrame(clip.effects, clip.keyframes, frame)}
+          frame={frame}
+          fps={fps}
+          width={fitted.width}
+          height={fitted.height}
+        >
+          {clip.media === 'image' ? (
+            <Img
+              src={url}
+              data-clip-id={markers ? clip.key : undefined}
+              style={{
+                width: fitted.width,
+                height: fitted.height,
+                objectFit: 'contain',
+                filter: mediaFilterCss(clip)
+              }}
+            />
+          ) : (
+            <OffthreadVideo
+              src={url}
+              data-clip-id={markers ? clip.key : undefined}
+              startFrom={clip.sourceFromFrame}
+              playbackRate={clip.playbackRate}
+              volume={clip.muted ? 0 : volumeAtFrame(clip, frame) * fade}
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'contain',
+                filter: mediaFilterCss(clip)
+              }}
+            />
+          )}
+        </ClipEffectFrame>
+
+        {temperature && (
+          <AbsoluteFill
             style={{
-              width: fitted.width,
-              height: fitted.height,
-              objectFit: 'contain',
-              filter: mediaFilterCss(clip)
-            }}
-          />
-        ) : (
-          <OffthreadVideo
-            src={url}
-            data-clip-id={markers ? clip.key : undefined}
-            startFrom={clip.sourceFromFrame}
-            playbackRate={clip.playbackRate}
-            volume={clip.muted ? 0 : volumeAtFrame(clip, frame) * fade}
-            style={{
-              width: '100%',
-              height: '100%',
-              objectFit: 'contain',
-              filter: mediaFilterCss(clip)
+              backgroundColor: temperature.color,
+              opacity: temperature.opacity,
+              mixBlendMode: temperature.blendMode,
+              pointerEvents: 'none'
             }}
           />
         )}
-      </ClipEffectFrame>
 
-      {temperature && (
-        <AbsoluteFill
-          style={{
-            backgroundColor: temperature.color,
-            opacity: temperature.opacity,
-            mixBlendMode: temperature.blendMode,
-            pointerEvents: 'none'
-          }}
+        {vignette && <AbsoluteFill style={{ background: vignette, pointerEvents: 'none' }} />}
+      </AbsoluteFill>
+    </>
+  )
+}
+
+/**
+ * Nền mờ phía sau clip: chính hình đó, phủ kín khung (`cover`), làm mờ và tối đi.
+ *
+ * Nằm NGOÀI khung bao của clip nên không đi theo dời/phóng/xoay: nó là nền của
+ * khung hình. Vẫn đi theo fade và chuyển cảnh, không thì clip mờ dần đi mà nền
+ * vẫn đứng sừng sững. Luôn câm — tiếng đã phát ở lớp trên.
+ *
+ * Phóng thêm 8%: làm mờ kéo màu đen từ ngoài mép vào, nhìn ra một viền tối bao
+ * quanh khung. Độ mờ tính theo CHIỀU CAO khung để bản xem trước nhỏ và bản xuất
+ * lớn trông giống nhau.
+ */
+function BackgroundFillLayer({
+  clip,
+  url,
+  frameSize,
+  opacity
+}: {
+  clip: RenderPlanVideoClip
+  url: string
+  frameSize: { width: number; height: number }
+  opacity: number
+}): JSX.Element {
+  const amount = clip.backgroundFill?.amount ?? 0.5
+  const radius = Math.round(frameSize.height * (0.008 + 0.03 * amount))
+  const style = {
+    width: '100%',
+    height: '100%',
+    objectFit: 'cover' as const,
+    filter: `blur(${radius}px) brightness(${1 - 0.35 * amount})`,
+    transform: 'scale(1.08)'
+  }
+  return (
+    <AbsoluteFill style={{ opacity, overflow: 'hidden' }} data-background-fill={clip.key}>
+      {clip.media === 'image' ? (
+        <Img src={url} style={style} />
+      ) : (
+        <OffthreadVideo
+          src={url}
+          startFrom={clip.sourceFromFrame}
+          playbackRate={clip.playbackRate}
+          muted
+          style={style}
         />
       )}
-
-      {vignette && <AbsoluteFill style={{ background: vignette, pointerEvents: 'none' }} />}
     </AbsoluteFill>
   )
 }

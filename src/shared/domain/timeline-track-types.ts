@@ -98,6 +98,12 @@ export interface ClipTransition {
 /** Chuyển cảnh dài mặc định — đủ thấy nhưng không làm chậm nhịp video ngắn. */
 export const DEFAULT_TRANSITION_DURATION_US = 500_000
 
+/** Nền mờ phía sau clip. `amount` 0..1: mức mờ, kiêm luôn mức tối đi của nền. */
+export interface ClipBackgroundFill {
+  kind: 'blur'
+  amount: number
+}
+
 export interface Clip {
   id: string
   /** Không có với clip phụ đề (nội dung nằm trong SubtitleTrack). */
@@ -160,6 +166,14 @@ export interface Clip {
    * chính clip mờ/trượt/thu lại ở đoạn cuối.
    */
   transitionOut?: ClipTransition
+  /**
+   * Nền phía sau clip: chính hình của clip, phóng kín khung và làm mờ.
+   *
+   * Cách quen thuộc để đưa cảnh ngang vào khung dọc 9:16 mà không để hai dải
+   * đen. Nền KHÔNG đi theo biến đổi của clip (dời, phóng, xoay) — nó là nền của
+   * khung hình, còn clip là thứ nằm trên nó.
+   */
+  backgroundFill?: ClipBackgroundFill
   /** Clip video và audio tách từ cùng một file di chuyển cùng nhau. */
   linkGroupId?: string
   label?: string

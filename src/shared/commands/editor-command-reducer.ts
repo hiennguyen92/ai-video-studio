@@ -1,4 +1,5 @@
 import { NEUTRAL_COLOR_GRADE, clampColorGrade } from '../domain/clip-color-grade'
+import { rippleTextOverlays } from '../domain/text-overlay-ripple'
 import { rippleMarkers } from '../domain/timeline-marker-types'
 import { current, isDraft } from 'immer'
 import type { EditorCommand } from './editor-command-types'
@@ -592,6 +593,16 @@ export function applyEditorCommand(doc: ProjectDocument, command: EditorCommand)
         })
       }
 
+      // Chữ overlay: cả video co lại thì mọi chữ trôi theo; chỉ vài lane co thì
+      // chỉ chữ nằm trên lane chữ trong số đó.
+      const inScope = (overlay: { trackId?: string }): boolean =>
+        !command.trackIds ||
+        (overlay.trackId !== undefined && command.trackIds.includes(overlay.trackId))
+      // Giữ nguyên thứ tự mảng: thứ tự là thứ tự vẽ của chữ không nằm trên lane nào.
+      doc.textOverlays = snapshot(doc.textOverlays).flatMap((overlay) =>
+        inScope(overlay) ? rippleTextOverlays([overlay], command.fromUs, command.toUs) : [overlay]
+      )
+
       // Cue phụ đề cũng phải trôi theo, nếu không phụ đề sẽ lệch hẳn khỏi hình.
       // Chỉ làm khi ripple áp cho toàn bộ track; ripple lệch track là chủ ý của
       // người dùng, không nên tự ý đụng vào phụ đề.
@@ -641,7 +652,11 @@ export function applyEditorCommand(doc: ProjectDocument, command: EditorCommand)
       if (track.locked) return fail(`Track "${track.name}" đang bị khoá`)
 
       const clip = track.clips[found.clipIndex]
-      Object.assign(clip, command.patch)
+      const { backgroundFill, ...rest } = command.patch
+      Object.assign(clip, rest)
+      // `null` là bỏ hẳn khoá, không phải lưu `null` vào tài liệu.
+      if (backgroundFill === null) delete clip.backgroundFill
+      else if (backgroundFill) clip.backgroundFill = { ...backgroundFill }
       // Fade không bao giờ được dài hơn chính clip.
       clip.fadeInUs = Math.min(clip.fadeInUs, clip.durationUs)
       clip.fadeOutUs = Math.min(clip.fadeOutUs, clip.durationUs)

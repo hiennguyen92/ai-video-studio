@@ -89,6 +89,12 @@ export const dictionaryEn: Dictionary = {
     framePaddingY: 'Drag frame top/bottom padding'
   },
   inspector: {
+    backgroundFill: 'Background',
+    backgroundFillBlur: 'Blurred fill',
+    backgroundFillAmount: 'Blur',
+    backgroundFillHint:
+      'Fills the frame with a blurred copy of the clip, so landscape footage in a 9:16 frame has no black bars. Exports with Remotion.',
+    backgroundFillAll: 'Apply blurred fill to every visual clip',
     volumeAbovePreviewCap: `Above 100% only affects the exported file — the preview cannot play louder than 100%.`,
     keyframeAdd: 'Set a keyframe at the playhead',
     keyframeRemove: 'Remove the keyframe at the playhead',
@@ -306,6 +312,27 @@ export const dictionaryEn: Dictionary = {
     back: 'Back to projects'
   },
   export: {
+    preset: 'Preset',
+    presetCustom: 'Custom',
+    presetVertical: 'TikTok · Reels · Shorts (9:16)',
+    presetYoutube: 'YouTube (16:9)',
+    presetSquare: 'Instagram square (1:1)',
+    presetAspectMismatch:
+      'This preset needs a {preset} frame; the project is {project}. Change the frame in project settings so you can see text and clips move before exporting.',
+    quality: 'Quality',
+    qualityHigh: 'High — platforms re-compress, so send them a clean file',
+    qualityStandard: 'Standard',
+    qualityCompact: 'Compact — for drafts',
+    range: 'Range',
+    rangeAll: 'Whole video',
+    rangeCustom: 'Custom…',
+    rangeFromTo: 'From – to (seconds)',
+    rangeFrom: 'From second',
+    rangeTo: 'To second',
+    rangeInvalid: 'Invalid range: the end must come after the start and lie inside the video.',
+    still: 'Save PNG frame at playhead',
+    stillWorking: 'Rendering image…',
+    stillSaved: 'Image saved: {path}',
     loudness: 'Normalize loudness',
     loudnessStreaming: '-14 LUFS · YouTube, TikTok, Instagram',
     loudnessPodcast: '-16 LUFS · Podcasts, Apple',

@@ -258,8 +258,9 @@ test('phần giảm nhạc dùng được mà không cần khoá AI, và nói r�
       .getByRole('button', { name: 'Áp dụng' })
   ).toBeDisabled()
 
-  // Giới hạn của cách làm phải được nói ra, không giấu.
-  await expect(page.getByText(/Mức âm lượng đổi theo bậc/)).toBeVisible()
+  // Nói rõ cách làm: keyframe âm lượng, không cắt clip — trước đây là bậc thang.
+  await expect(page.getByText(/Đặt keyframe âm lượng lên clip nhạc/)).toBeVisible()
+  await expect(page.getByText(/Mức âm lượng đổi theo bậc/)).toHaveCount(0)
 })
 
 test('xoá khoá đưa provider về trạng thái chưa cấu hình', async () => {

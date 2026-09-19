@@ -98,6 +98,14 @@ export const chatToolSchemas = {
     clipId: optionalClipId
   }),
 
+  set_background_fill: z.object({
+    clipId: optionalClipId,
+    /** Áp cho mọi clip trên các lane hình và lane ảnh. */
+    all: z.boolean().optional(),
+    kind: z.enum(['blur', 'none']),
+    amount: z.number().min(0).max(1).optional()
+  }),
+
   remove_silences: z.object({
     clipId: optionalClipId,
     thresholdDb: z.number().min(-80).max(-10).optional(),
@@ -670,6 +678,8 @@ export const chatToolDescriptions: Record<ChatToolName, string> = {
     'Move a clip to a new start position, optionally onto another track. A clip in a group (group=… in the overview) moves its whole group by the same amount; a group spread over several tracks keeps its tracks.',
   ripple_delete_clip:
     'Delete a clip AND pull every later clip on the same lane back to close the gap. Other lanes stay where they are (music under the clip is not cut). A grouped clip takes its whole group with it, each lane closing its own gap. To shorten the whole video across every lane, use ripple_delete_range instead.',
+  set_background_fill:
+    'Fill the frame behind a clip with a blurred, darkened copy of the same picture — the standard way to put landscape footage into a 9:16 (TikTok, Reels, Shorts) frame without black bars. The fill ignores the clip\'s own position and zoom; it always covers the whole frame. kind "none" removes it. all:true applies to every clip on video and image lanes (one undo step). amount 0 to 1 (default 0.5) sets how blurred and dark the fill is. Clips with a fill export with Remotion.',
   remove_silences:
     'Cut the quiet parts out of a clip that has sound (and its group), closing each gap — the classic tightening pass for talking-head footage. The app measures the audio itself with ffmpeg; no transcript is needed. thresholdDb (default -35) is the level below which audio counts as silence: raise it towards -30 for a noisy room. minSilenceSeconds (default 0.5) ignores shorter pauses, paddingSeconds (default 0.15) keeps that much silence next to speech so words are not clipped. scope "clip-tracks" (default) shrinks only the clip\'s own lanes so background music stays put; "all-tracks" shrinks the whole video so subtitles, text and markers stay in sync.',
   clean_voice:
@@ -786,6 +796,7 @@ export const chatToolParameterHints: Record<ChatToolName, string> = {
   move_clip: '{ clipId?: string, toSeconds: number, toTrackId?: string }',
   group_clips: '{ clipIds?: string[] }',
   ripple_delete_clip: '{ clipId?: string }',
+  set_background_fill: "{ clipId?: string, all?: boolean, kind: 'blur' | 'none', amount?: number }",
   remove_silences:
     "{ clipId?: string, thresholdDb?: number, minSilenceSeconds?: number, paddingSeconds?: number, scope?: 'clip-tracks' | 'all-tracks' }",
   clean_voice: "{ clipId?: string, strength?: 'light' | 'medium' | 'strong' }",

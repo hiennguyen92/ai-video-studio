@@ -304,6 +304,7 @@ function describeClipState(clip: Clip): string {
   const parts: string[] = []
   if (clip.speed !== 1) parts.push(`speed=${clip.speed}`)
   if (clip.linkGroupId) parts.push(`group=${clip.linkGroupId}`)
+  if (clip.backgroundFill) parts.push(`backgroundFill=blur@${clip.backgroundFill.amount}`)
   if (clip.fadeInUs > 0) parts.push(`fadeIn=${seconds(clip.fadeInUs)}s`)
   if (clip.fadeOutUs > 0) parts.push(`fadeOut=${seconds(clip.fadeOutUs)}s`)
   if (clip.colorGrade) {

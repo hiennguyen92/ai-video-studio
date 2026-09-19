@@ -51,6 +51,10 @@ export interface RemotionExportSettings {
   height: number
   frameRate: FrameRate
   useHardwareEncoder: boolean
+  /** Mã hoá phần mềm. */
+  crf?: number
+  /** Mã hoá phần cứng (không nhận CRF), vd. "10M". */
+  videoBitrate?: string
 }
 
 export interface RemotionExportHandle {
@@ -84,7 +88,7 @@ function prebuiltBundleDir(): string | null {
  * Trả `null` ở bản dev: lúc đó thư mục làm việc là gốc dự án, Remotion tự tìm
  * thấy bản trong `node_modules/.remotion` như thường lệ.
  */
-function packagedBrowserExecutable(): string | null {
+export function packagedBrowserExecutable(): string | null {
   if (!app.isPackaged) return null
 
   const dir = join(process.resourcesPath, 'chrome-headless-shell')
@@ -104,7 +108,7 @@ function packagedBrowserExecutable(): string | null {
   return path
 }
 
-async function ensureBundle(): Promise<string> {
+export async function ensureBundle(): Promise<string> {
   const prebuilt = prebuiltBundleDir()
   if (prebuilt) {
     if (!existsSync(join(prebuilt, 'index.html'))) {
@@ -132,6 +136,30 @@ async function ensureBundle(): Promise<string> {
   return cachedBundle
 }
 
+/**
+ * Dữ liệu đưa vào composition: kế hoạch vẽ ở kích thước xuất, kèm URL http của
+ * media. Dùng chung cho xuất video và xuất một khung ảnh, để hai thứ không lệch
+ * nhau.
+ */
+export function remotionInputProps(
+  document: ProjectDocument,
+  size: { width: number; height: number; frameRate: FrameRate }
+): { plan: ReturnType<typeof buildRenderPlan>; mediaUrls: Record<string, string> } {
+  const plan = buildRenderPlan(document)
+  // Kích thước xuất do người dùng chọn, có thể khác kích thước dự án.
+  const scaledPlan = { ...plan, width: size.width, height: size.height, fps: size.frameRate }
+
+  // Đăng ký media rồi lấy URL http: bộ dựng khung hình là tiến trình riêng,
+  // không đọc được đường dẫn đĩa.
+  registerMediaFiles(document.assets.map((asset) => ({ id: asset.id, path: asset.source.path })))
+  const mediaUrls: Record<string, string> = {}
+  for (const asset of document.assets) {
+    const url = localMediaUrl(asset.id)
+    if (url) mediaUrls[asset.id] = url
+  }
+  return { plan: scaledPlan, mediaUrls }
+}
+
 export function startRemotionExport(
   documentSnapshot: ProjectDocument,
   settings: RemotionExportSettings,
@@ -141,28 +169,8 @@ export function startRemotionExport(
   let cancelled = false
 
   const done = (async () => {
-    const plan = buildRenderPlan(documentSnapshot)
-    // Kích thước xuất do người dùng chọn, có thể khác kích thước dự án.
-    const scaledPlan = {
-      ...plan,
-      width: settings.width,
-      height: settings.height,
-      fps: settings.frameRate
-    }
-
-    // Đăng ký media rồi lấy URL http: bộ dựng khung hình là tiến trình riêng,
-    // không đọc được đường dẫn đĩa.
-    registerMediaFiles(
-      documentSnapshot.assets.map((asset) => ({ id: asset.id, path: asset.source.path }))
-    )
-    const mediaUrls: Record<string, string> = {}
-    for (const asset of documentSnapshot.assets) {
-      const url = localMediaUrl(asset.id)
-      if (url) mediaUrls[asset.id] = url
-    }
-
     const serveUrl = await ensureBundle()
-    const inputProps = { plan: scaledPlan, mediaUrls }
+    const inputProps = remotionInputProps(documentSnapshot, settings)
 
     // Cùng một trình duyệt cho cả bước chọn composition lẫn bước dựng: để trống
     // một trong hai là nó lại đi tìm bản tải sẵn theo thư mục làm việc.
@@ -196,7 +204,9 @@ export function startRemotionExport(
       // 'if-possible' biến một tối ưu không có sẵn thành lùi về mã hoá phần mềm,
       // thay vì giết cả bản dựng.
       hardwareAcceleration: settings.useHardwareEncoder ? 'if-possible' : 'disable',
-      ...(settings.useHardwareEncoder ? { videoBitrate: '10M' } : { crf: 21 }),
+      ...(settings.useHardwareEncoder
+        ? { videoBitrate: settings.videoBitrate ?? '10M' }
+        : { crf: settings.crf ?? 21 }),
       cancelSignal,
       onProgress: ({ progress }) => onProgress({ ratio: progress })
     })

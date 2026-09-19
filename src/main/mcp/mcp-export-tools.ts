@@ -1,4 +1,7 @@
 import { access, stat } from 'node:fs/promises'
+import { markerSections, type ExportRange } from '../../shared/domain/export-range'
+import { projectDurationUs } from '../../shared/domain/project-document-types'
+import { renderStillFrame } from '../export/remotion-still-renderer'
 import { basename, dirname, isAbsolute, join } from 'node:path'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
@@ -42,20 +45,26 @@ async function exists(path: string): Promise<boolean> {
 }
 
 /** Đường dẫn chưa bị chiếm trong thư mục Videos, theo tên dự án. */
-async function defaultOutputPath(projectName: string): Promise<string> {
+async function defaultOutputPath(projectName: string, extension = '.mp4'): Promise<string> {
   const safeName = projectName.replace(/[/\\:*?"<>|]/g, '-').trim() || 'video'
   for (let attempt = 0; attempt < 1000; attempt += 1) {
     const suffix = attempt === 0 ? '' : ` (${attempt})`
-    const candidate = join(defaultExportDir(), `${safeName}${suffix}.mp4`)
+    const candidate = join(defaultExportDir(), `${safeName}${suffix}${extension}`)
     if (!(await exists(candidate))) return candidate
   }
   throw new Error('Không tìm được tên file trống trong thư mục Videos')
 }
 
 /** Kiểm đường dẫn agent đưa: tuyệt đối, đuôi .mp4, thư mục có thật, không ghi đè ngầm. */
-async function checkedOutputPath(path: string, overwrite: boolean): Promise<string> {
+async function checkedOutputPath(
+  path: string,
+  overwrite: boolean,
+  extension = '.mp4'
+): Promise<string> {
   if (!isAbsolute(path)) throw new Error('outputPath phải là đường dẫn tuyệt đối')
-  if (!path.toLowerCase().endsWith('.mp4')) throw new Error('outputPath phải có đuôi .mp4')
+  if (!path.toLowerCase().endsWith(extension)) {
+    throw new Error(`outputPath phải có đuôi ${extension}`)
+  }
   const folder = await stat(dirname(path)).catch(() => null)
   if (!folder?.isDirectory()) throw new Error(`Thư mục "${dirname(path)}" không tồn tại`)
   // Hộp thoại lưu của hệ điều hành hỏi trước khi ghi đè; agent không có hộp thoại
@@ -64,6 +73,29 @@ async function checkedOutputPath(path: string, overwrite: boolean): Promise<stri
     throw new Error(`File "${basename(path)}" đã có. Đặt overwrite:true hoặc chọn tên khác`)
   }
   return path
+}
+
+/** Đoạn xuất agent xin: theo marker, theo giây, hoặc cả video. Ném lỗi nói rõ khi sai. */
+function resolveAgentRange(
+  document: ProjectDocument,
+  input: { fromSeconds?: number; toSeconds?: number; markerId?: string }
+): ExportRange | undefined {
+  const durationUs = projectDurationUs(document)
+  if (input.markerId) {
+    const section = markerSections(document.markers, durationUs).find(
+      (item) => item.markerId === input.markerId
+    )
+    if (!section) throw new Error(`Không có marker "${input.markerId}" trong video`)
+    return { startUs: section.startUs, endUs: section.endUs }
+  }
+  if (input.fromSeconds === undefined && input.toSeconds === undefined) return undefined
+  const startUs = Math.round((input.fromSeconds ?? 0) * 1_000_000)
+  const endUs = Math.min(
+    durationUs,
+    Math.round((input.toSeconds ?? durationUs / 1_000_000) * 1_000_000)
+  )
+  if (endUs <= startUs) throw new Error('toSeconds phải sau fromSeconds và nằm trong video')
+  return { startUs, endUs }
 }
 
 function text(value: string): { content: Array<{ type: 'text'; text: string }> } {
@@ -75,7 +107,7 @@ export function registerMcpExportTools(server: McpServer): void {
     'start_export',
     {
       description:
-        'Export the open project to an MP4 file, like the Export dialog. Rendering takes minutes, so this returns a jobId straight away; call get_export_status with it until the status is succeeded, failed or cancelled. The renderer is chosen for you: projects with text overlays or transitions render with Remotion, since the faster ffmpeg path would silently drop them. outputPath must be absolute and end in .mp4; leave it out to save into the Videos folder under the project name. An existing file is only replaced with overwrite:true. scale sets the resolution relative to the project canvas, frameRate defaults to the project frame rate. burnSubtitleTrackId burns that subtitle track into the picture; exportSrt also writes a .srt next to the video (from burnSubtitleTrackId, or the first subtitle track). The export renders the project as it is at this moment; later edits do not change it. loudnessLufs normalizes the loudness of the finished file (two-pass): -14 suits YouTube, TikTok and Instagram and is the default, -16 podcasts, -23 broadcast; pass null to keep the timeline level.',
+        'Export the open project to an MP4 file, like the Export dialog. Rendering takes minutes, so this returns a jobId straight away; call get_export_status with it until the status is succeeded, failed or cancelled. The renderer is chosen for you: projects with text overlays or transitions render with Remotion, since the faster ffmpeg path would silently drop them. outputPath must be absolute and end in .mp4; leave it out to save into the Videos folder under the project name. An existing file is only replaced with overwrite:true. scale sets the resolution relative to the project canvas, frameRate defaults to the project frame rate. burnSubtitleTrackId burns that subtitle track into the picture; exportSrt also writes a .srt next to the video (from burnSubtitleTrackId, or the first subtitle track). The export renders the project as it is at this moment; later edits do not change it. loudnessLufs normalizes the loudness of the finished file (two-pass): -14 suits YouTube, TikTok and Instagram and is the default, -16 podcasts, -23 broadcast; pass null to keep the timeline level. quality: high (send this to platforms, they re-compress), standard (default), compact (drafts). To export only part of the timeline pass fromSeconds/toSeconds, or markerId to export the section from that marker to the next one (the Markers list in the project overview has the ids).',
       inputSchema: {
         outputPath: z.string().min(1).max(1024).optional(),
         overwrite: z.boolean().optional(),
@@ -83,7 +115,11 @@ export function registerMcpExportTools(server: McpServer): void {
         frameRate: z.enum(['24', '25', '30', '50', '60']).optional(),
         burnSubtitleTrackId: z.string().min(1).max(120).optional(),
         exportSrt: z.boolean().optional(),
-        loudnessLufs: z.number().min(-36).max(-8).nullable().optional()
+        loudnessLufs: z.number().min(-36).max(-8).nullable().optional(),
+        quality: z.enum(['high', 'standard', 'compact']).optional(),
+        fromSeconds: z.number().min(0).optional(),
+        toSeconds: z.number().min(0).optional(),
+        markerId: z.string().min(1).max(120).optional()
       }
     },
     async (input) => {
@@ -105,6 +141,7 @@ export function registerMcpExportTools(server: McpServer): void {
         if (input.exportSrt && !srtTrackId)
           throw new Error('Dự án chưa có track phụ đề nào để xuất .srt')
 
+        const rangeUs = resolveAgentRange(document, input)
         const factor = SCALE_FACTORS[input.scale ?? 'full']
         const width = toEvenSize(document.settings.width * factor)
         const height = toEvenSize(document.settings.height * factor)
@@ -124,7 +161,9 @@ export function registerMcpExportTools(server: McpServer): void {
           burnSubtitleTrackId: input.burnSubtitleTrackId,
           exportSrtTrackId: srtTrackId,
           // Cùng mặc định với hộp thoại Xuất: agent không nói gì thì file ra vẫn đúng mức nền tảng.
-          loudnessLufs: input.loudnessLufs === undefined ? -14 : input.loudnessLufs
+          loudnessLufs: input.loudnessLufs === undefined ? -14 : input.loudnessLufs,
+          quality: input.quality,
+          rangeUs
         })
 
         return text(
@@ -172,6 +211,39 @@ export function registerMcpExportTools(server: McpServer): void {
       if (event.srtPath) lines.push(`srt=${event.srtPath}`)
       if (event.error) lines.push(`error=${event.error}`)
       return text(lines.join('\n'))
+    }
+  )
+
+  server.registerTool(
+    'export_frame',
+    {
+      description:
+        'Save one frame of the video as a PNG — a cover image or thumbnail to upload with the video. It is rendered by the same engine as the exported video, so text, effects and the blurred background fill appear exactly as in the video. atSeconds is the moment on the timeline. outputPath must be absolute and end in .png; leave it out to save into the Videos folder. scale sets the size relative to the project canvas. Returns once the file is written.',
+      inputSchema: {
+        atSeconds: z.number().min(0),
+        outputPath: z.string().min(1).max(1024).optional(),
+        overwrite: z.boolean().optional(),
+        scale: z.enum(['full', 'half', 'quarter']).optional()
+      }
+    },
+    async (input) => {
+      try {
+        const document = await requestFromRenderer<ProjectDocument>('document-snapshot', {})
+        const outputPath = input.outputPath
+          ? await checkedOutputPath(input.outputPath, input.overwrite ?? false, '.png')
+          : await defaultOutputPath(document.name, '.png')
+        const factor = SCALE_FACTORS[input.scale ?? 'full']
+        const written = await renderStillFrame(document, {
+          atUs: Math.round(input.atSeconds * 1_000_000),
+          width: toEvenSize(document.settings.width * factor),
+          height: toEvenSize(document.settings.height * factor),
+          frameRate: document.settings.frameRate,
+          outputPath
+        })
+        return text(`Đã lưu ảnh: ${written}`)
+      } catch (error) {
+        return { ...text(error instanceof Error ? error.message : String(error)), isError: true }
+      }
     }
   )
 

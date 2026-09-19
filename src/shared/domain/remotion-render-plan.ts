@@ -16,6 +16,7 @@ import { resolveKeyframeTracks } from './keyframe-interpolation'
 import type { ResolvedKeyframeTracks } from './keyframe-types'
 import { isNeutralColorGrade, type ClipColorGrade } from './clip-color-grade'
 import type { ClipMotion } from './clip-motion-types'
+import type { ClipBackgroundFill } from './timeline-track-types'
 import type { SubtitleStyle } from './subtitle-types'
 import {
   clampTextFramePaddingScale,
@@ -98,6 +99,8 @@ export interface RenderPlanVideoClip {
   leadInFrames: number
   /** Chuyển động trong clip; lớp vẽ tự tính theo khung hình hiện tại. */
   motion?: ClipMotion
+  /** Nền mờ phía sau clip, phủ kín khung. */
+  backgroundFill?: ClipBackgroundFill
   colorGrade?: ClipColorGrade
   /**
    * Look màu ĐÃ TRA danh mục, kèm cường độ đã kẹp. Id lạ (dự án từ bản app khác)
@@ -287,6 +290,9 @@ export function requiresRemotionRenderer(document: ProjectDocument): boolean {
           clip.transitionIn !== undefined ||
           clip.transitionOut !== undefined ||
           clip.motion !== undefined ||
+          // Filter graph ffmpeg không dựng lớp nền mờ; lặng lẽ bỏ nó thì file ra
+          // có hai dải đen mà preview thì không.
+          clip.backgroundFill !== undefined ||
           clip.look !== undefined ||
           (clip.effects?.length ?? 0) > 0 ||
           // Filter graph ffmpeg đọc transform và âm lượng dạng HẰNG SỐ, nên một
@@ -433,6 +439,7 @@ export function buildRenderPlan(document: ProjectDocument): RenderPlan {
           keyframes: resolveKeyframeTracks(clip.keyframes, fps, transitionFrames),
           leadInFrames: transitionFrames,
           motion: clip.motion,
+          backgroundFill: clip.backgroundFill,
           colorGrade: clip.colorGrade,
           look:
             clip.look && findClipLook(clip.look.id)

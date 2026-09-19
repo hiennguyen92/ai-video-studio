@@ -1,4 +1,6 @@
 import type { SttSegmentationMode } from '../ai/stt-segmentation'
+import type { ExportQuality } from '../domain/export-presets'
+import type { ExportRange } from '../domain/export-range'
 import type { ProjectVersionReason, ProjectVersionSummary } from './project-version-types'
 import type { SilenceDetectionRequest, SilenceInterval } from './silence-detection-types'
 import type { VoiceCleanupRequest } from './voice-cleanup-types'
@@ -84,6 +86,7 @@ export const IPC = {
   exportPickPath: 'export:pick-path',
   exportStart: 'export:start',
   exportCancel: 'export:cancel',
+  exportStill: 'export:still',
   exportCapabilities: 'export:capabilities',
 
   appInfo: 'app:info'
@@ -173,6 +176,20 @@ export interface ExportRequest {
    * hoặc `null` là giữ nguyên độ to như trên timeline.
    */
   loudnessLufs?: number | null
+  /** Mức chất lượng mã hoá; vắng mặt là `standard` như trước. */
+  quality?: ExportQuality
+  /** Chỉ xuất đoạn này của timeline; vắng mặt là cả video. */
+  rangeUs?: ExportRange
+}
+
+/** Xuất một khung hình ra PNG. */
+export interface ExportStillRequest {
+  document: ProjectDocument
+  atUs: number
+  width: number
+  height: number
+  frameRate: { num: number; den: number }
+  outputPath: string
 }
 
 export type ExportStatus = 'running' | 'succeeded' | 'failed' | 'cancelled'
@@ -555,7 +572,12 @@ export interface RendererApi {
   }
   export: {
     capabilities(): Promise<IpcResult<ExportCapabilities>>
-    pickOutputPath(defaultFileName: string): Promise<IpcResult<string | null>>
+    pickOutputPath(
+      defaultFileName: string,
+      kind?: 'video' | 'image'
+    ): Promise<IpcResult<string | null>>
+    /** Dựng một khung hình ra PNG; trả đường dẫn file. */
+    still(request: ExportStillRequest): Promise<IpcResult<string>>
     start(request: ExportRequest): Promise<IpcResult<{ jobId: string }>>
     cancel(jobId: string): Promise<IpcResult<void>>
     /** Trả về hàm huỷ đăng ký. */

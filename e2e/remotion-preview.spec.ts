@@ -114,9 +114,9 @@ test('khung hình được vẽ thật, không phải ô đen', async () => {
 test('phát làm đầu phát tiến lên và hình đổi theo', async () => {
   const before = await stage().screenshot()
 
-  await page.getByRole('button', { name: 'Phát' }).click()
+  await page.getByRole('button', { name: 'Phát', exact: true }).click()
   await page.waitForTimeout(1500)
-  await page.getByRole('button', { name: 'Tạm dừng' }).click()
+  await page.getByRole('button', { name: 'Tạm dừng', exact: true }).click()
 
   // Timecode do store cấp; nó nhúc nhích nghĩa là Player đã đẩy trạng thái về.
   const timecode = await page.locator('.preview__timecode').textContent()

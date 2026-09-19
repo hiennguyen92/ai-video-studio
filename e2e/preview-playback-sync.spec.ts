@@ -115,13 +115,13 @@ test('đang phát thì tiếng và hình không bị tua lùi giữa chừng', a
     )
   })
 
-  await page.getByRole('button', { name: 'Phát' }).click()
+  await page.getByRole('button', { name: 'Phát', exact: true }).click()
   // Trước khi sửa, cú tua lùi đầu tiên rơi vào khoảng giây thứ 3.
   await page.waitForTimeout(4_500)
   const whilePlaying = await page.evaluate(
     () => (window as unknown as { __seeks: Array<{ tag: string; to: number }> }).__seeks
   )
-  await page.getByRole('button', { name: 'Tạm dừng' }).click()
+  await page.getByRole('button', { name: 'Tạm dừng', exact: true }).click()
 
   expect(whilePlaying).toEqual([])
 })
