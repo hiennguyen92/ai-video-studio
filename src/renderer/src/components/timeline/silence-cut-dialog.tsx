@@ -123,33 +123,40 @@ export function SilenceCutDialog({ onClose }: { onClose(): void }): JSX.Element 
             <p className="dialog-note dialog-note--strong">{t.silenceCut.noAudio}</p>
           )}
 
-          <label className="field-row">
-            <span className="field-row__label">{t.silenceCut.autoThreshold}</span>
-            <input
-              type="checkbox"
-              checked={autoThreshold}
-              aria-label={t.silenceCut.autoThreshold}
-              onChange={(event) => {
-                setAutoThreshold(event.target.checked)
-                invalidate()
-              }}
-            />
-          </label>
           <div className="field-row">
             <span className="field-row__label">{t.silenceCut.threshold}</span>
-            <input
-              type="number"
-              min={-80}
-              max={-10}
-              step={1}
-              value={noiseDb}
-              disabled={autoThreshold}
-              aria-label={t.silenceCut.threshold}
-              onChange={(event) => {
-                setNoiseDb(Number(event.target.value) || -35)
-                invalidate()
-              }}
-            />
+            {/*
+              Ô số và ô "tự đo" chung một hàng: tự đo là CÁCH điền ô ngưỡng, không
+              phải một cài đặt riêng. Đứng tách hàng thì ô tích trôi giữa cột và
+              không ai đoán được nó điều khiển ô nào.
+            */}
+            <div className="export-dialog__inline">
+              <input
+                type="number"
+                min={-80}
+                max={-10}
+                step={1}
+                value={noiseDb}
+                disabled={autoThreshold}
+                aria-label={t.silenceCut.threshold}
+                onChange={(event) => {
+                  setNoiseDb(Number(event.target.value) || -35)
+                  invalidate()
+                }}
+              />
+              <label className="export-dialog__checkbox">
+                <input
+                  type="checkbox"
+                  checked={autoThreshold}
+                  aria-label={t.silenceCut.autoThreshold}
+                  onChange={(event) => {
+                    setAutoThreshold(event.target.checked)
+                    invalidate()
+                  }}
+                />
+                <span>{t.silenceCut.autoThresholdShort}</span>
+              </label>
+            </div>
           </div>
           <div className="field-row">
             <span className="field-row__label">{t.silenceCut.minSilence}</span>

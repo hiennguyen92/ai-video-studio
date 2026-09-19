@@ -24,13 +24,15 @@ export function ExportStillButton({
 }): JSX.Element {
   const t = useT()
   const [busy, setBusy] = useState(false)
-  const [notice, setNotice] = useState<string | null>(null)
+  // `title` giữ đường dẫn đầy đủ để rê chuột xem; chữ hiện ra chỉ là tên file —
+  // đường dẫn dài vắt ba dòng ở chân hộp thoại, chen giữa hai nút.
+  const [notice, setNotice] = useState<{ text: string; title?: string } | null>(null)
 
   const save = async (): Promise<void> => {
     const safeName = document.name.replace(/[/\\:*?"<>|]/g, '-')
     const picked = await window.api.export.pickOutputPath(`${safeName}.png`, 'image')
     if (!picked.ok) {
-      setNotice(picked.error)
+      setNotice({ text: picked.error })
       return
     }
     if (!picked.data) return
@@ -47,22 +49,31 @@ export function ExportStillButton({
       outputPath: picked.data
     })
     setBusy(false)
-    setNotice(result.ok ? interpolate(t.export.stillSaved, { path: result.data }) : result.error)
+    setNotice(
+      result.ok
+        ? {
+            text: interpolate(t.export.stillSaved, {
+              name: result.data.split(/[\\/]/).pop() ?? ''
+            }),
+            title: result.data
+          }
+        : { text: result.error }
+    )
   }
 
   return (
     <>
+      {notice && (
+        <p className="dialog-note" role="status" title={notice.title}>
+          {notice.text}
+        </p>
+      )}
       <ToolButton
         label={busy ? t.export.stillWorking : t.export.still}
         variant="outline"
         disabled={disabled || busy}
         onClick={() => void save()}
       />
-      {notice && (
-        <p className="dialog-note" role="status">
-          {notice}
-        </p>
-      )}
     </>
   )
 }

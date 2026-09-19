@@ -168,10 +168,34 @@
 }
 
 /* Chú thích và thông báo dùng chung cho các hộp thoại dựng trên khung này. */
+/*
+ * Thân hộp thoại không có lề ngang: mỗi `field-row` tự thụt vào `--space-4`. Mọi
+ * khối KHÁC đặt thẳng trong thân (đoạn chú thích, danh sách, tiêu đề nhóm) phải thụt
+ * đúng chừng đó, không thì chữ dính sát hai mép hộp thoại.
+ */
 .dialog-note {
   margin: 0 0 var(--space-3);
+  padding: 0 var(--space-4);
   font-size: var(--text-sm);
+  line-height: 1.55;
   color: var(--text-secondary);
+}
+
+.export-dialog__body .field-group__title {
+  padding-left: var(--space-4);
+  padding-right: var(--space-4);
+}
+
+/* Ở chân hộp thoại, chú thích nằm cạnh nút: chân đã có lề, không thụt thêm. */
+.export-dialog__footer .dialog-note {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  align-self: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .dialog-note--strong {
@@ -181,7 +205,7 @@
 .project-versions__list {
   list-style: none;
   margin: 0;
-  padding: 0;
+  padding: 0 var(--space-4);
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
@@ -220,6 +244,7 @@
 
 .keyboard-shortcuts__list {
   margin: 0;
+  padding: 0 var(--space-4);
   display: grid;
   gap: var(--space-1);
 }

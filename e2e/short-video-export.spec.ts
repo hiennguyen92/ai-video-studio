@@ -223,7 +223,7 @@ test('nút PNG trong hộp thoại Xuất lưu khung tại đầu phát đúng c
   await page.getByRole('button', { name: 'Xuất video' }).first().click()
   await exportDialog().getByLabel('Độ phân giải').selectOption('half')
   await exportDialog().getByRole('button', { name: 'Lưu khung PNG tại đầu phát' }).click()
-  await expect(exportDialog().getByText(`Đã lưu ảnh: ${pngPath}`)).toBeVisible({
+  await expect(exportDialog().getByText('Đã lưu ảnh anh-bia.png')).toBeVisible({
     timeout: 120_000
   })
   expect(await probe(pngPath)).toMatchObject({ width: 540, height: 960 })
