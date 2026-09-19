@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import type { Clip } from '../domain/timeline-track-types'
 import type { MediaAsset } from '../domain/media-asset-types'
 import type { Transcript, Translation } from '../domain/transcript-types'
 import type { SubtitleCue, SubtitleStyle, SubtitleTrack } from '../domain/subtitle-types'
@@ -129,6 +130,29 @@ const insertClip = z.object({
   sourceInUs: nonNegativeMicros.default(0),
   label: z.string().max(200).optional(),
   linkGroupId: z.string().optional()
+})
+
+/**
+ * Dán một clip đã chép vào track, giữ NGUYÊN mọi thuộc tính của nó.
+ *
+ * Không dùng `clip/insert` được: lệnh đó dựng một clip mới với giá trị mặc
+ * định, nên dán bằng nó là mất sạch âm lượng, fade, tốc độ, transform, effect
+ * và keyframe — đúng những thứ người dùng chép clip vì muốn giữ.
+ *
+ * Payload đi qua `z.custom` như `subtitle/set-style` và `text/set-style`: hình
+ * dạng đầy đủ của một clip quá lớn để tả lại bằng zod mà không trôi khỏi kiểu
+ * gốc. Bù lại, reducer KHÔNG tin payload — nó dựng lại clip từ danh sách trường
+ * đã biết và kẹp từng con số.
+ */
+const pasteClip = z.object({
+  type: z.literal('clip/paste'),
+  trackId: z.string(),
+  /** Id cho bản dán; bỏ trống thì reducer tự sinh. */
+  clipId: z.string().optional(),
+  startUs: nonNegativeMicros,
+  clip: z.custom<Clip>((value) => Boolean(value) && typeof value === 'object', {
+    message: 'clip không hợp lệ'
+  })
 })
 
 const removeClip = z.object({
@@ -785,6 +809,7 @@ export const editorCommandSchema = z.discriminatedUnion('type', [
   reorderTrack,
   updateTrack,
   insertClip,
+  pasteClip,
   removeClip,
   moveClip,
   trimClip,

@@ -72,6 +72,12 @@ export interface EditorState {
    */
   keyframeClipboard: KeyframeClipboard | null
   /**
+   * Clip vừa chép, chờ dán. Giữ CẢ clip chứ không giữ mỗi id: chép rồi xoá rồi
+   * dán chỗ khác là lối làm việc bình thường, và giữ id thì lúc đó không còn
+   * gì để dán.
+   */
+  clipClipboard: Clip | null
+  /**
    * Thời điểm dưới con trỏ chuột khi rê trên timeline, hoặc `null` khi chuột ở ngoài.
    * Khác đầu phát: chỉ để khung xem trước nhỏ "lướt" tới, không tua preview lớn.
    */
@@ -98,6 +104,10 @@ export interface EditorState {
   selectTextBlock(text: TextBlockRef): void
   toggleClipSelection(clipId: string, trackId: string, additive: boolean): void
   clearSelection(): void
+  /** Chép clip đang chọn vào bảng tạm. Trả `false` khi không có clip nào đang chọn. */
+  copyClip(): boolean
+  /** Dán clip đã chép vào track đang chọn, tại đầu phát. Trả `false` khi không dán được. */
+  pasteClip(label: string): boolean
   /** Chép cụm keyframe của thứ đang chọn vào bảng tạm. Trả `false` khi không có gì để chép. */
   copyKeyframes(): boolean
   /** Dán bảng tạm vào MỌI clip đang chọn. Trả số chủ thể đã nhận, và số đường phải bỏ. */
@@ -118,6 +128,7 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
   selection: { clipIds: [] },
   playheadUs: 0,
   keyframeClipboard: null,
+  clipClipboard: null,
   hoverUs: null,
   isPlaying: false,
   pixelsPerSecond: DEFAULT_PIXELS_PER_SECOND,
@@ -132,6 +143,7 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
       selection: { clipIds: [] },
       playheadUs: 0,
       keyframeClipboard: null,
+      clipClipboard: null,
       isPlaying: false,
       saveState: 'saved',
       lastError: null
@@ -143,6 +155,7 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
       selection: { clipIds: [] },
       playheadUs: 0,
       keyframeClipboard: null,
+      clipClipboard: null,
       hoverUs: null,
       isPlaying: false
     }),
@@ -209,6 +222,40 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
   },
 
   clearSelection: () => set({ selection: { clipIds: [] } }),
+
+  copyClip: () => {
+    const { session, selection } = get()
+    const document = session?.document
+    const clip = document ? findSelectedClip(document, selection.clipIds[0]) : undefined
+    if (!clip) return false
+    set({ clipClipboard: structuredClone(clip) })
+    return true
+  },
+
+  pasteClip: (label) => {
+    const { session, selection, clipClipboard, playheadUs } = get()
+    const document = session?.document
+    if (!document || !clipClipboard) return false
+
+    // Track đích: track đang chọn, hoặc track của chính clip đã chép nếu chưa
+    // chọn gì. Không đoán xa hơn — dán nhầm lane là thứ khó nhận ra.
+    const targetTrackId =
+      selection.trackId ??
+      document.tracks.find((track) => track.clips.some((clip) => clip.id === clipClipboard.id))?.id
+    if (!targetTrackId) return false
+
+    return get().run(
+      [
+        {
+          type: 'clip/paste',
+          trackId: targetTrackId,
+          startUs: playheadUs,
+          clip: clipClipboard
+        }
+      ],
+      label
+    )
+  },
 
   copyKeyframes: () => {
     const { session, selection } = get()

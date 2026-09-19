@@ -19,6 +19,7 @@ import {
   trimClipEdgeTo
 } from './timeline-mutations'
 import { rateStretchClip, rippleTrimTrackClips, slipClip } from './timeline-edit-tools'
+import { sanitizeClipForPaste } from './clip-paste-sanitize'
 import {
   cloneKeyframes,
   compactKeyframes,
@@ -234,6 +235,29 @@ export function applyEditorCommand(doc: ProjectDocument, command: EditorCommand)
         label: command.label
       }
       track.clips = placeClip({ ...track, clips: snapshot(track.clips) }, clip, () =>
+        createId('clip')
+      )
+      return OK
+    }
+
+    case 'clip/paste': {
+      const track = doc.tracks.find((item) => item.id === command.trackId)
+      if (!track) return fail(`Không tìm thấy track ${command.trackId}`)
+      if (track.locked) return fail(`Track "${track.name}" đang bị khoá`)
+      if (track.kind === 'subtitle') return fail('Không dán được clip vào track phụ đề')
+
+      const pasted = sanitizeClipForPaste(command.clip, {
+        id: command.clipId ?? createId('clip'),
+        startUs: command.startUs
+      })
+      if (!pasted) return fail('Clip đã chép không còn hợp lệ')
+      // Media phải còn trong dự án: dán một clip trỏ tới asset đã xoá là tạo ra
+      // một clip không bao giờ vẽ được gì.
+      if (!doc.assets.some((asset) => asset.id === pasted.assetId)) {
+        return fail('Media của clip đã chép không còn trong dự án')
+      }
+
+      track.clips = placeClip({ ...track, clips: snapshot(track.clips) }, pasted, () =>
         createId('clip')
       )
       return OK

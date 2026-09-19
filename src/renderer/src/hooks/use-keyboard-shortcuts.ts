@@ -31,6 +31,22 @@ export function useKeyboardShortcuts(): void {
       const selectedClipId = store.selection.clipIds[0]
       const stepUs = frameDurationUs(document.settings.frameRate)
 
+      // Chép/dán CLIP. Đặt trước nhánh hoàn tác cho gọn nhóm phím có phím bổ trợ;
+      // phần chặn "đang gõ trong ô nhập" nằm ở đầu hàm nên Cmd+C trong ô chữ vẫn
+      // là chép chữ như thường.
+      if (modifier && event.key.toLowerCase() === 'c') {
+        if (!selectedClipId) return
+        event.preventDefault()
+        store.copyClip()
+        return
+      }
+
+      if (modifier && event.key.toLowerCase() === 'v') {
+        event.preventDefault()
+        store.pasteClip('Dán clip')
+        return
+      }
+
       if (modifier && event.key.toLowerCase() === 'z') {
         event.preventDefault()
         if (event.shiftKey) store.redo()
