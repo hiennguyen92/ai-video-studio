@@ -1,7 +1,6 @@
-import { execFile } from 'node:child_process'
-import { promisify } from 'node:util'
 import type { Micros } from '../../shared/domain/time-units'
 import { resolveFfmpegBinaries } from './ffmpeg-binaries'
+import { runTrackedProcess } from './ffmpeg-process-registry'
 
 /**
  * Tự tìm ngưỡng im cho `silencedetect`, thay cho con số -35 dB cố định.
@@ -18,8 +17,6 @@ import { resolveFfmpegBinaries } from './ffmpeg-binaries'
  *     lavfi.astats.Overall.Peak_level=-21.969270
  *     lavfi.astats.Overall.Peak_level=-inf        (im tuyệt đối)
  */
-
-const execFileAsync = promisify(execFile)
 
 /** Im tuyệt đối (`-inf`) quy về mức này để còn tính phân vị được. */
 const DIGITAL_SILENCE_DB = -120
@@ -81,7 +78,7 @@ export async function analyseAudioLevels(
   startUs: Micros,
   endUs: Micros
 ): Promise<AudioLevelSummary | null> {
-  const { stdout } = await execFileAsync(
+  const { stdout } = await runTrackedProcess(
     resolveFfmpegBinaries().ffmpegPath,
     [
       '-hide_banner',

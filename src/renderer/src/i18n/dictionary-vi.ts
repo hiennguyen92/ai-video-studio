@@ -9,7 +9,17 @@ export const dictionaryVi = {
   app: {
     name: 'AI Video Studio',
     loading: 'Đang tải…',
-    untitledProject: 'Dự án chưa đặt tên'
+    untitledProject: 'Dự án chưa đặt tên',
+    saveFailedClose: 'Không lưu được dự án: {error}\n\nVẫn đóng và bỏ sửa đổi chưa lưu?',
+    saveFailedLeave: 'Không lưu được dự án: {error}\n\nVẫn rời đi?'
+  },
+  /** Tên các bước trong lịch sử hoàn tác. */
+  history: {
+    splitClip: 'Cắt clip',
+    pasteClip: 'Dán clip',
+    duplicateClip: 'Nhân bản clip',
+    groupClips: 'Gộp nhóm clip',
+    ungroupClips: 'Rã nhóm clip'
   },
   topbar: {
     project: 'Dự án',

@@ -1,7 +1,5 @@
-import { execFile } from 'node:child_process'
 import { access, rename, rm } from 'node:fs/promises'
 import { join, parse } from 'node:path'
-import { promisify } from 'node:util'
 import type { MediaAsset } from '../../shared/domain/media-asset-types'
 import { createId } from '../../shared/domain/project-document-factory'
 import {
@@ -11,6 +9,7 @@ import {
 } from '../../shared/ipc/voice-cleanup-types'
 import { ensureProjectDirs } from '../storage/workspace-paths'
 import { resolveFfmpegBinaries } from './ffmpeg-binaries'
+import { runTrackedProcess } from './ffmpeg-process-registry'
 import { importMediaFile } from './media-import-service'
 
 /**
@@ -25,8 +24,6 @@ import { importMediaFile } from './media-import-service'
  * so với hình — đủ để khẩu hình trễ hơn tiếng. FLAC không mất dữ liệu và bắt đầu
  * đúng mẫu đầu tiên.
  */
-
-const execFileAsync = promisify(execFile)
 
 /**
  * Chuỗi lọc.
@@ -68,7 +65,7 @@ export async function cleanVoice(request: VoiceCleanupRequest): Promise<MediaAss
   if (!(await exists(outputPath))) {
     const tempPath = `${outputPath}.tmp.flac`
     try {
-      await execFileAsync(
+      await runTrackedProcess(
         resolveFfmpegBinaries().ffmpegPath,
         [
           '-v',

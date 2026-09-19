@@ -225,7 +225,15 @@ ghi vào backlog rõ ràng."
   giọng sạch lệch khi luồng tiếng bắt đầu trễ; đứng hình hỏng ở khung cuối và lấy
   nhầm khung kế; cắt clip trong nhóm; ripple nhóm dài khác nhau; cắt khoảng lặng
   cắt lời của clip chưa dò; xuất MCP trùng tên. Phụ đề nay đi theo lane lời nói
-  (ripple xoá clip, cắt khoảng lặng theo lane, đứng hình)
+  (ripple xoá clip, cắt khoảng lặng theo lane, đứng hình). Soát mã vòng 2: keyframe
+  chữ overlay giữ dáng khi cắt ngang; marker trùng mốc không sinh đoạn xuất rỗng;
+  phím tắt không chạy sau hộp thoại đang mở; chống bấm Xuất hai lần, làm sạch giọng
+  hai lần; đứng hình chèn đúng khung khi clip bị dời lúc chờ và chọn đúng clip hình
+  trong nhóm; kéo nhóm có lane khoá bị chặn từ đầu; autosave không kẹt "chưa lưu";
+  ffmpeg con bị huỷ khi thoát app; lỗi chuẩn hoá độ to thành cảnh báo (video vẫn
+  xuất); xoá file .ass tạm; kiểm tra id dự án chống thoát thư mục. Chấp nhận, chưa
+  sửa: file do chat chạy ffmpeg trước khi duyệt (dọn bằng "dọn file không dùng"),
+  mốc silencedetect mất chính xác với file dài hơn ~2,8 giờ, tone-map HDR khi đứng hình
 - Xuất: thêm định dạng ngoài MP4/H.264 (MOV, WebM, HEVC), xuất chỉ tiếng, hàng
   đợi nhiều bản. **Đã xong:** chất lượng, mẫu nền tảng, xuất đoạn, ảnh PNG
 - Bám đối tượng và tự cắt khung theo chủ thể

@@ -215,6 +215,8 @@ export interface ExportProgressEvent {
   outputPath?: string
   /** Đường dẫn file .srt đã xuất kèm, nếu có. */
   srtPath?: string
+  /** Xuất xong nhưng có bước phụ hỏng (vd. chuẩn hoá độ to) — file vẫn dùng được. */
+  warning?: string
 }
 
 export interface ExportCapabilities {

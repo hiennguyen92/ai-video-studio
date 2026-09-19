@@ -1,12 +1,11 @@
-import { execFile } from 'node:child_process'
 import { access, rename, rm } from 'node:fs/promises'
 import { join, parse } from 'node:path'
-import { promisify } from 'node:util'
 import type { MediaAsset } from '../../shared/domain/media-asset-types'
 import { createId } from '../../shared/domain/project-document-factory'
 import { frameRateToNumber, type FrameRate, type Micros } from '../../shared/domain/time-units'
 import { ensureProjectDirs } from '../storage/workspace-paths'
 import { resolveFfmpegBinaries } from './ffmpeg-binaries'
+import { runTrackedProcess } from './ffmpeg-process-registry'
 import { importMediaFile } from './media-import-service'
 
 /**
@@ -19,8 +18,6 @@ import { importMediaFile } from './media-import-service'
  * File dài `FREEZE_ASSET_US` dù clip chỉ dùng vài giây: người dùng kéo mép clip để
  * kéo dài đoạn đứng hình, và kéo được là vì nguồn còn dư.
  */
-
-const execFileAsync = promisify(execFile)
 
 /** Độ dài file đóng băng — mức tối đa có thể kéo dài clip ra. */
 export const FREEZE_ASSET_US: Micros = 10_000_000
@@ -45,7 +42,7 @@ async function exists(path: string): Promise<boolean> {
 
 /** Mốc bắt đầu của luồng hình (giây) — thường 0, nhưng có file bắt đầu lệch. */
 async function videoStartSeconds(sourcePath: string): Promise<number> {
-  const { stdout } = await execFileAsync(resolveFfmpegBinaries().ffprobePath, [
+  const { stdout } = await runTrackedProcess(resolveFfmpegBinaries().ffprobePath, [
     '-v',
     'error',
     '-select_streams',
@@ -84,7 +81,7 @@ async function extractFrameAtOrBefore(
   // Tua tới trước mốc một giây cho nhanh; dừng giải mã ngay sau mốc.
   const seek = Math.max(0, target - 1)
   await rm(outputPath, { force: true })
-  await execFileAsync(ffmpegPath, [
+  await runTrackedProcess(ffmpegPath, [
     '-v',
     'error',
     '-y',
@@ -129,7 +126,7 @@ export async function createFreezeFrame(request: FreezeFrameRequest): Promise<Me
     const tempPath = `${outputPath}.tmp.mp4`
     try {
       await extractFrameAtOrBefore(ffmpegPath, source.source.path, sourceUs, stillPath)
-      await execFileAsync(ffmpegPath, [
+      await runTrackedProcess(ffmpegPath, [
         '-v',
         'error',
         '-y',

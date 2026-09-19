@@ -248,6 +248,7 @@ export function registerMcpExportTools(server: McpServer): void {
       }
       if (event.outputPath) lines.push(`output=${event.outputPath}`)
       if (event.srtPath) lines.push(`srt=${event.srtPath}`)
+      if (event.warning) lines.push(`warning=${event.warning}`)
       if (event.error) lines.push(`error=${event.error}`)
       return text(lines.join('\n'))
     }

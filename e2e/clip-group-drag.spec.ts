@@ -182,3 +182,17 @@ test('Cmd+Shift+G rã nhóm: kéo một clip thì chỉ clip đó dời', async 
   expect(after[0].startUs).toBe(ungrouped[0].startUs)
   expect(after[1].startUs).toBeGreaterThan(ungrouped[1].startUs)
 })
+
+test('hộp thoại đang mở: Delete không xoá clip nằm phía sau nó', async () => {
+  await clickClip(0)
+  await page.keyboard.press('Shift+?')
+  const dialog = page.getByRole('dialog', { name: 'Phím tắt' })
+  await expect(dialog).toBeVisible()
+
+  await page.keyboard.press('Delete')
+  await page.keyboard.press('Backspace')
+  await page.keyboard.press('Escape')
+  await expect(dialog).toHaveCount(0)
+  // Trước đây: clip đang chọn bị xoá ngay sau lưng hộp thoại.
+  await expect(page.locator('.timeline-lane--video .timeline-clip')).toHaveCount(2)
+})

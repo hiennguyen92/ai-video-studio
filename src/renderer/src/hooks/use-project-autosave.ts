@@ -22,14 +22,14 @@ export function useProjectAutosave(): void {
   const setError = useEditorStore((state) => state.setError)
 
   const lastSnapshotAt = useRef(0)
-  const inFlight = useRef(false)
 
   useEffect(() => {
     if (!session || saveState !== 'dirty') return
 
+    // Không bỏ lượt khi lần ghi trước còn đang chạy: trước đây bỏ lượt thì sửa đổi
+    // xen vào giữa lần ghi không bao giờ được ghi và trạng thái kẹt ở "chưa lưu".
+    // Hàng đợi ghi đã xếp các lần ghi nối đuôi nhau, nên cứ gửi thêm là an toàn.
     const timer = window.setTimeout(async () => {
-      if (inFlight.current) return
-      inFlight.current = true
       setSaveState('saving')
 
       // Chụp lại document ngay lúc này. Người dùng có thể sửa tiếp trong khi ghi đĩa;
@@ -60,8 +60,6 @@ export function useProjectAutosave(): void {
       } catch (error) {
         setSaveState('error')
         setError(error instanceof Error ? error.message : String(error))
-      } finally {
-        inFlight.current = false
       }
     }, AUTOSAVE_DEBOUNCE_MS)
 

@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { useT } from '../i18n/use-translation'
 import { groupSelectedClips, splitClipAt, ungroupSelectedClips } from '../state/clip-group-actions'
 import {
   addMarkerAtPlayhead,
@@ -26,9 +27,14 @@ function isTypingTarget(target: EventTarget | null): boolean {
 }
 
 export function useKeyboardShortcuts(): void {
+  const t = useT()
   useEffect(() => {
     const handler = (event: KeyboardEvent): void => {
       if (isTypingTarget(event.target)) return
+      // Hộp thoại dạng modal đang mở (khôi phục phiên bản, cắt khoảng lặng, xuất…):
+      // phím tắt của timeline không được chạy "sau lưng" nó. Trước đây Backspace
+      // xoá clip phía sau hộp thoại, và Cmd+Z giữa lúc khôi phục làm mất sửa đổi.
+      if (window.document.querySelector('[aria-modal="true"]')) return
 
       const store = useEditorStore.getState()
       const document = store.session?.document
@@ -48,8 +54,8 @@ export function useKeyboardShortcuts(): void {
       // Cmd+G gộp nhóm, Cmd+Shift+G rã nhóm — cùng cặp phím với Premiere và Figma.
       if (modifier && event.key.toLowerCase() === 'g') {
         event.preventDefault()
-        if (event.shiftKey) ungroupSelectedClips('Rã nhóm clip')
-        else groupSelectedClips('Gộp nhóm clip')
+        if (event.shiftKey) ungroupSelectedClips(t.history.ungroupClips)
+        else groupSelectedClips(t.history.groupClips)
         return
       }
 
@@ -75,7 +81,7 @@ export function useKeyboardShortcuts(): void {
 
       if (modifier && event.key.toLowerCase() === 'v') {
         event.preventDefault()
-        store.pasteClip('Dán clip')
+        store.pasteClip(t.history.pasteClip)
         return
       }
 
@@ -133,14 +139,14 @@ export function useKeyboardShortcuts(): void {
         case 'S': {
           if (modifier || !selectedClipId) return
           event.preventDefault()
-          splitClipAt(selectedClipId, store.playheadUs, 'Cắt clip')
+          splitClipAt(selectedClipId, store.playheadUs, t.history.splitClip)
           return
         }
         case 'd':
         case 'D': {
           if (!modifier || !selectedClipId) return
           event.preventDefault()
-          store.run([{ type: 'clip/duplicate', clipId: selectedClipId }], 'Nhân bản clip')
+          store.run([{ type: 'clip/duplicate', clipId: selectedClipId }], t.history.duplicateClip)
           return
         }
         case '=':
@@ -171,5 +177,5 @@ export function useKeyboardShortcuts(): void {
 
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [])
+  }, [t])
 }

@@ -59,7 +59,7 @@ export function SilenceCutDialog({ onClose }: { onClose(): void }): JSX.Element 
     () =>
       document && silences
         ? planSilenceCuts(document, silences, {
-            paddingUs: Math.round(padding * 1_000_000),
+            paddingUs: Math.round(Math.min(1, Math.max(0, padding)) * 1_000_000),
             scope,
             frameRate: document.settings.frameRate
           })
@@ -68,6 +68,9 @@ export function SilenceCutDialog({ onClose }: { onClose(): void }): JSX.Element 
   )
 
   const detect = async (): Promise<void> => {
+    // Ô số nhận được mọi thứ gõ vào (min/max chỉ chặn nút tăng giảm): kẹp lại ở đây.
+    const threshold = Math.min(-10, Math.max(-80, noiseDb))
+    const minimum = Math.min(10, Math.max(0.2, minSilence))
     setBusy(true)
     setError(null)
     const found: Record<string, SilenceInterval[]> = {}
@@ -77,8 +80,8 @@ export function SilenceCutDialog({ onClose }: { onClose(): void }): JSX.Element 
         sourcePath: asset!.source.path,
         startUs: clip.sourceInUs,
         endUs: clip.sourceInUs + clipSourceSpanUs(clip),
-        noiseDb: autoThreshold ? undefined : noiseDb,
-        minSilenceUs: Math.round(minSilence * 1_000_000)
+        noiseDb: autoThreshold ? undefined : threshold,
+        minSilenceUs: Math.round(minimum * 1_000_000)
       })
       if (!result.ok) {
         setError(result.error)

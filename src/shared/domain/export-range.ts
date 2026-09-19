@@ -67,10 +67,15 @@ export function markerSections(
   durationUs: Micros
 ): MarkerSection[] {
   const sorted = sortedMarkers(markers).filter((marker) => marker.atUs < durationUs)
-  return sorted.map((marker, index) => ({
-    markerId: marker.id,
-    label: marker.label,
-    startUs: marker.atUs,
-    endUs: sorted[index + 1]?.atUs ?? durationUs
-  }))
+  return (
+    sorted
+      .map((marker, index) => ({
+        markerId: marker.id,
+        label: marker.label,
+        startUs: marker.atUs,
+        endUs: sorted[index + 1]?.atUs ?? durationUs
+      }))
+      // Hai marker cùng một mốc sinh ra đoạn rỗng — chọn nó là xuất hỏng.
+      .filter((section) => section.endUs > section.startUs)
+  )
 }

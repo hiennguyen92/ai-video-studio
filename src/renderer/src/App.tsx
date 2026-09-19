@@ -5,6 +5,7 @@ import { EditorWorkspace } from './components/editor/editor-workspace'
 import { useEditorStore } from './state/editor-store'
 import { flushPendingSave } from './state/project-save-queue'
 import { TooltipLayer } from './components/ui/tooltip-layer'
+import { interpolate, useT } from './i18n/use-translation'
 
 /**
  * Gốc ứng dụng.
@@ -15,6 +16,7 @@ import { TooltipLayer } from './components/ui/tooltip-layer'
 function AppRoutes(): JSX.Element {
   const [projectId, setProjectId] = useState<string | null>(null)
   const closeProject = useEditorStore((state) => state.closeProject)
+  const t = useT()
 
   // Cửa sổ sắp đóng: ghi nốt sửa đổi đang chờ. Main đợi tín hiệu xong mới đóng.
   useEffect(
@@ -23,23 +25,21 @@ function AppRoutes(): JSX.Element {
         const saved = await flushPendingSave()
         if (saved.ok) return true
         // Ghi hỏng: hỏi, như lúc về danh sách dự án — đóng lặng lẽ là mất sửa đổi.
-        return window.confirm(
-          `Không lưu được dự án: ${saved.error}\n\nVẫn đóng và bỏ sửa đổi chưa lưu?`
-        )
+        return window.confirm(interpolate(t.app.saveFailedClose, { error: saved.error }))
       }),
-    []
+    [t]
   )
 
   const handleBack = useCallback(async () => {
     // Ghi sửa đổi đang chờ autosave TRƯỚC khi đóng dự án — không thì sửa đổi trong
     // 1,2 s cuối biến mất cùng bộ hẹn giờ.
     const saved = await flushPendingSave()
-    if (!saved.ok && !window.confirm(`Không lưu được dự án: ${saved.error}\n\nVẫn rời đi?`)) {
+    if (!saved.ok && !window.confirm(interpolate(t.app.saveFailedLeave, { error: saved.error }))) {
       return
     }
     closeProject()
     setProjectId(null)
-  }, [closeProject])
+  }, [closeProject, t])
 
   if (!projectId) {
     return <ProjectListView onOpenProject={setProjectId} />

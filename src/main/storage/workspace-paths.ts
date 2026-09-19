@@ -27,7 +27,15 @@ export function projectsRoot(): string {
   return join(app.getPath('userData'), 'projects')
 }
 
+/**
+ * Id dự án đi thẳng vào đường dẫn thư mục, và tới được đây từ IPC lẫn từ agent
+ * MCP. Một id như `../../Documents` sẽ trỏ ra ngoài thư mục dự án — rồi "xoá dự án"
+ * xoá luôn thư mục đó. Id do app sinh chỉ gồm chữ, số, `_` và `-`.
+ */
+const PROJECT_ID_PATTERN = /^[A-Za-z0-9_-]+$/
+
 export function projectPaths(projectId: string): ProjectPaths {
+  if (!PROJECT_ID_PATTERN.test(projectId)) throw new Error(`Id dự án không hợp lệ: "${projectId}"`)
   const root = join(projectsRoot(), projectId)
   return {
     root,

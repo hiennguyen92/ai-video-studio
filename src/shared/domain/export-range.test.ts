@@ -6,6 +6,7 @@ import { createEmptyProject } from './project-document-factory'
 import type { ProjectDocument } from './project-document-types'
 import { createDefaultTextOverlayStyle, type TextOverlay } from './text-overlay-types'
 import { rippleTextOverlays } from './text-overlay-ripple'
+import { resolveKeyframeTrack, valueAtFrame } from './keyframe-interpolation'
 
 function overlay(
   id: string,
@@ -76,9 +77,45 @@ describe('rippleTextOverlays', () => {
       5_000_000
     )
     expect([result.startUs, result.endUs]).toEqual([0, 8_000_000])
+    // Hai keyframe gốc giữ đúng chỗ (8 s lùi về 6 s); chỗ nối ở 3 s thêm một cặp
+    // mốc sát nhau để giá trị NHẢY thay vì nội suy lại cả đoạn.
     expect(result.keyframes?.['style.fontSizePx']?.map((frame) => frame.atUs)).toEqual([
-      1_000_000, 6_000_000
+      1_000_000, 3_000_000, 3_000_001, 6_000_000
     ])
+  })
+})
+
+describe('keyframe chữ khi cắt giữa', () => {
+  it('đoạn TRƯỚC khoảng cắt giữ nguyên dáng; sau mốc cắt tiếp tục từ giá trị ở cuối khoảng', () => {
+    // Độ mờ 0 ở 0 s, vẫn 0 ở 4 s, lên 1 ở 6 s, giữ 1 tới 10 s. Cắt 4–6 s.
+    const [result] = rippleTextOverlays(
+      [
+        overlay('chu', 0, 10_000_000, {
+          keyframes: {
+            'style.opacity': [
+              { atUs: 0, v: 0 },
+              { atUs: 4_000_000, v: 0 },
+              { atUs: 6_000_000, v: 1 },
+              { atUs: 10_000_000, v: 1 }
+            ]
+          }
+        })
+      ],
+      4_000_000,
+      6_000_000
+    )
+    const at = (us: number): number =>
+      valueAtFrame(
+        resolveKeyframeTrack(result.keyframes!['style.opacity'], { num: 1_000_000, den: 1 }),
+        us,
+        -1
+      )
+    // Trước đây: keyframe ở 6 s đè keyframe ở 4 s, đoạn 0–4 s mờ dần 0 → 1.
+    expect(at(2_000_000)).toBe(0)
+    expect(at(3_999_000)).toBe(0)
+    // Từ mốc cắt trở đi là phần sau 6 s: đã hiện hẳn.
+    expect(at(4_000_001)).toBe(1)
+    expect(at(7_000_000)).toBe(1)
   })
 })
 
@@ -161,6 +198,20 @@ describe('markerSections', () => {
       ['a', 0, 30_000_000],
       ['b', 30_000_000, 50_000_000]
     ])
+  })
+})
+
+describe('markerSections — marker trùng mốc', () => {
+  it('hai marker cùng một mốc không sinh ra đoạn rỗng', () => {
+    const sections = markerSections(
+      [
+        { id: 'a', atUs: 5_000_000, label: '', color: 'blue' },
+        { id: 'b', atUs: 5_000_000, label: '', color: 'red' }
+      ],
+      10_000_000
+    )
+    expect(sections.every((item) => item.endUs > item.startUs)).toBe(true)
+    expect(sections).toHaveLength(1)
   })
 })
 

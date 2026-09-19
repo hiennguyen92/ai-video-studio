@@ -1,3 +1,4 @@
+import { abortAllFfmpegProcesses } from './media/ffmpeg-process-registry'
 import { BrowserWindow, app, ipcMain, session, shell } from 'electron'
 import { IPC, IPC_EVENT } from '../shared/ipc/ipc-contract'
 import { electronApp, is, optimizer } from '@electron-toolkit/utils'
@@ -207,6 +208,7 @@ app.on('before-quit', () => {
   // Không để lại tiến trình ffmpeg mồ côi hay request đang bay khi người dùng thoát.
   cancelAllExports()
   cancelAllModelDownloads()
+  abortAllFfmpegProcesses()
   jobQueue.cancelAll()
   // Agent bên ngoài đang chờ sẽ treo vĩnh viễn nếu không được từ chối tử tế.
   rejectAllPending('Ứng dụng đang thoát')

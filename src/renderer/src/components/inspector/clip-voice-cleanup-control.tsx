@@ -2,7 +2,7 @@ import { useMemo, useState, type JSX } from 'react'
 import { resolveVoiceCleanupTarget } from '../../../../shared/domain/voice-cleanup-planner'
 import type { VoiceCleanupStrength } from '../../../../shared/ipc/voice-cleanup-types'
 import { selectDocument, useEditorStore } from '../../state/editor-store'
-import { cleanVoiceForClip } from '../../state/voice-cleanup-actions'
+import { cleanVoiceForClip, isCleaningVoice } from '../../state/voice-cleanup-actions'
 import { useT } from '../../i18n/use-translation'
 import { ToolButton } from '../ui/tool-button'
 
@@ -17,8 +17,11 @@ export function ClipVoiceCleanupControl({ clipId }: { clipId: string }): JSX.Ele
   const t = useT()
   const document = useEditorStore(selectDocument)
   const [strength, setStrength] = useState<VoiceCleanupStrength>('medium')
-  const [busy, setBusy] = useState(false)
-  const [notice, setNotice] = useState<string | null>(null)
+  // Gắn với clip: inspector giữ nguyên component khi chọn clip khác, nên trạng
+  // thái "đang chạy" hay thông báo của clip trước không được hiện sang clip này.
+  const [busyClipId, setBusyClipId] = useState<string | null>(null)
+  const [notice, setNotice] = useState<{ clipId: string; text: string } | null>(null)
+  const busy = busyClipId === clipId || isCleaningVoice(clipId)
 
   const target = useMemo(() => {
     if (!document) return null
@@ -32,11 +35,11 @@ export function ClipVoiceCleanupControl({ clipId }: { clipId: string }): JSX.Ele
   if (!target) return null
 
   const apply = async (): Promise<void> => {
-    setBusy(true)
+    setBusyClipId(clipId)
     setNotice(null)
     const result = await cleanVoiceForClip(clipId, strength, t.voiceCleanup.title)
-    setBusy(false)
-    setNotice(result.ok ? t.voiceCleanup.done : result.error)
+    setBusyClipId((current) => (current === clipId ? null : current))
+    setNotice({ clipId, text: result.ok ? t.voiceCleanup.done : result.error })
   }
 
   return (
@@ -70,9 +73,9 @@ export function ClipVoiceCleanupControl({ clipId }: { clipId: string }): JSX.Ele
           onClick={() => void apply()}
         />
       </div>
-      {notice && (
+      {notice?.clipId === clipId && (
         <p className="inspector__hint" role="status">
-          {notice}
+          {notice.text}
         </p>
       )}
     </>

@@ -5,7 +5,17 @@ export const dictionaryEn: Dictionary = {
   app: {
     name: 'AI Video Studio',
     loading: 'Loading…',
-    untitledProject: 'Untitled project'
+    untitledProject: 'Untitled project',
+    saveFailedClose:
+      'Could not save the project: {error}\n\nClose anyway and discard unsaved changes?',
+    saveFailedLeave: 'Could not save the project: {error}\n\nLeave anyway?'
+  },
+  history: {
+    splitClip: 'Split clip',
+    pasteClip: 'Paste clip',
+    duplicateClip: 'Duplicate clip',
+    groupClips: 'Group clips',
+    ungroupClips: 'Ungroup clips'
   },
   topbar: {
     project: 'Project',

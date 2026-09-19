@@ -330,11 +330,37 @@ function planOne(context: ChatEditContext, tool: ChatToolName, args: unknown): P
       const members = expandToLinkGroups(document, [clipId])
       if (members.length > 1) {
         const clip = findClipById(document, clipId)!
+        // Nhóm trải nhiều lane thì không chuyển lane được (dồn về một lane là đè lên
+        // nhau). Nói ra, thay vì lặng lẽ bỏ `toTrackId` rồi báo "đã dời".
+        const laneCount = new Set(
+          document.tracks
+            .filter((track) => track.clips.some((item) => members.includes(item.id)))
+            .map((track) => track.id)
+        ).size
+        if (input.toTrackId && laneCount > 1) {
+          throw new Error(
+            'Nhóm này trải trên nhiều lane nên không chuyển lane được. Bỏ toTrackId, hoặc ungroup_clips trước.'
+          )
+        }
         const command = planMoveClips(document, members, toStartUs - clip.startUs, input.toTrackId)
-        if (!command) throw new Error('Clip đã ở đúng chỗ đó')
+        if (!command) {
+          throw new Error(
+            'Không dời được: clip sớm nhất của nhóm đã ở giây 0, không lùi thêm được nữa'
+          )
+        }
+        // Khoảng dời có thể bị kẹp (clip sớm nhất không lùi quá 0): báo chỗ clip THẬT
+        // SỰ tới, không phải chỗ được xin.
+        const moved =
+          command.type === 'clip/move-many'
+            ? command.moves.find((move) => move.clipId === clipId)?.toStartUs
+            : undefined
+        const landed = moved ?? toStartUs
         return {
           tool,
-          description: `Dời nhóm ${members.length} clip tới ${formatSeconds(toStartUs)}`,
+          description:
+            landed === toStartUs
+              ? `Dời nhóm ${members.length} clip tới ${formatSeconds(toStartUs)}`
+              : `Dời nhóm ${members.length} clip tới ${formatSeconds(landed)} (xin ${formatSeconds(toStartUs)} nhưng clip sớm nhất của nhóm không lùi quá 0 s)`,
           commands: [command]
         }
       }
@@ -417,7 +443,9 @@ function planOne(context: ChatEditContext, tool: ChatToolName, args: unknown): P
       const input = chatToolSchemas.set_background_fill.parse(args)
       const clipIds = input.all
         ? document.tracks
-            .filter((track) => track.kind === 'video' || track.kind === 'image')
+            // Lane khoá bị bỏ qua, như nút trên giao diện — không thì một lane khoá
+            // làm cả loạt bị từ chối.
+            .filter((track) => (track.kind === 'video' || track.kind === 'image') && !track.locked)
             .flatMap((track) => track.clips.map((clip) => clip.id))
         : [resolveClipId(context, input.clipId)]
       if (clipIds.length === 0) throw new Error('Dự án chưa có clip hình nào')

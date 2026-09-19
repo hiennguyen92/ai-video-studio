@@ -131,3 +131,15 @@ describe('parseSilenceOutput', () => {
     expect(parseSilenceOutput('[silencedetect @ 0x1] silence_start: 3.5\n', 5)).toEqual([[3.5, 5]])
   })
 })
+
+describe('detectSilences: đoạn rỗng', () => {
+  it('trả rỗng ngay, không chạy ffmpeg (với -t 0, ffmpeg đọc hết cả file)', async () => {
+    const result = await detectSilences({
+      sourcePath: '/khong/ton/tai.wav',
+      startUs: 3_000_000,
+      endUs: 3_000_000,
+      minSilenceUs: 500_000
+    })
+    expect(result).toEqual({ intervals: [], thresholdDb: -35, automatic: true })
+  })
+})

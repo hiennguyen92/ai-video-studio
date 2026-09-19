@@ -14,7 +14,32 @@ import { useEditorStore } from './editor-store'
  * Lập kế hoạch lại trên tài liệu SAU khi ffmpeg xong: lọc mất vài giây, và người
  * dùng có thể đã dời clip trong lúc chờ — dùng bản chụp cũ là ghi đè thay đổi đó.
  */
+/**
+ * Clip đang được làm sạch. Sống ngoài component: rời clip rồi quay lại thì nút là
+ * một instance mới, không biết lần chạy trước còn dở — bấm lần nữa là hai lần lọc
+ * cùng clip, lần xong sau thay tiếng sạch của lần trước thêm một bước hoàn tác.
+ */
+const inProgress = new Set<string>()
+
+export function isCleaningVoice(clipId: string): boolean {
+  return inProgress.has(clipId)
+}
+
 export async function cleanVoiceForClip(
+  clipId: string,
+  strength: VoiceCleanupStrength,
+  label: string
+): Promise<{ ok: true; mode: VoiceCleanupMode } | { ok: false; error: string }> {
+  if (inProgress.has(clipId)) return { ok: false, error: 'Clip này đang được làm sạch' }
+  inProgress.add(clipId)
+  try {
+    return await cleanVoice(clipId, strength, label)
+  } finally {
+    inProgress.delete(clipId)
+  }
+}
+
+async function cleanVoice(
   clipId: string,
   strength: VoiceCleanupStrength,
   label: string

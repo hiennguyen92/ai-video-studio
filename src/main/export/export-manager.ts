@@ -1,3 +1,4 @@
+import { rm } from 'node:fs/promises'
 import { fontsDirectory } from '../storage/font-store'
 import { documentForExportRange } from '../../shared/domain/export-range'
 import { EXPORT_QUALITIES, hardwareBitrate } from '../../shared/domain/export-presets'
@@ -161,6 +162,7 @@ export async function runExport(
 
   void handle.done
     .then(async (result) => {
+      let warning: string | undefined
       if (result.status === 'succeeded' && request.loudnessLufs != null) {
         emit(sender, { jobId, status: 'running', phase: 'loudness', ratio: 1, outTimeUs: 0 })
         try {
@@ -171,11 +173,15 @@ export async function runExport(
             loudnessAbort.signal
           )
         } catch (error) {
-          if (!loudnessAbort.signal.aborted) throw error
-          // Huỷ giữa lượt chuẩn hoá: file đã dựng vẫn nguyên, nhưng người dùng đã
-          // bấm huỷ — báo đúng là đã huỷ.
-          emit(sender, { jobId, status: 'cancelled', outTimeUs: 0 })
-          return
+          if (loudnessAbort.signal.aborted) {
+            // Huỷ giữa lượt chuẩn hoá: file đã dựng vẫn nguyên, nhưng người dùng đã
+            // bấm huỷ — báo đúng là đã huỷ.
+            emit(sender, { jobId, status: 'cancelled', outTimeUs: 0 })
+            return
+          }
+          // Chuẩn hoá ghi ra file tạm rồi mới thay, nên hỏng thì video đã dựng vẫn
+          // nguyên vẹn. Báo "thất bại" là bảo người dùng dựng lại cả video vô ích.
+          warning = `Chưa chuẩn hoá được độ to: ${error instanceof Error ? error.message : String(error)}`
         }
       }
       emit(sender, {
@@ -183,7 +189,8 @@ export async function runExport(
         status: result.status,
         outTimeUs: 0,
         outputPath: result.status === 'succeeded' ? result.outputPath : undefined,
-        srtPath: result.status === 'succeeded' ? srtPath : undefined
+        srtPath: result.status === 'succeeded' ? srtPath : undefined,
+        warning
       })
     })
     .catch((error: unknown) => {
@@ -196,6 +203,9 @@ export async function runExport(
     })
     .finally(() => {
       activeJobs.delete(jobId)
+      // File .ass chỉ để ffmpeg nung phụ đề; để lại thì thư mục xuất của người dùng
+      // có thêm một file lạ cạnh mỗi video.
+      if (assPath) void rm(assPath, { force: true }).catch(() => undefined)
     })
 
   return { jobId }

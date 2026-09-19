@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type JSX } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type JSX } from 'react'
 import type { ExportCapabilities, ExportProgressEvent } from '../../../../shared/ipc/ipc-contract'
 import { FRAME_RATE_PRESETS, formatClockTime } from '../../../../shared/domain/time-units'
 import { selectDocument, selectDurationUs, useEditorStore } from '../../state/editor-store'
@@ -75,6 +75,8 @@ export function ExportDialog({ onClose }: { onClose(): void }): JSX.Element {
   // Mặc định -14 LUFS: mức YouTube, TikTok, Instagram và Spotify cùng dùng, nên
   // đa số người dùng không phải nghĩ tới ô này.
   const [loudness, setLoudness] = useState<string>('-14')
+  const [starting, setStarting] = useState(false)
+  const startingRef = useRef(false)
   const [output, setOutput] = useState<ExportOutputChoice>(() => ({
     presetId: 'custom',
     quality: 'standard',
@@ -135,7 +137,10 @@ export function ExportDialog({ onClose }: { onClose(): void }): JSX.Element {
   }, [document])
 
   const handleStart = useCallback(async () => {
-    if (!document || !outputPath) return
+    // Bấm hai lần liền trước khi job kịp nhận id thì chạy hai lần xuất vào cùng file.
+    if (!document || !outputPath || startingRef.current) return
+    startingRef.current = true
+    setStarting(true)
     setError(null)
     setProgress(null)
 
@@ -158,6 +163,8 @@ export function ExportDialog({ onClose }: { onClose(): void }): JSX.Element {
       rangeUs: range ?? undefined
     })
 
+    startingRef.current = false
+    setStarting(false)
     if (result.ok) setJobId(result.data.jobId)
     else setError(result.error)
   }, [
@@ -432,7 +439,7 @@ export function ExportDialog({ onClose }: { onClose(): void }): JSX.Element {
               label={t.export.start}
               variant="primary"
               onClick={() => void handleStart()}
-              disabled={!outputPath || isEmpty || range === null}
+              disabled={!outputPath || isEmpty || range === null || starting}
             />
           )}
         </footer>
@@ -493,6 +500,11 @@ function ExportProgressView({
       {progress?.status === 'succeeded' && progress.srtPath && (
         <p className="export-progress__result selectable">
           {interpolate(t.export.srtSavedTo, { path: progress.srtPath })}
+        </p>
+      )}
+      {progress?.status === 'succeeded' && progress.warning && (
+        <p className="export-progress__result" role="status">
+          {progress.warning}
         </p>
       )}
     </div>

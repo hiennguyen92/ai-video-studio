@@ -1,3 +1,4 @@
+import { useT } from '../../i18n/use-translation'
 import { useCallback, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import type { Clip, Track } from '../../../../shared/domain/timeline-track-types'
 import { clipEndUs } from '../../../../shared/domain/timeline-track-types'
@@ -57,6 +58,7 @@ export function useTimelineInteractions(options: {
   const toggleClipSelection = useEditorStore((state) => state.toggleClipSelection)
   const setPlayhead = useEditorStore((state) => state.setPlayhead)
   const setPlaying = useEditorStore((state) => state.setPlaying)
+  const t = useT()
 
   const [preview, setPreview] = useState<ClipDragPreview | null>(null)
   const previewRef = useRef<ClipDragPreview | null>(null)
@@ -85,6 +87,16 @@ export function useTimelineInteractions(options: {
           ? collectGroupDragClips(document, selectedNow, clip.id)
           : []
       const groupOnOneTrack = groupMembers.every((item) => item.trackId === track.id)
+      // Một thành viên nằm trên lane khoá thì lệnh dời cả loạt chắc chắn bị từ chối
+      // lúc thả — chặn ngay từ đầu, đừng để người dùng kéo một bóng xem trước rồi
+      // thấy mọi thứ bật về chỗ cũ.
+      const lockedLane = document.tracks.find(
+        (item) => item.locked && groupMembers.some((member) => member.trackId === item.id)
+      )
+      if (lockedLane) {
+        useEditorStore.getState().setError(`Track "${lockedLane.name}" đang bị khoá`)
+        return
+      }
 
       // Chỗ bấm quy ra thời gian, tính ngay lúc bấm: clip còn nằm đúng chỗ cũ.
       const clipBox = event.currentTarget.getBoundingClientRect()
@@ -108,7 +120,7 @@ export function useTimelineInteractions(options: {
         const snapped = snapTime(clickUs, collectSnapTargets(snapContext), snapContext)
         const atUs = snapMicrosToFrame(snapped.us, document.settings.frameRate)
         if (atUs > clip.startUs && atUs < clipEndUs(clip)) {
-          splitClipAt(clip.id, atUs, 'Cắt clip')
+          splitClipAt(clip.id, atUs, t.history.splitClip)
         }
         return
       }
@@ -230,6 +242,7 @@ export function useTimelineInteractions(options: {
       document,
       pixelsPerSecond,
       snapEnabled,
+      t,
       toggleClipSelection,
       trackAtClientY,
       run,

@@ -4,6 +4,10 @@ import {
   planFreezeFrame,
   resolveFreezeFrameSource
 } from '../../../shared/domain/freeze-frame-planner'
+import {
+  freezeFrameSourceAt,
+  pickFreezeFrameClipId
+} from '../../../shared/domain/freeze-frame-target'
 import { useEditorStore } from './editor-store'
 
 /**
@@ -11,14 +15,17 @@ import { useEditorStore } from './editor-store'
  * rồi chèn lên timeline trong MỘT bước hoàn tác.
  *
  * Lập kế hoạch lại trên tài liệu SAU khi ffmpeg xong — người dùng có thể đã sửa gì
- * đó trong lúc chờ. Mốc đóng băng thì giữ nguyên mốc lúc bấm: đó là khung họ nhìn.
+ * đó trong lúc chờ. Khung đóng băng thì giữ nguyên khung lúc bấm (trên trục nguồn):
+ * đó là khung họ nhìn, dù clip có bị dời đi đâu.
  */
 export async function freezeFrameAtPlayhead(
   label: string
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const store = useEditorStore.getState()
   const document = store.session?.document
-  const clipId = store.selection.clipIds[0]
+  const clipId = document
+    ? pickFreezeFrameClipId(document, store.selection.clipIds, store.playheadUs)
+    : undefined
   if (!document || !clipId) return { ok: false, error: 'Chưa chọn clip nào' }
 
   let source
@@ -44,7 +51,7 @@ export async function freezeFrameAtPlayhead(
     return { ok: false, error: 'Dự án đã đổi trong lúc dựng khung — chưa áp dụng gì' }
   }
   try {
-    const again = resolveFreezeFrameSource(latest, clipId, source.atUs)
+    const again = freezeFrameSourceAt(latest, clipId, source.sourceUs)
     const commands = planFreezeFrame(latest, again, created.data, DEFAULT_FREEZE_US, (prefix) =>
       createId(prefix)
     )

@@ -1,4 +1,5 @@
 import {
+  useEffect,
   useRef,
   useState,
   type JSX,
@@ -36,6 +37,9 @@ export function TimelineMarkerLayer({
   const [dragging, setDragging] = useState<{ id: string; atUs: number } | null>(null)
   const [menu, setMenu] = useState<{ markerId: string; x: number; y: number } | null>(null)
   const draggingRef = useRef(dragging)
+  // Gỡ listener của cú kéo đang dở khi lớp marker bị gỡ (đóng dự án giữa lúc kéo).
+  const detachRef = useRef<(() => void) | null>(null)
+  useEffect(() => () => detachRef.current?.(), [])
 
   const handlePointerDown = (
     event: ReactPointerEvent<HTMLElement>,
@@ -61,10 +65,23 @@ export function TimelineMarkerLayer({
       setDragging(draggingRef.current)
     }
 
-    const onUp = (upEvent: PointerEvent): void => {
-      if (upEvent.pointerId !== pointerId) return
+    const detach = (): void => {
       window.removeEventListener('pointermove', onMove)
       window.removeEventListener('pointerup', onUp)
+      window.removeEventListener('pointercancel', onCancel)
+      detachRef.current = null
+    }
+    // Hệ thống cướp con trỏ (chuyển cửa sổ, cử chỉ) thì bỏ cú kéo, không ghi gì.
+    const onCancel = (cancelEvent: PointerEvent): void => {
+      if (cancelEvent.pointerId !== pointerId) return
+      detach()
+      draggingRef.current = null
+      setDragging(null)
+    }
+
+    const onUp = (upEvent: PointerEvent): void => {
+      if (upEvent.pointerId !== pointerId) return
+      detach()
       const final = draggingRef.current
       draggingRef.current = null
       setDragging(null)
@@ -83,6 +100,8 @@ export function TimelineMarkerLayer({
 
     window.addEventListener('pointermove', onMove)
     window.addEventListener('pointerup', onUp)
+    window.addEventListener('pointercancel', onCancel)
+    detachRef.current = detach
   }
 
   const openMenu = (event: ReactMouseEvent, marker: TimelineMarker): void => {

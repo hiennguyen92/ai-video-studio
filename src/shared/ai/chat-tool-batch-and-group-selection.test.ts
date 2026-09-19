@@ -123,3 +123,43 @@ describe('chọn cả một nhóm vẫn là "một clip"', () => {
     expect(plan.failures[0].reason).toMatch(/nhiều clip/)
   })
 })
+
+describe('move_clip trên nhóm', () => {
+  it('nhóm trải nhiều lane mà đòi chuyển lane: từ chối, không lặng lẽ bỏ toTrackId', () => {
+    const document = project()
+    applyEditorCommand(document, {
+      type: 'clip/insert',
+      clipId: 'e',
+      trackId: document.tracks[2].id,
+      assetId: 'mic',
+      startUs: 0,
+      durationUs: 2_000_000,
+      sourceInUs: 0
+    })
+    applyEditorCommand(document, {
+      type: 'clip/set-link-group',
+      clipIds: ['a', 'e'],
+      linkGroupId: 'g'
+    })
+    const plan = planChatToolCalls({ document, selectedClipIds: [], playheadUs: 0, makeId }, [
+      {
+        name: 'move_clip',
+        arguments: { clipId: 'a', toSeconds: 10, toTrackId: document.tracks[2].id }
+      }
+    ])
+    expect(plan.failures[0].reason).toMatch(/nhiều lane/)
+  })
+
+  it('kéo cả nhóm lùi quá giây 0: báo lỗi thay vì báo "đã dời"', () => {
+    const document = project()
+    applyEditorCommand(document, {
+      type: 'clip/set-link-group',
+      clipIds: ['a', 'b'],
+      linkGroupId: 'g'
+    })
+    const plan = planChatToolCalls({ document, selectedClipIds: [], playheadUs: 0, makeId }, [
+      { name: 'move_clip', arguments: { clipId: 'b', toSeconds: 0 } }
+    ])
+    expect(plan.failures[0].reason).toMatch(/giây 0/)
+  })
+})

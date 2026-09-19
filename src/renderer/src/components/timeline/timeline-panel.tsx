@@ -214,8 +214,8 @@ export function TimelinePanel(): JSX.Element {
   const handleSplit = useCallback(() => {
     if (!selectedClipId) return
     const atUs = useEditorStore.getState().playheadUs
-    splitClipAt(selectedClipId, atUs, 'Cắt clip')
-  }, [selectedClipId])
+    splitClipAt(selectedClipId, atUs, t.history.splitClip)
+  }, [selectedClipId, t])
 
   // Nút thùng rác xoá đúng thứ phím Delete xoá — cùng một hàm, nên không thể lệch
   // nhau kiểu nút mờ đi trong khi phím vẫn xoá được.

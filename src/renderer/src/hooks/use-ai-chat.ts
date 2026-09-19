@@ -103,9 +103,6 @@ export function useAiChat(): {
       const withUser = [...messages, userMessage]
       persist(withUser)
 
-      // Chụp revision NGAY lúc gửi: đây là mốc để phát hiện dự án đổi giữa chừng.
-      const baseRevision = current.revision
-
       const result = await window.api.chat.send({
         systemPrompt: buildChatSystemPrompt(),
         projectContext: buildProjectContext({
@@ -119,55 +116,63 @@ export function useAiChat(): {
         userMessage: text
       })
 
-      setSending(false)
-
       if (!result.ok) {
+        setSending(false)
         setError(result.error)
         return
       }
 
-      // Kiểm tra đề xuất trên tài liệu MỚI NHẤT, không phải bản đã chụp: người
-      // dùng có thể vừa sửa gì đó trong lúc chờ mô hình trả lời.
-      // Công cụ cần ffmpeg (dò khoảng lặng, làm sạch giọng) chạy phần nặng TRƯỚC,
-      // rồi mới lập kế hoạch trên tài liệu mới nhất.
-      const beforeResolve = useEditorStore.getState().session?.document ?? current
-      // Đầu phát đọc MỘT lần cho cả phần dựng khung đứng hình lẫn phần lập kế hoạch.
-      const playheadAtReply = useEditorStore.getState().playheadUs
-      const [silences, cleanedVoices, freezeFrames] = await Promise.all([
-        resolveSilences(result.data.toolCalls, beforeResolve, selection.clipIds),
-        resolveCleanedVoices(result.data.toolCalls, beforeResolve, selection.clipIds),
-        resolveFreezeFrames(
-          result.data.toolCalls,
-          beforeResolve,
-          selection.clipIds,
-          playheadAtReply
+      // Chỉ mở lại ô gửi SAU khi đã xử lý xong câu trả lời — kể cả phần ffmpeg. Mở
+      // sớm thì tin nhắn gửi trong lúc chờ bị `persist` bên dưới ghi đè mất.
+      try {
+        // Kiểm tra đề xuất trên tài liệu MỚI NHẤT, không phải bản đã chụp: người
+        // dùng có thể vừa sửa gì đó trong lúc chờ mô hình trả lời.
+        // Công cụ cần ffmpeg (dò khoảng lặng, làm sạch giọng) chạy phần nặng TRƯỚC,
+        // rồi mới lập kế hoạch trên tài liệu mới nhất.
+        const beforeResolve = useEditorStore.getState().session?.document ?? current
+        // Đầu phát đọc MỘT lần cho cả phần dựng khung đứng hình lẫn phần lập kế hoạch.
+        const playheadAtReply = useEditorStore.getState().playheadUs
+        const [silences, cleanedVoices, freezeFrames] = await Promise.all([
+          resolveSilences(result.data.toolCalls, beforeResolve, selection.clipIds),
+          resolveCleanedVoices(result.data.toolCalls, beforeResolve, selection.clipIds),
+          resolveFreezeFrames(
+            result.data.toolCalls,
+            beforeResolve,
+            selection.clipIds,
+            playheadAtReply
+          )
+        ])
+        const latest = useEditorStore.getState().session?.document ?? current
+        const plan = planChatToolCalls(
+          {
+            document: latest,
+            selectedClipIds: selection.clipIds,
+            playheadUs: playheadAtReply,
+            makeId: (prefix) => createId(prefix ?? 'clip'),
+            silences,
+            cleanedVoices,
+            freezeFrames
+          },
+          result.data.toolCalls
         )
-      ])
-      const latest = useEditorStore.getState().session?.document ?? current
-      const plan = planChatToolCalls(
-        {
-          document: latest,
-          selectedClipIds: selection.clipIds,
-          playheadUs: playheadAtReply,
-          makeId: (prefix) => createId(prefix ?? 'clip'),
-          silences,
-          cleanedVoices,
-          freezeFrames
-        },
-        result.data.toolCalls
-      )
 
-      const assistantMessage: ChatMessageRecord = {
-        id: createId('msg'),
-        role: 'assistant',
-        content: result.data.reply,
-        createdAt: new Date().toISOString(),
-        steps: plan.steps.map((step) => step.description)
-      }
-      persist([...withUser, assistantMessage])
+        const assistantMessage: ChatMessageRecord = {
+          id: createId('msg'),
+          role: 'assistant',
+          content: result.data.reply,
+          createdAt: new Date().toISOString(),
+          steps: plan.steps.map((step) => step.description)
+        }
+        persist([...withUser, assistantMessage])
 
-      if (plan.steps.length > 0 || plan.failures.length > 0) {
-        setProposal({ ...plan, baseRevision })
+        if (plan.steps.length > 0 || plan.failures.length > 0) {
+          // Kế hoạch lập trên `latest`, nên mốc so khi áp là revision của CHÍNH bản đó.
+          // Lấy mốc lúc gửi thì một lần sửa trong lúc chờ mô hình làm đề xuất bị từ
+          // chối oan.
+          setProposal({ ...plan, baseRevision: latest.revision })
+        }
+      } finally {
+        setSending(false)
       }
     },
     [messages, persist, selection.clipIds]

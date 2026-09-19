@@ -1,5 +1,3 @@
-import { execFile } from 'node:child_process'
-import { promisify } from 'node:util'
 import type { Micros } from '../../shared/domain/time-units'
 import type {
   SilenceDetectionRequest,
@@ -7,6 +5,7 @@ import type {
 } from '../../shared/ipc/silence-detection-types'
 import { analyseAudioLevels } from './audio-level-analysis'
 import { resolveFfmpegBinaries } from './ffmpeg-binaries'
+import { runTrackedProcess } from './ffmpeg-process-registry'
 
 /**
  * Tìm khoảng lặng trong tiếng của một đoạn file nguồn, bằng `silencedetect` của
@@ -21,8 +20,6 @@ import { resolveFfmpegBinaries } from './ffmpeg-binaries'
  *
  * Mốc tính TỪ điểm `-ss`, không phải từ đầu file — nên phải cộng lại `startUs`.
  */
-
-const execFileAsync = promisify(execFile)
 
 /** Khi không đo được (đoạn quá ngắn, không có mẫu nào): mức hợp giọng thu gần. */
 const FALLBACK_THRESHOLD_DB = -35
@@ -60,6 +57,22 @@ export function parseSilenceOutput(
 
 const toMicros = (seconds: number): Micros => Math.round(seconds * 1_000_000)
 
+/**
+ * Ngưỡng tự đo, hoặc ngưỡng mặc định nếu bước đo hỏng. Đo chỉ để chọn ngưỡng cho
+ * tốt hơn — nó hỏng (file lạ, bộ lọc astats không đọc được) thì vẫn tìm khoảng
+ * lặng được với ngưỡng mặc định, không lý do gì làm hỏng cả thao tác.
+ */
+async function measuredThreshold(request: SilenceDetectionRequest): Promise<number> {
+  try {
+    const levels = await analyseAudioLevels(request.sourcePath, request.startUs, request.endUs)
+    return levels?.thresholdDb ?? FALLBACK_THRESHOLD_DB
+  } catch (error) {
+    // Bị huỷ vì app đang thoát thì dừng hẳn, đừng chạy tiếp lượt dò.
+    if (error instanceof Error && error.name === 'AbortError') throw error
+    return FALLBACK_THRESHOLD_DB
+  }
+}
+
 /** Chạy ffmpeg trên đoạn `[startUs, endUs)` của file nguồn. Mốc trả về tính trên trục NGUỒN. */
 export async function detectSilences(
   request: SilenceDetectionRequest
@@ -67,14 +80,14 @@ export async function detectSilences(
   const { ffmpegPath } = resolveFfmpegBinaries()
   const durationSeconds = (request.endUs - request.startUs) / 1_000_000
   const automatic = request.noiseDb === undefined
-  const thresholdDb =
-    request.noiseDb ??
-    (await analyseAudioLevels(request.sourcePath, request.startUs, request.endUs))?.thresholdDb ??
-    FALLBACK_THRESHOLD_DB
-  if (durationSeconds <= 0) return { intervals: [], thresholdDb, automatic }
+  // Đoạn rỗng: không có gì để đo, và ffmpeg nhận `-t 0` là đọc HẾT file.
+  if (durationSeconds <= 0) {
+    return { intervals: [], thresholdDb: request.noiseDb ?? FALLBACK_THRESHOLD_DB, automatic }
+  }
+  const thresholdDb = request.noiseDb ?? (await measuredThreshold(request))
 
-  // `silencedetect` ghi ra stderr ở mức info; `execFile` trả stderr đầy đủ khi thoát 0.
-  const { stderr } = await execFileAsync(
+  // `silencedetect` ghi ra stderr ở mức info; tiến trình trả stderr đầy đủ khi thoát 0.
+  const { stderr } = await runTrackedProcess(
     ffmpegPath,
     [
       '-hide_banner',
