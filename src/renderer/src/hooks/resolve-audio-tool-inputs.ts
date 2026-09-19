@@ -4,9 +4,10 @@ import { expandToLinkGroups } from '../../../shared/domain/clip-link-groups'
 import type { ProjectDocument } from '../../../shared/domain/project-document-types'
 import { clipSourceSpanUs } from '../../../shared/domain/timeline-track-types'
 import { resolveVoiceCleanupTarget } from '../../../shared/domain/voice-cleanup-planner'
+import { resolveFreezeFrameSource } from '../../../shared/domain/freeze-frame-planner'
 
 /**
- * Chạy phần ffmpeg mà `remove_silences` và `clean_voice` cần, TRƯỚC khi lập kế
+ * Chạy phần ffmpeg mà `remove_silences`, `clean_voice` và `freeze_frame` cần, TRƯỚC khi lập kế
  * hoạch — planner là hàm thuần, không gọi được IPC.
  *
  * Dùng chung cho AI Chat trong app và agent qua MCP, nên hai lối không lệch nhau.
@@ -50,10 +51,13 @@ export async function resolveSilences(
           sourcePath: asset.source.path,
           startUs: clip.sourceInUs,
           endUs: clip.sourceInUs + clipSourceSpanUs(clip),
-          noiseDb: parsed.data.thresholdDb ?? -35,
+          // Bỏ trống thì main tự đo nền nhiễu của đoạn này.
+          noiseDb: parsed.data.thresholdDb,
           minSilenceUs: Math.round((parsed.data.minSilenceSeconds ?? 0.5) * 1_000_000)
         })
-        result[id] = detected.ok ? { intervals: detected.data } : { error: detected.error }
+        result[id] = detected.ok
+          ? { intervals: detected.data.intervals }
+          : { error: detected.error }
       } catch (error) {
         result[id] = { error: message(error) }
       }
@@ -87,6 +91,44 @@ export async function resolveCleanedVoices(
       })
       result[clipId] = cleaned.ok ? { asset: cleaned.data } : { error: cleaned.error }
     } catch {
+      continue
+    }
+  }
+  return result
+}
+
+/** Dựng đoạn đứng hình cho mọi lời gọi `freeze_frame` — cùng cách xác định mốc với planner. */
+export async function resolveFreezeFrames(
+  calls: Calls,
+  document: ProjectDocument,
+  selectedClipIds: string[],
+  playheadUs: number
+): Promise<NonNullable<ChatEditContext['freezeFrames']>> {
+  const result: NonNullable<ChatEditContext['freezeFrames']> = {}
+
+  for (const call of calls) {
+    if (call.name !== 'freeze_frame') continue
+    const parsed = chatToolSchemas.freeze_frame.safeParse(call.arguments)
+    if (!parsed.success) continue
+    const clipId = targetClipId(parsed.data.clipId, selectedClipIds)
+    if (!clipId || result[clipId]) continue
+
+    try {
+      const atUs =
+        parsed.data.atSeconds !== undefined
+          ? Math.round(parsed.data.atSeconds * 1_000_000)
+          : playheadUs
+      const source = resolveFreezeFrameSource(document, clipId, atUs)
+      const created = await window.api.media.freezeFrame({
+        projectId: document.id,
+        source: source.sourceAsset,
+        sourceUs: source.sourceUs,
+        frameRate: document.settings.frameRate,
+        existing: document.assets
+      })
+      result[clipId] = created.ok ? { asset: created.data } : { error: created.error }
+    } catch {
+      // Mốc hay clip không hợp lệ: để planner ném đúng lỗi của nó.
       continue
     }
   }

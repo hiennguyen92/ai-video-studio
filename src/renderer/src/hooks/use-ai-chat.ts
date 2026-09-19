@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { resolveCleanedVoices, resolveSilences } from './resolve-audio-tool-inputs'
+import {
+  resolveCleanedVoices,
+  resolveFreezeFrames,
+  resolveSilences
+} from './resolve-audio-tool-inputs'
 import type { ChatMessageRecord } from '../../../shared/ipc/ipc-contract'
 import { buildChatSystemPrompt, buildProjectContext } from '../../../shared/ai/chat-context-builder'
 import {
@@ -127,9 +131,15 @@ export function useAiChat(): {
       // Công cụ cần ffmpeg (dò khoảng lặng, làm sạch giọng) chạy phần nặng TRƯỚC,
       // rồi mới lập kế hoạch trên tài liệu mới nhất.
       const beforeResolve = useEditorStore.getState().session?.document ?? current
-      const [silences, cleanedVoices] = await Promise.all([
+      const [silences, cleanedVoices, freezeFrames] = await Promise.all([
         resolveSilences(result.data.toolCalls, beforeResolve, selection.clipIds),
-        resolveCleanedVoices(result.data.toolCalls, beforeResolve, selection.clipIds)
+        resolveCleanedVoices(result.data.toolCalls, beforeResolve, selection.clipIds),
+        resolveFreezeFrames(
+          result.data.toolCalls,
+          beforeResolve,
+          selection.clipIds,
+          useEditorStore.getState().playheadUs
+        )
       ])
       const latest = useEditorStore.getState().session?.document ?? current
       const plan = planChatToolCalls(
@@ -139,7 +149,8 @@ export function useAiChat(): {
           playheadUs: useEditorStore.getState().playheadUs,
           makeId: (prefix) => createId(prefix ?? 'clip'),
           silences,
-          cleanedVoices
+          cleanedVoices,
+          freezeFrames
         },
         result.data.toolCalls
       )

@@ -43,6 +43,11 @@ import {
 import { guessDuckingTracks, planAutoDucking } from '../domain/auto-ducking-planner'
 import { planRippleDeleteClips } from '../commands/clip-ripple-delete'
 import { planSilenceCuts } from '../domain/silence-cut-planner'
+import {
+  DEFAULT_FREEZE_US,
+  planFreezeFrame,
+  resolveFreezeFrameSource
+} from '../domain/freeze-frame-planner'
 import { planVoiceCleanup, resolveVoiceCleanupTarget } from '../domain/voice-cleanup-planner'
 import type { SilenceInterval } from '../ipc/silence-detection-types'
 import {
@@ -137,6 +142,8 @@ export interface ChatEditContext {
    * gọi dò trước rồi đưa kết quả — hoặc lỗi — vào đây.
    */
   silences?: Record<string, { intervals?: SilenceInterval[]; error?: string }>
+  /** Đoạn video đứng hình đã dựng, theo id clip — cho `freeze_frame`. */
+  freezeFrames?: Record<string, { asset?: MediaAsset; error?: string }>
   /** Asset giọng đã làm sạch, theo id clip — cho `clean_voice`. */
   cleanedVoices?: Record<string, { asset?: MediaAsset; error?: string }>
 }
@@ -451,13 +458,32 @@ function planOne(context: ChatEditContext, tool: ChatToolName, args: unknown): P
       })
       if (plan.cutCount === 0) {
         throw new Error(
-          'Không có khoảng lặng nào đủ dài — thử nâng thresholdDb (vd. -30) nếu phòng ồn'
+          'Không có khoảng lặng nào đủ dài. Nếu có chỗ im mà không bị bắt, đặt thresholdDb cao hơn (gần 0 hơn) mức tự đo'
         )
       }
       return {
         tool,
         description: `Cắt ${plan.cutCount} khoảng lặng, bớt ${formatSeconds(plan.removedUs)}`,
         commands: plan.commands
+      }
+    }
+
+    case 'freeze_frame': {
+      const input = chatToolSchemas.freeze_frame.parse(args)
+      const clipId = resolveClipId(context, input.clipId)
+      const atUs =
+        input.atSeconds !== undefined ? secondsToMicros(input.atSeconds) : context.playheadUs
+      const source = resolveFreezeFrameSource(document, clipId, atUs)
+      const entry = context.freezeFrames?.[clipId]
+      if (entry?.error) throw new Error(`Không dựng được khung đứng hình: ${entry.error}`)
+      if (!entry?.asset) throw new Error('Chưa dựng được khung đứng hình cho clip này')
+      const durationUs = secondsToMicros(input.durationSeconds ?? DEFAULT_FREEZE_US / 1_000_000)
+      return {
+        tool,
+        description: `Đứng hình ${formatSeconds(durationUs)} tại ${formatSeconds(source.atUs)}`,
+        commands: planFreezeFrame(document, source, entry.asset, durationUs, () =>
+          context.makeId('clip')
+        )
       }
     }
 

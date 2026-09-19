@@ -9,6 +9,7 @@ import { frameDurationUs } from '../../../shared/domain/time-units'
 import { selectionRemovalCommands } from '../../../shared/commands/selection-removal'
 import { useEditorStore } from '../state/editor-store'
 import { TIMELINE_TOOL_KEYS } from '../state/timeline-tool-keys'
+import { SHOW_SHORTCUTS_EVENT } from '../state/keyboard-shortcut-catalog'
 
 /**
  * Phím tắt của trình soạn thảo.
@@ -36,6 +37,13 @@ export function useKeyboardShortcuts(): void {
       const modifier = event.metaKey || event.ctrlKey
       const selectedClipId = store.selection.clipIds[0]
       const stepUs = frameDurationUs(document.settings.frameRate)
+
+      // `?` (Shift+/) mở bảng phím tắt — quy ước chung của GitHub, Gmail, Figma.
+      if (event.key === '?') {
+        event.preventDefault()
+        window.dispatchEvent(new Event(SHOW_SHORTCUTS_EVENT))
+        return
+      }
 
       // Cmd+G gộp nhóm, Cmd+Shift+G rã nhóm — cùng cặp phím với Premiere và Figma.
       if (modifier && event.key.toLowerCase() === 'g') {

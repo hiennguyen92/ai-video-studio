@@ -1,6 +1,7 @@
 import { ipcMain, type WebContents } from 'electron'
 import { detectSilences } from '../media/silence-detection'
 import { cleanVoice } from '../media/voice-cleanup'
+import { createFreezeFrame, type FreezeFrameRequest } from '../media/freeze-frame'
 import type { VoiceCleanupRequest } from '../../shared/ipc/voice-cleanup-types'
 import type { SilenceDetectionRequest } from '../../shared/ipc/silence-detection-types'
 import type {
@@ -95,6 +96,10 @@ export function registerTranscriptionIpcHandlers(): void {
       _event,
       request: { projectId: string; assetId: string; sourcePath: string; force?: boolean }
     ) => guard(async () => (await detectShotsForAsset(request)).shots)
+  )
+
+  ipcMain.handle(IPC.mediaFreezeFrame, (_event, request: FreezeFrameRequest) =>
+    guard(() => createFreezeFrame(request))
   )
 
   ipcMain.handle(IPC.mediaCleanVoice, (_event, request: VoiceCleanupRequest) =>

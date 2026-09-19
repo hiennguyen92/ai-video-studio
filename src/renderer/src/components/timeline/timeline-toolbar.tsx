@@ -30,6 +30,7 @@ import {
 import { TimelineToolButtons } from './timeline-tool-buttons'
 import { AddTrackMenuButton } from './add-track-menu-button'
 import { SilenceCutDialog } from './silence-cut-dialog'
+import { freezeFrameAtPlayhead } from '../../state/freeze-frame-actions'
 import type { AddableTrackKind } from './use-timeline-tracks'
 
 /**
@@ -77,6 +78,7 @@ export function TimelineToolbar({
   const hasMarkers = useEditorStore((state) => (state.session?.document.markers.length ?? 0) > 0)
   const [chaptersCopied, setChaptersCopied] = useState(false)
   const [silenceOpen, setSilenceOpen] = useState(false)
+  const [freezing, setFreezing] = useState(false)
   const canGroup = useEditorStore(selectionCanGroup)
   const hasGroup = useEditorStore(selectionHasGroup)
 
@@ -106,6 +108,17 @@ export function TimelineToolbar({
         iconOnly
         onClick={() => rippleDeleteSelection(t.timeline.rippleDelete)}
         disabled={!hasClipSelection}
+      />
+      <ToolButton
+        label={freezing ? t.timeline.freezeWorking : t.timeline.freezeFrame}
+        disabled={!hasClipSelection || freezing}
+        onClick={() => {
+          setFreezing(true)
+          void freezeFrameAtPlayhead(t.timeline.freezeFrame).then((result) => {
+            setFreezing(false)
+            if (!result.ok) useEditorStore.getState().setError(result.error)
+          })
+        }}
       />
       <ToolButton
         label={t.silenceCut.open}

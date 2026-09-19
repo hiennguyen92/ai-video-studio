@@ -214,6 +214,8 @@ export const dictionaryVi = {
     missingLibrary: 'Bản cài này thiếu bộ sound effect. Bản build đóng gói sai.'
   },
   timeline: {
+    freezeFrame: 'Đứng hình 2 giây tại đầu phát',
+    freezeWorking: 'Đang dựng khung…',
     trackVolume: 'Âm lượng lane',
     keyframeCopy: 'Chép keyframe',
     keyframePaste: 'Dán keyframe',
@@ -297,6 +299,8 @@ export const dictionaryVi = {
     trackHeightLarge: 'Track lớn'
   },
   projects: {
+    duplicate: 'Nhân bản dự án "{name}"',
+    copySuffix: '(bản sao)',
     title: 'Dự án',
     create: 'Tạo dự án mới',
     createTitle: 'Dự án mới',
@@ -318,7 +322,8 @@ export const dictionaryVi = {
     presetYoutube: 'YouTube (16:9)',
     presetSquare: 'Instagram vuông (1:1)',
     presetAspectMismatch:
-      'Mẫu này cần khung {preset}, dự án đang là {project}. Đổi khung ở cài đặt dự án để thấy chữ và clip dời theo trước khi xuất.',
+      'Mẫu này cần khung {preset}, dự án đang là {project}. Đổi khung thì chữ và clip dời theo — xem lại preview trước khi xuất.',
+    presetSwitchAspect: 'Đổi khung sang {preset}',
     quality: 'Chất lượng',
     qualityHigh: 'Cao — nơi đăng sẽ nén lại, nên gửi bản đẹp',
     qualityStandard: 'Tiêu chuẩn',
@@ -655,12 +660,44 @@ export const dictionaryVi = {
     working: 'Đang làm sạch…',
     done: 'Đã làm sạch giọng — hoàn tác một lần là trả lại như cũ'
   },
+  shortcuts: {
+    title: 'Phím tắt',
+    open: 'Phím tắt (?)',
+    group_playback: 'Phát và di chuyển',
+    group_editing: 'Chỉnh sửa',
+    group_markers: 'Marker',
+    group_tools: 'Công cụ timeline',
+    group_app: 'Ứng dụng',
+    playPause: 'Phát / tạm dừng',
+    stepFrame: 'Lùi / tiến một khung',
+    stepTenFrames: 'Lùi / tiến mười khung',
+    goToStart: 'Về đầu timeline',
+    zoom: 'Phóng to / thu nhỏ timeline',
+    split: 'Cắt clip đang chọn tại đầu phát',
+    delete: 'Xoá thứ đang chọn',
+    rippleDelete: 'Xoá clip và dồn phần sau trên cùng lane lên',
+    duplicate: 'Nhân bản clip',
+    copy: 'Chép clip',
+    paste: 'Dán clip tại đầu phát',
+    group: 'Gộp các clip đang chọn thành nhóm',
+    ungroup: 'Rã nhóm',
+    addToSelection: 'Chọn thêm clip; kéo một clip là dời cả loạt',
+    undo: 'Hoàn tác',
+    redo: 'Làm lại',
+    deselect: 'Bỏ chọn',
+    addMarker: 'Đặt marker tại đầu phát',
+    nextMarker: 'Tới marker kế tiếp',
+    previousMarker: 'Về marker trước',
+    showShortcuts: 'Mở bảng này'
+  },
   silenceCut: {
     open: 'Cắt khoảng lặng',
     title: 'Cắt khoảng lặng',
     hint: 'Dò chỗ im trong tiếng của clip đang chọn rồi cắt bỏ, dồn phần sau lên. Dò trước để xem sẽ cắt bao nhiêu; hoàn tác một lần là trả lại nguyên trạng.',
     noAudio: 'Clip đang chọn không có tiếng để dò.',
-    threshold: 'Ngưỡng im (dB)',
+    threshold: 'Ngưỡng im (dB, đỉnh)',
+    autoThreshold: 'Tự đo ngưỡng theo nền nhiễu',
+    thresholdUsed: 'ngưỡng {db} dB',
     minSilence: 'Im tối thiểu (giây)',
     padding: 'Chừa lại mỗi bên (giây)',
     scope: 'Phạm vi',
@@ -669,7 +706,8 @@ export const dictionaryVi = {
     detect: 'Dò khoảng lặng',
     detecting: 'Đang dò…',
     found: 'Tìm thấy {count} khoảng lặng — sẽ cắt bớt {seconds} giây',
-    nothingFound: 'Không có khoảng lặng nào đủ dài. Thử nâng ngưỡng (vd. -30 dB) nếu phòng thu ồn.',
+    nothingFound:
+      'Không có khoảng lặng nào đủ dài. Nếu có chỗ im mà không bị bắt, tắt tự đo và đặt ngưỡng cao hơn (gần 0 hơn).',
     apply: 'Cắt'
   },
   versions: {

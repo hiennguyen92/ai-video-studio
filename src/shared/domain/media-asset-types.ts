@@ -11,7 +11,8 @@ import type { FrameRate, Micros } from './time-units'
 export type MediaKind = 'video' | 'audio' | 'image'
 
 /** Tác vụ AI đã sinh ra asset này. */
-export type GeneratedTask = 'tts' | 'music' | 'sfx' | 'image' | 'video' | 'voice-cleanup'
+export type GeneratedTask =
+  'tts' | 'music' | 'sfx' | 'image' | 'video' | 'voice-cleanup' | 'freeze-frame'
 
 export interface MediaSourceRef {
   /** Đường dẫn tuyệt đối trên đĩa. */

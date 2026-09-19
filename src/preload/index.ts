@@ -26,6 +26,8 @@ const api: RendererApi = {
     load: (projectId) => ipcRenderer.invoke(IPC.projectLoad, projectId),
     save: (document) => ipcRenderer.invoke(IPC.projectSave, document),
     remove: (projectId) => ipcRenderer.invoke(IPC.projectDelete, projectId),
+    duplicate: (projectId, nameSuffix) =>
+      ipcRenderer.invoke(IPC.projectDuplicate, projectId, nameSuffix),
     scanGarbage: (document) => ipcRenderer.invoke(IPC.projectScanGarbage, document),
     removeGarbage: (document) => ipcRenderer.invoke(IPC.projectRemoveGarbage, document),
     snapshot: (document, reason) => ipcRenderer.invoke(IPC.projectSnapshot, document, reason),
@@ -49,6 +51,7 @@ const api: RendererApi = {
     detectShots: (request) => ipcRenderer.invoke(IPC.mediaDetectShots, request),
     detectSilences: (request) => ipcRenderer.invoke(IPC.mediaDetectSilences, request),
     cleanVoice: (request) => ipcRenderer.invoke(IPC.mediaCleanVoice, request),
+    freezeFrame: (request) => ipcRenderer.invoke(IPC.mediaFreezeFrame, request),
     readWaveform: (waveformPath) => ipcRenderer.invoke(IPC.mediaReadWaveform, waveformPath)
   },
   subtitle: {

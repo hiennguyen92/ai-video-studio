@@ -2,7 +2,7 @@ import type { SttSegmentationMode } from '../ai/stt-segmentation'
 import type { ExportQuality } from '../domain/export-presets'
 import type { ExportRange } from '../domain/export-range'
 import type { ProjectVersionReason, ProjectVersionSummary } from './project-version-types'
-import type { SilenceDetectionRequest, SilenceInterval } from './silence-detection-types'
+import type { SilenceDetectionRequest, SilenceDetectionResult } from './silence-detection-types'
 import type { VoiceCleanupRequest } from './voice-cleanup-types'
 import type { SoundEffectLibraryStatus } from '../domain/sound-effect-catalog'
 import type { MediaAsset } from '../domain/media-asset-types'
@@ -35,6 +35,7 @@ export const IPC = {
   projectScanGarbage: 'project:scan-garbage',
   projectRemoveGarbage: 'project:remove-garbage',
   projectDelete: 'project:delete',
+  projectDuplicate: 'project:duplicate',
   projectSnapshot: 'project:snapshot',
   projectListVersions: 'project:list-versions',
   projectLoadVersion: 'project:load-version',
@@ -67,6 +68,7 @@ export const IPC = {
   mediaDetectShots: 'media:detect-shots',
   mediaDetectSilences: 'media:detect-silences',
   mediaCleanVoice: 'media:clean-voice',
+  mediaFreezeFrame: 'media:freeze-frame',
   mcpRespond: 'mcp:respond',
   mcpStatus: 'mcp:status',
   mcpSetTokenRequired: 'mcp:set-token-required',
@@ -450,6 +452,8 @@ export interface RendererApi {
     load(projectId: string): Promise<IpcResult<ProjectDocument>>
     save(document: ProjectDocument): Promise<IpcResult<void>>
     remove(projectId: string): Promise<IpcResult<void>>
+    /** Chép cả thư mục dự án (trừ lịch sử phiên bản) thành một dự án mới. */
+    duplicate(projectId: string, nameSuffix: string): Promise<IpcResult<ProjectSummary>>
     /** Đếm file rác do ứng dụng sinh ra mà không còn ai dùng. Chưa xoá gì. */
     scanGarbage(document: ProjectDocument): Promise<IpcResult<GarbageReportDto>>
     removeGarbage(document: ProjectDocument): Promise<IpcResult<GarbageReportDto>>
@@ -503,9 +507,17 @@ export interface RendererApi {
       force?: boolean
     }): Promise<IpcResult<DetectedShotDto[]>>
     /** Khoảng lặng trong tiếng của một đoạn file nguồn, mốc trên trục nguồn. */
-    detectSilences(request: SilenceDetectionRequest): Promise<IpcResult<SilenceInterval[]>>
+    detectSilences(request: SilenceDetectionRequest): Promise<IpcResult<SilenceDetectionResult>>
     /** Làm sạch giọng của một asset, trả về asset MỚI (hoặc bản cũ trùng nội dung). */
     cleanVoice(request: VoiceCleanupRequest): Promise<IpcResult<MediaAsset>>
+    /** Dựng đoạn video đứng hình tại một mốc NGUỒN, trả asset mới (hoặc bản cũ trùng). */
+    freezeFrame(request: {
+      projectId: string
+      source: MediaAsset
+      sourceUs: number
+      frameRate: { num: number; den: number }
+      existing: MediaAsset[]
+    }): Promise<IpcResult<MediaAsset>>
     readWaveform(waveformPath: string): Promise<IpcResult<WaveformData>>
   }
   subtitle: {

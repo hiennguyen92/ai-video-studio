@@ -3,8 +3,9 @@ import { promisify } from 'node:util'
 import type { Micros } from '../../shared/domain/time-units'
 import type {
   SilenceDetectionRequest,
-  SilenceInterval
+  SilenceDetectionResult
 } from '../../shared/ipc/silence-detection-types'
+import { analyseAudioLevels } from './audio-level-analysis'
 import { resolveFfmpegBinaries } from './ffmpeg-binaries'
 
 /**
@@ -22,6 +23,9 @@ import { resolveFfmpegBinaries } from './ffmpeg-binaries'
  */
 
 const execFileAsync = promisify(execFile)
+
+/** Khi không đo được (đoạn quá ngắn, không có mẫu nào): mức hợp giọng thu gần. */
+const FALLBACK_THRESHOLD_DB = -35
 
 /**
  * Đọc khoảng lặng (giây, tính từ đầu đoạn đã dò) từ stderr của ffmpeg.
@@ -57,10 +61,17 @@ export function parseSilenceOutput(
 const toMicros = (seconds: number): Micros => Math.round(seconds * 1_000_000)
 
 /** Chạy ffmpeg trên đoạn `[startUs, endUs)` của file nguồn. Mốc trả về tính trên trục NGUỒN. */
-export async function detectSilences(request: SilenceDetectionRequest): Promise<SilenceInterval[]> {
+export async function detectSilences(
+  request: SilenceDetectionRequest
+): Promise<SilenceDetectionResult> {
   const { ffmpegPath } = resolveFfmpegBinaries()
   const durationSeconds = (request.endUs - request.startUs) / 1_000_000
-  if (durationSeconds <= 0) return []
+  const automatic = request.noiseDb === undefined
+  const thresholdDb =
+    request.noiseDb ??
+    (await analyseAudioLevels(request.sourcePath, request.startUs, request.endUs))?.thresholdDb ??
+    FALLBACK_THRESHOLD_DB
+  if (durationSeconds <= 0) return { intervals: [], thresholdDb, automatic }
 
   // `silencedetect` ghi ra stderr ở mức info; `execFile` trả stderr đầy đủ khi thoát 0.
   const { stderr } = await execFileAsync(
@@ -76,7 +87,7 @@ export async function detectSilences(request: SilenceDetectionRequest): Promise<
       request.sourcePath,
       '-vn',
       '-af',
-      `silencedetect=noise=${request.noiseDb}dB:d=${request.minSilenceUs / 1_000_000}`,
+      `silencedetect=noise=${thresholdDb}dB:d=${request.minSilenceUs / 1_000_000}`,
       '-f',
       'null',
       '-'
@@ -84,8 +95,9 @@ export async function detectSilences(request: SilenceDetectionRequest): Promise<
     { maxBuffer: 32 * 1024 * 1024 }
   )
 
-  return parseSilenceOutput(stderr, durationSeconds).map(([from, to]) => ({
+  const intervals = parseSilenceOutput(stderr, durationSeconds).map(([from, to]) => ({
     startUs: request.startUs + toMicros(from),
     endUs: request.startUs + toMicros(to)
   }))
+  return { intervals, thresholdDb, automatic }
 }

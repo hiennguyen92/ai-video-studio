@@ -4,7 +4,7 @@ import type { ProjectSummary } from '../../../../shared/ipc/ipc-contract'
 import { interpolate, useT } from '../../i18n/use-translation'
 import { ToolButton } from '../ui/tool-button'
 import { EmptyState } from '../ui/empty-state'
-import { IconPlus, IconTrash } from '../ui/icons'
+import { IconPlus, IconTrash, IconDuplicate } from '../ui/icons'
 import './project-list-view.css'
 
 /** Màn hình đầu tiên: chọn dự án để mở, hoặc tạo dự án mới. */
@@ -80,6 +80,15 @@ export function ProjectListView({
     [refresh, t.projects.deleteConfirm]
   )
 
+  const handleDuplicate = useCallback(
+    async (project: ProjectSummary) => {
+      const result = await window.api.project.duplicate(project.id, t.projects.copySuffix)
+      if (result.ok) void refresh()
+      else setError(result.error)
+    },
+    [refresh, t.projects.copySuffix]
+  )
+
   return (
     <div className="project-list">
       <div className="project-list__panel">
@@ -146,6 +155,12 @@ export function ProjectListView({
                   })}
                 </span>
               </button>
+              <ToolButton
+                label={interpolate(t.projects.duplicate, { name: project.name })}
+                icon={<IconDuplicate />}
+                iconOnly
+                onClick={() => void handleDuplicate(project)}
+              />
               <ToolButton
                 label={t.projects.delete}
                 icon={<IconTrash />}

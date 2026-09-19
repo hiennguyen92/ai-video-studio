@@ -1,5 +1,9 @@
 import { useEffect } from 'react'
-import { resolveCleanedVoices, resolveSilences } from './resolve-audio-tool-inputs'
+import {
+  resolveCleanedVoices,
+  resolveFreezeFrames,
+  resolveSilences
+} from './resolve-audio-tool-inputs'
 import type { McpApplyResult, McpBridgeRequest } from '../../../shared/ipc/ipc-contract'
 import { prepareMediaImport } from './use-media-import'
 import { buildProjectContext } from '../../../shared/ai/chat-context-builder'
@@ -353,61 +357,68 @@ export function useMcpBridge(): void {
               resolveSoundEffects(calls),
               resolveImportedMedia(calls),
               resolveSilences(calls, document, selected),
-              resolveCleanedVoices(calls, document, selected)
-            ]).then(([fontFiles, soundEffects, importedMedia, silences, cleanedVoices]) => {
-              // Đọc lại trạng thái SAU khi chờ: phông, hiệu ứng âm thanh và nhập media
-              // tốn thời gian, và một lời gọi khác (undo chẳng hạn) có thể đã đổi
-              // dự án. Lập kế hoạch trên bản chụp cũ sẽ ghi đè thay đổi đó.
-              const latest = useEditorStore.getState()
-              const latestDocument = latest.session?.document
-              if (!latestDocument) {
-                respond(false, undefined, 'Dự án đã bị đóng trong lúc xử lý.')
-                return
-              }
-              const plan = planChatToolCalls(
-                {
-                  document: latestDocument,
-                  selectedClipIds: latest.selection.clipIds,
-                  playheadUs: latest.playheadUs,
-                  makeId: (prefix) => createId(prefix ?? 'clip'),
-                  shots: Object.fromEntries(shotCache),
-                  fontFiles,
-                  soundEffects,
-                  importedMedia,
-                  silences,
-                  cleanedVoices
-                },
-                calls
-              )
+              resolveCleanedVoices(calls, document, selected),
+              resolveFreezeFrames(calls, document, selected, useEditorStore.getState().playheadUs)
+            ]).then(
+              ([fontFiles, soundEffects, importedMedia, silences, cleanedVoices, freezeFrames]) => {
+                // Đọc lại trạng thái SAU khi chờ: phông, hiệu ứng âm thanh và nhập media
+                // tốn thời gian, và một lời gọi khác (undo chẳng hạn) có thể đã đổi
+                // dự án. Lập kế hoạch trên bản chụp cũ sẽ ghi đè thay đổi đó.
+                const latest = useEditorStore.getState()
+                const latestDocument = latest.session?.document
+                if (!latestDocument) {
+                  respond(false, undefined, 'Dự án đã bị đóng trong lúc xử lý.')
+                  return
+                }
+                const plan = planChatToolCalls(
+                  {
+                    document: latestDocument,
+                    selectedClipIds: latest.selection.clipIds,
+                    playheadUs: latest.playheadUs,
+                    makeId: (prefix) => createId(prefix ?? 'clip'),
+                    shots: Object.fromEntries(shotCache),
+                    fontFiles,
+                    soundEffects,
+                    importedMedia,
+                    silences,
+                    cleanedVoices,
+                    freezeFrames
+                  },
+                  calls
+                )
 
-              const commands = plan.steps.flatMap((step) => step.commands)
-              // Không sinh lệnh nào KHÔNG có nghĩa là hỏng: một bước hợp lệ vẫn có
-              // thể chẳng phải sửa gì — nhập một file đã có sẵn chẳng hạn. Coi đó
-              // là thất bại thì mô tả của bước ấy bị nuốt, agent nhận một câu trả
-              // lời rỗng rồi gọi lại mãi.
-              const applied =
-                commands.length > 0
-                  ? latest.run(commands, `MCP: ${plan.steps.map((s) => s.description).join('; ')}`)
-                  : plan.steps.length > 0
+                const commands = plan.steps.flatMap((step) => step.commands)
+                // Không sinh lệnh nào KHÔNG có nghĩa là hỏng: một bước hợp lệ vẫn có
+                // thể chẳng phải sửa gì — nhập một file đã có sẵn chẳng hạn. Coi đó
+                // là thất bại thì mô tả của bước ấy bị nuốt, agent nhận một câu trả
+                // lời rỗng rồi gọi lại mãi.
+                const applied =
+                  commands.length > 0
+                    ? latest.run(
+                        commands,
+                        `MCP: ${plan.steps.map((s) => s.description).join('; ')}`
+                      )
+                    : plan.steps.length > 0
 
-              const result: McpApplyResult = {
-                applied,
-                // Không báo là đã áp dụng khi reducer từ chối — agent sẽ dựng tiếp
-                // trên một trạng thái tưởng tượng.
-                steps: applied ? plan.steps.map((step) => step.description) : [],
-                failures: applied
-                  ? plan.failures
-                  : [
-                      ...plan.failures,
-                      ...(commands.length > 0
-                        ? [{ tool: 'apply', reason: 'Không áp dụng được lệnh nào' }]
-                        : [])
-                    ],
-                revision:
-                  useEditorStore.getState().session?.document.revision ?? latestDocument.revision
+                const result: McpApplyResult = {
+                  applied,
+                  // Không báo là đã áp dụng khi reducer từ chối — agent sẽ dựng tiếp
+                  // trên một trạng thái tưởng tượng.
+                  steps: applied ? plan.steps.map((step) => step.description) : [],
+                  failures: applied
+                    ? plan.failures
+                    : [
+                        ...plan.failures,
+                        ...(commands.length > 0
+                          ? [{ tool: 'apply', reason: 'Không áp dụng được lệnh nào' }]
+                          : [])
+                      ],
+                  revision:
+                    useEditorStore.getState().session?.document.revision ?? latestDocument.revision
+                }
+                respond(true, result)
               }
-              respond(true, result)
-            })
+            )
             return
           }
 

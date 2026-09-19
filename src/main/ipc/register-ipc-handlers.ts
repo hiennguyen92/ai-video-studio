@@ -1,4 +1,5 @@
 import { storeFontForBurnIn } from '../storage/font-store'
+import { duplicateProject } from '../storage/project-duplicate'
 import { renderStillFrame } from '../export/remotion-still-renderer'
 import {
   listVersionSnapshots,
@@ -124,6 +125,10 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle(IPC.projectDelete, (_event, projectId: string) =>
     guard(() => deleteProject(projectId))
+  )
+
+  ipcMain.handle(IPC.projectDuplicate, (_event, projectId: string, nameSuffix: string) =>
+    guard(() => duplicateProject(projectId, nameSuffix))
   )
 
   ipcMain.handle(IPC.fontStore, (_event, family: string, bytes: Uint8Array) =>

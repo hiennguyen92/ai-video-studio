@@ -213,7 +213,9 @@ ghi vào backlog rõ ràng."
   định, đo lại bằng `ebur128` trên file ra). Vòng xuất video ngắn: nền mờ sau
   clip, mẫu xuất, chất lượng, xuất đoạn (cắt bản sao tài liệu bằng ripple xoá
   nên cả hai bộ dựng dùng được), ảnh PNG bằng `renderStill`. Ripple xoá nay dời
-  cả chữ overlay (trước đây bỏ quên)
+  cả chữ overlay (trước đây bỏ quên). Việc nhỏ: bảng phím tắt (`?`), nút đổi khung
+  ngay trong cảnh báo của mẫu xuất, ngưỡng im tự đo theo nền nhiễu, đứng hình
+  (`freeze_frame`), nhân bản dự án
 - Xuất: thêm định dạng ngoài MP4/H.264 (MOV, WebM, HEVC), xuất chỉ tiếng, hàng
   đợi nhiều bản. **Đã xong:** chất lượng, mẫu nền tảng, xuất đoạn, ảnh PNG
 - Bám đối tượng và tự cắt khung theo chủ thể

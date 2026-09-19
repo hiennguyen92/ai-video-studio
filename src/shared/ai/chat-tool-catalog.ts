@@ -114,6 +114,13 @@ export const chatToolSchemas = {
     scope: z.enum(['clip-tracks', 'all-tracks']).optional()
   }),
 
+  freeze_frame: z.object({
+    clipId: optionalClipId,
+    /** Mốc trên timeline; bỏ trống là đầu phát. */
+    atSeconds: seconds.optional(),
+    durationSeconds: z.number().min(0.1).max(10).optional()
+  }),
+
   clean_voice: z.object({
     clipId: optionalClipId,
     strength: z.enum(['light', 'medium', 'strong']).optional()
@@ -681,7 +688,9 @@ export const chatToolDescriptions: Record<ChatToolName, string> = {
   set_background_fill:
     'Fill the frame behind a clip with a blurred, darkened copy of the same picture — the standard way to put landscape footage into a 9:16 (TikTok, Reels, Shorts) frame without black bars. The fill ignores the clip\'s own position and zoom; it always covers the whole frame. kind "none" removes it. all:true applies to every clip on video and image lanes (one undo step). amount 0 to 1 (default 0.5) sets how blurred and dark the fill is. Clips with a fill export with Remotion.',
   remove_silences:
-    'Cut the quiet parts out of a clip that has sound (and its group), closing each gap — the classic tightening pass for talking-head footage. The app measures the audio itself with ffmpeg; no transcript is needed. thresholdDb (default -35) is the level below which audio counts as silence: raise it towards -30 for a noisy room. minSilenceSeconds (default 0.5) ignores shorter pauses, paddingSeconds (default 0.15) keeps that much silence next to speech so words are not clipped. scope "clip-tracks" (default) shrinks only the clip\'s own lanes so background music stays put; "all-tracks" shrinks the whole video so subtitles, text and markers stay in sync.',
+    'Cut the quiet parts out of a clip that has sound (and its group), closing each gap — the classic tightening pass for talking-head footage. The app measures the audio itself with ffmpeg; no transcript is needed. Leave thresholdDb out: the app measures the clip\'s own noise floor and speech level and sets the threshold between them. Pass it (a PEAK level in dB, -80 to -10) only to override that. minSilenceSeconds (default 0.5) ignores shorter pauses, paddingSeconds (default 0.15) keeps that much silence next to speech so words are not clipped. scope "clip-tracks" (default) shrinks only the clip\'s own lanes so background music stays put; "all-tracks" shrinks the whole video so subtitles, text and markers stay in sync.',
+  freeze_frame:
+    "Hold one frame of a video clip still for a moment — the classic pause for emphasis. Takes the frame at atSeconds (default: the playhead), which must fall inside the clip, and inserts a still of durationSeconds (default 2, up to 10) right there. The clip and its group are split at that point and everything after it on their lanes moves later by the same amount; other lanes (music, text) stay where they are. The still keeps the clip's position, colour, effects and blurred background, so the cut into it is invisible.",
   clean_voice:
     "Clean up the voice in a clip: removes low rumble and hum and reduces steady background noise (fans, hiss, room tone). Makes a new cleaned audio file; the original file is never touched. On an audio lane the clip simply switches to the cleaned audio. On a video clip that carries its own sound, the cleaned audio is added on a dialogue lane, grouped with the video, and the video's own sound is muted. Running it again with another strength replaces the earlier cleaned audio. strength: light (keeps the voice most natural), medium (default), strong (heavy noise, may sound slightly processed).",
   add_marker:
@@ -800,6 +809,7 @@ export const chatToolParameterHints: Record<ChatToolName, string> = {
   remove_silences:
     "{ clipId?: string, thresholdDb?: number, minSilenceSeconds?: number, paddingSeconds?: number, scope?: 'clip-tracks' | 'all-tracks' }",
   clean_voice: "{ clipId?: string, strength?: 'light' | 'medium' | 'strong' }",
+  freeze_frame: '{ clipId?: string, atSeconds?: number, durationSeconds?: number }',
   add_marker:
     "{ atSeconds: number, label?: string, color?: 'red' | 'orange' | 'yellow' | 'green' | 'blue' | 'purple' }",
   update_marker:

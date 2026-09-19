@@ -49,7 +49,7 @@ const request = { noiseDb: -35, minSilenceUs: 500_000 }
 
 describe('detectSilences', () => {
   it('trả khoảng lặng trên trục NGUỒN, kể cả khi chỉ dò một đoạn giữa file', async () => {
-    const silences = await detectSilences({
+    const { intervals: silences } = await detectSilences({
       ...request,
       sourcePath: file,
       startUs: 500_000,
@@ -63,7 +63,7 @@ describe('detectSilences', () => {
   })
 
   it('im kéo tới hết đoạn dò thì đóng ở cuối đoạn', async () => {
-    const silences = await detectSilences({
+    const { intervals: silences } = await detectSilences({
       ...request,
       sourcePath: file,
       startUs: 1_000_000,
@@ -82,7 +82,47 @@ describe('detectSilences', () => {
         startUs: 0,
         endUs: 5_500_000
       })
-    ).toEqual([])
+    ).toMatchObject({ intervals: [], thresholdDb: -35, automatic: false })
+  })
+})
+
+describe('ngưỡng tự đo', () => {
+  it('phòng ồn: -35 dB cố định không bắt được gì, tự đo thì bắt đúng hai khoảng lặng', async () => {
+    // Tiếng nói 1–2 s và 3–4 s trên nhiễu trắng: đỉnh nhiễu -30,5 dB, trên -35 dB.
+    const noisy = join(workDir, 'phong-on.wav')
+    await execFileAsync(resolveFfmpegBinaries().ffmpegPath, [
+      '-v',
+      'error',
+      '-y',
+      '-f',
+      'lavfi',
+      '-i',
+      "aevalsrc='0.4*sin(2*PI*300*t)*(between(t,1,2)+between(t,3,4))':s=48000:d=5",
+      '-f',
+      'lavfi',
+      '-i',
+      'anoisesrc=color=white:amplitude=0.03:sample_rate=48000:duration=5',
+      '-filter_complex',
+      '[0][1]amix=inputs=2:normalize=0',
+      noisy
+    ])
+    const range = { sourcePath: noisy, startUs: 0, endUs: 5_000_000, minSilenceUs: 500_000 }
+
+    const fixed = await detectSilences({ ...range, noiseDb: -35 })
+    expect(fixed.intervals).toEqual([])
+
+    const automatic = await detectSilences(range)
+    expect(automatic.automatic).toBe(true)
+    // Đỉnh nhiễu đo được -30,5 dB, đỉnh lời nói -7,3 dB: ngưỡng phải nằm giữa.
+    expect(automatic.thresholdDb).toBeGreaterThan(-30)
+    expect(automatic.thresholdDb).toBeLessThan(-8)
+    expect(automatic.intervals.length).toBeGreaterThanOrEqual(2)
+    // Không được ăn vào lời nói: khoảng lặng giữa hai câu nằm trong 2–3 s.
+    const middle = automatic.intervals.find(
+      (item) => item.startUs > 1_500_000 && item.startUs < 2_500_000
+    )!
+    expect(middle.startUs).toBeGreaterThanOrEqual(1_950_000)
+    expect(middle.endUs).toBeLessThanOrEqual(3_050_000)
   })
 })
 

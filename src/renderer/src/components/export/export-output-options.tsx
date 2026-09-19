@@ -6,7 +6,12 @@ import {
 } from '../../../../shared/domain/export-presets'
 import { markerSections } from '../../../../shared/domain/export-range'
 import type { ExportOutputChoice, RangeKey } from './export-output-choice'
-import type { ProjectDocument } from '../../../../shared/domain/project-document-types'
+import {
+  ASPECT_RATIO_DIMENSIONS,
+  type ProjectDocument
+} from '../../../../shared/domain/project-document-types'
+import { useEditorStore } from '../../state/editor-store'
+import { ToolButton } from '../ui/tool-button'
 import { formatClockTime } from '../../../../shared/domain/time-units'
 import { interpolate, useT } from '../../i18n/use-translation'
 
@@ -35,6 +40,7 @@ export function ExportOutputOptions({
   onApplyPreset(presetId: string): void
 }): JSX.Element {
   const t = useT()
+  const run = useEditorStore((state) => state.run)
   const preset = findExportPreset(choice.presetId)
   const aspectMismatch = preset && preset.aspect !== document.settings.aspectRatio
   const sections = markerSections(document.markers, durationUs)
@@ -70,6 +76,27 @@ export function ExportOutputOptions({
               project: document.settings.aspectRatio
             })}
           </span>
+          {/*
+            Đổi ngay tại đây, cùng bảng kích thước với ô chọn khung trên preview —
+            bắt người dùng đóng hộp thoại đi tìm ô đó là thêm một chỗ để lạc.
+          */}
+          <ToolButton
+            label={interpolate(t.export.presetSwitchAspect, { preset: preset.aspect })}
+            variant="outline"
+            disabled={disabled}
+            onClick={() => {
+              const { width, height } = ASPECT_RATIO_DIMENSIONS[preset.aspect]
+              run(
+                [
+                  {
+                    type: 'project/set-settings',
+                    settings: { aspectRatio: preset.aspect, width, height }
+                  }
+                ],
+                t.preview.aspectRatio
+              )
+            }}
+          />
         </div>
       )}
 

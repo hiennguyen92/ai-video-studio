@@ -83,6 +83,7 @@ nên mọi thao tác chỉnh sửa đều không phá huỷ dữ liệu gốc.
 | `Delete` | Xoá clip đang chọn |
 | `Shift+Delete` | Ripple delete: xoá clip và dồn clip sau trên cùng track lên |
 | `M` | Đặt marker tại đầu phát |
+| `?` | Mở bảng phím tắt (cũng có nút "Phím tắt" trên thanh trên cùng) |
 | `Shift+M` / `Cmd+Shift+M` | Tới marker kế / về marker trước |
 | `Cmd/Ctrl+Z` | Hoàn tác (thêm `Shift` để làm lại) |
 | `Cmd/Ctrl+D` | Nhân bản clip |
@@ -124,6 +125,10 @@ Phím tắt **không** kích hoạt khi con trỏ đang ở trong ô nhập li�
 - **Keyframe**: transform clip, âm lượng clip, thông số effect kiểu số, vị trí/cỡ/góc chữ
   overlay; năm kiểu nội suy; chép/dán cụm keyframe giữa các clip
 - **Chép/dán clip** bằng Cmd+C / Cmd+V, giữ nguyên mọi thuộc tính
+- **Đứng hình**: đóng băng khung tại đầu phát 2 giây (kéo mép để dài tới 10 giây), phần sau
+  trên lane của clip và nhóm dời theo; khung dựng đúng từng khung hình của nguồn
+- **Nhân bản dự án** từ danh sách dự án — chép cả media do app sinh, bản sao đứng được một mình
+- **Ngưỡng im tự đo** khi cắt khoảng lặng: đo nền nhiễu của chính clip thay cho -35 dB cố định
 - **Xuất video ngắn**: nền mờ phía sau clip (cảnh ngang trong khung 9:16 không còn dải đen,
   áp cho một clip hoặc mọi clip); mẫu xuất TikTok·Reels·Shorts / YouTube / Instagram vuông;
   ba mức chất lượng; xuất một đoạn (giữa hai marker hoặc tự chọn giây); lưu khung PNG tại

@@ -28,6 +28,9 @@ export function SilenceCutDialog({ onClose }: { onClose(): void }): JSX.Element 
   const run = useEditorStore((state) => state.run)
 
   const [noiseDb, setNoiseDb] = useState(-35)
+  // Mặc định tự đo: -35 dB cố định không bắt được gì trong phòng có quạt.
+  const [autoThreshold, setAutoThreshold] = useState(true)
+  const [usedThresholdDb, setUsedThresholdDb] = useState<number | null>(null)
   const [minSilence, setMinSilence] = useState(0.5)
   const [padding, setPadding] = useState(0.15)
   const [scope, setScope] = useState<SilenceCutScope>('clip-tracks')
@@ -68,12 +71,13 @@ export function SilenceCutDialog({ onClose }: { onClose(): void }): JSX.Element 
     setBusy(true)
     setError(null)
     const found: Record<string, SilenceInterval[]> = {}
+    const used: number[] = []
     for (const { clip, asset } of audibleClips) {
       const result = await window.api.media.detectSilences({
         sourcePath: asset!.source.path,
         startUs: clip.sourceInUs,
         endUs: clip.sourceInUs + clipSourceSpanUs(clip),
-        noiseDb,
+        noiseDb: autoThreshold ? undefined : noiseDb,
         minSilenceUs: Math.round(minSilence * 1_000_000)
       })
       if (!result.ok) {
@@ -81,9 +85,14 @@ export function SilenceCutDialog({ onClose }: { onClose(): void }): JSX.Element 
         setBusy(false)
         return
       }
-      found[clip.id] = result.data
+      found[clip.id] = result.data.intervals
+      used.push(result.data.thresholdDb)
     }
     setSilences(found)
+    // Đưa mức tự đo vào ô ngưỡng: muốn chỉnh tay thì bắt đầu từ con số đúng với
+    // phòng này, không phải từ -35.
+    if (autoThreshold && used.length > 0) setNoiseDb(Math.round(Math.max(...used)))
+    setUsedThresholdDb(used.length > 0 ? Math.max(...used) : null)
     setBusy(false)
   }
 
@@ -114,6 +123,18 @@ export function SilenceCutDialog({ onClose }: { onClose(): void }): JSX.Element 
             <p className="dialog-note dialog-note--strong">{t.silenceCut.noAudio}</p>
           )}
 
+          <label className="field-row">
+            <span className="field-row__label">{t.silenceCut.autoThreshold}</span>
+            <input
+              type="checkbox"
+              checked={autoThreshold}
+              aria-label={t.silenceCut.autoThreshold}
+              onChange={(event) => {
+                setAutoThreshold(event.target.checked)
+                invalidate()
+              }}
+            />
+          </label>
           <div className="field-row">
             <span className="field-row__label">{t.silenceCut.threshold}</span>
             <input
@@ -122,6 +143,7 @@ export function SilenceCutDialog({ onClose }: { onClose(): void }): JSX.Element 
               max={-10}
               step={1}
               value={noiseDb}
+              disabled={autoThreshold}
               aria-label={t.silenceCut.threshold}
               onChange={(event) => {
                 setNoiseDb(Number(event.target.value) || -35)
@@ -177,6 +199,8 @@ export function SilenceCutDialog({ onClose }: { onClose(): void }): JSX.Element 
                     count: plan.cutCount,
                     seconds: (plan.removedUs / 1_000_000).toFixed(1)
                   })}
+              {usedThresholdDb !== null &&
+                ` · ${interpolate(t.silenceCut.thresholdUsed, { db: usedThresholdDb.toFixed(1) })}`}
             </p>
           )}
         </div>

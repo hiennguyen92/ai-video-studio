@@ -213,6 +213,8 @@ export const dictionaryEn: Dictionary = {
     missingLibrary: 'This install is missing the sound effects. The build is packaged wrong.'
   },
   timeline: {
+    freezeFrame: 'Freeze 2 s at playhead',
+    freezeWorking: 'Rendering frame…',
     trackVolume: 'Track volume',
     keyframeCopy: 'Copy keyframes',
     keyframePaste: 'Paste keyframes',
@@ -297,6 +299,8 @@ export const dictionaryEn: Dictionary = {
     trackHeightLarge: 'Tall tracks'
   },
   projects: {
+    duplicate: 'Duplicate project "{name}"',
+    copySuffix: '(copy)',
     title: 'Projects',
     create: 'New project',
     createTitle: 'New project',
@@ -318,7 +322,8 @@ export const dictionaryEn: Dictionary = {
     presetYoutube: 'YouTube (16:9)',
     presetSquare: 'Instagram square (1:1)',
     presetAspectMismatch:
-      'This preset needs a {preset} frame; the project is {project}. Change the frame in project settings so you can see text and clips move before exporting.',
+      'This preset needs a {preset} frame; the project is {project}. Changing the frame moves text and clips — check the preview before exporting.',
+    presetSwitchAspect: 'Switch frame to {preset}',
     quality: 'Quality',
     qualityHigh: 'High — platforms re-compress, so send them a clean file',
     qualityStandard: 'Standard',
@@ -658,12 +663,44 @@ export const dictionaryEn: Dictionary = {
     working: 'Cleaning…',
     done: 'Voice cleaned — one undo restores it'
   },
+  shortcuts: {
+    title: 'Keyboard shortcuts',
+    open: 'Shortcuts (?)',
+    group_playback: 'Playback and navigation',
+    group_editing: 'Editing',
+    group_markers: 'Markers',
+    group_tools: 'Timeline tools',
+    group_app: 'App',
+    playPause: 'Play / pause',
+    stepFrame: 'Step one frame back / forward',
+    stepTenFrames: 'Step ten frames back / forward',
+    goToStart: 'Go to the start',
+    zoom: 'Zoom the timeline in / out',
+    split: 'Split the selected clip at the playhead',
+    delete: 'Delete the selection',
+    rippleDelete: 'Delete the clip and close the gap on its lane',
+    duplicate: 'Duplicate the clip',
+    copy: 'Copy the clip',
+    paste: 'Paste the clip at the playhead',
+    group: 'Group the selected clips',
+    ungroup: 'Ungroup',
+    addToSelection: 'Add a clip to the selection; dragging one moves them all',
+    undo: 'Undo',
+    redo: 'Redo',
+    deselect: 'Clear the selection',
+    addMarker: 'Add a marker at the playhead',
+    nextMarker: 'Go to the next marker',
+    previousMarker: 'Go to the previous marker',
+    showShortcuts: 'Open this list'
+  },
   silenceCut: {
     open: 'Cut silences',
     title: 'Cut silences',
     hint: 'Finds the quiet parts in the selected clips and cuts them out, closing the gaps. Detect first to see how much will go; one undo restores everything.',
     noAudio: 'The selected clips have no sound to analyse.',
-    threshold: 'Silence threshold (dB)',
+    threshold: 'Silence threshold (dB, peak)',
+    autoThreshold: 'Measure threshold from the noise floor',
+    thresholdUsed: 'threshold {db} dB',
     minSilence: 'Minimum silence (seconds)',
     padding: 'Keep on each side (seconds)',
     scope: 'Scope',
@@ -672,7 +709,8 @@ export const dictionaryEn: Dictionary = {
     detect: 'Detect silences',
     detecting: 'Detecting…',
     found: 'Found {count} silences — {seconds} s will be cut',
-    nothingFound: 'No silence long enough. Try a higher threshold (e.g. -30 dB) for a noisy room.',
+    nothingFound:
+      'No silence long enough. If there are pauses it missed, turn off automatic and set a higher threshold (closer to 0).',
     apply: 'Cut'
   },
   versions: {

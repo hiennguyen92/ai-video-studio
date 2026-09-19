@@ -212,3 +212,44 @@
   font-size: var(--text-sm);
   color: var(--text-secondary);
 }
+
+/* Bảng phím tắt: hai cột phím – mô tả, phím vẽ như nút bàn phím. */
+.keyboard-shortcuts__group + .keyboard-shortcuts__group {
+  margin-top: var(--space-3);
+}
+
+.keyboard-shortcuts__list {
+  margin: 0;
+  display: grid;
+  gap: var(--space-1);
+}
+
+.keyboard-shortcuts__row {
+  display: grid;
+  grid-template-columns: 160px 1fr;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.keyboard-shortcuts__row dt {
+  display: flex;
+  gap: 4px;
+}
+
+.keyboard-shortcuts__row dd {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.keyboard-shortcuts kbd {
+  min-width: 22px;
+  padding: 1px 6px;
+  border: 1px solid var(--border-default);
+  border-bottom-width: 2px;
+  border-radius: var(--radius-md);
+  font-family: inherit;
+  font-size: var(--text-sm);
+  text-align: center;
+  background: var(--surface-raised);
+}

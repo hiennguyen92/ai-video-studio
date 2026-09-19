@@ -18,6 +18,7 @@ import { InspectorPanel } from '../inspector/inspector-panel'
 import { TimelinePanel } from '../timeline/timeline-panel'
 import { ExportDialog } from '../export/export-dialog'
 import { ProjectVersionsDialog } from './project-versions-dialog'
+import { KeyboardShortcutsDialog } from './keyboard-shortcuts-dialog'
 import { EditorTopBar } from './editor-top-bar'
 import { ToolButton } from '../ui/tool-button'
 
@@ -209,6 +210,7 @@ export function EditorWorkspace({
 
       {exportOpen && <ExportDialog onClose={() => setExportOpen(false)} />}
       {versionsOpen && <ProjectVersionsDialog onClose={() => setVersionsOpen(false)} />}
+      <KeyboardShortcutsDialog />
     </div>
   )
 }

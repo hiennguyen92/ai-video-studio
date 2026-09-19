@@ -100,8 +100,8 @@ describe('cleanVoice', () => {
   it('không lệch thời gian so với bản gốc (lệch là khẩu hình trễ tiếng)', async () => {
     const cleaned = await cleanVoice({ projectId, source, strength: 'medium', existing: [source] })
     const request = { startUs: 0, endUs: 5_000_000, noiseDb: -20, minSilenceUs: 300_000 }
-    const before = await detectSilences({ ...request, sourcePath: source.source.path })
-    const after = await detectSilences({ ...request, sourcePath: cleaned.source.path })
+    const before = (await detectSilences({ ...request, sourcePath: source.source.path })).intervals
+    const after = (await detectSilences({ ...request, sourcePath: cleaned.source.path })).intervals
     expect(after).toHaveLength(before.length)
     for (const [index, silence] of before.entries()) {
       expect(Math.abs(after[index].endUs - silence.endUs)).toBeLessThan(30_000)
