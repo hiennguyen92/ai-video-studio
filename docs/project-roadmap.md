@@ -173,9 +173,10 @@ ghi vào backlog rõ ràng."
 - Sinh video bằng AI
 - LUT (.cube) — cần một đường vẽ WebGL riêng; xem mục chỉnh màu ở Mốc 5
 - Keyframe cho các nhóm CÒN LẠI: chỉnh màu, âm lượng clip, đệm khung chữ, `look.intensity`
-  (phải xử `LookFilterDefs` trước — xem `docs/system-architecture.md` §Keyframe), đường cong
-  bezier tuỳ biến, sao chép/dán cụm keyframe giữa các clip.
-  **Đã xong ở bản này:** transform clip, thông số effect kiểu số, và vị trí/cỡ/góc chữ overlay
+  (phải xử `LookFilterDefs` trước — xem `docs/system-architecture.md` §Keyframe), và đường
+  cong bezier tuỳ biến.
+  **Đã xong:** transform clip, thông số effect kiểu số, vị trí/cỡ/góc chữ overlay, và sao
+  chép/dán cụm keyframe giữa các clip
 - Hiệu ứng cần WebGL (ASCII, kính vạn hoa, mắt cá, halftone) và HSL theo dải màu
   — bộ lọc SVG không dựng được
 - Bám đối tượng và tự cắt khung theo chủ thể

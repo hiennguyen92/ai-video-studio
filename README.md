@@ -183,9 +183,11 @@ Vì vậy siêu dữ liệu model giờ **đọc từ `/v1/models`**, không vi�
 - **Keyframe chưa phủ**: chỉnh màu, âm lượng clip, đệm khung chữ, cường độ filter (LUT). Thông
   số effect **kiểu màu và kiểu lựa chọn** cũng không animate được — "màu ở giữa hai màu" và
   "lựa chọn ở giữa hai lựa chọn" là hai bài toán khác hẳn, không phải quên.
-- **Chưa có đường cong bezier tuỳ biến** cho keyframe, và chưa sao chép/dán được cụm keyframe
-  giữa các clip.
+- **Chưa có đường cong bezier tuỳ biến** cho keyframe (năm kiểu nội suy dựng sẵn thì có).
 - **Tốc độ clip** lưu được và export xử lý đúng, nhưng bản xem trước chưa co giãn cao độ âm thanh.
+- **Âm lượng trên 100% chỉ nghe được ở file xuất ra.** Thẻ media của trình duyệt chỉ nhận
+  khoảng 0..1, nên bản xem trước không to hơn 100% được; giao diện nói rõ điều này ngay dưới
+  thanh trượt. Muốn preview to hơn thì phải dựng đồ thị WebAudio cho lớp phát.
 - Clip audio hiện chèn vào track âm thanh trống đầu tiên khi nhấn đúp; kéo thả cho phép chọn track chính xác.
 
 ---
