@@ -1,4 +1,5 @@
 import { CLIP_EFFECTS } from '../domain/clip-effect-catalog'
+import { sortedMarkers } from '../domain/timeline-marker-types'
 import { parseEffectPath } from '../domain/keyframe-property-catalog'
 import type { KeyframeTracks } from '../domain/keyframe-types'
 import {
@@ -129,6 +130,14 @@ export function buildProjectContext(input: ChatContextInput): string {
     lines.push(
       `- fromClipId=${cut.leftClip!.id} toClipId=${cut.rightClip!.id} at=${seconds(cut.atUs)}s` +
         ` transition=${cut.kind ? `${cut.kind} ${seconds(durationUs ?? 0)}s` : 'none'}`
+    )
+  }
+
+  lines.push('', 'Markers (named points on the timeline — chapters, places to come back to):')
+  if (document.markers.length === 0) lines.push('- none')
+  for (const marker of sortedMarkers(document.markers)) {
+    lines.push(
+      `- id=${marker.id} at=${seconds(marker.atUs)}s color=${marker.color} label="${marker.label}"`
     )
   }
 

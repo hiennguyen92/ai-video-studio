@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { MARKER_COLORS } from '../domain/timeline-marker-types'
 import type { Clip } from '../domain/timeline-track-types'
 import type { MediaAsset } from '../domain/media-asset-types'
 import type { Transcript, Translation } from '../domain/transcript-types'
@@ -829,6 +830,35 @@ const moveKeyframe = z.object({
   easing: keyframeEasingSchema.optional()
 })
 
+/* ── Marker ────────────────────────────────────────────────────── */
+
+const markerColorSchema = z.enum(MARKER_COLORS)
+
+const addMarker = z.object({
+  type: z.literal('marker/add'),
+  marker: z.object({
+    id: z.string().min(1).max(120),
+    atUs: nonNegativeMicros,
+    label: z.string().max(200),
+    color: markerColorSchema
+  })
+})
+
+const updateMarker = z.object({
+  type: z.literal('marker/update'),
+  markerId: z.string(),
+  patch: z.object({
+    atUs: nonNegativeMicros.optional(),
+    label: z.string().max(200).optional(),
+    color: markerColorSchema.optional()
+  })
+})
+
+const removeMarker = z.object({
+  type: z.literal('marker/remove'),
+  markerId: z.string()
+})
+
 export const editorCommandSchema = z.discriminatedUnion('type', [
   setProjectSettings,
   renameProject,
@@ -842,6 +872,9 @@ export const editorCommandSchema = z.discriminatedUnion('type', [
   moveClip,
   moveClips,
   setClipLinkGroup,
+  addMarker,
+  updateMarker,
+  removeMarker,
   trimClip,
   rippleTrimClip,
   slipClipCommand,

@@ -679,3 +679,95 @@
   pointer-events: none;
   z-index: 3;
 }
+
+/* Marker trên thước. Lớp phủ không bắt chuột để bấm vào thước vẫn tua được; chỉ
+   lá cờ bắt chuột. */
+.timeline-markers {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.timeline-marker--red {
+  --marker-color: #e5484d;
+}
+.timeline-marker--orange {
+  --marker-color: #f76b15;
+}
+.timeline-marker--yellow {
+  --marker-color: #e2b203;
+}
+.timeline-marker--green {
+  --marker-color: #30a46c;
+}
+.timeline-marker--blue {
+  --marker-color: #3e8ef7;
+}
+.timeline-marker--purple {
+  --marker-color: #8e4ec6;
+}
+
+.timeline-marker {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 3px;
+  max-width: 140px;
+  padding: 0;
+  border: 0;
+  border-left: 2px solid var(--marker-color);
+  background: transparent;
+  color: var(--text-primary);
+  cursor: grab;
+  pointer-events: auto;
+  transform: translateX(-1px);
+}
+
+.timeline-marker:focus-visible {
+  outline: 2px solid var(--marker-color);
+  outline-offset: 1px;
+}
+
+.timeline-marker__flag {
+  flex: none;
+  width: 9px;
+  height: 9px;
+  background: var(--marker-color);
+  clip-path: polygon(0 0, 100% 0, 70% 50%, 100% 100%, 0 100%);
+}
+
+.timeline-marker__label {
+  font-size: 10px;
+  line-height: 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+}
+
+.timeline-marker-menu__input {
+  margin: 4px 8px 6px;
+  width: calc(100% - 16px);
+  min-width: 180px;
+}
+
+.timeline-marker-menu__colors {
+  display: flex;
+  gap: 6px;
+  padding: 2px 8px 6px;
+}
+
+.timeline-marker-menu__swatch {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  background: var(--marker-color);
+  cursor: pointer;
+}
+
+.timeline-marker-menu__swatch[aria-checked='true'] {
+  border-color: var(--text-primary);
+}

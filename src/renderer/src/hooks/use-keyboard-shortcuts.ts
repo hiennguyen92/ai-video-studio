@@ -1,5 +1,10 @@
 import { useEffect } from 'react'
 import { groupSelectedClips, ungroupSelectedClips } from '../state/clip-group-actions'
+import {
+  addMarkerAtPlayhead,
+  jumpToMarker,
+  rippleDeleteSelection
+} from '../state/timeline-marker-actions'
 import { frameDurationUs } from '../../../shared/domain/time-units'
 import { selectionRemovalCommands } from '../../../shared/commands/selection-removal'
 import { useEditorStore } from '../state/editor-store'
@@ -32,9 +37,6 @@ export function useKeyboardShortcuts(): void {
       const selectedClipId = store.selection.clipIds[0]
       const stepUs = frameDurationUs(document.settings.frameRate)
 
-      // Chép/dán CLIP. Đặt trước nhánh hoàn tác cho gọn nhóm phím có phím bổ trợ;
-      // phần chặn "đang gõ trong ô nhập" nằm ở đầu hàm nên Cmd+C trong ô chữ vẫn
-      // là chép chữ như thường.
       // Cmd+G gộp nhóm, Cmd+Shift+G rã nhóm — cùng cặp phím với Premiere và Figma.
       if (modifier && event.key.toLowerCase() === 'g') {
         event.preventDefault()
@@ -43,6 +45,19 @@ export function useKeyboardShortcuts(): void {
         return
       }
 
+      // M đặt marker tại đầu phát; Shift+M tới marker kế, Cmd+Shift+M về marker
+      // trước — cùng bộ phím với Premiere. So bằng `code` vì Shift đổi `key`
+      // thành chữ hoa, còn Option trên macOS đổi hẳn sang ký tự khác.
+      if (event.code === 'KeyM' && !event.altKey) {
+        event.preventDefault()
+        if (!event.shiftKey && !modifier) addMarkerAtPlayhead('Thêm marker')
+        else if (event.shiftKey) jumpToMarker(modifier ? -1 : 1)
+        return
+      }
+
+      // Chép/dán CLIP. Đặt trước nhánh hoàn tác cho gọn nhóm phím có phím bổ trợ;
+      // phần chặn "đang gõ trong ô nhập" nằm ở đầu hàm nên Cmd+C trong ô chữ vẫn
+      // là chép chữ như thường.
       if (modifier && event.key.toLowerCase() === 'c') {
         if (!selectedClipId) return
         event.preventDefault()
@@ -89,6 +104,13 @@ export function useKeyboardShortcuts(): void {
         }
         case 'Delete':
         case 'Backspace': {
+          // Shift+Delete: ripple delete — xoá clip và kéo phần sau trên cùng track
+          // lùi lên lấp chỗ trống.
+          if (event.shiftKey) {
+            event.preventDefault()
+            rippleDeleteSelection('Ripple delete')
+            return
+          }
           // Xoá được cả clip lẫn khối chữ. Trước đây nhánh này chỉ nhìn
           // `clipIds`, nên chọn một câu phụ đề rồi bấm Delete thì không có gì
           // xảy ra và cũng không có gì báo vì sao.

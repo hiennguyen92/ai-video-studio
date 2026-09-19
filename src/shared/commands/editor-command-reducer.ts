@@ -1,4 +1,5 @@
 import { NEUTRAL_COLOR_GRADE, clampColorGrade } from '../domain/clip-color-grade'
+import { rippleMarkers } from '../domain/timeline-marker-types'
 import { current, isDraft } from 'immer'
 import type { EditorCommand } from './editor-command-types'
 import type { ProjectDocument } from '../domain/project-document-types'
@@ -299,6 +300,31 @@ export function applyEditorCommand(doc: ProjectDocument, command: EditorCommand)
       return OK
     }
 
+    case 'marker/add': {
+      if (doc.markers.some((marker) => marker.id === command.marker.id)) {
+        return fail(`Marker ${command.marker.id} đã tồn tại`)
+      }
+      doc.markers.push({ ...command.marker })
+      return OK
+    }
+
+    case 'marker/update': {
+      const marker = doc.markers.find((item) => item.id === command.markerId)
+      if (!marker) return fail(`Không tìm thấy marker ${command.markerId}`)
+      // Bỏ khoá mang `undefined`: gán thẳng thì một trường vắng mặt xoá mất giá trị cũ.
+      for (const [key, value] of Object.entries(command.patch)) {
+        if (value !== undefined) Object.assign(marker, { [key]: value })
+      }
+      return OK
+    }
+
+    case 'marker/remove': {
+      const before = doc.markers.length
+      doc.markers = doc.markers.filter((item) => item.id !== command.markerId)
+      if (doc.markers.length === before) return fail(`Không tìm thấy marker ${command.markerId}`)
+      return OK
+    }
+
     case 'clip/move-many': {
       // Kiểm HẾT trước khi đụng vào tài liệu: dời nửa nhóm rồi dừng vì một track
       // khoá là tách đôi đúng thứ người dùng muốn giữ liền.
@@ -571,6 +597,7 @@ export function applyEditorCommand(doc: ProjectDocument, command: EditorCommand)
       // người dùng, không nên tự ý đụng vào phụ đề.
       if (!command.trackIds) {
         const span = command.toUs - command.fromUs
+        doc.markers = rippleMarkers(snapshot(doc.markers), command.fromUs, command.toUs)
         for (const subtitleTrack of doc.subtitleTracks) {
           subtitleTrack.cues = snapshot(subtitleTrack.cues)
             .filter((cue) => !(cue.startUs >= command.fromUs && cue.endUs <= command.toUs))

@@ -41,6 +41,7 @@ import {
   setCutTransitionCommands
 } from '../domain/timeline-cut-transitions'
 import { guessDuckingTracks, planAutoDucking } from '../domain/auto-ducking-planner'
+import { planRippleDeleteClips } from '../commands/clip-ripple-delete'
 import {
   expandToLinkGroups,
   planGroupClips,
@@ -95,7 +96,7 @@ export interface ChatEditContext {
    * Không phải chuyện thẩm mỹ: agent đọc bản tổng quan rồi thao tác theo id, và
    * một chữ overlay mang id `clip_…` sẽ khiến nó gọi nhầm công cụ dành cho clip.
    */
-  makeId(prefix?: 'clip' | 'track' | 'text' | 'fx' | 'group'): string
+  makeId(prefix?: 'clip' | 'track' | 'text' | 'fx' | 'group' | 'marker'): string
   /**
    * Cú máy đã dò, theo id asset.
    *
@@ -162,6 +163,13 @@ function findClipById(document: ProjectDocument, clipId: string): Clip | undefin
 }
 
 /** Clip mà lệnh nhắm tới: id được nêu rõ, hoặc clip đang chọn. */
+/** Ném lỗi kèm danh sách id có thật, để agent sửa được ở lượt sau. */
+function requireMarker(document: ProjectDocument, markerId: string): void {
+  if (document.markers.some((marker) => marker.id === markerId)) return
+  const known = document.markers.map((marker) => marker.id).join(', ') || 'chưa có marker nào'
+  throw new Error(`Không tìm thấy marker "${markerId}". Marker hiện có: ${known}`)
+}
+
 function resolveClipId(context: ChatEditContext, clipId?: string): string {
   if (clipId) {
     if (!findClip(context.document, clipId)) {
@@ -312,6 +320,71 @@ function planOne(context: ChatEditContext, tool: ChatToolName, args: unknown): P
         tool,
         description: `Dời clip tới ${formatSeconds(toStartUs)}`,
         commands: [{ type: 'clip/move', clipId, toStartUs, toTrackId: input.toTrackId }]
+      }
+    }
+
+    case 'ripple_delete_clip': {
+      const input = chatToolSchemas.ripple_delete_clip.parse(args)
+      const clipId = resolveClipId(context, input.clipId)
+      const members = expandToLinkGroups(document, [clipId])
+      const commands = planRippleDeleteClips(document, members)!
+      return {
+        tool,
+        description:
+          members.length > 1
+            ? `Xoá nhóm ${members.length} clip và dồn phần sau lên`
+            : 'Xoá clip và dồn phần sau lên',
+        commands
+      }
+    }
+
+    case 'add_marker': {
+      const input = chatToolSchemas.add_marker.parse(args)
+      const atUs = secondsToMicros(input.atSeconds)
+      return {
+        tool,
+        description: `Đặt marker tại ${formatSeconds(atUs)}`,
+        commands: [
+          {
+            type: 'marker/add',
+            marker: {
+              id: context.makeId('marker'),
+              atUs,
+              label: input.label ?? '',
+              color: input.color ?? 'blue'
+            }
+          }
+        ]
+      }
+    }
+
+    case 'update_marker': {
+      const input = chatToolSchemas.update_marker.parse(args)
+      requireMarker(document, input.markerId)
+      return {
+        tool,
+        description: 'Sửa marker',
+        commands: [
+          {
+            type: 'marker/update',
+            markerId: input.markerId,
+            patch: {
+              ...(input.atSeconds !== undefined ? { atUs: secondsToMicros(input.atSeconds) } : {}),
+              ...(input.label !== undefined ? { label: input.label } : {}),
+              ...(input.color !== undefined ? { color: input.color } : {})
+            }
+          }
+        ]
+      }
+    }
+
+    case 'remove_marker': {
+      const input = chatToolSchemas.remove_marker.parse(args)
+      requireMarker(document, input.markerId)
+      return {
+        tool,
+        description: 'Xoá marker',
+        commands: [{ type: 'marker/remove', markerId: input.markerId }]
       }
     }
 

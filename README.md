@@ -81,6 +81,9 @@ nên mọi thao tác chỉnh sửa đều không phá huỷ dữ liệu gốc.
 | `←` `→` | Lùi/tiến một frame (giữ `Shift` để nhảy 10 frame) |
 | `S` | Cắt clip đang chọn tại playhead |
 | `Delete` | Xoá clip đang chọn |
+| `Shift+Delete` | Ripple delete: xoá clip và dồn clip sau trên cùng track lên |
+| `M` | Đặt marker tại đầu phát |
+| `Shift+M` / `Cmd+Shift+M` | Tới marker kế / về marker trước |
 | `Cmd/Ctrl+Z` | Hoàn tác (thêm `Shift` để làm lại) |
 | `Cmd/Ctrl+D` | Nhân bản clip |
 | `Cmd/Ctrl+G` | Gộp các clip đang chọn thành nhóm (thêm `Shift` để rã nhóm) |
@@ -121,6 +124,11 @@ Phím tắt **không** kích hoạt khi con trỏ đang ở trong ô nhập li�
 - **Keyframe**: transform clip, âm lượng clip, thông số effect kiểu số, vị trí/cỡ/góc chữ
   overlay; năm kiểu nội suy; chép/dán cụm keyframe giữa các clip
 - **Chép/dán clip** bằng Cmd+C / Cmd+V, giữ nguyên mọi thuộc tính
+- **Ripple delete** clip (nút + `Shift+Delete`): xoá rồi dồn clip sau **trên cùng track** lên —
+  track khác đứng yên, cùng luật với ripple trim
+- **Marker**: đặt bằng `M`, kéo để dời, nháy đúp để đặt tên/màu/xoá, nhảy qua lại bằng
+  `Shift+M`; **chép danh sách chương** dạng YouTube vào clipboard. Agent dùng `add_marker` /
+  `update_marker` / `remove_marker` / `ripple_delete_clip`
 - **Kéo nhiều clip cùng lúc** (kể cả trên nhiều track, giữ nguyên khoảng cách) và **nhóm clip**:
   bấm một clip là chọn cả nhóm, dời một clip là dời cả nhóm; cắt mép/tốc độ/effect vẫn tác động
   riêng từng clip. Agent dùng được qua `group_clips` / `ungroup_clips` / `move_clip`

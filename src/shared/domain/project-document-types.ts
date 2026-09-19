@@ -5,6 +5,7 @@ import type { DubbingSession, Transcript, Translation } from './transcript-types
 import type { SubtitleTrack } from './subtitle-types'
 import type { TextOverlay } from './text-overlay-types'
 import type { ProjectAiSettings } from './ai-settings-types'
+import type { TimelineMarker } from './timeline-marker-types'
 
 /**
  * Toàn bộ nội dung một project, lưu thành MỘT file JSON.
@@ -49,6 +50,8 @@ export interface ProjectDocument {
   subtitleTracks: SubtitleTrack[]
   /** Chữ đè lên hình do người dùng tự viết — khác phụ đề sinh từ lời nói. */
   textOverlays: TextOverlay[]
+  /** Mốc có tên trên timeline (chương, chỗ cần quay lại). */
+  markers: TimelineMarker[]
   aiSettings: ProjectAiSettings
 }
 

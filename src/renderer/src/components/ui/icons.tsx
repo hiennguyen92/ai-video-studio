@@ -138,6 +138,22 @@ export const IconMagnet = (p: IconProps): JSX.Element => (
   </Icon>
 )
 
+export const IconMarker = (p: IconProps): JSX.Element => (
+  <Icon {...p}>
+    <path d="M6 21V4" />
+    <path d="M6 4h11l-3 4 3 4H6" />
+  </Icon>
+)
+
+/** Xoá rồi kéo phần sau lùi lên: khối bị gạch, mũi tên chỉ về trái. */
+export const IconRippleDelete = (p: IconProps): JSX.Element => (
+  <Icon {...p}>
+    <rect x="3" y="6" width="7" height="12" rx="1" />
+    <path d="M4 7l5 10M9 7l-5 10" />
+    <path d="M21 12h-8M16 9l-3 3 3 3" />
+  </Icon>
+)
+
 export const IconLink = (p: IconProps): JSX.Element => (
   <Icon {...p}>
     <path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1" />

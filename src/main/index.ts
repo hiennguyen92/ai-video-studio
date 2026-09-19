@@ -98,15 +98,20 @@ function createMainWindow(): BrowserWindow {
 void app.whenReady().then(async () => {
   electronApp.setAppUserModelId('com.aivideostudio.app')
 
-  // Chỉ mở đúng quyền ĐỌC DANH SÁCH FONT, từ chối mọi quyền còn lại.
+  // Chỉ mở đúng hai quyền: ĐỌC DANH SÁCH FONT và GHI clipboard; từ chối mọi quyền
+  // còn lại.
   //
-  // Cần nó để ô chọn font liệt kê được font đang có trên máy, thay vì bày một
+  // Ghi clipboard cho các nút "chép" (danh sách chương, cấu hình MCP): thiếu nó thì
+  // `navigator.clipboard.writeText` bị từ chối và nút bấm xong không có gì xảy ra.
+  // Chỉ GHI — đọc clipboard vẫn bị chặn, vì trong đó có thể là mật khẩu vừa chép.
+  //
+  // Font cần để ô chọn font liệt kê được font đang có trên máy, thay vì bày một
   // danh sách viết cứng rồi người dùng chọn phải font máy họ không có — lúc đó
   // chữ lặng lẽ rơi về font mặc định.
   //
   // Trả `true` cho mọi quyền là mở luôn camera, micro và vị trí cho bất cứ thứ gì
   // chạy trong cửa sổ. Ứng dụng không cần chúng.
-  const allowedPermissions = new Set(['local-fonts'])
+  const allowedPermissions = new Set(['local-fonts', 'clipboard-sanitized-write'])
   session.defaultSession.setPermissionRequestHandler((_contents, permission, callback) => {
     callback(allowedPermissions.has(permission))
   })

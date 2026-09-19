@@ -1,11 +1,11 @@
-import type { JSX } from 'react'
+import { useState, type JSX } from 'react'
 import type { TrackHeightPreset } from '../../../../shared/domain/timeline-track-types'
 import {
   MAX_PIXELS_PER_SECOND,
   MIN_PIXELS_PER_SECOND,
   useEditorStore
 } from '../../state/editor-store'
-import { useT } from '../../i18n/use-translation'
+import { interpolate, useT } from '../../i18n/use-translation'
 import {
   groupSelectedClips,
   selectionCanGroup,
@@ -13,7 +13,20 @@ import {
   ungroupSelectedClips
 } from '../../state/clip-group-actions'
 import { ToolButton } from '../ui/tool-button'
-import { IconMagnet, IconScissors, IconTrash, IconZoomIn, IconZoomOut } from '../ui/icons'
+import {
+  IconMagnet,
+  IconMarker,
+  IconRippleDelete,
+  IconScissors,
+  IconTrash,
+  IconZoomIn,
+  IconZoomOut
+} from '../ui/icons'
+import {
+  addMarkerAtPlayhead,
+  currentChapterList,
+  rippleDeleteSelection
+} from '../../state/timeline-marker-actions'
 import { TimelineToolButtons } from './timeline-tool-buttons'
 import { AddTrackMenuButton } from './add-track-menu-button'
 import type { AddableTrackKind } from './use-timeline-tracks'
@@ -59,6 +72,9 @@ export function TimelineToolbar({
   const hasSelection = useEditorStore(
     (state) => state.selection.clipIds.length > 0 || state.selection.text !== undefined
   )
+  const hasClipSelection = useEditorStore((state) => state.selection.clipIds.length > 0)
+  const hasMarkers = useEditorStore((state) => (state.session?.document.markers.length ?? 0) > 0)
+  const [chaptersCopied, setChaptersCopied] = useState(false)
   const canGroup = useEditorStore(selectionCanGroup)
   const hasGroup = useEditorStore(selectionHasGroup)
 
@@ -81,6 +97,41 @@ export function TimelineToolbar({
         iconOnly
         onClick={onDelete}
         disabled={!canDelete}
+      />
+      <ToolButton
+        label={t.timeline.rippleDelete}
+        icon={<IconRippleDelete />}
+        iconOnly
+        onClick={() => rippleDeleteSelection(t.timeline.rippleDelete)}
+        disabled={!hasClipSelection}
+      />
+
+      <div className="top-bar__divider" />
+
+      <ToolButton
+        label={t.timeline.markerAdd}
+        icon={<IconMarker />}
+        iconOnly
+        onClick={() => addMarkerAtPlayhead(t.timeline.markerAdd)}
+      />
+      <ToolButton
+        label={chaptersCopied ? t.timeline.markerChaptersCopied : t.timeline.markerChapters}
+        disabled={!hasMarkers}
+        onClick={() => {
+          const text = currentChapterList(t.timeline.markerChaptersIntro, (index) =>
+            interpolate(t.timeline.markerChapterUntitled, { index })
+          )
+          if (!text) return
+          navigator.clipboard.writeText(text).then(
+            () => {
+              setChaptersCopied(true)
+              window.setTimeout(() => setChaptersCopied(false), 1500)
+            },
+            // Nói ra thay vì im lặng: nút bấm xong không có gì xảy ra là thứ khó
+            // hiểu nhất.
+            () => useEditorStore.getState().setError(t.timeline.markerChaptersFailed)
+          )
+        }}
       />
 
       <div className="top-bar__divider" />

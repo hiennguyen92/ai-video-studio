@@ -22,6 +22,7 @@ import { useTrackReorder } from './use-track-reorder'
 import { useTimelineTextLanes } from './use-timeline-text-lanes'
 import { TimelineClip, type ClipDragMode } from './timeline-clip'
 import { TimelineRuler } from './timeline-ruler'
+import { TimelineMarkerLayer } from './timeline-marker-layer'
 import { TimelineTrackHead } from './timeline-track-head'
 import { pxToUs, usToPx, zoomToFit } from './timeline-geometry'
 import { TimelinePlayhead } from './timeline-playhead'
@@ -333,6 +334,7 @@ export function TimelinePanel(): JSX.Element {
                 pixelsPerSecond={pixelsPerSecond}
                 widthPx={contentWidthPx}
               />
+              <TimelineMarkerLayer markers={document.markers} pixelsPerSecond={pixelsPerSecond} />
             </div>
 
             <div className="timeline__lanes" ref={lanesRef}>

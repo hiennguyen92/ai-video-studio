@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { MARKER_COLORS } from '../domain/timeline-marker-types'
 import { KEYFRAME_TOOL_PROPERTIES } from './chat-tool-keyframes'
 import { MAX_TEXT_ROTATION_DEG } from '../domain/text-placement'
 import { MAX_TEXT_OUTLINE_WIDTH_PX, SUBTITLE_STYLE_PRESETS } from '../domain/subtitle-types'
@@ -91,6 +92,27 @@ export const chatToolSchemas = {
 
   remove_clip: z.object({
     clipId: optionalClipId
+  }),
+
+  ripple_delete_clip: z.object({
+    clipId: optionalClipId
+  }),
+
+  add_marker: z.object({
+    atSeconds: seconds,
+    label: z.string().max(200).optional(),
+    color: z.enum(MARKER_COLORS).optional()
+  }),
+
+  update_marker: z.object({
+    markerId: z.string().min(1).max(120),
+    atSeconds: seconds.optional(),
+    label: z.string().max(200).optional(),
+    color: z.enum(MARKER_COLORS).optional()
+  }),
+
+  remove_marker: z.object({
+    markerId: z.string().min(1).max(120)
   }),
 
   /** Bỏ trống `clipIds` là gộp các clip đang chọn. */
@@ -633,6 +655,12 @@ export const chatToolDescriptions: Record<ChatToolName, string> = {
     'Rate stretch a video or audio clip: drag one edge to change its length while it keeps the same stretch of source, so the speed changes to fit (longer plays slower, shorter plays faster, 0.25x to 4x). The other edge stays put. toSeconds is the timeline position the edge is dragged to.',
   move_clip:
     'Move a clip to a new start position, optionally onto another track. A clip in a group (group=… in the overview) moves its whole group by the same amount; a group spread over several tracks keeps its tracks.',
+  ripple_delete_clip:
+    'Delete a clip AND pull every later clip on the same lane back to close the gap. Other lanes stay where they are (music under the clip is not cut). A grouped clip takes its whole group with it, each lane closing its own gap. To shorten the whole video across every lane, use ripple_delete_range instead.',
+  add_marker:
+    'Put a named marker on the timeline at atSeconds — a chapter start, a spot to come back to. Markers belong to the whole video, not to a clip. Colours: red, orange, yellow, green, blue, purple (default blue). The Markers list in the project overview shows them with their ids. Markers also give the YouTube chapter list the user can copy.',
+  update_marker: 'Rename, recolour or move a marker. Fields left out keep their value.',
+  remove_marker: 'Delete a marker.',
   group_clips:
     'Group clips so they are selected, moved and deleted together — typically a video clip and its separate audio, or a logo with its sound effect. Trimming, speed and effects still apply to one clip. Leave clipIds out to group the selected clips. A clip already in a group leaves it.',
   ungroup_clips: 'Break up the group a clip belongs to; every member becomes independent again.',
@@ -740,6 +768,12 @@ export const chatToolParameterHints: Record<ChatToolName, string> = {
   rate_stretch_clip: "{ clipId?: string, edge: 'start' | 'end', toSeconds: number }",
   move_clip: '{ clipId?: string, toSeconds: number, toTrackId?: string }',
   group_clips: '{ clipIds?: string[] }',
+  ripple_delete_clip: '{ clipId?: string }',
+  add_marker:
+    "{ atSeconds: number, label?: string, color?: 'red' | 'orange' | 'yellow' | 'green' | 'blue' | 'purple' }",
+  update_marker:
+    "{ markerId: string, atSeconds?: number, label?: string, color?: 'red' | 'orange' | 'yellow' | 'green' | 'blue' | 'purple' }",
+  remove_marker: '{ markerId: string }',
   ungroup_clips: '{ clipId?: string }',
   remove_clip: '{ clipId?: string }',
   duplicate_clip: '{ clipId?: string }',
