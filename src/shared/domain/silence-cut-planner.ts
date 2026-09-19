@@ -68,8 +68,33 @@ export interface SilenceCutPlan {
   removedUs: Micros
 }
 
+/** Clip bị tắt tiếng hẳn: âm lượng 0 và không có đường keyframe nào kéo nó lên. */
+function isMuted(clip: Clip): boolean {
+  return clip.volume === 0 && !clip.keyframes?.['volume']?.some((frame) => frame.v > 0)
+}
+
+/** `from` trừ đi mọi khoảng trong `minus`. Cả hai đã gộp và sắp theo thời gian. */
+function subtractIntervals(from: Interval[], minus: Interval[]): Interval[] {
+  const result: Interval[] = []
+  for (const range of from) {
+    let cursor = range.startUs
+    for (const cut of minus) {
+      if (cut.endUs <= cursor || cut.startUs >= range.endUs) continue
+      if (cut.startUs > cursor) result.push({ startUs: cursor, endUs: cut.startUs })
+      cursor = Math.max(cursor, cut.endUs)
+    }
+    if (cursor < range.endUs) result.push({ startUs: cursor, endUs: range.endUs })
+  }
+  return result
+}
+
 /**
- * Lệnh ripple xoá cho mọi khoảng lặng của các clip được nêu.
+ * Lệnh ripple xoá cho khoảng lặng của các clip được nêu.
+ *
+ * Một mốc chỉ bị cắt khi MỌI clip đang phát tiếng ở mốc đó đều im. Lấy hợp các
+ * khoảng im là sai: máy quay thu xa thì "im" đúng lúc micro cài áo đang có lời,
+ * và lời bị cắt mất. Clip đã tắt tiếng (ví dụ tiếng gốc nằm dưới giọng đã làm
+ * sạch) không tính — nó không phát ra gì cả.
  *
  * Xoá từ khoảng MUỘN NHẤT về trước: xoá khoảng sau không dời khoảng trước, nên
  * toạ độ của những lệnh còn lại vẫn đúng. Mốc làm tròn về khung hình để timeline
@@ -84,16 +109,23 @@ export function planSilenceCuts(
     track.clips.map((clip) => ({ clip, trackId: track.id }))
   )
 
-  const raw: Interval[] = []
+  const silent: Interval[] = []
+  const sounding: Interval[] = []
   for (const [clipId, silences] of Object.entries(silencesByClip)) {
     const found = clips.find((item) => item.clip.id === clipId)
-    if (found) raw.push(...silenceRangesOnTimeline(found.clip, silences, options.paddingUs))
+    if (!found || isMuted(found.clip)) continue
+    const quiet = mergeIntervals(silenceRangesOnTimeline(found.clip, silences, options.paddingUs))
+    silent.push(...quiet)
+    // Phần còn lại của clip là chỗ nó CÓ tiếng — kể cả phần chừa cạnh lời nói.
+    sounding.push(
+      ...subtractIntervals([{ startUs: found.clip.startUs, endUs: clipEndUs(found.clip) }], quiet)
+    )
   }
 
   const snap = (us: Micros): Micros => snapMicrosToFrame(us, options.frameRate)
-  const ranges = mergeIntervals(
-    raw.map((range) => ({ startUs: snap(range.startUs), endUs: snap(range.endUs) }))
-  )
+  const ranges = subtractIntervals(mergeIntervals(silent), mergeIntervals(sounding))
+    .map((range) => ({ startUs: snap(range.startUs), endUs: snap(range.endUs) }))
+    .filter((range) => range.endUs - range.startUs >= MIN_CUT_US)
   if (ranges.length === 0) return { commands: [], cutCount: 0, removedUs: 0 }
 
   // Cả nhóm của clip co cùng lúc: cắt tiếng mà để hình nguyên là lệch khẩu hình.

@@ -306,6 +306,12 @@ export const dictionaryVi = {
     back: 'Về danh sách dự án'
   },
   export: {
+    loudness: 'Chuẩn hoá âm lượng',
+    loudnessStreaming: '-14 LUFS · YouTube, TikTok, Instagram',
+    loudnessPodcast: '-16 LUFS · Podcast, Apple',
+    loudnessBroadcast: '-23 LUFS · Truyền hình (EBU R128)',
+    loudnessOff: 'Tắt — giữ nguyên như timeline',
+    normalizing: 'Đang chuẩn hoá âm lượng…',
     title: 'Xuất video',
     outputLabel: 'Lưu tại',
     choosePath: 'Chọn nơi lưu…',
@@ -606,6 +612,21 @@ export const dictionaryVi = {
     fromCache: 'Dùng lại kết quả đã tạo trước đó, không gọi lại provider',
     unverified:
       'Lưu ý: đường gọi tới ElevenLabs Music chưa được kiểm chứng bằng khoá thật — mới kiểm bằng máy chủ giả lập đúng giao thức.'
+  },
+  voiceCleanup: {
+    title: 'Làm sạch giọng nói',
+    strength: 'Mức',
+    light: 'Nhẹ — giữ giọng tự nhiên nhất',
+    medium: 'Vừa',
+    strong: 'Mạnh — phòng rất ồn',
+    hintAudio:
+      'Lọc tiếng ù và giảm nhiễu nền (quạt, xì, tiếng phòng). Tạo file mới, file gốc không bị sửa.',
+    hintVideo:
+      'Tiếng sạch được thêm ở lane lời thoại, gộp nhóm với clip hình; tiếng gốc của clip hình bị tắt. File gốc không bị sửa.',
+    hintRedo: 'Clip đã có tiếng sạch — làm lại sẽ thay bằng mức mới, luôn lọc từ tiếng gốc.',
+    apply: 'Làm sạch',
+    working: 'Đang làm sạch…',
+    done: 'Đã làm sạch giọng — hoàn tác một lần là trả lại như cũ'
   },
   silenceCut: {
     open: 'Cắt khoảng lặng',

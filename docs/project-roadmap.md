@@ -206,9 +206,11 @@ ghi vào backlog rõ ràng."
   YouTube; ripple xoá THEO KHOẢNG trên mọi track dời marker theo, xoá marker nằm
   trong khoảng. Cắt khoảng lặng (ffmpeg `silencedetect`, dò trước rồi mới cắt) và
   khôi phục phiên bản từ `versions/` (chụp bản hiện tại trước khi khôi phục,
-  revision đi tiếp chứ không lùi). **Chưa có:** công cụ agent cho cắt khoảng lặng
-  — dò là việc bất đồng bộ, cần đi theo lối `list_shots` (dò qua MCP, giữ kết quả
-  cho công cụ ghi)
+  revision đi tiếp chứ không lùi). Công cụ agent `remove_silences` và
+  `clean_voice`: phần ffmpeg chạy TRƯỚC khi lập kế hoạch, dùng chung cho AI Chat
+  và MCP. Chỉ cắt chỗ MỌI nguồn tiếng đang phát cùng im (máy quay thu xa không
+  được làm mất lời của micro cài áo). Chuẩn hoá độ to khi xuất (-14 LUFS mặc
+  định, đo lại bằng `ebur128` trên file ra)
 - Xuất: thêm định dạng ngoài MP4/H.264, chọn chất lượng, preset nền tảng, xuất
   riêng đoạn đang chọn, hàng đợi nhiều bản
 - Bám đối tượng và tự cắt khung theo chủ thể

@@ -136,6 +136,49 @@ describe('planSilenceCuts', () => {
     expect(document.markers[0].atUs).toBe(6_000_000)
   })
 
+  it('hai nguồn tiếng chồng nhau: chỉ cắt chỗ CẢ HAI cùng im', () => {
+    const document = project()
+    // Máy quay thu xa "im" suốt 2–6 s, micro cài áo chỉ im ở 4–5 s.
+    applyEditorCommand(document, {
+      type: 'clip/insert',
+      clipId: 'may',
+      trackId: document.tracks[0].id,
+      assetId: 'asset_1',
+      startUs: 0,
+      durationUs: 10_000_000,
+      sourceInUs: 0
+    })
+    const plan = planSilenceCuts(
+      document,
+      {
+        may: [{ startUs: 2_000_000, endUs: 6_000_000 }],
+        loi: [{ startUs: 4_000_000, endUs: 5_000_000 }]
+      },
+      { paddingUs: 0, scope: 'clip-tracks', frameRate: FPS }
+    )
+    expect(plan).toMatchObject({ cutCount: 1, removedUs: 1_000_000 })
+  })
+
+  it('clip đã tắt tiếng không tính là đang có lời', () => {
+    const document = project()
+    applyEditorCommand(document, {
+      type: 'clip/insert',
+      clipId: 'may',
+      trackId: document.tracks[0].id,
+      assetId: 'asset_1',
+      startUs: 0,
+      durationUs: 10_000_000,
+      sourceInUs: 0
+    })
+    applyEditorCommand(document, { type: 'clip/update', clipId: 'may', patch: { volume: 0 } })
+    const plan = planSilenceCuts(
+      document,
+      { may: [], loi: [{ startUs: 2_000_000, endUs: 6_000_000 }] },
+      { paddingUs: 0, scope: 'clip-tracks', frameRate: FPS }
+    )
+    expect(plan).toMatchObject({ cutCount: 1, removedUs: 4_000_000 })
+  })
+
   it('không có khoảng lặng thì không có lệnh', () => {
     expect(
       planSilenceCuts(project(), { loi: [] }, { paddingUs: 0, scope: 'all-tracks', frameRate: FPS })

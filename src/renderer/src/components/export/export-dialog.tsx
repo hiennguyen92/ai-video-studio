@@ -68,6 +68,9 @@ export function ExportDialog({ onClose }: { onClose(): void }): JSX.Element {
   const [capabilities, setCapabilities] = useState<ExportCapabilities | null>(null)
   const [burnSubtitleTrackId, setBurnSubtitleTrackId] = useState<string>('')
   const [exportSrt, setExportSrt] = useState(false)
+  // Mặc định -14 LUFS: mức YouTube, TikTok, Instagram và Spotify cùng dùng, nên
+  // đa số người dùng không phải nghĩ tới ô này.
+  const [loudness, setLoudness] = useState<string>('-14')
   const [jobId, setJobId] = useState<string | null>(null)
   const [progress, setProgress] = useState<ExportProgressEvent | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -123,13 +126,15 @@ export function ExportDialog({ onClose }: { onClose(): void }): JSX.Element {
       burnSubtitleTrackId: burnSubtitleTrackId || undefined,
       exportSrtTrackId: exportSrt
         ? burnSubtitleTrackId || document.subtitleTracks[0]?.id
-        : undefined
+        : undefined,
+      loudnessLufs: loudness === 'off' ? null : Number(loudness)
     })
 
     if (result.ok) setJobId(result.data.jobId)
     else setError(result.error)
   }, [
     document,
+    loudness,
     outputPath,
     targetSize,
     frameRateKey,
@@ -270,6 +275,21 @@ export function ExportDialog({ onClose }: { onClose(): void }): JSX.Element {
             )}
 
             <div className="field-row">
+              <span className="field-row__label">{t.export.loudness}</span>
+              <select
+                value={loudness}
+                onChange={(event) => setLoudness(event.target.value)}
+                disabled={running}
+                aria-label={t.export.loudness}
+              >
+                <option value="-14">{t.export.loudnessStreaming}</option>
+                <option value="-16">{t.export.loudnessPodcast}</option>
+                <option value="-23">{t.export.loudnessBroadcast}</option>
+                <option value="off">{t.export.loudnessOff}</option>
+              </select>
+            </div>
+
+            <div className="field-row">
               <span className="field-row__label">{t.export.engine}</span>
               <select
                 value={effectiveEngine}
@@ -379,7 +399,9 @@ function ExportProgressView({
   const t = useT()
 
   // Chưa có mốc thời gian nào từ ffmpeg -> hiện sọc chạy vô định, không hiện %.
-  const indeterminate = running && progress?.ratio === undefined
+  // Lượt chuẩn hoá độ to không báo tiến độ — hiện sọc chạy, không bịa phần trăm.
+  const normalizing = running && progress?.phase === 'loudness'
+  const indeterminate = running && (progress?.ratio === undefined || normalizing)
   const percent = progress?.ratio !== undefined ? Math.round(progress.ratio * 100) : null
 
   const statusText =
@@ -389,9 +411,11 @@ function ExportProgressView({
         ? t.export.cancelled
         : progress?.status === 'failed'
           ? t.export.failed
-          : indeterminate
-            ? t.export.preparing
-            : t.export.running
+          : normalizing
+            ? t.export.normalizing
+            : indeterminate
+              ? t.export.preparing
+              : t.export.running
 
   return (
     <div className="export-progress">
@@ -403,7 +427,7 @@ function ExportProgressView({
       </div>
       <div className="export-progress__labels">
         <span>{statusText}</span>
-        {percent !== null && running && <span>{percent}%</span>}
+        {percent !== null && running && !normalizing && <span>{percent}%</span>}
         {progress?.speed !== undefined && running && (
           <span>{interpolate(t.export.speed, { speed: progress.speed.toFixed(1) })}</span>
         )}

@@ -75,14 +75,15 @@ export function registerMcpExportTools(server: McpServer): void {
     'start_export',
     {
       description:
-        'Export the open project to an MP4 file, like the Export dialog. Rendering takes minutes, so this returns a jobId straight away; call get_export_status with it until the status is succeeded, failed or cancelled. The renderer is chosen for you: projects with text overlays or transitions render with Remotion, since the faster ffmpeg path would silently drop them. outputPath must be absolute and end in .mp4; leave it out to save into the Videos folder under the project name. An existing file is only replaced with overwrite:true. scale sets the resolution relative to the project canvas, frameRate defaults to the project frame rate. burnSubtitleTrackId burns that subtitle track into the picture; exportSrt also writes a .srt next to the video (from burnSubtitleTrackId, or the first subtitle track). The export renders the project as it is at this moment; later edits do not change it.',
+        'Export the open project to an MP4 file, like the Export dialog. Rendering takes minutes, so this returns a jobId straight away; call get_export_status with it until the status is succeeded, failed or cancelled. The renderer is chosen for you: projects with text overlays or transitions render with Remotion, since the faster ffmpeg path would silently drop them. outputPath must be absolute and end in .mp4; leave it out to save into the Videos folder under the project name. An existing file is only replaced with overwrite:true. scale sets the resolution relative to the project canvas, frameRate defaults to the project frame rate. burnSubtitleTrackId burns that subtitle track into the picture; exportSrt also writes a .srt next to the video (from burnSubtitleTrackId, or the first subtitle track). The export renders the project as it is at this moment; later edits do not change it. loudnessLufs normalizes the loudness of the finished file (two-pass): -14 suits YouTube, TikTok and Instagram and is the default, -16 podcasts, -23 broadcast; pass null to keep the timeline level.',
       inputSchema: {
         outputPath: z.string().min(1).max(1024).optional(),
         overwrite: z.boolean().optional(),
         scale: z.enum(['full', 'half', 'quarter']).optional(),
         frameRate: z.enum(['24', '25', '30', '50', '60']).optional(),
         burnSubtitleTrackId: z.string().min(1).max(120).optional(),
-        exportSrt: z.boolean().optional()
+        exportSrt: z.boolean().optional(),
+        loudnessLufs: z.number().min(-36).max(-8).nullable().optional()
       }
     },
     async (input) => {
@@ -121,7 +122,9 @@ export function registerMcpExportTools(server: McpServer): void {
           useHardwareEncoder: capabilities.hardwareEncoderAvailable,
           engine,
           burnSubtitleTrackId: input.burnSubtitleTrackId,
-          exportSrtTrackId: srtTrackId
+          exportSrtTrackId: srtTrackId,
+          // Cùng mặc định với hộp thoại Xuất: agent không nói gì thì file ra vẫn đúng mức nền tảng.
+          loudnessLufs: input.loudnessLufs === undefined ? -14 : input.loudnessLufs
         })
 
         return text(
@@ -129,6 +132,7 @@ export function registerMcpExportTools(server: McpServer): void {
             `Đã bắt đầu xuất. jobId=${jobId}`,
             `output=${outputPath}`,
             `${width}x${height} engine=${engine}`,
+            `loudness=${input.loudnessLufs === null ? 'giữ nguyên' : `${input.loudnessLufs ?? -14} LUFS`}`,
             'Gọi get_export_status với jobId này để theo dõi.'
           ].join('\n')
         )
@@ -157,9 +161,11 @@ export function registerMcpExportTools(server: McpServer): void {
       // với thanh tiến trình của hộp thoại Xuất.
       if (event.status === 'running') {
         lines.push(
-          event.ratio !== undefined
-            ? `progress=${Math.round(event.ratio * 100)}%`
-            : 'progress=đang chuẩn bị'
+          event.phase === 'loudness'
+            ? 'progress=đang chuẩn hoá âm lượng (hình đã dựng xong)'
+            : event.ratio !== undefined
+              ? `progress=${Math.round(event.ratio * 100)}%`
+              : 'progress=đang chuẩn bị'
         )
       }
       if (event.outputPath) lines.push(`output=${event.outputPath}`)

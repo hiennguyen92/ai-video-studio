@@ -306,6 +306,12 @@ export const dictionaryEn: Dictionary = {
     back: 'Back to projects'
   },
   export: {
+    loudness: 'Normalize loudness',
+    loudnessStreaming: '-14 LUFS · YouTube, TikTok, Instagram',
+    loudnessPodcast: '-16 LUFS · Podcasts, Apple',
+    loudnessBroadcast: '-23 LUFS · Broadcast (EBU R128)',
+    loudnessOff: 'Off — keep the timeline level',
+    normalizing: 'Normalizing loudness…',
     title: 'Export video',
     outputLabel: 'Save to',
     choosePath: 'Choose location…',
@@ -608,6 +614,22 @@ export const dictionaryEn: Dictionary = {
     fromCache: 'Reused an earlier result instead of calling the provider again',
     unverified:
       'Note: the ElevenLabs Music call has not been verified with a real key — only against a server that follows the documented protocol.'
+  },
+  voiceCleanup: {
+    title: 'Clean up voice',
+    strength: 'Strength',
+    light: 'Light — most natural',
+    medium: 'Medium',
+    strong: 'Strong — very noisy room',
+    hintAudio:
+      'Removes rumble and hum and reduces background noise (fans, hiss, room tone). Makes a new file; the original is untouched.',
+    hintVideo:
+      'The cleaned sound is added on a dialogue lane, grouped with the video clip, and the video’s own sound is muted. The original file is untouched.',
+    hintRedo:
+      'This clip already has cleaned sound — running again replaces it at the new strength, always from the original.',
+    apply: 'Clean up',
+    working: 'Cleaning…',
+    done: 'Voice cleaned — one undo restores it'
   },
   silenceCut: {
     open: 'Cut silences',

@@ -14,6 +14,7 @@ import { resolveFfmpegBinaries } from '../media/ffmpeg-binaries'
 import { startExport, type ExportHandle } from './export-job-runner'
 import { startRemotionExport } from './remotion-export-runner'
 import { writeAssFile, writeSrtFile } from './subtitle-file-writers'
+import { normalizeLoudnessInPlace } from './loudness-normalization'
 
 /**
  * Quản lý các lần xuất đang chạy.
@@ -136,11 +137,36 @@ export async function runExport(
           }
         )
 
-  activeJobs.set(jobId, handle)
+  // Huỷ phải dừng được cả lượt chuẩn hoá độ to chạy SAU khi dựng xong.
+  const loudnessAbort = new AbortController()
+  activeJobs.set(jobId, {
+    ...handle,
+    cancel: () => {
+      handle.cancel()
+      loudnessAbort.abort()
+    }
+  })
   emit(sender, { jobId, status: 'running', outTimeUs: 0 })
 
   void handle.done
-    .then((result) => {
+    .then(async (result) => {
+      if (result.status === 'succeeded' && request.loudnessLufs != null) {
+        emit(sender, { jobId, status: 'running', phase: 'loudness', ratio: 1, outTimeUs: 0 })
+        try {
+          await normalizeLoudnessInPlace(
+            result.outputPath,
+            request.loudnessLufs,
+            document.settings.sampleRate,
+            loudnessAbort.signal
+          )
+        } catch (error) {
+          if (!loudnessAbort.signal.aborted) throw error
+          // Huỷ giữa lượt chuẩn hoá: file đã dựng vẫn nguyên, nhưng người dùng đã
+          // bấm huỷ — báo đúng là đã huỷ.
+          emit(sender, { jobId, status: 'cancelled', outTimeUs: 0 })
+          return
+        }
+      }
       emit(sender, {
         jobId,
         status: result.status,

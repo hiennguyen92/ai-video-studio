@@ -11,7 +11,7 @@ import type { FrameRate, Micros } from './time-units'
 export type MediaKind = 'video' | 'audio' | 'image'
 
 /** Tác vụ AI đã sinh ra asset này. */
-export type GeneratedTask = 'tts' | 'music' | 'sfx' | 'image' | 'video'
+export type GeneratedTask = 'tts' | 'music' | 'sfx' | 'image' | 'video' | 'voice-cleanup'
 
 export interface MediaSourceRef {
   /** Đường dẫn tuyệt đối trên đĩa. */
@@ -79,6 +79,12 @@ export interface GeneratedOrigin {
   sourceSegmentId?: string
   language?: string
   voiceId?: string
+  /**
+   * Asset GỐC đã sinh ra asset này — với giọng đã làm sạch. Làm sạch lại với mức
+   * khác phải đi từ bản gốc, không phải từ bản đã lọc: lọc chồng lên bản lọc là
+   * dồn méo tiếng mỗi lần.
+   */
+  sourceAssetId?: string
 }
 
 export interface MediaAsset {

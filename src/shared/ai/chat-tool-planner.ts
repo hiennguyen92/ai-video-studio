@@ -42,6 +42,9 @@ import {
 } from '../domain/timeline-cut-transitions'
 import { guessDuckingTracks, planAutoDucking } from '../domain/auto-ducking-planner'
 import { planRippleDeleteClips } from '../commands/clip-ripple-delete'
+import { planSilenceCuts } from '../domain/silence-cut-planner'
+import { planVoiceCleanup, resolveVoiceCleanupTarget } from '../domain/voice-cleanup-planner'
+import type { SilenceInterval } from '../ipc/silence-detection-types'
 import {
   expandToLinkGroups,
   planGroupClips,
@@ -127,6 +130,15 @@ export interface ChatEditContext {
    * biết thời lượng thật hay hash nội dung. Nơi gọi dựng trước rồi đưa vào.
    */
   soundEffects?: Record<string, MediaAsset>
+  /**
+   * Khoảng lặng đã dò (trục NGUỒN), theo id clip — cho `remove_silences`.
+   *
+   * Cùng lý do như `soundEffects`: dò là chạy ffmpeg, planner là hàm thuần. Nơi
+   * gọi dò trước rồi đưa kết quả — hoặc lỗi — vào đây.
+   */
+  silences?: Record<string, { intervals?: SilenceInterval[]; error?: string }>
+  /** Asset giọng đã làm sạch, theo id clip — cho `clean_voice`. */
+  cleanedVoices?: Record<string, { asset?: MediaAsset; error?: string }>
 }
 
 export interface PlannedToolCall {
@@ -385,6 +397,54 @@ function planOne(context: ChatEditContext, tool: ChatToolName, args: unknown): P
         tool,
         description: 'Xoá marker',
         commands: [{ type: 'marker/remove', markerId: input.markerId }]
+      }
+    }
+
+    case 'remove_silences': {
+      const input = chatToolSchemas.remove_silences.parse(args)
+      const clipId = resolveClipId(context, input.clipId)
+      const detected: Record<string, SilenceInterval[]> = {}
+      for (const id of expandToLinkGroups(document, [clipId])) {
+        const entry = context.silences?.[id]
+        if (entry?.error) throw new Error(`Không dò được khoảng lặng: ${entry.error}`)
+        if (entry?.intervals) detected[id] = entry.intervals
+      }
+      if (Object.keys(detected).length === 0) {
+        throw new Error('Clip này (và nhóm của nó) không có tiếng để dò khoảng lặng')
+      }
+      const plan = planSilenceCuts(document, detected, {
+        paddingUs: secondsToMicros(input.paddingSeconds ?? 0.15),
+        scope: input.scope ?? 'clip-tracks',
+        frameRate: document.settings.frameRate
+      })
+      if (plan.cutCount === 0) {
+        throw new Error(
+          'Không có khoảng lặng nào đủ dài — thử nâng thresholdDb (vd. -30) nếu phòng ồn'
+        )
+      }
+      return {
+        tool,
+        description: `Cắt ${plan.cutCount} khoảng lặng, bớt ${formatSeconds(plan.removedUs)}`,
+        commands: plan.commands
+      }
+    }
+
+    case 'clean_voice': {
+      const input = chatToolSchemas.clean_voice.parse(args)
+      const clipId = resolveClipId(context, input.clipId)
+      const target = resolveVoiceCleanupTarget(document, clipId)
+      const entry = context.cleanedVoices?.[clipId]
+      if (entry?.error) throw new Error(`Không làm sạch được giọng: ${entry.error}`)
+      if (!entry?.asset) throw new Error('Chưa làm sạch được giọng cho clip này')
+      return {
+        tool,
+        description:
+          target.mode === 'add-partner'
+            ? `Làm sạch giọng (${input.strength ?? 'medium'}), thêm tiếng sạch và tắt tiếng gốc`
+            : `Làm sạch giọng (${input.strength ?? 'medium'})`,
+        commands: planVoiceCleanup(document, target, entry.asset, (prefix) =>
+          context.makeId(prefix)
+        )
       }
     }
 

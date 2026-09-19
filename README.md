@@ -124,6 +124,11 @@ Phím tắt **không** kích hoạt khi con trỏ đang ở trong ô nhập li�
 - **Keyframe**: transform clip, âm lượng clip, thông số effect kiểu số, vị trí/cỡ/góc chữ
   overlay; năm kiểu nội suy; chép/dán cụm keyframe giữa các clip
 - **Chép/dán clip** bằng Cmd+C / Cmd+V, giữ nguyên mọi thuộc tính
+- **Làm sạch giọng nói** (tab Audio): lọc ù dưới 80 Hz và giảm nhiễu nền (`afftdn`, tự theo dõi
+  nền nhiễu), ba mức. Ra file FLAC mới — file gốc không bị sửa, không lệch khẩu hình. Clip hình
+  mang tiếng thì tiếng sạch được thêm ở lane lời thoại, gộp nhóm, tiếng gốc bị tắt
+- **Chuẩn hoá âm lượng khi xuất**: `loudnorm` hai lượt về -14 LUFS (YouTube, TikTok, Instagram)
+  theo mặc định, hoặc -16 / -23 / tắt; chép nguyên luồng hình, chạy cho cả hai bộ dựng
 - **Cắt khoảng lặng**: dò chỗ im trong tiếng của clip đang chọn bằng ffmpeg `silencedetect`
   (không cần phiên âm), báo trước sẽ cắt bao nhiêu giây, chừa lại hơi cạnh lời nói; chọn chỉ co
   track của clip (nhạc nền đứng yên) hoặc cả video (phụ đề, chữ, marker trôi theo)

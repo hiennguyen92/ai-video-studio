@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { resolveCleanedVoices, resolveSilences } from './resolve-audio-tool-inputs'
 import type { McpApplyResult, McpBridgeRequest } from '../../../shared/ipc/ipc-contract'
 import { prepareMediaImport } from './use-media-import'
 import { buildProjectContext } from '../../../shared/ai/chat-context-builder'
@@ -346,11 +347,14 @@ export function useMcpBridge(): void {
 
             // Chép file phông TRƯỚC khi lập kế hoạch: planner là hàm thuần, chỉ
             // nhận đường dẫn có sẵn chứ không tự đọc byte phông được.
+            const selected = useEditorStore.getState().selection.clipIds
             void Promise.all([
               resolveFontFiles(calls),
               resolveSoundEffects(calls),
-              resolveImportedMedia(calls)
-            ]).then(([fontFiles, soundEffects, importedMedia]) => {
+              resolveImportedMedia(calls),
+              resolveSilences(calls, document, selected),
+              resolveCleanedVoices(calls, document, selected)
+            ]).then(([fontFiles, soundEffects, importedMedia, silences, cleanedVoices]) => {
               // Đọc lại trạng thái SAU khi chờ: phông, hiệu ứng âm thanh và nhập media
               // tốn thời gian, và một lời gọi khác (undo chẳng hạn) có thể đã đổi
               // dự án. Lập kế hoạch trên bản chụp cũ sẽ ghi đè thay đổi đó.
@@ -369,7 +373,9 @@ export function useMcpBridge(): void {
                   shots: Object.fromEntries(shotCache),
                   fontFiles,
                   soundEffects,
-                  importedMedia
+                  importedMedia,
+                  silences,
+                  cleanedVoices
                 },
                 calls
               )

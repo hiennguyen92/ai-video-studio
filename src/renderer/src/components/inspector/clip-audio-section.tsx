@@ -4,6 +4,7 @@ import type { Clip } from '../../../../shared/domain/timeline-track-types'
 import { useT } from '../../i18n/use-translation'
 import { SliderRow } from './inspector-slider-row'
 import { useKeyframeField } from './use-keyframe-field'
+import { ClipVoiceCleanupControl } from './clip-voice-cleanup-control'
 
 /** Tab Audio: âm lượng và fade vào/ra của clip. */
 export function ClipAudioSection({
@@ -66,6 +67,7 @@ export function ClipAudioSection({
         format={(value) => formatClockTime(value)}
         onCommit={(value) => onUpdate({ fadeOutUs: Math.round(value) }, t.inspector.fadeOut)}
       />
+      <ClipVoiceCleanupControl clipId={clip.id} />
     </>
   )
 }

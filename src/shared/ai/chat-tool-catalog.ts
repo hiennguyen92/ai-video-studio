@@ -98,6 +98,19 @@ export const chatToolSchemas = {
     clipId: optionalClipId
   }),
 
+  remove_silences: z.object({
+    clipId: optionalClipId,
+    thresholdDb: z.number().min(-80).max(-10).optional(),
+    minSilenceSeconds: z.number().min(0.2).max(10).optional(),
+    paddingSeconds: z.number().min(0).max(1).optional(),
+    scope: z.enum(['clip-tracks', 'all-tracks']).optional()
+  }),
+
+  clean_voice: z.object({
+    clipId: optionalClipId,
+    strength: z.enum(['light', 'medium', 'strong']).optional()
+  }),
+
   add_marker: z.object({
     atSeconds: seconds,
     label: z.string().max(200).optional(),
@@ -657,6 +670,10 @@ export const chatToolDescriptions: Record<ChatToolName, string> = {
     'Move a clip to a new start position, optionally onto another track. A clip in a group (group=… in the overview) moves its whole group by the same amount; a group spread over several tracks keeps its tracks.',
   ripple_delete_clip:
     'Delete a clip AND pull every later clip on the same lane back to close the gap. Other lanes stay where they are (music under the clip is not cut). A grouped clip takes its whole group with it, each lane closing its own gap. To shorten the whole video across every lane, use ripple_delete_range instead.',
+  remove_silences:
+    'Cut the quiet parts out of a clip that has sound (and its group), closing each gap — the classic tightening pass for talking-head footage. The app measures the audio itself with ffmpeg; no transcript is needed. thresholdDb (default -35) is the level below which audio counts as silence: raise it towards -30 for a noisy room. minSilenceSeconds (default 0.5) ignores shorter pauses, paddingSeconds (default 0.15) keeps that much silence next to speech so words are not clipped. scope "clip-tracks" (default) shrinks only the clip\'s own lanes so background music stays put; "all-tracks" shrinks the whole video so subtitles, text and markers stay in sync.',
+  clean_voice:
+    "Clean up the voice in a clip: removes low rumble and hum and reduces steady background noise (fans, hiss, room tone). Makes a new cleaned audio file; the original file is never touched. On an audio lane the clip simply switches to the cleaned audio. On a video clip that carries its own sound, the cleaned audio is added on a dialogue lane, grouped with the video, and the video's own sound is muted. Running it again with another strength replaces the earlier cleaned audio. strength: light (keeps the voice most natural), medium (default), strong (heavy noise, may sound slightly processed).",
   add_marker:
     'Put a named marker on the timeline at atSeconds — a chapter start, a spot to come back to. Markers belong to the whole video, not to a clip. Colours: red, orange, yellow, green, blue, purple (default blue). The Markers list in the project overview shows them with their ids. Markers also give the YouTube chapter list the user can copy.',
   update_marker: 'Rename, recolour or move a marker. Fields left out keep their value.',
@@ -769,6 +786,9 @@ export const chatToolParameterHints: Record<ChatToolName, string> = {
   move_clip: '{ clipId?: string, toSeconds: number, toTrackId?: string }',
   group_clips: '{ clipIds?: string[] }',
   ripple_delete_clip: '{ clipId?: string }',
+  remove_silences:
+    "{ clipId?: string, thresholdDb?: number, minSilenceSeconds?: number, paddingSeconds?: number, scope?: 'clip-tracks' | 'all-tracks' }",
+  clean_voice: "{ clipId?: string, strength?: 'light' | 'medium' | 'strong' }",
   add_marker:
     "{ atSeconds: number, label?: string, color?: 'red' | 'orange' | 'yellow' | 'green' | 'blue' | 'purple' }",
   update_marker:

@@ -1,5 +1,7 @@
 import { ipcMain, type WebContents } from 'electron'
 import { detectSilences } from '../media/silence-detection'
+import { cleanVoice } from '../media/voice-cleanup'
+import type { VoiceCleanupRequest } from '../../shared/ipc/voice-cleanup-types'
 import type { SilenceDetectionRequest } from '../../shared/ipc/silence-detection-types'
 import type {
   ChatMessageRecord,
@@ -93,6 +95,10 @@ export function registerTranscriptionIpcHandlers(): void {
       _event,
       request: { projectId: string; assetId: string; sourcePath: string; force?: boolean }
     ) => guard(async () => (await detectShotsForAsset(request)).shots)
+  )
+
+  ipcMain.handle(IPC.mediaCleanVoice, (_event, request: VoiceCleanupRequest) =>
+    guard(() => cleanVoice(request))
   )
 
   ipcMain.handle(IPC.mediaDetectSilences, (_event, request: SilenceDetectionRequest) =>

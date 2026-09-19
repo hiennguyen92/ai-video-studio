@@ -48,6 +48,7 @@ const api: RendererApi = {
     registerLocal: (entries) => ipcRenderer.invoke(IPC.mediaRegisterLocal, entries),
     detectShots: (request) => ipcRenderer.invoke(IPC.mediaDetectShots, request),
     detectSilences: (request) => ipcRenderer.invoke(IPC.mediaDetectSilences, request),
+    cleanVoice: (request) => ipcRenderer.invoke(IPC.mediaCleanVoice, request),
     readWaveform: (waveformPath) => ipcRenderer.invoke(IPC.mediaReadWaveform, waveformPath)
   },
   subtitle: {

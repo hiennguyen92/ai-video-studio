@@ -1,6 +1,7 @@
 import type { SttSegmentationMode } from '../ai/stt-segmentation'
 import type { ProjectVersionReason, ProjectVersionSummary } from './project-version-types'
 import type { SilenceDetectionRequest, SilenceInterval } from './silence-detection-types'
+import type { VoiceCleanupRequest } from './voice-cleanup-types'
 import type { SoundEffectLibraryStatus } from '../domain/sound-effect-catalog'
 import type { MediaAsset } from '../domain/media-asset-types'
 import type { ProjectDocument } from '../domain/project-document-types'
@@ -63,6 +64,7 @@ export const IPC = {
   mediaRegisterLocal: 'media:register-local',
   mediaDetectShots: 'media:detect-shots',
   mediaDetectSilences: 'media:detect-silences',
+  mediaCleanVoice: 'media:clean-voice',
   mcpRespond: 'mcp:respond',
   mcpStatus: 'mcp:status',
   mcpSetTokenRequired: 'mcp:set-token-required',
@@ -166,6 +168,11 @@ export interface ExportRequest {
   burnSubtitleTrackId?: string
   /** Xuất thêm file .srt nằm cạnh video. */
   exportSrtTrackId?: string
+  /**
+   * Chuẩn hoá độ to của file ra về mức này (LUFS), sau khi dựng xong. Vắng mặt
+   * hoặc `null` là giữ nguyên độ to như trên timeline.
+   */
+  loudnessLufs?: number | null
 }
 
 export type ExportStatus = 'running' | 'succeeded' | 'failed' | 'cancelled'
@@ -173,6 +180,8 @@ export type ExportStatus = 'running' | 'succeeded' | 'failed' | 'cancelled'
 export interface ExportProgressEvent {
   jobId: string
   status: ExportStatus
+  /** Đang ở bước nào; vắng mặt là đang dựng hình. */
+  phase?: 'render' | 'loudness'
   /** 0..1. Vắng mặt khi ffmpeg chưa báo mốc thời gian nào — KHÔNG bịa số. */
   ratio?: number
   outTimeUs: number
@@ -478,6 +487,8 @@ export interface RendererApi {
     }): Promise<IpcResult<DetectedShotDto[]>>
     /** Khoảng lặng trong tiếng của một đoạn file nguồn, mốc trên trục nguồn. */
     detectSilences(request: SilenceDetectionRequest): Promise<IpcResult<SilenceInterval[]>>
+    /** Làm sạch giọng của một asset, trả về asset MỚI (hoặc bản cũ trùng nội dung). */
+    cleanVoice(request: VoiceCleanupRequest): Promise<IpcResult<MediaAsset>>
     readWaveform(waveformPath: string): Promise<IpcResult<WaveformData>>
   }
   subtitle: {
