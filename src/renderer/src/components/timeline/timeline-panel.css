@@ -128,6 +128,19 @@
   gap: 1px;
 }
 
+/*
+  Thanh âm lượng của lane. Hẹp và thấp để vừa cả lane 40px — nó đứng cùng hàng
+  với các nút, không chiếm thêm chiều cao nào.
+*/
+.track-head__volume {
+  flex: 1;
+  min-width: 28px;
+  max-width: 64px;
+  height: 14px;
+  margin: 0 2px;
+  cursor: pointer;
+}
+
 .track-head__controls .button {
   height: 22px;
   width: 22px;

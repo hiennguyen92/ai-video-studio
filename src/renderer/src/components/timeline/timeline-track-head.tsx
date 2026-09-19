@@ -1,4 +1,4 @@
-import type { JSX, PointerEvent as ReactPointerEvent } from 'react'
+import { useState, type JSX, type PointerEvent as ReactPointerEvent } from 'react'
 import type { Track } from '../../../../shared/domain/timeline-track-types'
 import type { EditorCommand } from '../../../../shared/commands/editor-command-types'
 import { useEditorStore } from '../../state/editor-store'
@@ -35,6 +35,7 @@ export function TimelineTrackHead({
 }): JSX.Element {
   const t = useT()
   const run = useEditorStore((state) => state.run)
+  const [dragVolume, setDragVolume] = useState<number | null>(null)
   // Số câu phụ đề của lane này. Lane rỗng nhìn giống hệt lane chưa gắn track phụ
   // đề nào, mà hai chuyện đó cần sửa theo hai cách khác nhau.
   const blockCount = useEditorStore((state) => {
@@ -50,6 +51,14 @@ export function TimelineTrackHead({
 
   const update = (patch: TrackUpdatePatch, label: string): void => {
     run([{ type: 'track/update', trackId: track.id, patch }], label)
+  }
+
+  /** Ghi mức âm lượng đang kéo vào tài liệu, đúng một lần. */
+  const commitVolume = (): void => {
+    if (dragVolume === null) return
+    // Không ghi khi giá trị không đổi: một bước hoàn tác rỗng trông như lỗi.
+    if (dragVolume !== track.volume) update({ volume: dragVolume }, t.timeline.trackVolume)
+    setDragVolume(null)
   }
 
   return (
@@ -113,6 +122,40 @@ export function TimelineTrackHead({
               onClick={() => update({ solo: !track.solo }, t.timeline.solo)}
             />
           </>
+        )}
+
+        {/*
+          Thanh âm lượng cho lane CÓ TIẾNG.
+          
+          Mô hình và cả hai đường dựng đã nhân `track.volume` vào từ lâu, nhưng
+          đầu lane chưa từng có ô chỉnh — nên nó luôn bằng 1 trừ khi agent sửa,
+          và muốn hạ nhạc nền xuống dưới lời nói thì phải sửa từng clip một.
+          
+          Lane hình cũng nhận: clip video mang tiếng của chính nó, và bản dựng
+          áp `track.volume` cho chúng y như lane tiếng.
+        */}
+        {(track.kind === 'audio' || track.kind === 'video') && (
+          <input
+            type="range"
+            className="track-head__volume"
+            min={0}
+            max={2}
+            step={0.01}
+            value={dragVolume ?? track.volume}
+            aria-label={`${t.timeline.trackVolume} ${track.name}`}
+            title={`${t.timeline.trackVolume}: ${Math.round((dragVolume ?? track.volume) * 100)}%`}
+            // Giữ giá trị đang kéo ở state cục bộ, chỉ ghi vào tài liệu lúc THẢ.
+            // Lịch sử hoàn tác không gộp các bước liền nhau, nên ghi theo từng
+            // sự kiện kéo sẽ nhồi hàng chục bước cho một lần chỉnh — đúng lý do
+            // thanh trượt ở panel Thuộc tính cũng chờ thả mới ghi.
+            // `onChange` chứ không phải `onInput`: một input có `value` mà thiếu
+            // `onChange` bị React coi là chỉ đọc. Với thanh trượt, React bắn
+            // `onChange` theo từng bước kéo, nên nó đóng đúng vai "đang kéo".
+            onChange={(event) => setDragVolume(Number(event.target.value))}
+            onPointerUp={() => commitVolume()}
+            onKeyUp={() => commitVolume()}
+            onBlur={() => commitVolume()}
+          />
         )}
 
         <ToolButton

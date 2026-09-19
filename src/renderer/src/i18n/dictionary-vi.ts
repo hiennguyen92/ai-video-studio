@@ -207,6 +207,7 @@ export const dictionaryVi = {
     missingLibrary: 'Bản cài này thiếu bộ sound effect. Bản build đóng gói sai.'
   },
   timeline: {
+    trackVolume: 'Âm lượng lane',
     keyframeCopy: 'Chép keyframe',
     keyframePaste: 'Dán keyframe',
     keyframeDot: 'Keyframe',
