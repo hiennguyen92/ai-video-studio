@@ -80,8 +80,9 @@ giao diện chỉ lộ ra khi chuyển tab với dữ liệu thật.
 - [x] Thay đổi nhiều bước tạo bản đề xuất xem trước được rồi mới áp dụng
 - [x] Phát hiện project đã đổi trong lúc AI chạy (so `revision` trước khi ghi)
 - [x] Lịch sử hội thoại lưu theo project (`chat.json` cạnh project.json)
-- [x] Auto-ducking: giảm nhạc nền tại đoạn có lời nói — cắt nhạc tại ranh giới lời
-      nói rồi hạ âm lượng mảnh ở giữa. Chuyển mức là bậc thang, chưa có automation.
+- [x] Auto-ducking: giảm nhạc nền tại đoạn có lời nói — ghi đường keyframe `volume`
+      lên từng clip nhạc (dốc xuống, giữ, dốc lên), không cắt clip. Chạy lại thì
+      thay đường cũ; dốc vắt qua chỗ nối hai clip vẫn khớp giá trị.
 - [x] Tạo nhạc bằng mô tả — ElevenLabs Music (`POST /v1/music`), dùng chung khoá với
       phần giọng đọc. Hình dạng API đọc từ tài liệu chính thức, không theo trí nhớ.
       **Chưa gọi thật lần nào**: chưa có khoá ElevenLabs còn hiệu lực; mới kiểm
@@ -90,8 +91,6 @@ giao diện chỉ lộ ra khi chuyển tab với dữ liệu thật.
 **Còn lại của Mốc 4:**
 
 - Đường gọi ElevenLabs Music chưa xác nhận bằng khoá thật.
-- Auto-ducking chuyển mức theo bậc thang; muốn dốc mượt phải thêm automation âm
-  lượng vào mô hình clip, không phải mẹo với fade.
 
 ## Mốc 5 — Agent bên ngoài dựng phim (MCP)
 

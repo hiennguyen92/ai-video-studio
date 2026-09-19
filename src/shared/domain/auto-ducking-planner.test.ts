@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { applyEditorCommand } from '../commands/editor-command-reducer'
 import { createEmptyProject } from './project-document-factory'
 import type { ProjectDocument } from './project-document-types'
-import { clipEndUs } from './timeline-track-types'
+import type { Clip } from './timeline-track-types'
 import {
   collectSpeechIntervals,
   guessDuckingTracks,
@@ -17,8 +17,8 @@ import {
  *   1. Nội dung lệnh sinh ra có đúng không.
  *   2. Chạy chuỗi lệnh đó qua reducer THẬT có ra đúng kết quả không.
  *
- * Lớp thứ hai mới là lớp quan trọng: lệnh cắt sau tham chiếu tới mảnh do lệnh cắt
- * trước tạo ra, nên chỉ nhìn danh sách lệnh thì không thể biết chuỗi có chạy được.
+ * Lớp thứ hai mới là lớp quan trọng: reducer là nơi kiểm đường dẫn keyframe và
+ * kẹp giá trị, nên chỉ nhìn danh sách lệnh thì không biết keyframe có vào được.
  */
 
 let counter = 0
@@ -68,7 +68,7 @@ function addClip(
   return clipId
 }
 
-const OPTIONS = { duckVolume: 0.25, baseVolume: 1, paddingUs: 0, makeId }
+const OPTIONS = { duckVolume: 0.25, baseVolume: 1, paddingUs: 0, rampUs: 300_000 }
 
 describe('mergeIntervals', () => {
   it('gộp hai khoảng chồng nhau', () => {
@@ -132,6 +132,25 @@ describe('collectSpeechIntervals', () => {
 })
 
 describe('planAutoDucking', () => {
+  function run(document: ProjectDocument, music: string, speech: string, extra = {}): number {
+    const plan = planAutoDucking(document, {
+      ...OPTIONS,
+      ...extra,
+      musicTrackIds: [music],
+      speechTrackIds: [speech]
+    })
+    // Chạy thật qua reducer: reducer mới là nơi kiểm đường dẫn và khoảng giá trị.
+    for (const command of plan.commands) {
+      const result = applyEditorCommand(document, command)
+      expect(result.ok).toBe(true)
+    }
+    return plan.duckedClips
+  }
+
+  function musicClips(document: ProjectDocument, music: string): Clip[] {
+    return document.tracks.find((track) => track.id === music)?.clips ?? []
+  }
+
   it('không làm gì khi không có lời nói nào', () => {
     const document = projectWithTracks()
     const { music, speech } = trackIds(document)
@@ -143,76 +162,101 @@ describe('planAutoDucking', () => {
       speechTrackIds: [speech]
     })
     expect(plan.commands).toEqual([])
-    expect(plan.duckedPieces).toBe(0)
+    expect(plan.duckedClips).toBe(0)
   })
 
-  it('cắt nhạc tại ranh giới lời nói và hạ âm lượng đúng mảnh giữa', () => {
+  it('không cắt nhạc, đặt dốc xuống trước và dốc lên sau lời nói', () => {
     const document = projectWithTracks()
     const { music, speech } = trackIds(document)
     addClip(document, music, 0, 10_000_000)
     addClip(document, speech, 3_000_000, 2_000_000)
 
-    const plan = planAutoDucking(document, {
-      ...OPTIONS,
-      musicTrackIds: [music],
-      speechTrackIds: [speech]
-    })
+    expect(run(document, music, speech)).toBe(1)
 
-    // Chạy thật qua reducer: đây mới là bằng chứng chuỗi lệnh móc nối đúng.
-    for (const command of plan.commands) {
-      const result = applyEditorCommand(document, command)
-      expect(result.ok).toBe(true)
-    }
-
-    const clips = document.tracks.find((track) => track.id === music)?.clips ?? []
-    expect(clips).toHaveLength(3)
-    expect(clips.map((clip) => [clip.startUs, clipEndUs(clip), clip.volume])).toEqual([
-      [0, 3_000_000, 1],
-      [3_000_000, 5_000_000, 0.25],
-      [5_000_000, 10_000_000, 1]
+    const clips = musicClips(document, music)
+    expect(clips).toHaveLength(1)
+    expect(clips[0].volume).toBe(1)
+    expect(clips[0].keyframes?.volume).toEqual([
+      { atUs: 0, v: 1 },
+      { atUs: 2_700_000, v: 1 },
+      { atUs: 3_000_000, v: 0.25 },
+      { atUs: 5_000_000, v: 0.25 },
+      { atUs: 5_300_000, v: 1 },
+      { atUs: 10_000_000, v: 1 }
     ])
   })
 
-  it('lời nói phủ kín clip nhạc thì hạ cả clip, không cắt vô ích', () => {
+  it('mốc keyframe tính từ mép đầu clip, không phải giờ timeline', () => {
+    const document = projectWithTracks()
+    const { music, speech } = trackIds(document)
+    addClip(document, music, 2_000_000, 8_000_000)
+    addClip(document, speech, 5_000_000, 1_000_000)
+
+    run(document, music, speech)
+    expect(musicClips(document, music)[0].keyframes?.volume?.[2]).toEqual({
+      atUs: 3_000_000,
+      v: 0.25
+    })
+  })
+
+  it('lời nói phủ kín clip nhạc thì cả clip nằm ở mức thấp', () => {
     const document = projectWithTracks()
     const { music, speech } = trackIds(document)
     addClip(document, music, 2_000_000, 2_000_000)
     addClip(document, speech, 0, 10_000_000)
 
-    const plan = planAutoDucking(document, {
-      ...OPTIONS,
-      musicTrackIds: [music],
-      speechTrackIds: [speech]
-    })
-    for (const command of plan.commands) {
-      expect(applyEditorCommand(document, command).ok).toBe(true)
-    }
-
-    const clips = document.tracks.find((track) => track.id === music)?.clips ?? []
-    expect(clips).toHaveLength(1)
-    expect(clips[0].volume).toBe(0.25)
-    expect(plan.commands.some((command) => command.type === 'clip/split')).toBe(false)
+    run(document, music, speech)
+    expect(musicClips(document, music)[0].keyframes?.volume).toEqual([
+      { atUs: 0, v: 0.25 },
+      { atUs: 2_000_000, v: 0.25 }
+    ])
   })
 
-  it('hai đoạn nói tách rời cắt nhạc thành năm mảnh', () => {
+  it('dốc vắt qua chỗ nối hai clip nhạc thì hai mép khớp giá trị', () => {
+    const document = projectWithTracks()
+    const { music, speech } = trackIds(document)
+    addClip(document, music, 0, 5_000_000)
+    addClip(document, music, 5_000_000, 5_000_000)
+    // Dốc xuống chạy từ 4,8 s tới 5,2 s — đúng qua chỗ nối.
+    addClip(document, speech, 5_200_000, 1_000_000)
+
+    expect(run(document, music, speech, { rampUs: 400_000 })).toBe(2)
+    const [first, second] = musicClips(document, music)
+    expect(first.keyframes?.volume?.at(-1)).toEqual({ atUs: 5_000_000, v: 0.625 })
+    expect(second.keyframes?.volume?.[0]).toEqual({ atUs: 0, v: 0.625 })
+  })
+
+  it('hai câu sát nhau thì nhạc nằm dưới luôn, không lên rồi xuống lại', () => {
     const document = projectWithTracks()
     const { music, speech } = trackIds(document)
     addClip(document, music, 0, 10_000_000)
     addClip(document, speech, 2_000_000, 1_000_000)
-    addClip(document, speech, 6_000_000, 1_000_000)
+    // Khoảng trống 0,4 s < hai dốc 0,3 s.
+    addClip(document, speech, 3_400_000, 1_000_000)
 
-    const plan = planAutoDucking(document, {
-      ...OPTIONS,
-      musicTrackIds: [music],
-      speechTrackIds: [speech]
-    })
-    for (const command of plan.commands) {
-      expect(applyEditorCommand(document, command).ok).toBe(true)
-    }
+    run(document, music, speech)
+    const values = musicClips(document, music)[0].keyframes?.volume?.map((frame) => frame.v)
+    expect(values).toEqual([1, 1, 0.25, 0.25, 1, 1])
+  })
 
-    const clips = document.tracks.find((track) => track.id === music)?.clips ?? []
-    expect(clips.map((clip) => clip.volume)).toEqual([1, 0.25, 1, 0.25, 1])
-    expect(plan.duckedPieces).toBe(2)
+  it('chạy lại sau khi dời lời nói thì đường cũ bị thay, clip hết trùng thì về mức nền', () => {
+    const document = projectWithTracks()
+    const { music, speech } = trackIds(document)
+    const early = addClip(document, music, 0, 5_000_000)
+    addClip(document, music, 5_000_000, 5_000_000)
+    const line = addClip(document, speech, 2_000_000, 1_000_000)
+
+    run(document, music, speech)
+    expect(musicClips(document, music)[0].keyframes?.volume).toBeDefined()
+
+    applyEditorCommand(document, { type: 'clip/move', clipId: line, toStartUs: 7_000_000 })
+    run(document, music, speech)
+
+    const clips = musicClips(document, music)
+    const moved = clips.find((clip) => clip.id === early)
+    expect(moved?.keyframes?.volume).toBeUndefined()
+    expect(moved?.volume).toBe(1)
+    expect(clips[1].keyframes?.volume?.[2]).toEqual({ atUs: 2_000_000, v: 0.25 })
   })
 
   it('chạy lại lần hai cho ra đúng kết quả lần một', () => {
@@ -221,25 +265,12 @@ describe('planAutoDucking', () => {
     addClip(document, music, 0, 10_000_000)
     addClip(document, speech, 3_000_000, 2_000_000)
 
-    const first = planAutoDucking(document, {
-      ...OPTIONS,
-      musicTrackIds: [music],
-      speechTrackIds: [speech]
-    })
-    for (const command of first.commands) applyEditorCommand(document, command)
-    const after = document.tracks.find((track) => track.id === music)?.clips.map((c) => c.volume)
-
-    const second = planAutoDucking(document, {
-      ...OPTIONS,
-      musicTrackIds: [music],
-      speechTrackIds: [speech]
-    })
-    for (const command of second.commands) applyEditorCommand(document, command)
+    run(document, music, speech)
+    const after = structuredClone(musicClips(document, music))
+    run(document, music, speech)
 
     // Âm lượng không được nhỏ dần sau mỗi lần chạy.
-    expect(document.tracks.find((track) => track.id === music)?.clips.map((c) => c.volume)).toEqual(
-      after
-    )
+    expect(musicClips(document, music)).toEqual(after)
   })
 
   it('không đụng tới clip trên track không được chọn', () => {
@@ -254,7 +285,13 @@ describe('planAutoDucking', () => {
       speechTrackIds: [speech]
     })
     const touchedIds = new Set(
-      plan.commands.map((command) => ('clipId' in command ? (command.clipId as string) : ''))
+      plan.commands.map((command) =>
+        'clipId' in command
+          ? (command.clipId as string)
+          : 'target' in command && command.target.kind === 'clip'
+            ? command.target.clipId
+            : ''
+      )
     )
     const speechClipIds =
       document.tracks.find((track) => track.id === speech)?.clips.map((clip) => clip.id) ?? []

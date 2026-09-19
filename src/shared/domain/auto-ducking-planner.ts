@@ -2,18 +2,17 @@ import type { EditorCommand } from '../commands/editor-command-types'
 import type { ProjectDocument } from './project-document-types'
 import { clipEndUs } from './timeline-track-types'
 import type { Micros } from './time-units'
+import { buildDuckEnvelope, envelopeKeyframesForClip } from './auto-ducking-volume-envelope'
 
 /**
  * Tự động giảm nhạc nền ở những đoạn có lời nói (DESCRIPTION §3, §5).
  *
- * Mô hình dữ liệu chỉ có âm lượng theo TỪNG CLIP, không có đường automation theo
- * thời gian. Nên cách làm ở đây là: cắt clip nhạc tại ranh giới lời nói rồi đặt
- * âm lượng thấp cho những mảnh nằm trong vùng có tiếng.
+ * Mỗi clip nhạc nhận một đường keyframe `volume`: dốc xuống trước câu nói, giữ
+ * mức thấp suốt câu, dốc lên sau khi dứt lời. Clip KHÔNG bị cắt — cắt thành mảnh
+ * với mức tĩnh từng mảnh là cách cũ, và nó nghe ra bậc thang.
  *
- * Hệ quả phải nói thẳng: chuyển mức là BẬC THANG, không phải dốc mượt. Không thể
- * dùng fadeIn/fadeOut để làm dốc, vì chúng luôn ramp từ/về IM LẶNG — dùng vào đây
- * nhạc sẽ tụt hẳn xuống 0 rồi mới lên lại, nghe tệ hơn hẳn một bậc nhảy. Muốn dốc
- * thật thì phải thêm automation vào mô hình clip, không phải mẹo với fade.
+ * Không dùng fadeIn/fadeOut để làm dốc: chúng luôn ramp từ/về IM LẶNG, dùng vào
+ * đây nhạc sẽ tụt hẳn xuống 0 rồi mới lên lại.
  *
  * Kế hoạch trả về là danh sách lệnh đã có sẵn của trình sửa, nên AI Chat gọi được
  * mà không cần đường ghi riêng nào vào project.
@@ -35,7 +34,8 @@ export interface AutoDuckingOptions {
    * bị giật; và chữ đầu câu dễ bị nhạc át.
    */
   paddingUs: Micros
-  makeId(): string
+  /** Độ dài mỗi đoạn dốc, nằm ngoài phần nới. Kẹp tối thiểu `MIN_DUCK_RAMP_US`. */
+  rampUs: Micros
 }
 
 export interface Interval {
@@ -85,14 +85,10 @@ export function collectSpeechIntervals(
   return mergeIntervals(raw)
 }
 
-function overlaps(clipStart: Micros, clipEnd: Micros, interval: Interval): boolean {
-  return interval.startUs < clipEnd && interval.endUs > clipStart
-}
-
 export interface AutoDuckingPlan {
   commands: EditorCommand[]
-  /** Số mảnh nhạc bị hạ âm lượng — dùng để báo lại cho người dùng. */
-  duckedPieces: number
+  /** Số clip nhạc bị hạ âm lượng — dùng để báo lại cho người dùng. */
+  duckedClips: number
   /** Không có lời nói nào thì không có gì để làm. */
   speechIntervals: Interval[]
 }
@@ -100,9 +96,10 @@ export interface AutoDuckingPlan {
 /**
  * Dựng kế hoạch giảm nhạc.
  *
- * Đặt âm lượng TUYỆT ĐỐI cho cả mảnh bị giảm lẫn mảnh không bị giảm, thay vì nhân
- * vào âm lượng sẵn có. Nhờ vậy chạy lại lần hai cho ra đúng kết quả lần một; nhân
- * dồn sẽ khiến mỗi lần chạy lại làm nhạc nhỏ dần đi mà không ai hiểu vì sao.
+ * Ghi đè TOÀN BỘ đường keyframe âm lượng và đặt mức nền TUYỆT ĐỐI cho mọi clip
+ * trên track nhạc, thay vì nhân vào thứ sẵn có. Nhờ vậy chạy lại lần hai cho ra
+ * đúng kết quả lần một, và chạy lại sau khi dời lời nói thì đường cũ không nằm
+ * lại chồng lên đường mới.
  */
 export function planAutoDucking(
   document: ProjectDocument,
@@ -114,59 +111,45 @@ export function planAutoDucking(
     options.paddingUs
   )
   if (speechIntervals.length === 0) {
-    return { commands: [], duckedPieces: 0, speechIntervals }
+    return { commands: [], duckedClips: 0, speechIntervals }
   }
 
+  const envelope = buildDuckEnvelope(
+    speechIntervals,
+    options.rampUs,
+    options.duckVolume,
+    options.baseVolume
+  )
   const commands: EditorCommand[] = []
-  let duckedPieces = 0
+  let duckedClips = 0
 
   for (const track of document.tracks) {
     if (!options.musicTrackIds.includes(track.id)) continue
 
     for (const clip of track.clips) {
-      const startUs = clip.startUs
-      const endUs = clipEndUs(clip)
+      const keyframes = envelopeKeyframesForClip(
+        envelope,
+        clip.startUs,
+        clipEndUs(clip),
+        options.baseVolume
+      )
+      if (keyframes) duckedClips += 1
 
-      // Mọi ranh giới lời nói rơi vào GIỮA clip đều là một điểm cắt.
-      const cutPoints = [
-        ...new Set(
-          speechIntervals
-            .flatMap((interval) => [interval.startUs, interval.endUs])
-            .filter((point) => point > startUs && point < endUs)
-        )
-      ].sort((left, right) => left - right)
-
-      // Mỗi lần cắt sinh ra một mảnh mới; id được cấp trước để lệnh sau tham
-      // chiếu được vào mảnh do lệnh trước tạo ra.
-      const pieces: Array<{ id: string; startUs: Micros; endUs: Micros }> = []
-      let currentId = clip.id
-      let currentStart = startUs
-
-      for (const point of cutPoints) {
-        const newId = options.makeId()
-        commands.push({ type: 'clip/split', clipId: currentId, atUs: point, newClipId: newId })
-        pieces.push({ id: currentId, startUs: currentStart, endUs: point })
-        currentId = newId
-        currentStart = point
-      }
-      pieces.push({ id: currentId, startUs: currentStart, endUs })
-
-      for (const piece of pieces) {
-        const ducked = speechIntervals.some((interval) =>
-          overlaps(piece.startUs, piece.endUs, interval)
-        )
-        if (ducked) duckedPieces += 1
-
+      // Mức tĩnh cũng đặt về nền: xoá tay đường keyframe sau này thì clip trở về
+      // mức bình thường chứ không về một con số cũ nào đó.
+      commands.push({ type: 'clip/update', clipId: clip.id, patch: { volume: options.baseVolume } })
+      // Đường rỗng xoá hẳn khoá — chỉ gửi khi clip đang có đường để xoá.
+      if (keyframes || clip.keyframes?.['volume']) {
         commands.push({
-          type: 'clip/update',
-          clipId: piece.id,
-          patch: { volume: ducked ? options.duckVolume : options.baseVolume }
+          type: 'keyframe/set-tracks',
+          target: { kind: 'clip', clipId: clip.id },
+          tracks: { volume: keyframes ?? [] }
         })
       }
     }
   }
 
-  return { commands, duckedPieces, speechIntervals }
+  return { commands, duckedClips, speechIntervals }
 }
 
 /** Track nhạc và track lời nói mà tính năng này nhắm tới, suy từ vai trò của track. */

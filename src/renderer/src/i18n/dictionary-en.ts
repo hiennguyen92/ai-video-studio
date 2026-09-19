@@ -593,16 +593,15 @@ export const dictionaryEn: Dictionary = {
   },
   ducking: {
     section: 'Lower music under speech',
-    hint: 'Cuts the music at speech boundaries and lowers the overlapping pieces. Works right away, no AI key needed.',
+    hint: 'Writes volume keyframes on the music clips: ramps down before each line, back up after — no cutting. Running it again replaces the old curve. No AI key needed.',
     duckVolume: 'Volume under speech (%)',
     baseVolume: 'Normal volume (%)',
     padding: 'Padding each side (seconds)',
+    ramp: 'Ramp length (seconds)',
     apply: 'Apply',
     needsBoth: 'Needs both music and speech clips on the timeline.',
-    applied: 'Lowered {count} music sections',
-    nothing: 'No music overlaps any speech',
-    stepNote:
-      'The level changes in a step rather than a ramp — clips currently carry a single volume each.'
+    applied: 'Ducking curve set on {count} clips',
+    nothing: 'No music overlaps any speech'
   },
   mcp: {
     section: 'External agent connection (MCP)',

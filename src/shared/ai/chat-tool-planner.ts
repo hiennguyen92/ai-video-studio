@@ -1449,15 +1449,15 @@ function planOne(context: ChatEditContext, tool: ChatToolName, args: unknown): P
         duckVolume: input.duckVolume ?? 0.25,
         baseVolume: input.baseVolume ?? 1,
         paddingUs: secondsToMicros(input.paddingSeconds ?? 0.25),
-        makeId: context.makeId
+        rampUs: secondsToMicros(input.rampSeconds ?? 0.3)
       })
 
-      if (plan.commands.length === 0) {
+      if (plan.duckedClips === 0) {
         throw new Error('Không có đoạn nhạc nào trùng với lời nói')
       }
       return {
         tool,
-        description: `Giảm nhạc ở ${plan.duckedPieces} đoạn có lời nói`,
+        description: `Giảm nhạc ở ${plan.duckedClips} clip nhạc có lời nói đè lên`,
         commands: plan.commands
       }
     }

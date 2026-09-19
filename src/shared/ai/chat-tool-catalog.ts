@@ -527,7 +527,8 @@ export const chatToolSchemas = {
   auto_duck_music: z.object({
     duckVolume: gain.optional(),
     baseVolume: gain.optional(),
-    paddingSeconds: seconds.optional()
+    paddingSeconds: seconds.optional(),
+    rampSeconds: z.number().min(0.1).max(5).optional()
   }),
 
   /**
@@ -632,7 +633,7 @@ export const chatToolDescriptions: Record<ChatToolName, string> = {
   create_subtitle_track:
     'Build a subtitle track from an existing transcript, optionally using a translation, optionally bilingual. Requires a transcript to already exist.',
   auto_duck_music:
-    'Lower music volume wherever there is speech, by cutting the music at speech boundaries and setting a lower volume on those pieces.',
+    'Lower music volume wherever there is speech. Writes a volume keyframe curve on each music clip — ramps down before each line, holds, ramps back up after — without cutting the music. Re-running replaces the previous curve instead of stacking on it. duckVolume/baseVolume default 0.25/1, paddingSeconds (how early the music is fully down, and how long it stays down after) defaults to 0.25, rampSeconds (length of each ramp, 0.1 to 5) defaults to 0.3.',
   insert_clip:
     'Place a VIDEO or AUDIO asset from the library onto a timeline track. NOT for still images — use insert_image for those; this tool rejects them. Leave durationSeconds out to use the whole remaining source from sourceInSeconds onward; a duration longer than the source is clamped to it.',
   insert_image:
@@ -733,7 +734,8 @@ export const chatToolParameterHints: Record<ChatToolName, string> = {
   set_track_muted: '{ trackId: string, muted: boolean }',
   rename_project: '{ name: string }',
   create_subtitle_track: '{ transcriptId?: string, translationId?: string, bilingual?: boolean }',
-  auto_duck_music: '{ duckVolume?: number, baseVolume?: number, paddingSeconds?: number }',
+  auto_duck_music:
+    '{ duckVolume?: number, baseVolume?: number, paddingSeconds?: number, rampSeconds?: number }',
   insert_clip:
     '{ assetId: string, trackId?: string, startSeconds: number, sourceInSeconds?: number, durationSeconds?: number }',
   insert_image:

@@ -591,16 +591,15 @@ export const dictionaryVi = {
   },
   ducking: {
     section: 'Giảm nhạc khi có lời nói',
-    hint: 'Cắt nhạc tại ranh giới lời nói rồi hạ âm lượng những đoạn trùng. Chạy được ngay, không cần khoá AI nào.',
+    hint: 'Đặt keyframe âm lượng lên clip nhạc: dốc xuống trước câu nói, dốc lên sau khi dứt lời — không cắt clip. Chạy lại sẽ thay đường cũ. Không cần khoá AI nào.',
     duckVolume: 'Âm lượng khi có lời (%)',
     baseVolume: 'Âm lượng bình thường (%)',
     padding: 'Nới hai đầu (giây)',
+    ramp: 'Độ dài dốc (giây)',
     apply: 'Áp dụng',
     needsBoth: 'Cần có cả clip nhạc và clip lời nói trên timeline.',
-    applied: 'Đã hạ âm lượng {count} đoạn nhạc',
-    nothing: 'Không có đoạn nhạc nào trùng với lời nói',
-    stepNote:
-      'Mức âm lượng đổi theo bậc, chưa có dốc mượt — mô hình clip hiện chỉ có âm lượng cho cả clip.'
+    applied: 'Đã đặt đường hạ nhạc cho {count} clip',
+    nothing: 'Không có đoạn nhạc nào trùng với lời nói'
   },
   mcp: {
     section: 'Kết nối agent bên ngoài (MCP)',

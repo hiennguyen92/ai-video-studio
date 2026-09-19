@@ -115,7 +115,7 @@ Phím tắt **không** kích hoạt khi con trỏ đang ở trong ô nhập li�
 - **Lồng tiếng theo bản dịch**: đo thời lượng thật, phát hiện tràn giờ, ba lối thoát, không cắt lời
 - **AI Chat và MCP**: agent đọc dự án và sửa qua cùng tập lệnh với giao diện; agent ngoài (Claude
   Code) nối vào qua máy chủ MCP trên loopback
-- **Auto-ducking**: hạ nhạc nền ở đoạn có lời nói
+- **Auto-ducking**: hạ nhạc nền ở đoạn có lời nói bằng keyframe âm lượng — dốc mượt, không cắt clip
 - **Keyframe**: transform clip, âm lượng clip, thông số effect kiểu số, vị trí/cỡ/góc chữ
   overlay; năm kiểu nội suy; chép/dán cụm keyframe giữa các clip
 - **Chép/dán clip** bằng Cmd+C / Cmd+V, giữ nguyên mọi thuộc tính
