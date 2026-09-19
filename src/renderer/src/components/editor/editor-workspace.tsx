@@ -7,6 +7,7 @@ import type { MissingMediaReport } from '../../../../shared/ipc/ipc-contract'
 import { findFreeSlot } from '../../../../shared/commands/timeline-mutations'
 import { selectDocument, useEditorStore } from '../../state/editor-store'
 import { useMediaImport } from '../../hooks/use-media-import'
+import { useMediaRelink } from '../../hooks/use-media-relink'
 import { useProjectAutosave } from '../../hooks/use-project-autosave'
 import { useMcpBridge } from '../../hooks/use-mcp-bridge'
 import { useKeyboardShortcuts } from '../../hooks/use-keyboard-shortcuts'
@@ -17,6 +18,7 @@ import { InspectorPanel } from '../inspector/inspector-panel'
 import { TimelinePanel } from '../timeline/timeline-panel'
 import { ExportDialog } from '../export/export-dialog'
 import { EditorTopBar } from './editor-top-bar'
+import { ToolButton } from '../ui/tool-button'
 
 /**
  * Bố cục vùng làm việc (DESCRIPTION §2).
@@ -48,6 +50,7 @@ export function EditorWorkspace({
   const [exportOpen, setExportOpen] = useState(false)
 
   const { importing, pickAndImport } = useMediaImport()
+  const { relinking, relink } = useMediaRelink()
   useProjectAutosave()
   // Cho agent bên ngoài (Claude Code) đọc và sửa dự án đang mở qua MCP.
   useMcpBridge()
@@ -144,6 +147,28 @@ export function EditorWorkspace({
             {interpolate(t.errors.missingMediaTitle, { count: missingMedia.length })} ·{' '}
             {t.errors.missingMediaHint}
           </span>
+          {/*
+            Một nút cho TỪNG file, không phải một nút chọn cả thư mục: hai media
+            khác nhau có thể trùng tên, và đoán sai thì clip trỏ sang nhầm cảnh
+            quay — kiểu hỏng chỉ lộ ra lúc xem lại bản dựng.
+          */}
+          {missingMedia.map((report) => (
+            <ToolButton
+              key={report.assetId}
+              label={`${t.errors.relink}: ${report.name}`}
+              variant="outline"
+              disabled={relinking !== null}
+              onClick={() => {
+                void relink(report).then((ok) => {
+                  // Bỏ khỏi banner ngay khi nối xong, thay vì chờ lượt quét sau.
+                  if (ok)
+                    setMissingMedia((list) =>
+                      list.filter((item) => item.assetId !== report.assetId)
+                    )
+                })
+              }}
+            />
+          ))}
         </div>
       )}
 
