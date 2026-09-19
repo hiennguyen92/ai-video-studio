@@ -1,4 +1,5 @@
-import { BrowserWindow, app, session, shell } from 'electron'
+import { BrowserWindow, app, ipcMain, session, shell } from 'electron'
+import { IPC, IPC_EVENT } from '../shared/ipc/ipc-contract'
 import { electronApp, is, optimizer } from '@electron-toolkit/utils'
 import { join } from 'node:path'
 import { registerIpcHandlers } from './ipc/register-ipc-handlers'
@@ -52,6 +53,18 @@ if (userDataOverride) {
   app.setPath('userData', join(app.getPath('appData'), 'ai-video-studio'))
 }
 
+/** Thời gian tối đa chờ renderer ghi nốt trước khi đóng cửa sổ. */
+const FLUSH_TIMEOUT_MS = 5000
+
+/**
+ * Người dùng đang THOÁT app (Cmd+Q), không chỉ đóng cửa sổ.
+ *
+ * Hoãn sự kiện `close` của cửa sổ giữa lúc thoát là HUỶ luôn lần thoát đó. Nên
+ * ghi xong phải gọi lại `app.quit()`, không chỉ đóng cửa sổ — không thì trên macOS
+ * app ở lại chạy ngầm mà không còn cửa sổ nào.
+ */
+let quitRequested = false
+
 function createMainWindow(): BrowserWindow {
   const window = new BrowserWindow({
     width: 1600,
@@ -74,6 +87,28 @@ function createMainWindow(): BrowserWindow {
   })
 
   window.on('ready-to-show', () => window.show())
+
+  // Đóng cửa sổ: hoãn lại, nhờ renderer ghi nốt sửa đổi đang chờ autosave, rồi mới
+  // đóng thật. Không có bước này thì đóng app trong 1,2 s sau lần sửa cuối là mất
+  // sửa đổi đó. Chờ tối đa FLUSH_TIMEOUT_MS: renderer treo thì vẫn phải đóng được.
+  let closeAllowed = false
+  window.on('close', (event) => {
+    if (closeAllowed || window.webContents.isDestroyed()) return
+    event.preventDefault()
+    const finish = (): void => {
+      clearTimeout(timer)
+      ipcMain.removeListener(IPC.appFlushDone, onDone)
+      closeAllowed = true
+      if (quitRequested) app.quit()
+      else window.close()
+    }
+    const onDone = (ipcEvent: Electron.IpcMainEvent): void => {
+      if (ipcEvent.sender === window.webContents) finish()
+    }
+    const timer = setTimeout(finish, FLUSH_TIMEOUT_MS)
+    ipcMain.on(IPC.appFlushDone, onDone)
+    window.webContents.send(IPC_EVENT.flushBeforeClose)
+  })
 
   // Sự kiện job được đẩy tới đúng cửa sổ đã mở nó; ngắt kết nối khi cửa sổ đóng
   // để không gửi vào một webContents đã bị huỷ.
@@ -144,6 +179,7 @@ void app.whenReady().then(async () => {
 })
 
 app.on('before-quit', () => {
+  quitRequested = true
   // Không để lại tiến trình ffmpeg mồ côi hay request đang bay khi người dùng thoát.
   cancelAllExports()
   cancelAllModelDownloads()

@@ -1,10 +1,15 @@
 import type { JSX } from 'react'
-import { formatClockTime } from '../../../../shared/domain/time-units'
 import type { Clip } from '../../../../shared/domain/timeline-track-types'
 import { useT } from '../../i18n/use-translation'
 import { SliderRow } from './inspector-slider-row'
 import { useKeyframeField } from './use-keyframe-field'
 import { ClipVoiceCleanupControl } from './clip-voice-cleanup-control'
+
+/**
+ * Fade tính bằng giây, hai chữ số lẻ: fade dài tối đa 5 s, nên mã thời gian đầy
+ * đủ "00:00:00.000" chỉ tốn chỗ và ép thanh trượt còn một mẩu.
+ */
+const formatFadeSeconds = (us: number): string => `${(us / 1_000_000).toFixed(2)} s`
 
 /** Tab Audio: âm lượng và fade vào/ra của clip. */
 export function ClipAudioSection({
@@ -55,7 +60,7 @@ export function ClipAudioSection({
         min={0}
         max={maxFadeUs}
         step={10_000}
-        format={(value) => formatClockTime(value)}
+        format={formatFadeSeconds}
         onCommit={(value) => onUpdate({ fadeInUs: Math.round(value) }, t.inspector.fadeIn)}
       />
       <SliderRow
@@ -64,7 +69,7 @@ export function ClipAudioSection({
         min={0}
         max={maxFadeUs}
         step={10_000}
-        format={(value) => formatClockTime(value)}
+        format={formatFadeSeconds}
         onCommit={(value) => onUpdate({ fadeOutUs: Math.round(value) }, t.inspector.fadeOut)}
       />
       <ClipVoiceCleanupControl clipId={clip.id} />

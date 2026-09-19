@@ -215,7 +215,10 @@ ghi vào backlog rõ ràng."
   nên cả hai bộ dựng dùng được), ảnh PNG bằng `renderStill`. Ripple xoá nay dời
   cả chữ overlay (trước đây bỏ quên). Việc nhỏ: bảng phím tắt (`?`), nút đổi khung
   ngay trong cảnh báo của mẫu xuất, ngưỡng im tự đo theo nền nhiễu, đứng hình
-  (`freeze_frame`), nhân bản dự án
+  (`freeze_frame`), nhân bản dự án. Soát giao diện: sửa lỗi MẤT sửa đổi khi rời dự án hoặc
+  đóng app trong 1,2 s sau lần sửa cuối (ghi nốt trước khi rời, mọi lần ghi xếp
+  một hàng đợi); nút Xuất video bị đẩy ra ngoài cửa sổ hẹp; thêm
+  `e2e/layout-guards.spec.ts` đo toạ độ ở cỡ cửa sổ nhỏ nhất, cả hai ngôn ngữ
 - Xuất: thêm định dạng ngoài MP4/H.264 (MOV, WebM, HEVC), xuất chỉ tiếng, hàng
   đợi nhiều bản. **Đã xong:** chất lượng, mẫu nền tảng, xuất đoạn, ảnh PNG
 - Bám đối tượng và tự cắt khung theo chủ thể

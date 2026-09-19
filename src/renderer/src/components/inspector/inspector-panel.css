@@ -21,15 +21,17 @@
 }
 
 .inspector__slider-value {
-  /* Bề rộng cố định để con số đổi giá trị không làm thanh trượt nhảy qua lại. */
-  flex: 0 0 68px;
+  /*
+   * Rộng THEO NỘI DUNG, không cố định: 68px cố định thì chuỗi dài hơn tràn ra đè
+   * lên thanh trượt. Chữ số dùng phông đơn cách nên cùng một dạng số luôn cùng bề
+   * rộng — kéo thanh trượt, con số đổi mà thanh không nhảy.
+   */
+  flex: 0 0 auto;
+  min-width: 5ch;
   text-align: right;
   font-size: var(--text-xs);
 }
 
-.inspector__actions {
-  padding: var(--space-3);
-}
 
 /* Tab chat được giữ trong cây khi ẩn, nên phải chiếm trọn chiều cao lúc hiện. */
 .inspector__tab-panel {
@@ -38,6 +40,14 @@
 }
 
 /* Ghi chú giải thích giới hạn, ví dụ khi chuyển cảnh bị cắt ngắn. */
+/* Nút hành động trong panel: thụt đúng bằng lề của `field-row`, không dính mép. */
+.inspector__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+}
+
 .inspector__hint {
   margin: 0;
   padding: 0 var(--space-3) var(--space-1);

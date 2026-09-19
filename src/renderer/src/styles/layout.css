@@ -36,6 +36,11 @@
   font-size: var(--text-base);
   margin-right: var(--space-2);
   white-space: nowrap;
+  /* Tên dài co lại bằng dấu "…" thay vì đẩy nút Xuất video ra ngoài cửa sổ. */
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .top-bar__group {
@@ -302,6 +307,20 @@
   KHÔNG đụng `.field-row` ở trên: nó dùng ở hàng chục file, đổi lưới chung là
   đổi bố cục tất cả những chỗ đó cùng lúc để phục vụ một nhúm hàng.
 */
+/*
+  Ô trong cột giá trị không được phình quá cột: `1fr` mặc định không co nhỏ hơn
+  nội dung, nên một hộp chọn có lựa chọn dài đẩy cả hàng tràn ra ngoài panel.
+  Ô tích thì dính về đầu cột, không trôi giữa.
+*/
+.field-row > select {
+  width: 100%;
+  min-width: 0;
+}
+
+.field-row > input[type='checkbox'] {
+  justify-self: start;
+}
+
 .field-row--keyframable {
   grid-template-columns: 96px 1fr 22px;
 }

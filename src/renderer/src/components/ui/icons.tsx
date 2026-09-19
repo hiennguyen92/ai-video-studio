@@ -138,6 +138,72 @@ export const IconMagnet = (p: IconProps): JSX.Element => (
   </Icon>
 )
 
+/** Lịch sử phiên bản: mặt đồng hồ có mũi tên quay ngược. */
+export const IconHistory = (p: IconProps): JSX.Element => (
+  <Icon {...p}>
+    <path d="M3 12a9 9 0 1 0 3-6.7" />
+    <path d="M3 4v4h4" />
+    <path d="M12 7v5l3 2" />
+  </Icon>
+)
+
+export const IconKeyboard = (p: IconProps): JSX.Element => (
+  <Icon {...p}>
+    <rect x="2" y="6" width="20" height="12" rx="2" />
+    <path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10" />
+  </Icon>
+)
+
+/** Đứng hình: bông tuyết — "đóng băng" khung. */
+export const IconFreeze = (p: IconProps): JSX.Element => (
+  <Icon {...p}>
+    <path d="M12 2v20M4.9 7l14.2 10M4.9 17 19.1 7" />
+    <path d="m9 4 3 2 3-2M9 20l3-2 3 2" />
+  </Icon>
+)
+
+/** Cắt khoảng lặng: sóng âm có một khoảng phẳng bị gạch. */
+export const IconSilenceCut = (p: IconProps): JSX.Element => (
+  <Icon {...p}>
+    <path d="M2 12h2M6 8v8M9 5v14" />
+    <path d="M12 12h3" strokeDasharray="1 2" />
+    <path d="M18 7v10M21 10v4" />
+  </Icon>
+)
+
+/** Chép danh sách chương: các dòng có chấm đầu dòng. */
+export const IconChapters = (p: IconProps): JSX.Element => (
+  <Icon {...p}>
+    <path d="M9 6h11M9 12h11M9 18h11" />
+    <path d="M4 6h.01M4 12h.01M4 18h.01" />
+  </Icon>
+)
+
+/** Rã nhóm: mắt xích gãy đôi. */
+export const IconUnlink = (p: IconProps): JSX.Element => (
+  <Icon {...p}>
+    <path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-.5.5" />
+    <path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l.5-.5" />
+    <path d="M4 4l3 3M17 17l3 3" />
+  </Icon>
+)
+
+/** Chép keyframe: hình thoi kèm bản sao. */
+export const IconKeyframeCopy = (p: IconProps): JSX.Element => (
+  <Icon {...p}>
+    <path d="M9 3l6 6-6 6-6-6z" />
+    <path d="M15 13l3-3 3 3-3 3M13 19h8" />
+  </Icon>
+)
+
+/** Dán keyframe: hình thoi rơi xuống bảng tạm. */
+export const IconKeyframePaste = (p: IconProps): JSX.Element => (
+  <Icon {...p}>
+    <path d="M12 2l5 5-5 5-5-5z" />
+    <path d="M5 14v6h14v-6" />
+  </Icon>
+)
+
 export const IconMarker = (p: IconProps): JSX.Element => (
   <Icon {...p}>
     <path d="M6 21V4" />

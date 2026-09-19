@@ -7,6 +7,8 @@
 
 .media-library__toolbar {
   display: flex;
+  /* Panel hẹp: ô tìm xuống dòng riêng thay vì bị hai nút ép còn một mẩu ở mép. */
+  flex-wrap: wrap;
   gap: var(--space-2);
   padding: var(--space-2) var(--space-3);
 }
@@ -15,8 +17,9 @@
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  flex: 1;
+  flex: 1 1 160px;
   min-width: 0;
+  min-height: 30px;
   padding: 0 var(--space-2);
   background: var(--surface-base);
   border: 1px solid var(--border-default);

@@ -136,7 +136,14 @@ const api: RendererApi = {
     }
   },
   app: {
-    info: () => ipcRenderer.invoke(IPC.appInfo)
+    info: () => ipcRenderer.invoke(IPC.appInfo),
+    onFlushBeforeClose: (handler) => {
+      const listener = (): void => {
+        void handler().finally(() => ipcRenderer.send(IPC.appFlushDone))
+      }
+      ipcRenderer.on(IPC_EVENT.flushBeforeClose, listener)
+      return () => ipcRenderer.removeListener(IPC_EVENT.flushBeforeClose, listener)
+    }
   },
   // Đồng bộ vì bố cục cần biết ngay lúc render đầu tiên (chừa chỗ nút đèn giao
   // thông của macOS); đợi một lời gọi IPC sẽ làm thanh công cụ nhảy.

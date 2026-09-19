@@ -10,7 +10,16 @@ import { AVAILABLE_LOCALES, interpolate, useLocale, useT } from '../../i18n/use-
 import { ToolButton } from '../ui/tool-button'
 import { JobActivityIndicator } from '../jobs/job-activity-indicator'
 import { SHOW_SHORTCUTS_EVENT } from '../../state/keyboard-shortcut-catalog'
-import { IconChevronLeft, IconExport, IconImport, IconRedo, IconSave, IconUndo } from '../ui/icons'
+import {
+  IconChevronLeft,
+  IconExport,
+  IconHistory,
+  IconImport,
+  IconKeyboard,
+  IconRedo,
+  IconSave,
+  IconUndo
+} from '../ui/icons'
 
 /** Thanh công cụ trên cùng: dự án, nhập media, hoàn tác/làm lại, lưu, xuất. */
 
@@ -71,7 +80,9 @@ export function EditorTopBar({
         onClick={onBackToProjects}
       />
 
-      <span className="top-bar__title">{projectName || t.app.untitledProject}</span>
+      <span className="top-bar__title" title={projectName}>
+        {projectName || t.app.untitledProject}
+      </span>
 
       <div className="top-bar__divider" />
 
@@ -111,9 +122,16 @@ export function EditorTopBar({
         onClick={handleSave}
         disabled={saveState === 'saving'}
       />
-      <ToolButton label={t.topbar.versions} onClick={onOpenVersions} />
+      <ToolButton
+        label={t.topbar.versions}
+        icon={<IconHistory />}
+        iconOnly
+        onClick={onOpenVersions}
+      />
       <ToolButton
         label={t.shortcuts.open}
+        icon={<IconKeyboard />}
+        iconOnly
         onClick={() => window.dispatchEvent(new Event(SHOW_SHORTCUTS_EVENT))}
       />
 

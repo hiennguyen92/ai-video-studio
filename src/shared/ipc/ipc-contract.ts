@@ -91,7 +91,8 @@ export const IPC = {
   exportStill: 'export:still',
   exportCapabilities: 'export:capabilities',
 
-  appInfo: 'app:info'
+  appInfo: 'app:info',
+  appFlushDone: 'app:flush-done'
 } as const
 
 /** Kênh main -> renderer. Tiến trình xuất được đẩy về chứ không để renderer hỏi liên tục. */
@@ -100,7 +101,9 @@ export const IPC_EVENT = {
   mcpRequest: 'mcp:request',
   exportProgress: 'export:progress',
   jobChanged: 'job:changed',
-  whisperDownloadProgress: 'whisper:download-progress'
+  whisperDownloadProgress: 'whisper:download-progress',
+  /** Main sắp đóng cửa sổ: renderer ghi nốt sửa đổi rồi báo lại. */
+  flushBeforeClose: 'app:flush-before-close'
 } as const
 
 export type IpcChannel = (typeof IPC)[keyof typeof IPC]
@@ -597,6 +600,11 @@ export interface RendererApi {
   }
   app: {
     info(): Promise<IpcResult<AppInfo>>
+    /**
+     * Đăng ký việc cần làm khi cửa sổ sắp đóng; `done` phải được gọi (kể cả khi
+     * ghi hỏng) để main đóng tiếp. Trả hàm huỷ đăng ký.
+     */
+    onFlushBeforeClose(handler: () => Promise<void>): () => void
   }
   /** Nền tảng hệ điều hành, đọc đồng bộ để bố cục dựng đúng ngay lần render đầu. */
   platform: string

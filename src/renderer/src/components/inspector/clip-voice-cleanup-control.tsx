@@ -62,12 +62,14 @@ export function ClipVoiceCleanupControl({ clipId }: { clipId: string }): JSX.Ele
             ? t.voiceCleanup.hintRedo
             : t.voiceCleanup.hintAudio}
       </p>
-      <ToolButton
-        label={busy ? t.voiceCleanup.working : t.voiceCleanup.apply}
-        variant="outline"
-        disabled={busy}
-        onClick={() => void apply()}
-      />
+      <div className="inspector__actions">
+        <ToolButton
+          label={busy ? t.voiceCleanup.working : t.voiceCleanup.apply}
+          variant="outline"
+          disabled={busy}
+          onClick={() => void apply()}
+        />
+      </div>
       {notice && (
         <p className="inspector__hint" role="status">
           {notice}

@@ -74,7 +74,9 @@ export function ClipBackgroundFillControl({
         />
       )}
       <p className="inspector__hint">{t.inspector.backgroundFillHint}</p>
-      <ToolButton label={t.inspector.backgroundFillAll} variant="outline" onClick={applyToAll} />
+      <div className="inspector__actions">
+        <ToolButton label={t.inspector.backgroundFillAll} variant="outline" onClick={applyToAll} />
+      </div>
     </>
   )
 }

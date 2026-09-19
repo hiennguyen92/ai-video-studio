@@ -70,7 +70,7 @@ export function ClipColorControls({
         />
       </div>
 
-      <p className="field-group__hint">{t.inspector.colorNoLutNote}</p>
+      <p className="inspector__hint">{t.inspector.colorNoLutNote}</p>
     </>
   )
 }

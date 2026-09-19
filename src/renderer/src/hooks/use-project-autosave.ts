@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { useEditorStore } from '../state/editor-store'
+import { saveDocument } from '../state/project-save-queue'
 
 /**
  * Tự động lưu project sau khi người dùng ngừng thao tác.
@@ -36,7 +37,7 @@ export function useProjectAutosave(): void {
       const documentToSave = session.document
 
       try {
-        const result = await window.api.project.save(documentToSave)
+        const result = await saveDocument(documentToSave)
         if (!result.ok) {
           setSaveState('error')
           setError(result.error)

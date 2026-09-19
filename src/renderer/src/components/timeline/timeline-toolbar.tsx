@@ -14,11 +14,18 @@ import {
 } from '../../state/clip-group-actions'
 import { ToolButton } from '../ui/tool-button'
 import {
+  IconChapters,
+  IconFreeze,
+  IconKeyframeCopy,
+  IconKeyframePaste,
+  IconLink,
   IconMagnet,
   IconMarker,
   IconRippleDelete,
   IconScissors,
+  IconSilenceCut,
   IconTrash,
+  IconUnlink,
   IconZoomIn,
   IconZoomOut
 } from '../ui/icons'
@@ -111,6 +118,8 @@ export function TimelineToolbar({
       />
       <ToolButton
         label={freezing ? t.timeline.freezeWorking : t.timeline.freezeFrame}
+        icon={<IconFreeze />}
+        iconOnly
         disabled={!hasClipSelection || freezing}
         onClick={() => {
           setFreezing(true)
@@ -122,6 +131,8 @@ export function TimelineToolbar({
       />
       <ToolButton
         label={t.silenceCut.open}
+        icon={<IconSilenceCut />}
+        iconOnly
         onClick={() => setSilenceOpen(true)}
         disabled={!hasClipSelection}
       />
@@ -137,6 +148,8 @@ export function TimelineToolbar({
       />
       <ToolButton
         label={chaptersCopied ? t.timeline.markerChaptersCopied : t.timeline.markerChapters}
+        icon={<IconChapters />}
+        iconOnly
         disabled={!hasMarkers}
         onClick={() => {
           const text = currentChapterList(t.timeline.markerChaptersIntro, (index) =>
@@ -159,11 +172,15 @@ export function TimelineToolbar({
 
       <ToolButton
         label={t.timeline.groupClips}
+        icon={<IconLink />}
+        iconOnly
         onClick={() => groupSelectedClips(t.timeline.groupClips)}
         disabled={!canGroup}
       />
       <ToolButton
         label={t.timeline.ungroupClips}
+        icon={<IconUnlink />}
+        iconOnly
         onClick={() => ungroupSelectedClips(t.timeline.ungroupClips)}
         disabled={!hasGroup}
       />
@@ -172,11 +189,15 @@ export function TimelineToolbar({
 
       <ToolButton
         label={t.timeline.keyframeCopy}
+        icon={<IconKeyframeCopy />}
+        iconOnly
         onClick={() => useEditorStore.getState().copyKeyframes()}
         disabled={!hasSelection}
       />
       <ToolButton
         label={t.timeline.keyframePaste}
+        icon={<IconKeyframePaste />}
+        iconOnly
         onClick={() => useEditorStore.getState().pasteKeyframes(t.timeline.keyframePaste)}
         disabled={!hasClipboard || !hasSelection}
       />

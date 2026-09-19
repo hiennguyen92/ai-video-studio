@@ -77,7 +77,7 @@ export function ClipMotionControls({
         ít. Nói ra thay vì để người dùng tự phát hiện lúc xuất file.
       */}
       {current?.kind.startsWith('pan-') && (
-        <p className="field-group__hint">{t.inspector.motionPanNote}</p>
+        <p className="inspector__hint">{t.inspector.motionPanNote}</p>
       )}
     </>
   )
