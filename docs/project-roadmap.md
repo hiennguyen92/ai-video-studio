@@ -105,7 +105,13 @@ giao diện chỉ lộ ra khi chuyển tab với dữ liệu thật.
 - [x] Preview chạy bằng `@remotion/player`
 - [x] Chuyển cảnh: mờ chồng, trượt, gạt ngang, phóng vào — không làm co timeline
 - [x] Chữ overlay như một đối tượng riêng, có hiệu ứng vào, AI tạo được
-- ~~Phụ đề nảy chữ theo từng từ~~ — **không làm**, người dùng không cần
+- [x] Phụ đề nổi bật từng chữ (2026-09-20; trước đó đã gác lại, người dùng yêu cầu làm):
+      tô chữ đang nói hoặc tô dần, mốc chữ lấy từ transcript (ước lượng theo độ dài
+      chữ khi không có — bản dịch, SRT nhập, câu viết lại), chia câu thành cụm N chữ.
+      Preview và bản nung ASS cùng đánh số chữ theo `wrapSubtitleText`; ASS mỗi chữ một
+      dòng Dialogue thay vì `\k`. Mốc chữ đi theo ripple, đứng hình, kéo câu. Công cụ
+      agent `set_subtitle_word_highlight`. Chỉ đổi màu, không phóng chữ (CSS và libass
+      dàn dòng khác nhau khi phóng)
 - [x] Phát hiện cú máy trong footage thô + trích ảnh đại diện, để agent chọn cảnh
       bằng HÌNH — đường duy nhất dựng được video không có tiếng
 - [x] Chia lát cú máy quá dài — footage review quay điện thoại thường là MỘT cú

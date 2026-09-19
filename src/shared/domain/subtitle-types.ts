@@ -62,6 +62,21 @@ export interface SubtitleStyle {
   lineSpacingPx: number
   /** Số ký tự tối đa một dòng trước khi tự xuống dòng. */
   maxCharsPerLine: number
+  /**
+   * Tô nổi bật chữ đang được nói, kiểu phụ đề video ngắn. Vắng mặt là tắt.
+   *
+   * `word`: chỉ chữ đang nói đổi màu. `progressive`: chữ đã nói giữ màu, câu
+   * "được tô dần" theo lời. Chỉ đổi MÀU chứ không phóng to chữ: phóng trong CSS
+   * không đẩy chữ bên cạnh ra còn trong ASS thì có, bản xem trước và bản nung sẽ
+   * lệch nhau.
+   */
+  wordHighlight?: SubtitleWordHighlight
+}
+
+export interface SubtitleWordHighlight {
+  mode: 'word' | 'progressive'
+  /** "#RRGGBB". */
+  color: string
 }
 
 export const DEFAULT_SUBTITLE_STYLE: SubtitleStyle = {
@@ -90,9 +105,21 @@ export interface SubtitleCue {
   text: string
   /** Dòng thứ hai khi bật phụ đề song ngữ (DESCRIPTION §3.F). */
   textSecondary?: string
+  /**
+   * Mốc từng chữ của `text`, trên trục TIMELINE, lấy từ transcript. Vắng mặt
+   * (bản dịch, file SRT nhập vào) thì mốc được ước lượng theo độ dài chữ — xem
+   * `cueWordStartsUs`.
+   */
+  words?: SubtitleCueWord[]
   /** Segment transcript/bản dịch đã sinh ra cue này — giữ để truy vết ngược. */
   sourceSegmentId?: string
   edited: boolean
+}
+
+export interface SubtitleCueWord {
+  text: string
+  startUs: Micros
+  endUs: Micros
 }
 
 export interface SubtitleTrack {
@@ -133,6 +160,18 @@ export const SUBTITLE_STYLE_PRESETS: SubtitleStylePreset[] = [
     id: 'yellow-caption',
     name: 'Chữ vàng',
     style: { color: '#FFE45C', outlineColor: '#1A1A1A', outlineWidthPx: 3, boxOpacity: 0 }
+  },
+  {
+    id: 'word-highlight',
+    name: 'Nổi bật từng chữ',
+    style: {
+      color: '#FFFFFF',
+      outlineColor: '#000000',
+      outlineWidthPx: 4,
+      boxOpacity: 0,
+      maxCharsPerLine: 24,
+      wordHighlight: { mode: 'word', color: '#FFE45C' }
+    }
   },
   {
     id: 'top-banner',

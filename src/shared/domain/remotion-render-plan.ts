@@ -1,3 +1,4 @@
+import { cueWordStartsUs } from './subtitle-word-timing'
 import { resolveClipEffects } from './clip-effect-render'
 import type { ClipEffect } from './clip-effect-types'
 import { findClipLook } from './clip-look-catalog'
@@ -153,6 +154,11 @@ export interface RenderPlanSubtitleCue {
   text: string
   textSecondary?: string
   style: SubtitleStyle
+  /**
+   * Mốc bắt đầu sáng của từng chữ, tính từ đầu câu (µs). Chỉ có khi track bật tô
+   * nổi bật từng chữ.
+   */
+  wordStartOffsetsUs?: number[]
 }
 
 export interface RenderPlanTextOverlay {
@@ -502,7 +508,10 @@ export function buildRenderPlan(document: ProjectDocument): RenderPlan {
           durationInFrames,
           text: cue.text,
           textSecondary: cue.textSecondary,
-          style: subtitleTrack.style
+          style: subtitleTrack.style,
+          wordStartOffsetsUs: subtitleTrack.style.wordHighlight
+            ? cueWordStartsUs(cue).map((startUs) => startUs - cue.startUs)
+            : undefined
         })
       }
     }

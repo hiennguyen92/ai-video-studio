@@ -5,6 +5,7 @@ import {
   subtitleTracksFollowingLanes
 } from '../domain/subtitle-ripple'
 import { rippleTextOverlays } from '../domain/text-overlay-ripple'
+import { moveCueTimes } from '../domain/subtitle-word-timing'
 import { rippleMarkers } from '../domain/timeline-marker-types'
 import { current, isDraft } from 'immer'
 import type { EditorCommand } from './editor-command-types'
@@ -880,8 +881,7 @@ export function applyEditorCommand(doc: ProjectDocument, command: EditorCommand)
 
       if (command.text !== undefined) cue.text = command.text
       if (command.textSecondary !== undefined) cue.textSecondary = command.textSecondary
-      cue.startUs = nextStart
-      cue.endUs = nextEnd
+      moveCueTimes(cue, nextStart, nextEnd)
       cue.edited = true
       return OK
     }
@@ -903,14 +903,12 @@ export function applyEditorCommand(doc: ProjectDocument, command: EditorCommand)
       // Kiểm tra XONG mới đụng vào dữ liệu: thoát giữa chừng sau khi đã gỡ cue ra
       // là làm mất hẳn nó.
       if (command.fromTrackId === command.toTrackId) {
-        cue.startUs = nextStart
-        cue.endUs = nextEnd
+        moveCueTimes(cue, nextStart, nextEnd)
         return OK
       }
 
       from.cues.splice(index, 1)
-      cue.startUs = nextStart
-      cue.endUs = nextEnd
+      moveCueTimes(cue, nextStart, nextEnd)
       // Chèn đúng chỗ theo thời gian: danh sách cue được đọc tuần tự khi ghi file
       // SRT/ASS, và mốc thời gian nhảy lung tung thì trình phát không tua đúng.
       const at = to.cues.findIndex((item) => item.startUs > cue.startUs)

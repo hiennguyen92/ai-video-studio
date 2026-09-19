@@ -83,6 +83,16 @@ export function buildSubtitleCues(input: BuildSubtitleCuesInput): SubtitleCue[] 
         endUs: toTimelineUs(clip, toUs),
         text: primary,
         textSecondary: secondary,
+        // Mốc từng chữ chỉ đúng với lời GỐC; câu hiện bản dịch thì để trống, nơi vẽ
+        // tự ước lượng theo độ dài chữ.
+        words:
+          translated === undefined && segment.words && segment.words.length > 0
+            ? segment.words.map((word) => ({
+                text: word.text,
+                startUs: toTimelineUs(clip, word.startUs),
+                endUs: toTimelineUs(clip, word.endUs)
+              }))
+            : undefined,
         sourceSegmentId: segment.id,
         edited: false
       })

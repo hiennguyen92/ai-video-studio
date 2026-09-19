@@ -28,7 +28,18 @@ export function rippleSubtitleCues(
     const endUs = remap(cue.endUs)
     // Nằm trọn trong khoảng, hoặc co còn không gì.
     if (endUs <= startUs) continue
-    result.push(startUs === cue.startUs && endUs === cue.endUs ? cue : { ...cue, startUs, endUs })
+    if (startUs === cue.startUs && endUs === cue.endUs) {
+      result.push(cue)
+      continue
+    }
+    // Mốc chữ đi qua cùng phép quy đổi: chữ bị cắt mất dồn về mép cắt, chữ sau
+    // khoảng lùi theo — lời còn lại vẫn sáng đúng lúc được nói.
+    const words = cue.words?.map((word) => ({
+      ...word,
+      startUs: remap(word.startUs),
+      endUs: remap(word.endUs)
+    }))
+    result.push({ ...cue, startUs, endUs, ...(words ? { words } : {}) })
   }
   return result
 }
@@ -44,10 +55,21 @@ export function insertIntoSubtitleCues(
   durationUs: Micros
 ): SubtitleCue[] {
   return cues.map((cue) => {
+    const words = cue.words?.map((word) =>
+      word.startUs >= atUs
+        ? { ...word, startUs: word.startUs + durationUs, endUs: word.endUs + durationUs }
+        : word
+    )
     if (cue.startUs >= atUs) {
-      return { ...cue, startUs: cue.startUs + durationUs, endUs: cue.endUs + durationUs }
+      return {
+        ...cue,
+        startUs: cue.startUs + durationUs,
+        endUs: cue.endUs + durationUs,
+        ...(words ? { words } : {})
+      }
     }
-    if (cue.endUs > atUs) return { ...cue, endUs: cue.endUs + durationUs }
+    if (cue.endUs > atUs)
+      return { ...cue, endUs: cue.endUs + durationUs, ...(words ? { words } : {}) }
     return cue
   })
 }

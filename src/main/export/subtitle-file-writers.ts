@@ -3,6 +3,7 @@ import type { Micros } from '../../shared/domain/time-units'
 import type { SubtitleStyle, SubtitleTrack } from '../../shared/domain/subtitle-types'
 import { wrapSubtitleText } from '../../shared/domain/subtitle-types'
 import { assPositionTag } from '../../shared/domain/text-placement'
+import { highlightedCueEvents } from './subtitle-ass-word-highlight'
 
 /**
  * Ghi phụ đề ra file SRT (xuất riêng) và ASS (để nung vào hình).
@@ -126,7 +127,16 @@ export function renderAss(track: SubtitleTrack, videoWidth: number, videoHeight:
     const lines: string[] = []
 
     const primary = wrapSubtitleText(cue.text, track.style.maxCharsPerLine).join('\\N')
-    if (primary) {
+    const highlighted = highlightedCueEvents(
+      cue,
+      track.style,
+      primaryTag,
+      formatAssTime,
+      escapeAssText
+    )
+    if (highlighted.length > 0) {
+      lines.push(...highlighted)
+    } else if (primary) {
       lines.push(`Dialogue: 0,${start},${end},Chinh,,0,0,0,,${primaryTag}${escapeAssText(primary)}`)
     }
 

@@ -4,6 +4,7 @@ import { CompositionMarkersContext, useCompositionMarkers } from './composition-
 import { buildLookFilterSvg, lookFilterId } from '../shared/domain/clip-look-svg'
 import { useMemo, type CSSProperties, type JSX } from 'react'
 import { TextOverlayFrameParts } from './text-overlay-frame'
+import { SubtitleHighlightedLines } from './subtitle-highlighted-lines'
 import { frameBoxCss } from './text-overlay-frame-css'
 import {
   AbsoluteFill,
@@ -503,11 +504,20 @@ function SubtitleCue({ cue, height }: { cue: RenderPlanSubtitleCue; height: numb
           padding: style.boxOpacity > 0 ? height * 0.008 : 0
         }}
       >
-        {lines.map((line, index) => (
-          <span key={index} style={textStyle}>
-            {visibleLine(line)}
-          </span>
-        ))}
+        {style.wordHighlight && cue.wordStartOffsetsUs ? (
+          <SubtitleHighlightedLines
+            lines={lines}
+            textStyle={textStyle}
+            highlight={style.wordHighlight}
+            wordStartOffsetsUs={cue.wordStartOffsetsUs}
+          />
+        ) : (
+          lines.map((line, index) => (
+            <span key={index} style={textStyle}>
+              {visibleLine(line)}
+            </span>
+          ))
+        )}
         {secondaryLines.map((line, index) => (
           // Dòng phụ nhỏ hơn để phân biệt với dòng chính, giống bản nung.
           <span

@@ -12,6 +12,7 @@ import { SubtitleImportButton } from './subtitle-import-button'
 import { SubtitleCueList } from './subtitle-cue-list'
 import { SubtitleStyleControls } from './subtitle-style-controls'
 import { SubtitleTrackSettings } from './subtitle-track-settings'
+import { SubtitleWordHighlightSection } from './subtitle-word-highlight-section'
 import { TextOverlaySection } from './text-overlay-section'
 import './subtitles-panel.css'
 
@@ -120,6 +121,10 @@ export function SubtitlesPanel(): JSX.Element {
                     )
                   }
                 />
+              </CollapsibleSection>
+
+              <CollapsibleSection title={t.wordHighlight.section}>
+                <SubtitleWordHighlightSection track={track} />
               </CollapsibleSection>
 
               <CollapsibleSection

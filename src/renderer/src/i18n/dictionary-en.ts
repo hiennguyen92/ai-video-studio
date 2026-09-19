@@ -520,6 +520,22 @@ export const dictionaryEn: Dictionary = {
       'Translating again replaces the whole translation, including segments you edited by hand.',
     segmentCount: '{count} segments'
   },
+  wordHighlight: {
+    section: 'Word highlight',
+    mode: 'Highlight',
+    off: 'Off',
+    word: 'Spoken word',
+    progressive: 'Fill as spoken',
+    color: 'Highlight color',
+    hint: 'Word timings come from the transcript. Translated, imported or rewritten lines get timings estimated from word length.',
+    chunkSize: 'Words per chunk',
+    chunk: 'Split into short chunks',
+    chunkHint:
+      'TikTok / Reels style: only a few words on screen at a time. Bilingual lines are kept whole. Undoable.',
+    chunkNothing: 'No line is longer than this many words.',
+    chunkLabel: 'Split subtitles into chunks',
+    styleLabel: 'Change word highlight'
+  },
   subtitles: {
     importFile: 'Import subtitle file',
     importHint: 'Already have an .srt or .vtt file? Bring it straight in, no transcription needed.',

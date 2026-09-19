@@ -611,6 +611,13 @@ export const chatToolSchemas = {
     subtitleTrackId: z.string().min(1).max(120).optional()
   }),
 
+  set_subtitle_word_highlight: z.object({
+    subtitleTrackId: z.string().min(1).max(120),
+    mode: z.enum(['off', 'word', 'progressive']).optional(),
+    color: hexColor.optional(),
+    wordsPerChunk: z.number().int().min(1).max(8).optional()
+  }),
+
   rename_subtitle_track: z.object({
     subtitleTrackId: z.string().min(1).max(120),
     name: z.string().min(1).max(120)
@@ -773,6 +780,8 @@ export const chatToolDescriptions: Record<ChatToolName, string> = {
   set_text_position:
     'Pin text to an exact spot on the frame. xPct/yPct are fractions of frame width and height (0..1) for the CENTER of the text block, so 0.5/0.5 is dead centre and 0.5/0.85 sits low. Overrides the alignment and margins in both the preview and the exported file. Pass clear:true to unpin and go back to alignment. With no overlayId and no subtitleTrackId it applies to every text overlay.',
   set_text_style: `Change the rest of the text look on text overlays or a subtitle track, the same things the Style and Layout panels edit. Fields left out keep their value. fontSizePx is 12 to 300 (subtitles up to 200). box "dark"/"light"/"none" sets a matching background box, text colour and outline together; on an overlay it also removes a cute frame, because a box and a frame cannot both show. boxColor/boxOpacity fine-tune the box (opacity 0 turns it off); on an overlay that has a frame, set box first. position anchors the text to the bottom, middle or top of the frame with marginVerticalPx of space from the edge, and unpins text pinned with set_text_position. shadowPx (0 to 10), maxCharsPerLine (12 to 100) and preset (${SUBTITLE_STYLE_PRESETS.map((item) => item.id).join(', ')}) only apply to a subtitle track. With no overlayId and no subtitleTrackId it applies to every text overlay.`,
+  set_subtitle_word_highlight:
+    'Short-video captions: highlight the word being spoken, and/or split long subtitle lines into short chunks of a few words (TikTok / Reels style). mode "word" colours only the spoken word, "progressive" keeps already-spoken words coloured, "off" turns it off. color is the highlight colour (default #FFE45C). wordsPerChunk (1-8, 2-4 is typical) re-splits every line of the track so only that many words show at once; bilingual lines are kept whole. Word timings come from the transcript; lines without them (translations, imported SRT) get timings estimated from word length. Both parts apply as one undo step.',
   rename_subtitle_track: 'Rename a subtitle track.',
   remove_subtitle_track:
     'Delete a subtitle track and all its cues. A subtitle lane pointing at it stays on the timeline but shows nothing until it is given another subtitle track.',
@@ -880,6 +889,8 @@ export const chatToolParameterHints: Record<ChatToolName, string> = {
   set_text_rotation: '{ rotationDeg: number, overlayId?: string, subtitleTrackId?: string }',
   set_text_style:
     "{ preset?: string, fontSizePx?: number, box?: 'none' | 'dark' | 'light', boxColor?: string, boxOpacity?: number, position?: 'bottom' | 'middle' | 'top', marginVerticalPx?: number, shadowPx?: number, maxCharsPerLine?: number, overlayId?: string, subtitleTrackId?: string }",
+  set_subtitle_word_highlight:
+    '{ subtitleTrackId: string, mode?: "off"|"word"|"progressive", color?: "#RRGGBB", wordsPerChunk?: 1-8 }',
   rename_subtitle_track: '{ subtitleTrackId: string, name: string }',
   remove_subtitle_track: '{ subtitleTrackId: string }',
   update_transcript_segment: '{ transcriptId: string, segmentId: string, text: string }',

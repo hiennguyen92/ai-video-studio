@@ -75,6 +75,7 @@ import {
   planSlipClip
 } from './chat-tool-timeline-edit-modes'
 import { planSetTextStyle } from './chat-tool-text-style'
+import { planSubtitleWordHighlight } from './chat-tool-word-highlight'
 import { planTranscriptDataTool } from './chat-tool-transcript-subtitle-data'
 
 /**
@@ -1473,6 +1474,16 @@ function planOne(context: ChatEditContext, tool: ChatToolName, args: unknown): P
 
     case 'set_text_style':
       return { tool, ...planSetTextStyle(document, chatToolSchemas.set_text_style.parse(args)) }
+
+    case 'set_subtitle_word_highlight':
+      return {
+        tool,
+        ...planSubtitleWordHighlight(
+          document,
+          chatToolSchemas.set_subtitle_word_highlight.parse(args),
+          () => context.makeId()
+        )
+      }
 
     case 'rename_subtitle_track':
     case 'remove_subtitle_track':

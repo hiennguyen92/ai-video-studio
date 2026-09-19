@@ -519,6 +519,22 @@ export const dictionaryVi = {
       'Dịch lại sẽ thay toàn bộ bản dịch hiện tại, kể cả các đoạn bạn đã sửa tay.',
     segmentCount: '{count} đoạn'
   },
+  wordHighlight: {
+    section: 'Nổi bật từng chữ',
+    mode: 'Tô chữ',
+    off: 'Tắt',
+    word: 'Chữ đang nói',
+    progressive: 'Tô dần theo lời',
+    color: 'Màu chữ sáng',
+    hint: 'Mốc từng chữ lấy từ phiên âm. Câu dịch, câu nhập từ file hay câu đã viết lại thì mốc được ước lượng theo độ dài chữ.',
+    chunkSize: 'Số chữ mỗi cụm',
+    chunk: 'Chia thành cụm ngắn',
+    chunkHint:
+      'Kiểu TikTok / Reels: mỗi lúc chỉ vài chữ trên màn hình. Câu song ngữ được giữ nguyên. Hoàn tác được.',
+    chunkNothing: 'Không câu nào dài hơn số chữ này.',
+    chunkLabel: 'Chia phụ đề thành cụm',
+    styleLabel: 'Đổi kiểu nổi bật từng chữ'
+  },
   subtitles: {
     importFile: 'Nhập file phụ đề',
     importHint: 'Có sẵn file .srt hoặc .vtt thì đưa thẳng vào đây, không cần phiên âm.',
