@@ -69,6 +69,7 @@ export const dictionaryEn: Dictionary = {
     generatedBadge: 'AI'
   },
   preview: {
+    frameRate: 'Frame rate',
     title: 'Preview',
     empty: 'The timeline is empty.',
     emptyHint: 'Add media to the timeline to preview it here.',

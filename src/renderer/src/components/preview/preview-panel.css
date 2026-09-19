@@ -2,12 +2,26 @@
   background: var(--surface-base);
 }
 
-.preview__aspect {
+/* Cụm chỉnh khung hình ở đầu panel: hai ô chọn nhỏ kèm kích thước hiện tại. */
+.preview__canvas {
   margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
   font-size: var(--text-xs);
   font-family: var(--font-mono);
   color: var(--text-muted);
   font-weight: 400;
+}
+
+.preview__canvas-select {
+  font-size: var(--text-xs);
+  font-family: var(--font-mono);
+  padding: 1px 2px;
+}
+
+.preview__canvas-size {
+  font-variant-numeric: tabular-nums;
 }
 
 .preview__stage-wrap {

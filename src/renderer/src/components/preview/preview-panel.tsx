@@ -12,6 +12,7 @@ import { IconPause, IconPlay, IconStepBack, IconStepForward } from '../ui/icons'
 import { RemotionPreviewStage } from './remotion-preview-stage'
 import { TimelineHoverPreview } from './timeline-hover-preview'
 import { PreviewTextGizmo } from './preview-text-gizmo'
+import { PreviewCanvasSettings } from './preview-canvas-settings'
 import './preview-panel.css'
 
 /**
@@ -59,9 +60,7 @@ export function PreviewPanel(): JSX.Element {
     <section className="panel preview" aria-label={t.preview.title}>
       <div className="panel__header">
         {t.preview.title}
-        <span className="preview__aspect" title={t.preview.aspectRatio}>
-          {settings.aspectRatio} · {settings.width}×{settings.height}
-        </span>
+        <PreviewCanvasSettings settings={settings} />
       </div>
 
       <div className="preview__stage-wrap">

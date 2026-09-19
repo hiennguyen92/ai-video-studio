@@ -73,6 +73,7 @@ export const dictionaryVi = {
     generatedBadge: 'AI'
   },
   preview: {
+    frameRate: 'Tốc độ khung hình',
     title: 'Xem trước',
     empty: 'Timeline đang trống.',
     emptyHint: 'Thêm media vào timeline để xem trước tại đây.',
