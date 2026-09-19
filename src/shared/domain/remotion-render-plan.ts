@@ -69,7 +69,10 @@ export interface RenderPlanVideoClip {
   /** Khung bắt đầu bên trong file nguồn. */
   sourceFromFrame: number
   playbackRate: number
+  /** Âm lượng của riêng clip; nhân với `trackVolume` mới ra mức thật. */
   volume: number
+  /** Âm lượng của lane chứa clip. Tách riêng để keyframe chỉ thay phần của clip. */
+  trackVolume: number
   fadeInFrames: number
   fadeOutFrames: number
   /** Track càng dưới trong danh sách càng vẽ sau, tức là nằm trên. */
@@ -125,9 +128,17 @@ export interface RenderPlanAudioClip {
   durationInFrames: number
   sourceFromFrame: number
   playbackRate: number
+  /** Âm lượng của riêng clip; nhân với `trackVolume` mới ra mức thật. */
   volume: number
+  /** Âm lượng của lane chứa clip. Tách riêng để keyframe chỉ thay phần của clip. */
+  trackVolume: number
   fadeInFrames: number
   fadeOutFrames: number
+  /**
+   * Đường keyframe của clip tiếng. Không có chuyển cảnh trên lane tiếng nên mốc
+   * khung ở đây đếm thẳng từ mép clip, không phải bù gì.
+   */
+  keyframes?: ResolvedKeyframeTracks
 }
 
 export interface RenderPlanSubtitleCue {
@@ -401,7 +412,11 @@ export function buildRenderPlan(document: ProjectDocument): RenderPlan {
               : undefined,
           exitTransition: resolveExitTransition(clip, fps, durationInFrames),
           playbackRate: clip.speed,
-          volume: clip.volume * track.volume,
+          // Hai số RIÊNG, không nhân sẵn: keyframe chỉ thay phần của clip, mà
+          // từ một tích thì không tách lại được nếu không chia — và lane có thể
+          // bằng 0. Lớp vẽ nhân lại.
+          volume: clip.volume,
+          trackVolume: track.volume,
           fadeInFrames: frameOfMicros(clip.fadeInUs, fps),
           fadeOutFrames: frameOfMicros(clip.fadeOutUs, fps),
           layerIndex,
@@ -448,9 +463,14 @@ export function buildRenderPlan(document: ProjectDocument): RenderPlan {
           durationInFrames,
           sourceFromFrame: frameOfMicros(clip.sourceInUs, fps),
           playbackRate: clip.speed,
-          volume: clip.volume * track.volume,
+          // Hai số RIÊNG, không nhân sẵn: keyframe chỉ thay phần của clip, mà
+          // từ một tích thì không tách lại được nếu không chia — và lane có thể
+          // bằng 0. Lớp vẽ nhân lại.
+          volume: clip.volume,
+          trackVolume: track.volume,
           fadeInFrames: frameOfMicros(clip.fadeInUs, fps),
-          fadeOutFrames: frameOfMicros(clip.fadeOutUs, fps)
+          fadeOutFrames: frameOfMicros(clip.fadeOutUs, fps),
+          keyframes: resolveKeyframeTracks(clip.keyframes, fps)
         })
       }
       return

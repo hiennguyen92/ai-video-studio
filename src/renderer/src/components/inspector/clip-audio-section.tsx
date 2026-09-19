@@ -3,6 +3,7 @@ import { formatClockTime } from '../../../../shared/domain/time-units'
 import type { Clip } from '../../../../shared/domain/timeline-track-types'
 import { useT } from '../../i18n/use-translation'
 import { SliderRow } from './inspector-slider-row'
+import { useKeyframeField } from './use-keyframe-field'
 
 /** Tab Audio: âm lượng và fade vào/ra của clip. */
 export function ClipAudioSection({
@@ -14,6 +15,17 @@ export function ClipAudioSection({
 }): JSX.Element {
   const t = useT()
   const maxFadeUs = Math.min(clip.durationUs, 5_000_000)
+  const volumeKeyframe = useKeyframeField(
+    { kind: 'clip', clipId: clip.id },
+    ['volume'],
+    t.inspector.volume
+  )
+  // Mức to NHẤT mà clip từng đạt tới, kể cả ở mốc đầu phát đang không đứng: lời
+  // nhắc bên dưới nói về bản xem trước, mà bản xem trước chạy qua CẢ clip.
+  const peakVolume = Math.max(
+    clip.volume,
+    ...(clip.keyframes?.['volume']?.map((frame) => frame.v) ?? [])
+  )
   return (
     <>
       <p className="field-group__title">{t.inspector.volume}</p>
@@ -25,6 +37,7 @@ export function ClipAudioSection({
         step={0.01}
         format={(value) => `${Math.round(value * 100)}%`}
         onCommit={(value) => onUpdate({ volume: value }, t.inspector.volume)}
+        keyframe={volumeKeyframe}
       />
       {/*
         Trên 100% thì BẢN XEM TRƯỚC không to thêm được, còn file xuất ra thì có.
@@ -34,7 +47,7 @@ export function ClipAudioSection({
         cho lớp phát. Nói thẳng ra rẻ hơn nhiều so với để người dùng kéo lên 150%,
         nghe không thấy khác, rồi chỉ phát hiện khi đã xuất file.
       */}
-      {clip.volume > 1 && <p className="inspector__hint">{t.inspector.volumeAbovePreviewCap}</p>}
+      {peakVolume > 1 && <p className="inspector__hint">{t.inspector.volumeAbovePreviewCap}</p>}
       <SliderRow
         label={t.inspector.fadeIn}
         value={clip.fadeInUs}

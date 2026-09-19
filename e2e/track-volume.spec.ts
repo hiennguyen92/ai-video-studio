@@ -165,3 +165,108 @@ test('mức lane đi tới FILE XUẤT RA, không chỉ nằm trong tài liệu'
   // Và vẫn phải NGHE ĐƯỢC: hạ âm lượng không phải là tắt tiếng.
   expect(Number(peak![1])).toBeGreaterThan(-40)
 })
+
+/** Các mốc keyframe âm lượng đã lưu của clip tiếng. */
+async function savedVolumeKeyframes(): Promise<Array<{ atUs: number; v: number }>> {
+  await expect(page.locator('.top-bar__status')).toHaveText('Đã lưu', { timeout: 15_000 })
+  const projectsRoot = join(userDataDir, 'projects')
+  const [projectId] = await readdir(projectsRoot)
+  const document = JSON.parse(
+    await readFile(join(projectsRoot, projectId, 'project.json'), 'utf8')
+  ) as {
+    tracks: Array<{
+      kind: string
+      clips: Array<{ keyframes?: Record<string, Array<{ atUs: number; v: number }>> }>
+    }>
+  }
+  const clip = document.tracks
+    .filter((track) => track.kind === 'audio')
+    .flatMap((track) => track.clips)[0]
+  return clip?.keyframes?.['volume'] ?? []
+}
+
+/** Mức trung bình (dB) của một đoạn trong file đã xuất. */
+async function meanVolumeBetween(fromSeconds: number, toSeconds: number): Promise<number> {
+  const { default: ffmpegStatic } = await import('ffmpeg-static')
+  const { stderr } = await execFileAsync(
+    String(ffmpegStatic),
+    [
+      '-hide_banner',
+      '-i',
+      outputPath,
+      '-af',
+      `atrim=${fromSeconds}:${toSeconds},volumedetect`,
+      '-f',
+      'null',
+      '-'
+    ],
+    { encoding: 'utf8' }
+  ).catch((error: { stderr: string }) => ({ stderr: error.stderr }))
+
+  const mean = /mean_volume:\s*(-?[\d.]+) dB/.exec(stderr)
+  expect(
+    mean,
+    `không đọc được mean_volume trong khoảng ${fromSeconds}..${toSeconds}s`
+  ).not.toBeNull()
+  return Number(mean![1])
+}
+
+/**
+ * Keyframe âm lượng: tiếng phải NHỎ DẦN trong chính file xuất ra.
+ *
+ * Đây là thứ phân biệt keyframe âm lượng thật với một cặp số nằm trong
+ * project.json: cả hai đường dựng đều nhân âm lượng vào từ lâu, nhưng nhân một
+ * HẰNG SỐ. Đo hai đầu đoạn dốc là cách duy nhất chứng minh giá trị đổi theo
+ * từng khung hình.
+ */
+test('âm lượng chạy keyframe thì file xuất ra nhỏ dần', async () => {
+  // Phép thử trước dừng ngay sau khi xuất xong, hộp thoại Xuất vẫn đang che timeline.
+  await page
+    .getByRole('dialog', { name: 'Xuất video' })
+    .getByRole('button', { name: 'Đóng' })
+    .click()
+
+  // Trả mức lane về nguyên để phép đo chỉ còn phản ánh đường keyframe của clip.
+  const laneVolume = page.locator('.track-head__volume').last()
+  await laneVolume.fill('1')
+  await laneVolume.blur()
+  await expect.poll(savedAudioVolumes).toEqual([1, 1])
+
+  const clip = page.locator('.timeline-lane--audio .timeline-clip').first()
+  await clip.click()
+  const inspector = page.getByRole('region', { name: 'Thuộc tính' })
+  await inspector.getByRole('tab', { name: 'Audio', exact: true }).click()
+
+  const ruler = (await page.locator('.timeline__ruler-row').boundingBox())!
+  const clipBox = (await clip.boundingBox())!
+  const seekInClip = async (ratio: number): Promise<void> => {
+    await page.mouse.click(clipBox.x + clipBox.width * ratio, ruler.y + 12)
+    await page.waitForTimeout(400)
+  }
+
+  // Mốc đầu giữ nguyên mức, mốc cuối hạ gần hết: một đoạn dốc chạy suốt clip.
+  await seekInClip(0.1)
+  await inspector.getByRole('button', { name: /Âm lượng/ }).click()
+  await seekInClip(0.9)
+  await inspector.getByRole('slider', { name: 'Âm lượng' }).fill('0.1')
+
+  await expect.poll(async () => (await savedVolumeKeyframes()).length).toBe(2)
+  const keyframes = await savedVolumeKeyframes()
+  expect(keyframes[0].v).toBeCloseTo(1, 2)
+  expect(keyframes[1].v).toBeCloseTo(0.1, 2)
+
+  await page.getByRole('button', { name: 'Xuất video' }).click()
+  const dialog = page.getByRole('dialog', { name: 'Xuất video' })
+  // Nhánh ffmpeg đọc âm lượng dạng hằng số, nên dự án có keyframe phải đi Remotion.
+  await expect(dialog.getByLabel('Bộ dựng hình')).toHaveValue('remotion')
+  await dialog.getByRole('button', { name: 'Chọn nơi lưu…' }).click()
+  await dialog.getByRole('button', { name: 'Bắt đầu xuất' }).click()
+  await expect(page.getByText('Xuất xong')).toBeVisible({ timeout: 240_000 })
+
+  const early = await meanVolumeBetween(0, 1)
+  const late = await meanVolumeBetween(3, 4)
+  // Hạ từ 100% xuống 10% là khoảng −20 dB. Đòi ÍT NHẤT 8 dB chênh lệch: đủ rộng
+  // để không phụ thuộc chi tiết bộ mã hoá, nhưng một bản dựng bỏ qua keyframe sẽ
+  // cho hai đoạn gần như bằng nhau và trượt ngay.
+  expect(early - late).toBeGreaterThan(8)
+})

@@ -116,8 +116,8 @@ Phím tắt **không** kích hoạt khi con trỏ đang ở trong ô nhập li�
 - **AI Chat và MCP**: agent đọc dự án và sửa qua cùng tập lệnh với giao diện; agent ngoài (Claude
   Code) nối vào qua máy chủ MCP trên loopback
 - **Auto-ducking**: hạ nhạc nền ở đoạn có lời nói
-- **Keyframe**: transform clip, thông số effect kiểu số, vị trí/cỡ/góc chữ overlay; năm kiểu nội
-  suy; chép/dán cụm keyframe giữa các clip
+- **Keyframe**: transform clip, âm lượng clip, thông số effect kiểu số, vị trí/cỡ/góc chữ
+  overlay; năm kiểu nội suy; chép/dán cụm keyframe giữa các clip
 - **Chép/dán clip** bằng Cmd+C / Cmd+V, giữ nguyên mọi thuộc tính
 - **Liên kết lại media bị thiếu**, và đổi tỉ lệ khung / tốc độ khung sau khi đã tạo dự án
 - **Hoàn tác/làm lại**: dựa trên patch, một nhóm lệnh chỉ tạo một bước hoàn tác
@@ -183,12 +183,10 @@ Vì vậy siêu dữ liệu model giờ **đọc từ `/v1/models`**, không vi�
   model đa ngôn ngữ vẫn đọc được ngôn ngữ khác — giao diện nói rõ điều này.
 - Tham số `speed` của ElevenLabs **không được đưa ra giao diện** vì khoảng giá trị hợp lệ chưa xác
   minh được. Việc co giãn thời lượng cho lồng tiếng sẽ dùng `atempo` của ffmpeg, không phụ thuộc provider.
-- **Thiếu vài thao tác dựng phim thông dụng**, đã rà soát và ghi lại để khỏi tìm lại: không có
-  slider âm lượng cho TRACK (mô hình và bản xuất đã áp, chỉ thiếu ô chỉnh); không có keyframe âm
-  lượng, nên auto-ducking phải cắt nhạc thành mảnh và mức nhảy bậc thang; ripple delete chỉ agent
-  gọi được, giao diện chưa có nút; không có marker/chapter, không khoá được clip lẻ, không nhóm
-  clip; chọn nhiều clip thì kéo và panel thuộc tính vẫn chỉ ăn clip đầu tiên; sóng âm không hiện
-  trên clip video có tiếng.
+- **Thiếu vài thao tác dựng phim thông dụng**, đã rà soát và ghi lại để khỏi tìm lại: ripple
+  delete chỉ agent gọi được, giao diện chưa có nút; không có marker/chapter, không khoá được clip
+  lẻ, không nhóm clip; chọn nhiều clip thì kéo và panel thuộc tính vẫn chỉ ăn clip đầu tiên; sóng
+  âm không hiện trên clip video có tiếng.
 - **Dựng cut theo lời nói và theo cú máy chỉ agent gọi được** (`build_cut_from_transcript`,
   `build_cut_from_shots`) — giao diện chưa có nút, dù phần dò cú máy đã chạy thật.
 - **Xuất chỉ MP4/H.264, chất lượng cố định**, không preset, không xuất riêng đoạn đang chọn,
@@ -202,7 +200,7 @@ Vì vậy siêu dữ liệu model giờ **đọc từ `/v1/models`**, không vi�
 - **Dự án có keyframe bắt buộc xuất bằng Remotion**, và hộp thoại Xuất tự khoá lựa chọn đó.
   Filter graph ffmpeg đọc transform dạng hằng số nên nó sẽ cho ra file đứng hình mà không báo
   gì. Remotion chậm hơn đáng kể — đó là cái giá của việc không rơi mất chuyển động.
-- **Keyframe chưa phủ**: chỉnh màu, âm lượng clip, đệm khung chữ, cường độ filter (LUT). Thông
+- **Keyframe chưa phủ**: chỉnh màu, đệm khung chữ, cường độ filter (LUT). Thông
   số effect **kiểu màu và kiểu lựa chọn** cũng không animate được — "màu ở giữa hai màu" và
   "lựa chọn ở giữa hai lựa chọn" là hai bài toán khác hẳn, không phải quên.
 - **Chưa có đường cong bezier tuỳ biến** cho keyframe (năm kiểu nội suy dựng sẵn thì có).

@@ -660,6 +660,8 @@ Tiếng Việt luôn là mặc định, không suy ra từ ngôn ngữ hệ đi�
 Trước đây mọi thứ vẽ ra hình đều là MỘT giá trị cho cả clip. Keyframe cho phép một thuộc tính
 chạy theo thời gian. Bản đầu phủ ba nhóm: transform của clip (x, y, phóng, xoay, độ mờ),
 cường độ và thông số **kiểu số** của effect, và vị trí / cỡ chữ / góc xoay của chữ overlay.
+Nhóm thứ tư thêm sau: **âm lượng clip** (cả clip hình lẫn clip tiếng) — thứ biến việc hạ tiếng
+nền dưới lời thoại từ cắt vụn clip thành một đoạn dốc.
 
 ### Dữ liệu nằm ở đâu, và vì sao
 
@@ -764,14 +766,19 @@ Hai kỹ thuật bắt buộc, dùng ở cả nút kim cương lẫn dải chấ
 
 ### Muốn cho một nhóm thuộc tính MỚI chạy keyframe thì sửa những gì
 
-Ví dụ âm lượng clip. Đúng bốn chỗ, không hơn:
+Ví dụ: âm lượng clip — nhóm mới nhất, đi đúng bốn chỗ này, không hơn:
 
 1. `src/shared/domain/keyframe-property-catalog.ts` — thêm một dòng vào bảng thuộc tính
-   (đường dẫn, khoảng giá trị, cách đọc giá trị tĩnh làm nền).
-2. `src/shared/domain/remotion-render-plan.ts` — bảng keyframe đã có sẵn trong kế hoạch dựng
-   hình; chỉ cần chỗ tiêu thụ đọc thêm đường dẫn mới.
+   (đường dẫn, khoảng giá trị, cách đọc giá trị tĩnh làm nền). Đường dẫn không nằm trong
+   `transform` thì `resolveClipProperty` phải tra riêng, đừng cắt chuỗi rồi tra mù.
+2. `src/shared/domain/remotion-render-plan.ts` — kiểm tra loại clip đó có THẬT SỰ mang
+   `keyframes` sang kế hoạch không. Nhánh clip tiếng từng không mang, và hậu quả là giao diện
+   đặt mốc bình thường, `project.json` ghi bình thường, còn file xuất ra phẳng lì — không một
+   dòng lỗi nào.
 3. Lớp vẽ — gọi `valueAtFrame(plan.keyframes?.['...'], frame, giáTrịTĩnh)` tại chỗ đang dùng
-   giá trị tĩnh.
+   giá trị tĩnh. Nếu giá trị tĩnh đó đang được **nhân sẵn** với thứ khác lúc dựng kế hoạch thì
+   tách hai số ra trước (âm lượng: `volume` của clip và `trackVolume` của lane đi riêng, lớp vẽ
+   nhân lại trong `keyframe-volume-at.ts`). Chia ngược từ tích là mời NaN vào lúc lane tắt hẳn.
 4. Giao diện — truyền `useKeyframeField(target, ['<đường dẫn>'], nhãn)` vào hàng tương ứng.
 
 Không phải sửa: lệnh, reducer, migrate, dải chấm trên timeline, công cụ cho agent (chỉ cần

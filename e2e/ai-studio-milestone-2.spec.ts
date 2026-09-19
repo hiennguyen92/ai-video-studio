@@ -236,7 +236,7 @@ test('nhạc đã chèn nằm đúng trên track nhạc nền và sửa được
   await expect(inspector.getByText('Nhạc nền 1')).toBeVisible()
   // Âm lượng và fade chỉnh ở Inspector, không nhân đôi ô điều khiển trong panel nhạc.
   await inspector.getByRole('tab', { name: 'Audio', exact: true }).click()
-  await expect(inspector.getByLabel('Âm lượng')).toBeVisible()
+  await expect(inspector.getByRole('slider', { name: 'Âm lượng' })).toBeVisible()
   await expect(inspector.getByLabel('Fade in')).toBeVisible()
 })
 

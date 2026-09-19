@@ -153,7 +153,7 @@ test('chèn giọng đọc vào timeline thành clip thật, cắt và hoàn tá
   const inspector = page.getByRole('region', { name: 'Thuộc tính' })
   await expect(inspector.getByText('Lồng tiếng 1')).toBeVisible()
   await inspector.getByRole('tab', { name: 'Audio', exact: true }).click()
-  await expect(inspector.getByLabel('Âm lượng')).toBeVisible()
+  await expect(inspector.getByRole('slider', { name: 'Âm lượng' })).toBeVisible()
 
   // Cắt được như mọi clip khác — đây là điều DESCRIPTION §4 đòi hỏi ở nội dung AI.
   const ruler = await page.locator('.timeline__ruler-row').boundingBox()

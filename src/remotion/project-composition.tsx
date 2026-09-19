@@ -38,6 +38,7 @@ import { wrapSubtitleText } from '../shared/domain/subtitle-types'
 import { textOverlayLines } from '../shared/domain/text-overlay-types'
 import { transformValuesAt } from '../shared/domain/keyframe-transform-at'
 import { effectsAtFrame } from '../shared/domain/keyframe-effects-at'
+import { volumeAtFrame } from '../shared/domain/keyframe-volume-at'
 import { textStyleAt } from '../shared/domain/keyframe-text-style-at'
 import {
   alignmentToFlex,
@@ -246,7 +247,7 @@ function VideoClip({
             data-clip-id={markers ? clip.key : undefined}
             startFrom={clip.sourceFromFrame}
             playbackRate={clip.playbackRate}
-            volume={clip.muted ? 0 : clip.volume * fade}
+            volume={clip.muted ? 0 : volumeAtFrame(clip, frame) * fade}
             style={{
               width: '100%',
               height: '100%',
@@ -314,13 +315,14 @@ function LookFilterDefs({ plan }: { plan: RenderPlan }): JSX.Element | null {
 }
 
 function AudioClip({ clip, url }: { clip: RenderPlanAudioClip; url: string }): JSX.Element {
+  const frame = useCurrentFrame()
   const fade = useFadeGain(clip.durationInFrames, clip.fadeInFrames, clip.fadeOutFrames)
   return (
     <Audio
       src={url}
       startFrom={clip.sourceFromFrame}
       playbackRate={clip.playbackRate}
-      volume={clip.volume * fade}
+      volume={volumeAtFrame(clip, frame) * fade}
     />
   )
 }

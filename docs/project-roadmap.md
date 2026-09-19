@@ -169,10 +169,10 @@ giao diện chỉ lộ ra khi chuyển tab với dữ liệu thật.
       tốn phí, không phụ thuộc mạng. Thay cho kế hoạch gọi ElevenLabs Sound Effects
       ban đầu (`plans/260909-1525-elevenlabs-sound-effects/`), bỏ giữa chừng vì một
       thư viện offline phủ đúng nhu cầu mà không có chi phí nào
-- [x] **Keyframe**: transform clip, thông số effect kiểu số, vị trí/cỡ/góc chữ
-      overlay. Năm kiểu nội suy (đều, giữ nguyên, chậm đầu/cuối/hai đầu), nút kim
-      cương ở panel Thuộc tính, dải chấm kéo được trên timeline, chép/dán cụm
-      keyframe giữa các clip, và công cụ cho agent. Chi tiết quyết định thiết kế:
+- [x] **Keyframe**: transform clip, âm lượng clip, thông số effect kiểu số,
+      vị trí/cỡ/góc chữ overlay. Năm kiểu nội suy (đều, giữ nguyên, chậm
+      đầu/cuối/hai đầu), nút kim cương ở panel Thuộc tính, dải chấm kéo được trên
+      timeline, chép/dán cụm keyframe giữa các clip, và công cụ cho agent. Chi tiết quyết định thiết kế:
       `docs/system-architecture.md` §Keyframe
 - [x] Chép/dán CLIP bằng Cmd+C / Cmd+V, giữ nguyên mọi thuộc tính
 - [x] Nhập file phụ đề `.srt` / `.vtt` có sẵn — trước đó phụ đề chỉ đi ra được
@@ -189,18 +189,17 @@ ghi vào backlog rõ ràng."
 
 - Sinh video bằng AI
 - LUT (.cube) — cần một đường vẽ WebGL riêng; xem mục chỉnh màu ở Mốc 5
-- Keyframe cho các nhóm CÒN LẠI: chỉnh màu, âm lượng clip, đệm khung chữ, `look.intensity`
+- Keyframe cho các nhóm CÒN LẠI: chỉnh màu, đệm khung chữ, `look.intensity`
   (phải xử `LookFilterDefs` trước — xem `docs/system-architecture.md` §Keyframe), và đường
   cong bezier tuỳ biến.
-  **Đã xong:** transform clip, thông số effect kiểu số, vị trí/cỡ/góc chữ overlay, và sao
-  chép/dán cụm keyframe giữa các clip
+  **Đã xong:** transform clip, âm lượng clip, thông số effect kiểu số, vị trí/cỡ/góc chữ
+  overlay, và sao chép/dán cụm keyframe giữa các clip
 - Hiệu ứng cần WebGL (ASCII, kính vạn hoa, mắt cá, halftone) và HSL theo dải màu
   — bộ lọc SVG không dựng được
-- Thao tác dựng phim còn thiếu, rà soát ngày 2026-09-19: slider âm lượng track;
-  keyframe âm lượng (kéo theo auto-ducking dốc mượt thay vì bậc thang); nút ripple
-  delete cho người dùng; marker/chapter; khoá clip lẻ; nhóm clip (`linkGroupId` có
-  trường nhưng không có logic đọc); kéo và sửa nhiều clip cùng lúc; sóng âm trên
-  clip video có tiếng; nút cho `build_cut_from_transcript` và `build_cut_from_shots`
+- Thao tác dựng phim còn thiếu, rà soát ngày 2026-09-19: nút ripple delete cho
+  người dùng; marker/chapter; khoá clip lẻ; nhóm clip (`linkGroupId` có trường
+  nhưng không có logic đọc); kéo và sửa nhiều clip cùng lúc; sóng âm trên clip
+  video có tiếng; nút cho `build_cut_from_transcript` và `build_cut_from_shots`
 - Xuất: thêm định dạng ngoài MP4/H.264, chọn chất lượng, preset nền tảng, xuất
   riêng đoạn đang chọn, hàng đợi nhiều bản
 - Bám đối tượng và tự cắt khung theo chủ thể

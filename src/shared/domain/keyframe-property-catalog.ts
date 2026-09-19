@@ -29,6 +29,9 @@ import type { TextOverlay } from './text-overlay-types'
  * trong file xuất rồi. Bốn lần khung hình đủ cho mọi cú phóng có nghĩa.
  */
 const CLIP_PROPERTIES: Record<string, { min: number; max: number }> = {
+  // Âm lượng của chính clip. Trần 2 khớp thanh trượt ở panel Thuộc tính và khớp
+  // phần nhân trong cả hai đường dựng.
+  volume: { min: 0, max: 2 },
   'transform.x': { min: -4, max: 4 },
   'transform.y': { min: -4, max: 4 },
   'transform.scale': { min: 0.05, max: 8 },
@@ -49,7 +52,6 @@ const TEXT_PROPERTIES: Record<string, { min: number; max: number }> = {
   'style.rotationDeg': { min: -180, max: 180 }
 }
 
-export const CLIP_TRANSFORM_PROPERTY_PATHS = Object.keys(CLIP_PROPERTIES)
 export const TEXT_PROPERTY_PATHS = Object.keys(TEXT_PROPERTIES)
 
 /** Đường dẫn tới cường độ của một effect. */
@@ -94,6 +96,9 @@ export interface ResolvedProperty {
 export function resolveClipProperty(clip: Clip, path: string): ResolvedProperty | null {
   const plain = CLIP_PROPERTIES[path]
   if (plain) {
+    // Không phải đường dẫn nào cũng nằm trong `transform`: âm lượng là trường
+    // trực tiếp của clip, nên phải tra riêng chứ không cắt chuỗi rồi tra mù.
+    if (path === 'volume') return { ...plain, staticValue: clip.volume }
     const transform = clip.transform ?? DEFAULT_CLIP_TRANSFORM
     const key = path.slice('transform.'.length) as keyof typeof transform
     return { ...plain, staticValue: transform[key] }

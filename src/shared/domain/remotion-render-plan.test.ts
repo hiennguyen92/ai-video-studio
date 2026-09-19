@@ -4,6 +4,7 @@ import { createEmptyProject } from './project-document-factory'
 import type { ProjectDocument } from './project-document-types'
 import { DEFAULT_SUBTITLE_STYLE } from './subtitle-types'
 import type { Clip } from './timeline-track-types'
+import { volumeAtFrame } from './keyframe-volume-at'
 import { buildRenderPlan, requiresRemotionRenderer } from './remotion-render-plan'
 
 /**
@@ -109,7 +110,7 @@ describe('quy đổi thời gian', () => {
 })
 
 describe('âm lượng và trạng thái track', () => {
-  it('nhân âm lượng clip với âm lượng track', () => {
+  it('mang mức clip và mức track RIÊNG, lớp vẽ nhân lại ra đúng tích', () => {
     const document = project()
     const trackId = musicTrack(document)
     addClip(document, trackId, 0, 1_000_000)
@@ -117,7 +118,41 @@ describe('âm lượng và trạng thái track', () => {
     const clipId = document.tracks.find((track) => track.id === trackId)!.clips[0].id
     applyEditorCommand(document, { type: 'clip/update', clipId, patch: { volume: 0.4 } })
 
-    expect(buildRenderPlan(document).audio[0].volume).toBeCloseTo(0.2, 5)
+    // Hai số đi riêng vì keyframe chỉ thay phần của clip; điều người nghe thấy
+    // vẫn là tích, nên phép thử đi qua đúng hàm mà lớp vẽ gọi.
+    const clip = buildRenderPlan(document).audio[0]
+    expect(clip.volume).toBeCloseTo(0.4, 5)
+    expect(clip.trackVolume).toBeCloseTo(0.5, 5)
+    expect(volumeAtFrame(clip, 0)).toBeCloseTo(0.2, 5)
+  })
+
+  it('clip tiếng mang theo đường keyframe âm lượng', () => {
+    // Nhánh tiếng từng KHÔNG chép `keyframes` sang kế hoạch, nên keyframe nằm
+    // yên trong file dự án còn bản xuất ra phẳng lì — không báo lỗi gì cả.
+    const document = project()
+    const trackId = musicTrack(document)
+    addClip(document, trackId, 0, 2_000_000)
+    const clipId = document.tracks.find((track) => track.id === trackId)!.clips[0].id
+    applyEditorCommand(document, {
+      type: 'keyframe/set',
+      target: { kind: 'clip', clipId },
+      path: 'volume',
+      atUs: 0,
+      value: 1
+    })
+    applyEditorCommand(document, {
+      type: 'keyframe/set',
+      target: { kind: 'clip', clipId },
+      path: 'volume',
+      atUs: 2_000_000,
+      value: 0
+    })
+
+    const clip = buildRenderPlan(document).audio[0]
+    expect(clip.keyframes?.['volume']).toHaveLength(2)
+    expect(volumeAtFrame(clip, 0)).toBeCloseTo(1, 5)
+    expect(volumeAtFrame(clip, 30)).toBeCloseTo(0.5, 5)
+    expect(volumeAtFrame(clip, 60)).toBeCloseTo(0, 5)
   })
 
   it('bỏ hẳn track audio đang tắt tiếng', () => {

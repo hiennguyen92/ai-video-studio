@@ -23,6 +23,7 @@ export const CLIP_KEYFRAME_PROPERTIES = {
   x: 'transform.x',
   y: 'transform.y',
   rotation: 'transform.rotationDeg',
+  volume: 'volume',
   effect_intensity: 'effect',
   effect_param: 'effect'
 } as const
