@@ -184,6 +184,31 @@ export function TimelinePanel(): JSX.Element {
 
   const selectedClipId = selection.clipIds[0]
 
+  // Clip nằm trong nhóm còn thành viên khác — để vẽ icon mắt xích.
+  const groupedClipIds = useMemo(() => {
+    const counts = new Map<string, string[]>()
+    for (const track of document?.tracks ?? []) {
+      for (const clip of track.clips) {
+        if (clip.linkGroupId)
+          counts.set(clip.linkGroupId, [...(counts.get(clip.linkGroupId) ?? []), clip.id])
+      }
+    }
+    return new Set([...counts.values()].filter((ids) => ids.length > 1).flat())
+  }, [document])
+
+  // Track gốc của clip đang cầm. Chỉ khi track đích KHÁC track này thì cú kéo mới
+  // là chuyển track; thành viên nằm ở track khác của một nhóm nhiều track thì vẫn
+  // vẽ tại chỗ của nó.
+  const dragSourceTrackId = useMemo(
+    () =>
+      preview
+        ? document?.tracks.find((track) => track.clips.some((clip) => clip.id === preview.clipId))
+            ?.id
+        : undefined,
+    [document, preview]
+  )
+  const dragChangesTrack = preview !== null && preview.targetTrackId !== dragSourceTrackId
+
   const handleSplit = useCallback(() => {
     if (!selectedClipId) return
     const atUs = useEditorStore.getState().playheadUs
@@ -368,19 +393,21 @@ export function TimelinePanel(): JSX.Element {
                     ))}
 
                   {track.clips.map((clip) => {
-                    const isDragging = preview?.clipId === clip.id
+                    const member = preview?.group?.find((item) => item.clipId === clip.id)
+                    const isDragging = preview?.clipId === clip.id || member !== undefined
                     const shown =
                       isDragging && preview
                         ? {
                             ...clip,
-                            startUs: preview.startUs,
-                            durationUs: preview.durationUs,
+                            startUs: member?.startUs ?? preview.startUs,
+                            durationUs: member?.durationUs ?? preview.durationUs,
                             sourceInUs: preview.sourceInUs ?? clip.sourceInUs,
                             speed: preview.speed ?? clip.speed
                           }
                         : clip
                     // Khi kéo sang track khác, clip chỉ được vẽ ở track đích.
-                    if (isDragging && preview && preview.targetTrackId !== track.id) return null
+                    if (isDragging && dragChangesTrack && track.id === dragSourceTrackId)
+                      return null
 
                     return (
                       <Fragment key={clip.id}>
@@ -390,6 +417,7 @@ export function TimelinePanel(): JSX.Element {
                           asset={document.assets.find((item) => item.id === clip.assetId)}
                           pixelsPerSecond={pixelsPerSecond}
                           selected={selection.clipIds.includes(clip.id)}
+                          grouped={groupedClipIds.has(clip.id)}
                           dragBadge={isDragging ? preview?.badge : undefined}
                           onPointerDown={(event, target, mode: ClipDragMode) =>
                             handleClipPointerDown(event, target, track, mode)
@@ -426,16 +454,20 @@ export function TimelinePanel(): JSX.Element {
 
                   {/* Clip đang được kéo tới track này nhưng vốn thuộc track khác. */}
                   {preview &&
+                    dragChangesTrack &&
                     preview.targetTrackId === track.id &&
-                    !track.clips.some((clip) => clip.id === preview.clipId) && (
-                      <div
-                        className="timeline-lane__ghost"
-                        style={{
-                          left: usToPx(preview.startUs, pixelsPerSecond),
-                          width: usToPx(preview.durationUs, pixelsPerSecond)
-                        }}
-                      />
-                    )}
+                    (preview.group ?? [preview])
+                      .filter((item) => !track.clips.some((clip) => clip.id === item.clipId))
+                      .map((item) => (
+                        <div
+                          key={item.clipId}
+                          className="timeline-lane__ghost"
+                          style={{
+                            left: usToPx(item.startUs, pixelsPerSecond),
+                            width: usToPx(item.durationUs, pixelsPerSecond)
+                          }}
+                        />
+                      ))}
                 </div>
               ))}
 

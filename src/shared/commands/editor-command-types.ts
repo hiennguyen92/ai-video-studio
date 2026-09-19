@@ -169,6 +169,34 @@ const moveClip = z.object({
 })
 
 /**
+ * Dời nhiều clip trong MỘT bước.
+ *
+ * Không ghép từ nhiều `clip/move` được: track đặt clip theo kiểu ghi đè, nên dời
+ * clip A vào chỗ cũ của clip B khi B chưa kịp dời là B bị cắt mất một đoạn. Lệnh
+ * này nhấc HẾT clip ra trước rồi mới đặt lại.
+ */
+const moveClips = z.object({
+  type: z.literal('clip/move-many'),
+  moves: z
+    .array(
+      z.object({
+        clipId: z.string(),
+        toTrackId: z.string().optional(),
+        toStartUs: nonNegativeMicros
+      })
+    )
+    .min(1)
+    .max(500)
+})
+
+/** Đưa các clip vào một nhóm (`linkGroupId`), hoặc rã nhóm khi truyền `null`. */
+const setClipLinkGroup = z.object({
+  type: z.literal('clip/set-link-group'),
+  clipIds: z.array(z.string()).min(1).max(500),
+  linkGroupId: z.string().min(1).max(120).nullable()
+})
+
+/**
  * Cắt gọn một mép clip. Dùng giá trị TUYỆT ĐỐI chứ không dùng delta, để lệnh
  * mang tính idempotent và AI không phải tự cộng trừ.
  */
@@ -812,6 +840,8 @@ export const editorCommandSchema = z.discriminatedUnion('type', [
   pasteClip,
   removeClip,
   moveClip,
+  moveClips,
+  setClipLinkGroup,
   trimClip,
   rippleTrimClip,
   slipClipCommand,

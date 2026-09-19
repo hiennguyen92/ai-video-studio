@@ -6,6 +6,12 @@ import {
   useEditorStore
 } from '../../state/editor-store'
 import { useT } from '../../i18n/use-translation'
+import {
+  groupSelectedClips,
+  selectionCanGroup,
+  selectionHasGroup,
+  ungroupSelectedClips
+} from '../../state/clip-group-actions'
 import { ToolButton } from '../ui/tool-button'
 import { IconMagnet, IconScissors, IconTrash, IconZoomIn, IconZoomOut } from '../ui/icons'
 import { TimelineToolButtons } from './timeline-tool-buttons'
@@ -53,6 +59,8 @@ export function TimelineToolbar({
   const hasSelection = useEditorStore(
     (state) => state.selection.clipIds.length > 0 || state.selection.text !== undefined
   )
+  const canGroup = useEditorStore(selectionCanGroup)
+  const hasGroup = useEditorStore(selectionHasGroup)
 
   return (
     <div className="timeline__toolbar">
@@ -73,6 +81,19 @@ export function TimelineToolbar({
         iconOnly
         onClick={onDelete}
         disabled={!canDelete}
+      />
+
+      <div className="top-bar__divider" />
+
+      <ToolButton
+        label={t.timeline.groupClips}
+        onClick={() => groupSelectedClips(t.timeline.groupClips)}
+        disabled={!canGroup}
+      />
+      <ToolButton
+        label={t.timeline.ungroupClips}
+        onClick={() => ungroupSelectedClips(t.timeline.ungroupClips)}
+        disabled={!hasGroup}
       />
 
       <div className="top-bar__divider" />

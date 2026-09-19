@@ -41,6 +41,12 @@ import {
   setCutTransitionCommands
 } from '../domain/timeline-cut-transitions'
 import { guessDuckingTracks, planAutoDucking } from '../domain/auto-ducking-planner'
+import {
+  expandToLinkGroups,
+  planGroupClips,
+  planMoveClips,
+  planUngroupClips
+} from '../domain/clip-link-groups'
 import { roundHalfUp } from '../domain/time-units'
 import { CLIP_LOOKS, findClipLook } from '../domain/clip-look-catalog'
 import { resolveKeyframeTool } from './chat-tool-keyframes'
@@ -89,7 +95,7 @@ export interface ChatEditContext {
    * Không phải chuyện thẩm mỹ: agent đọc bản tổng quan rồi thao tác theo id, và
    * một chữ overlay mang id `clip_…` sẽ khiến nó gọi nhầm công cụ dành cho clip.
    */
-  makeId(prefix?: 'clip' | 'track' | 'text' | 'fx'): string
+  makeId(prefix?: 'clip' | 'track' | 'text' | 'fx' | 'group'): string
   /**
    * Cú máy đã dò, theo id asset.
    *
@@ -289,11 +295,41 @@ function planOne(context: ChatEditContext, tool: ChatToolName, args: unknown): P
       const clipId = resolveClipId(context, input.clipId)
       if (input.toTrackId) requireTrack(context, input.toTrackId)
       const toStartUs = secondsToMicros(input.toSeconds)
+      // Clip trong nhóm kéo cả nhóm đi cùng một khoảng; dời riêng nó là tách
+      // hình khỏi tiếng — đúng thứ nhóm sinh ra để chặn.
+      const members = expandToLinkGroups(document, [clipId])
+      if (members.length > 1) {
+        const clip = findClipById(document, clipId)!
+        const command = planMoveClips(document, members, toStartUs - clip.startUs, input.toTrackId)
+        if (!command) throw new Error('Clip đã ở đúng chỗ đó')
+        return {
+          tool,
+          description: `Dời nhóm ${members.length} clip tới ${formatSeconds(toStartUs)}`,
+          commands: [command]
+        }
+      }
       return {
         tool,
         description: `Dời clip tới ${formatSeconds(toStartUs)}`,
         commands: [{ type: 'clip/move', clipId, toStartUs, toTrackId: input.toTrackId }]
       }
+    }
+
+    case 'group_clips': {
+      const input = chatToolSchemas.group_clips.parse(args)
+      const clipIds = input.clipIds ?? context.selectedClipIds
+      for (const id of clipIds) resolveClipId(context, id)
+      const command = planGroupClips(clipIds, context.makeId('group'))
+      if (!command) throw new Error('Cần ít nhất hai clip để gộp nhóm')
+      return { tool, description: `Gộp ${clipIds.length} clip thành nhóm`, commands: [command] }
+    }
+
+    case 'ungroup_clips': {
+      const input = chatToolSchemas.ungroup_clips.parse(args)
+      const clipId = resolveClipId(context, input.clipId)
+      const command = planUngroupClips(document, [clipId])
+      if (!command) throw new Error('Clip này không nằm trong nhóm nào')
+      return { tool, description: 'Rã nhóm clip', commands: [command] }
     }
 
     case 'remove_clip': {

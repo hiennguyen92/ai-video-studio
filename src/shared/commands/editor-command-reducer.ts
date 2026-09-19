@@ -8,7 +8,8 @@ import {
   DEFAULT_TRACK_HEIGHT,
   clipEndUs,
   clipSourceSpanUs,
-  type Clip
+  type Clip,
+  type Track
 } from '../domain/timeline-track-types'
 import { createId } from '../domain/project-document-factory'
 import {
@@ -295,6 +296,57 @@ export function applyEditorCommand(doc: ProjectDocument, command: EditorCommand)
         moved,
         () => createId('clip')
       )
+      return OK
+    }
+
+    case 'clip/move-many': {
+      // Kiểm HẾT trước khi đụng vào tài liệu: dời nửa nhóm rồi dừng vì một track
+      // khoá là tách đôi đúng thứ người dùng muốn giữ liền.
+      const plan: Array<{ clip: Clip; source: Track; target: Track; toStartUs: number }> = []
+      for (const move of command.moves) {
+        const found = locateClip(doc, move.clipId)
+        if (!found) return fail(`Không tìm thấy clip ${move.clipId}`)
+        const source = doc.tracks[found.trackIndex]
+        const target = move.toTrackId
+          ? doc.tracks.find((item) => item.id === move.toTrackId)
+          : source
+        if (!target) return fail(`Không tìm thấy track ${move.toTrackId}`)
+        if (source.locked) return fail(`Track "${source.name}" đang bị khoá`)
+        if (target.locked) return fail(`Track "${target.name}" đang bị khoá`)
+        if (target.kind !== source.kind) return fail('Không thể chuyển clip sang track khác loại')
+        plan.push({
+          clip: snapshot(source.clips[found.clipIndex]),
+          source,
+          target,
+          toStartUs: move.toStartUs
+        })
+      }
+
+      const movingIds = new Set(plan.map((item) => item.clip.id))
+      for (const item of plan) {
+        item.source.clips = item.source.clips.filter((clip) => !movingIds.has(clip.id))
+      }
+      for (const item of plan) {
+        item.target.clips = placeClip(
+          { ...item.target, clips: snapshot(item.target.clips) },
+          { ...item.clip, startUs: item.toStartUs },
+          () => createId('clip')
+        )
+      }
+      return OK
+    }
+
+    case 'clip/set-link-group': {
+      const wanted = new Set(command.clipIds)
+      let touched = 0
+      for (const track of doc.tracks) {
+        for (const clip of track.clips) {
+          if (!wanted.has(clip.id)) continue
+          clip.linkGroupId = command.linkGroupId ?? undefined
+          touched += 1
+        }
+      }
+      if (touched !== wanted.size) return fail('Có clip không tồn tại trong dự án')
       return OK
     }
 

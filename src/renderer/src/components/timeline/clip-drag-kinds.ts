@@ -70,6 +70,11 @@ export interface ClipDragPreview {
   speed?: number
   /** Chữ nhỏ trên clip lúc kéo: tốc độ mới, điểm vào mới… */
   badge?: string
+  /**
+   * Kéo nhiều clip: vị trí xem trước của CẢ loạt, clip đang cầm đứng đầu. Vắng
+   * mặt nghĩa là chỉ kéo một clip.
+   */
+  group?: Array<{ clipId: string; startUs: number; durationUs: number }>
 }
 
 /** Bước kéo mép chung cho trim thường, ripple trim và rate stretch. */

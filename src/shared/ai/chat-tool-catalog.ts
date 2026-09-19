@@ -93,6 +93,15 @@ export const chatToolSchemas = {
     clipId: optionalClipId
   }),
 
+  /** Bỏ trống `clipIds` là gộp các clip đang chọn. */
+  group_clips: z.object({
+    clipIds: z.array(z.string().min(1).max(120)).min(2).max(100).optional()
+  }),
+
+  ungroup_clips: z.object({
+    clipId: optionalClipId
+  }),
+
   duplicate_clip: z.object({
     clipId: optionalClipId
   }),
@@ -622,7 +631,11 @@ export const chatToolDescriptions: Record<ChatToolName, string> = {
     'Slip a video or audio clip: change which part of the source it plays while it keeps its place and length on the timeline. sourceInSeconds is the new point in the source file where the clip starts playing; it is clamped so the clip never runs past the end of the file. The clip line in the project overview shows source=in–out.',
   rate_stretch_clip:
     'Rate stretch a video or audio clip: drag one edge to change its length while it keeps the same stretch of source, so the speed changes to fit (longer plays slower, shorter plays faster, 0.25x to 4x). The other edge stays put. toSeconds is the timeline position the edge is dragged to.',
-  move_clip: 'Move a clip to a new start position, optionally onto another track.',
+  move_clip:
+    'Move a clip to a new start position, optionally onto another track. A clip in a group (group=… in the overview) moves its whole group by the same amount; a group spread over several tracks keeps its tracks.',
+  group_clips:
+    'Group clips so they are selected, moved and deleted together — typically a video clip and its separate audio, or a logo with its sound effect. Trimming, speed and effects still apply to one clip. Leave clipIds out to group the selected clips. A clip already in a group leaves it.',
+  ungroup_clips: 'Break up the group a clip belongs to; every member becomes independent again.',
   remove_clip: 'Delete a clip from the timeline.',
   duplicate_clip: 'Duplicate a clip in place.',
   set_clip_volume: 'Set the volume of one clip, where 1 is unchanged.',
@@ -726,6 +739,8 @@ export const chatToolParameterHints: Record<ChatToolName, string> = {
   slip_clip: '{ clipId?: string, sourceInSeconds: number }',
   rate_stretch_clip: "{ clipId?: string, edge: 'start' | 'end', toSeconds: number }",
   move_clip: '{ clipId?: string, toSeconds: number, toTrackId?: string }',
+  group_clips: '{ clipIds?: string[] }',
+  ungroup_clips: '{ clipId?: string }',
   remove_clip: '{ clipId?: string }',
   duplicate_clip: '{ clipId?: string }',
   set_clip_volume: '{ clipId?: string, volume: number }',

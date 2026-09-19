@@ -83,6 +83,8 @@ nên mọi thao tác chỉnh sửa đều không phá huỷ dữ liệu gốc.
 | `Delete` | Xoá clip đang chọn |
 | `Cmd/Ctrl+Z` | Hoàn tác (thêm `Shift` để làm lại) |
 | `Cmd/Ctrl+D` | Nhân bản clip |
+| `Cmd/Ctrl+G` | Gộp các clip đang chọn thành nhóm (thêm `Shift` để rã nhóm) |
+| `Shift`+bấm | Chọn thêm clip — kéo một clip là dời cả loạt đang chọn |
 | `+` `-` | Phóng to / thu nhỏ timeline |
 | `Home` | Về đầu timeline |
 | `Esc` | Bỏ chọn |
@@ -119,6 +121,9 @@ Phím tắt **không** kích hoạt khi con trỏ đang ở trong ô nhập li�
 - **Keyframe**: transform clip, âm lượng clip, thông số effect kiểu số, vị trí/cỡ/góc chữ
   overlay; năm kiểu nội suy; chép/dán cụm keyframe giữa các clip
 - **Chép/dán clip** bằng Cmd+C / Cmd+V, giữ nguyên mọi thuộc tính
+- **Kéo nhiều clip cùng lúc** (kể cả trên nhiều track, giữ nguyên khoảng cách) và **nhóm clip**:
+  bấm một clip là chọn cả nhóm, dời một clip là dời cả nhóm; cắt mép/tốc độ/effect vẫn tác động
+  riêng từng clip. Agent dùng được qua `group_clips` / `ungroup_clips` / `move_clip`
 - **Liên kết lại media bị thiếu**, và đổi tỉ lệ khung / tốc độ khung sau khi đã tạo dự án
 - **Hoàn tác/làm lại**: dựa trên patch, một nhóm lệnh chỉ tạo một bước hoàn tác
 - **Xuất**: MP4 (H.264 + AAC), chọn độ phân giải và fps, tăng tốc phần cứng khi máy hỗ trợ,

@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { groupSelectedClips, ungroupSelectedClips } from '../state/clip-group-actions'
 import { frameDurationUs } from '../../../shared/domain/time-units'
 import { selectionRemovalCommands } from '../../../shared/commands/selection-removal'
 import { useEditorStore } from '../state/editor-store'
@@ -34,6 +35,14 @@ export function useKeyboardShortcuts(): void {
       // Chép/dán CLIP. Đặt trước nhánh hoàn tác cho gọn nhóm phím có phím bổ trợ;
       // phần chặn "đang gõ trong ô nhập" nằm ở đầu hàm nên Cmd+C trong ô chữ vẫn
       // là chép chữ như thường.
+      // Cmd+G gộp nhóm, Cmd+Shift+G rã nhóm — cùng cặp phím với Premiere và Figma.
+      if (modifier && event.key.toLowerCase() === 'g') {
+        event.preventDefault()
+        if (event.shiftKey) ungroupSelectedClips('Rã nhóm clip')
+        else groupSelectedClips('Gộp nhóm clip')
+        return
+      }
+
       if (modifier && event.key.toLowerCase() === 'c') {
         if (!selectedClipId) return
         event.preventDefault()

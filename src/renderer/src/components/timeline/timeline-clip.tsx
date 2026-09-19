@@ -19,6 +19,8 @@ import { reducePeaksToColumns, useWaveformPeaks } from '../../hooks/use-waveform
 import { useLibraryClipDrop } from '../library/use-library-clip-drop'
 import { TimelineClipTags } from './timeline-clip-tags'
 import { useClipTagDescriptions } from './use-clip-tag-descriptions'
+import { IconLink } from '../ui/icons'
+import { useT } from '../../i18n/use-translation'
 
 /**
  * Một clip trên timeline.
@@ -52,6 +54,7 @@ export function TimelineClip({
   asset,
   pixelsPerSecond,
   selected,
+  grouped = false,
   dragBadge,
   onPointerDown
 }: {
@@ -60,10 +63,13 @@ export function TimelineClip({
   asset: MediaAsset | undefined
   pixelsPerSecond: number
   selected: boolean
+  /** Clip nằm trong nhóm còn thành viên khác — hiện icon mắt xích cạnh tên. */
+  grouped?: boolean
   /** Chữ nhỏ hiện trên clip lúc đang kéo (tốc độ mới khi rate stretch, điểm vào khi slip). */
   dragBadge?: string
   onPointerDown(event: ReactPointerEvent<HTMLElement>, clip: Clip, mode: ClipDragMode): void
 }): JSX.Element {
+  const t = useT()
   const isBlade = useEditorStore((state) => state.timelineTool === 'blade')
   // Chế độ Blade: vạch dọc theo con trỏ cho thấy chỗ sẽ cắt trước khi bấm.
   const [bladeX, setBladeX] = useState<number | null>(null)
@@ -128,8 +134,8 @@ export function TimelineClip({
       {...dropProps}
       role="button"
       tabIndex={0}
-      aria-label={`${asset?.name ?? clip.label ?? 'clip'} · ${formatClockTime(clip.durationUs, false)}`}
-      title={`${asset?.name ?? clip.label ?? ''}\n${formatClockTime(clip.startUs)} → ${formatClockTime(clip.startUs + clip.durationUs)}${tagLines}`}
+      aria-label={`${asset?.name ?? clip.label ?? 'clip'} · ${formatClockTime(clip.durationUs, false)}${grouped ? ` · ${t.timeline.groupedClip}` : ''}`}
+      title={`${asset?.name ?? clip.label ?? ''}\n${formatClockTime(clip.startUs)} → ${formatClockTime(clip.startUs + clip.durationUs)}${grouped ? `\n${t.timeline.groupedClip}` : ''}${tagLines}`}
     >
       {filmstripStyle && <div className="timeline-clip__filmstrip" style={filmstripStyle} />}
 
@@ -150,7 +156,10 @@ export function TimelineClip({
         />
       )}
 
-      <span className="timeline-clip__label">{asset?.name ?? clip.label ?? ''}</span>
+      <span className="timeline-clip__label">
+        {grouped && <IconLink className="timeline-clip__group-icon" width={10} height={10} />}
+        {asset?.name ?? clip.label ?? ''}
+      </span>
 
       <TimelineClipTags clip={clip} />
 

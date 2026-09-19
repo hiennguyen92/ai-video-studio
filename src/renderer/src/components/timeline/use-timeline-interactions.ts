@@ -3,6 +3,8 @@ import type { Clip, Track } from '../../../../shared/domain/timeline-track-types
 import { clipEndUs } from '../../../../shared/domain/timeline-track-types'
 import type { ProjectDocument } from '../../../../shared/domain/project-document-types'
 import { clipSelectSeekUs } from '../../../../shared/domain/clip-select-seek'
+import { planMoveClips } from '../../../../shared/domain/clip-link-groups'
+import { collectGroupDragClips, groupDragPreview } from './clip-group-drag'
 import { frameDurationUs, snapMicrosToFrame } from '../../../../shared/domain/time-units'
 import { useEditorStore } from '../../state/editor-store'
 import { collectSnapTargets, pxToUs, snapTime, type SnapContext } from './timeline-geometry'
@@ -64,9 +66,24 @@ export function useTimelineInteractions(options: {
       event.preventDefault()
       event.stopPropagation()
 
-      const { timelineTool, playheadUs } = useEditorStore.getState()
+      const { timelineTool, playheadUs, selection } = useEditorStore.getState()
       const additive = event.shiftKey || event.metaKey || event.ctrlKey
-      toggleClipSelection(clip.id, track.id, additive)
+      // Bấm (không giữ phím) vào clip ĐÃ nằm trong vùng chọn nhiều clip thì giữ
+      // nguyên vùng chọn để kéo cả loạt; thả ra mà không kéo mới thu về clip này.
+      const keepsSelection =
+        !additive && selection.clipIds.length > 1 && selection.clipIds.includes(clip.id)
+      if (!keepsSelection) toggleClipSelection(clip.id, track.id, additive)
+
+      // Clip dời theo khi KÉO THÂN clip (cắt mép, slip… vẫn chỉ một clip): cả vùng chọn (đã gồm cả nhóm), nếu clip
+      // đang cầm nằm trong đó. Bấm kèm phím để BỎ chọn thì không kéo gì theo.
+      const selectedNow = useEditorStore.getState().selection.clipIds
+      const groupMembers =
+        clipDragKind(timelineTool, zone, track.kind) === 'move' &&
+        selectedNow.length > 1 &&
+        selectedNow.includes(clip.id)
+          ? collectGroupDragClips(document, selectedNow, clip.id)
+          : []
+      const groupOnOneTrack = groupMembers.every((item) => item.trackId === track.id)
 
       // Chỗ bấm quy ra thời gian, tính ngay lúc bấm: clip còn nằm đúng chỗ cũ.
       const clipBox = event.currentTarget.getBoundingClientRect()
@@ -80,7 +97,8 @@ export function useTimelineInteractions(options: {
         // khi đang phát.
         playheadUs,
         enabled: snapEnabled,
-        excludeClipIds: [clip.id]
+        excludeClipIds:
+          groupMembers.length > 0 ? groupMembers.map((item) => item.clip.id) : [clip.id]
       }
 
       // BLADE: cắt ngay tại chỗ bấm (bắt dính vào đầu phát, mép clip khác nếu gần),
@@ -119,13 +137,19 @@ export function useTimelineInteractions(options: {
           const snapped = snapTime(clip.startUs + deltaUs, snapTargets, snapContext)
           const overTrackId = trackAtClientY(moveEvent.clientY) ?? track.id
           const overTrack = document.tracks.find((item) => item.id === overTrackId)
-          // Chỉ cho thả sang track cùng loại và không bị khoá.
-          const allowed = overTrack && overTrack.kind === track.kind && !overTrack.locked
+          // Chỉ cho thả sang track cùng loại và không bị khoá. Loạt clip trải trên
+          // nhiều track thì giữ track: dồn chúng về một track là đè lên nhau.
+          const allowed =
+            overTrack && overTrack.kind === track.kind && !overTrack.locked && groupOnOneTrack
           next = {
             ...base,
             targetTrackId: allowed ? overTrackId : track.id,
             startUs: snapped.us,
             snappedToUs: snapped.snappedTo
+          }
+          if (groupMembers.length > 0) {
+            const { deltaUs: groupDelta, group } = groupDragPreview(groupMembers, clip, snapped.us)
+            next = { ...next, startUs: clip.startUs + groupDelta, group }
           }
         } else if (kind === 'slip') {
           next = { ...base, ...slipPreview(clip, deltaUs, assetDurationUs) }
@@ -160,7 +184,15 @@ export function useTimelineInteractions(options: {
         if (upEvent.pointerId !== pointerId) return
         const final = previewRef.current
         finish()
-        if (final) {
+        if (final?.group) {
+          const command = planMoveClips(
+            document,
+            final.group.map((item) => item.clipId),
+            final.startUs - clip.startUs,
+            final.targetTrackId !== track.id ? final.targetTrackId : undefined
+          )
+          if (command) run([command], 'Di chuyển nhiều clip')
+        } else if (final) {
           const commands = clipDragCommands(clip, track.id, final)
           if (commands.length > 0) run(commands, clipDragLabel(final.kind))
         }
@@ -171,6 +203,7 @@ export function useTimelineInteractions(options: {
           Math.abs(upEvent.clientX - pointerStartX),
           Math.abs(upEvent.clientY - pointerStartY)
         )
+        if (movedPx < CLICK_SLOP_PX && keepsSelection) toggleClipSelection(clip.id, track.id, false)
         if (movedPx < CLICK_SLOP_PX && !additive) {
           const seekUs = clipSelectSeekUs(
             clip,

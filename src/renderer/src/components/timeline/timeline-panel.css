@@ -375,6 +375,11 @@
   pointer-events: none;
 }
 
+.timeline-clip__group-icon {
+  vertical-align: -1px;
+  margin-right: 3px;
+}
+
 .timeline-clip__label {
   position: absolute;
   left: 5px;

@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { expandToLinkGroups } from '../../../shared/domain/clip-link-groups'
 import type { ProjectDocument } from '../../../shared/domain/project-document-types'
 import { projectDurationUs } from '../../../shared/domain/project-document-types'
 import type { EditorCommand } from '../../../shared/commands/editor-command-types'
@@ -205,9 +206,12 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
   selectTextBlock: (text) => set({ selection: { clipIds: [], text } }),
 
   toggleClipSelection: (clipId, trackId, additive) => {
-    const { selection } = get()
+    const { selection, session } = get()
+    // Bấm vào một clip là chọn CẢ NHÓM của nó: chọn lẻ một thành viên rồi kéo là
+    // tách hình khỏi tiếng.
+    const group = session ? expandToLinkGroups(session.document, [clipId]) : [clipId]
     if (!additive) {
-      set({ selection: { clipIds: [clipId], trackId } })
+      set({ selection: { clipIds: group, trackId } })
       return
     }
     const already = selection.clipIds.includes(clipId)
@@ -215,8 +219,8 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
       selection: {
         trackId,
         clipIds: already
-          ? selection.clipIds.filter((id) => id !== clipId)
-          : [...selection.clipIds, clipId]
+          ? selection.clipIds.filter((id) => !group.includes(id))
+          : [...selection.clipIds, ...group.filter((id) => !selection.clipIds.includes(id))]
       }
     })
   },
