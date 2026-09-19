@@ -142,6 +142,18 @@ export function TimelineClip({
       {asset?.derived.waveformPath && track.kind === 'audio' && (
         <WaveformStrip asset={asset} clip={clip} pixelsPerSecond={pixelsPerSecond} color={color} />
       )}
+      {/* Clip quay có tiếng: sóng âm ở dải dưới, dưới dải hình. Cắt lời hay tìm chỗ
+          ngắt câu trên lane hình trước đây phải đoán mò vì chỉ thấy khung hình. Clip
+          đã tắt tiếng thì không vẽ — sóng âm của thứ không phát ra là thông tin sai. */}
+      {asset?.derived.waveformPath && track.kind === 'video' && clip.volume > 0 && (
+        <WaveformStrip
+          asset={asset}
+          clip={clip}
+          pixelsPerSecond={pixelsPerSecond}
+          color="#ffffff"
+          className="timeline-clip__waveform timeline-clip__waveform--below-picture"
+        />
+      )}
 
       {fadeInWidth > 1 && (
         <div
@@ -188,12 +200,14 @@ function WaveformStrip({
   asset,
   clip,
   pixelsPerSecond,
-  color
+  color,
+  className = 'timeline-clip__waveform'
 }: {
   asset: MediaAsset
   clip: Clip
   pixelsPerSecond: number
   color: string
+  className?: string
 }): JSX.Element | null {
   const data = useWaveformPeaks(asset.derived.waveformPath)
   const width = Math.max(2, usToPx(clip.durationUs, pixelsPerSecond))
@@ -208,7 +222,7 @@ function WaveformStrip({
 
   return (
     <svg
-      className="timeline-clip__waveform"
+      className={className}
       viewBox={`0 0 ${columns.length} 100`}
       preserveAspectRatio="none"
       aria-hidden="true"

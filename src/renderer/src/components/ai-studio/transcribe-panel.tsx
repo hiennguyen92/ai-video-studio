@@ -16,6 +16,7 @@ import { interpolate, useT } from '../../i18n/use-translation'
 import { ToolButton } from '../ui/tool-button'
 import { EmptyState } from '../ui/empty-state'
 import { IconSparkle, IconTrash } from '../ui/icons'
+import { TranscriptSegmentList } from './transcript-segment-list'
 import './transcribe-panel.css'
 
 /**
@@ -85,7 +86,6 @@ export function TranscribePanel({
   const selection = useEditorStore((state) => state.selection)
   const setPlayhead = useEditorStore((state) => state.setPlayhead)
   const setPlaying = useEditorStore((state) => state.setPlaying)
-  const run = useEditorStore((state) => state.run)
 
   const { models, downloads, download, cancelDownload, deleteModel } = useWhisperModels()
   const { state: transcription, start, cancel } = useTranscription()
@@ -120,6 +120,16 @@ export function TranscribePanel({
       cancelled = true
     }
   }, [credentialsVersion])
+
+  /** Dựng bản cut lên đúng lane của clip đang chọn, nếu clip đó phát media của bản phiên âm. */
+  const cutTrackId = useMemo(
+    () =>
+      selected
+        ? document?.tracks.find((track) => track.clips.some((clip) => clip.id === selected.clip.id))
+            ?.id
+        : undefined,
+    [document, selected]
+  )
 
   /** Bản phiên âm của asset đang chọn. */
   const transcript: Transcript | undefined = useMemo(() => {
@@ -359,77 +369,12 @@ export function TranscribePanel({
             {t.transcribe.seekHint}
           </p>
 
-          <div className="transcript-list">
-            {transcript.segments.map((segment, index) => (
-              <article key={segment.id} className="transcript-segment">
-                <button
-                  type="button"
-                  className="transcript-segment__time"
-                  onClick={() => seekToSegment(segment.startUs)}
-                  title={t.transcribe.seekHint}
-                >
-                  {formatClockTime(segment.startUs)}
-                </button>
-
-                <textarea
-                  className="transcript-segment__text"
-                  value={segment.text}
-                  rows={2}
-                  aria-label={`${t.transcribe.transcriptSection} ${index + 1}`}
-                  onChange={(event) =>
-                    run(
-                      [
-                        {
-                          type: 'transcript/update-segment',
-                          transcriptId: transcript.id,
-                          segmentId: segment.id,
-                          text: event.target.value
-                        }
-                      ],
-                      'Sửa bản phiên âm'
-                    )
-                  }
-                />
-
-                <div className="transcript-segment__actions">
-                  {segment.edited && (
-                    <span className="transcript-segment__badge">{t.transcribe.edited}</span>
-                  )}
-                  {index < transcript.segments.length - 1 && (
-                    <ToolButton
-                      label={t.transcribe.mergeNext}
-                      onClick={() =>
-                        run(
-                          [
-                            {
-                              type: 'transcript/merge-segments',
-                              transcriptId: transcript.id,
-                              segmentId: segment.id
-                            }
-                          ],
-                          'Gộp đoạn phiên âm'
-                        )
-                      }
-                    />
-                  )}
-                </div>
-              </article>
-            ))}
-          </div>
-
-          <div className="transcribe-panel__actions">
-            <ToolButton
-              label={t.transcribe.deleteTranscript}
-              icon={<IconTrash />}
-              variant="danger"
-              onClick={() =>
-                run(
-                  [{ type: 'transcript/remove', transcriptId: transcript.id }],
-                  'Xoá bản phiên âm'
-                )
-              }
-            />
-          </div>
+          <TranscriptSegmentList
+            key={transcript.id}
+            transcript={transcript}
+            cutTrackId={cutTrackId}
+            onSeek={seekToSegment}
+          />
         </>
       )}
 

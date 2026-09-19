@@ -129,6 +129,18 @@
   background: var(--surface-raised);
 }
 
+/* Ô "giữ đoạn này" đứng cạnh mốc thời gian. */
+.transcript-segment__head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* Đoạn bị bỏ khỏi bản cut: mờ đi nhưng vẫn sửa được. */
+.transcript-segment--dropped {
+  opacity: 0.5;
+}
+
 .transcript-segment__time {
   align-self: flex-start;
   padding: 1px 6px;

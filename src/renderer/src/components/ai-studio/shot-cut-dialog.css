@@ -1,0 +1,61 @@
+/* Lưới ảnh đại diện của các cú máy; hộp thoại rộng hơn hộp thoại xuất để thấy nhiều cảnh. */
+.shot-cut-dialog {
+  width: min(760px, calc(100vw - 32px));
+}
+
+.shot-cut-dialog__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: var(--space-2);
+  max-height: 46vh;
+  overflow-y: auto;
+}
+
+.shot-cut-dialog__shot {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 3px;
+  border: 2px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-raised);
+  color: var(--text-secondary);
+  cursor: pointer;
+  text-align: left;
+}
+
+.shot-cut-dialog__shot img,
+.shot-cut-dialog__blank {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  background: var(--surface-base);
+}
+
+.shot-cut-dialog__shot--picked {
+  border-color: var(--accent);
+}
+
+.shot-cut-dialog__meta {
+  font-size: 11px;
+}
+
+/* Số thứ tự cảnh trong bản cut, góc trên-trái. */
+.shot-cut-dialog__order {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: 10px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 20px;
+  text-align: center;
+}

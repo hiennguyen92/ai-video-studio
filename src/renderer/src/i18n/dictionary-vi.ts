@@ -519,6 +519,23 @@ export const dictionaryVi = {
       'Dịch lại sẽ thay toàn bộ bản dịch hiện tại, kể cả các đoạn bạn đã sửa tay.',
     segmentCount: '{count} đoạn'
   },
+  buildCut: {
+    keepSegment: 'Giữ đoạn {index} trong bản cut',
+    transcriptHint: 'Giữ {kept}/{total} đoạn. Bỏ dấu các câu nói hỏng rồi dựng: phần còn lại xếp liền nhau theo đúng thứ tự lời nói.',
+    fromTranscript: 'Dựng bản cut từ đoạn đã giữ',
+    fromTranscriptLabel: 'Dựng bản cut theo lời',
+    replaceWarning: 'Bản cut sẽ THAY toàn bộ clip đang có trên lane đó. Hoàn tác được. Tiếp tục?',
+    fromShots: 'Dựng theo cảnh',
+    shotsTitle: 'Dựng theo cảnh — {name}',
+    detecting: 'Đang dò các cú máy…',
+    noShots: 'Không tìm thấy cú máy nào trong media này.',
+    shotsHint: 'Bấm vào cảnh theo thứ tự muốn xếp lên timeline. Bấm lại để bỏ. Hợp với footage không có lời nói.',
+    shotOrder: 'Cảnh {index}, {seconds}s',
+    maxShotSeconds: 'Mỗi cảnh tối đa (giây, để trống là giữ nguyên)',
+    selectedCount: 'Đã chọn {count} cảnh',
+    build: 'Dựng lên timeline',
+    fromShotsLabel: 'Dựng bản cut theo cảnh'
+  },
   wordHighlight: {
     section: 'Nổi bật từng chữ',
     mode: 'Tô chữ',

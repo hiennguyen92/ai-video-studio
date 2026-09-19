@@ -201,11 +201,14 @@ ghi vào backlog rõ ràng."
   overlay, và sao chép/dán cụm keyframe giữa các clip
 - Hiệu ứng cần WebGL (ASCII, kính vạn hoa, mắt cá, halftone) và HSL theo dải màu
   — bộ lọc SVG không dựng được
-- Thao tác dựng phim còn thiếu, rà soát ngày 2026-09-19: khoá clip lẻ; chọn
-  nhiều clip bằng kéo khung; sóng
-  âm trên clip video có tiếng; nút cho `build_cut_from_transcript` và
-  `build_cut_from_shots`.
-  **Đã xong:** kéo nhiều clip cùng lúc (`clip/move-many`) và nhóm clip
+- Thao tác dựng phim còn thiếu, rà soát ngày 2026-09-19: khoá clip lẻ; phát ngược
+  clip; speed ramp.
+  **Đã xong (2026-09-20):** chọn nhiều clip bằng kéo khung trên vùng trống (chạm một
+  phần là chọn, bỏ qua lane khoá, Shift/Cmd để cộng thêm; bấm vùng trống là bỏ
+  chọn); sóng âm ở dải dưới clip hình có tiếng (không vẽ khi clip tắt tiếng); dựng
+  bản cut theo lời trong tab Phiên âm (bỏ dấu đoạn hỏng) và theo cảnh từ thẻ video
+  trong thư viện (bấm cảnh theo thứ tự) — cả hai gọi chung bộ lập kế hoạch với agent.
+  **Đã xong trước đó:** kéo nhiều clip cùng lúc (`clip/move-many`) và nhóm clip
   (`linkGroupId`, Cmd+G / Cmd+Shift+G). Loạt clip trải nhiều track thì không
   chuyển track được khi kéo — dồn về một track là đè lên nhau. Nút ripple delete
   clip (chỉ track của clip) và marker cấp tài liệu, chép được danh sách chương

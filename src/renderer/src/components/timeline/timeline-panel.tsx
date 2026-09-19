@@ -1,3 +1,4 @@
+import { useTimelineMarqueeSelection } from './use-timeline-marquee-selection'
 import { splitClipAt } from '../../state/clip-group-actions'
 import {
   Fragment,
@@ -83,6 +84,13 @@ export function TimelinePanel(): JSX.Element {
     document,
     pixelsPerSecond,
     trackAtClientY
+  })
+
+  const { marquee, handleLanesPointerDown } = useTimelineMarqueeSelection({
+    document,
+    pixelsPerSecond,
+    lanesRef,
+    trackRowRefs
   })
 
   const clientXToUs = useCallback(
@@ -338,7 +346,18 @@ export function TimelinePanel(): JSX.Element {
               <TimelineMarkerLayer markers={document.markers} pixelsPerSecond={pixelsPerSecond} />
             </div>
 
-            <div className="timeline__lanes" ref={lanesRef}>
+            <div className="timeline__lanes" ref={lanesRef} onPointerDown={handleLanesPointerDown}>
+              {marquee && (
+                <div
+                  className="timeline__marquee"
+                  style={{
+                    left: marquee.left,
+                    top: marquee.top,
+                    width: marquee.right - marquee.left,
+                    height: marquee.bottom - marquee.top
+                  }}
+                />
+              )}
               {document.tracks.map((track) => (
                 <div
                   key={track.id}

@@ -1,3 +1,4 @@
+import { ShotCutDialog } from './shot-cut-dialog'
 import { useCallback, useMemo, useState, type DragEvent, type JSX } from 'react'
 import type { MediaAsset } from '../../../../shared/domain/media-asset-types'
 import { formatClockTime } from '../../../../shared/domain/time-units'
@@ -13,6 +14,7 @@ import {
   IconImport,
   IconSearch,
   IconSparkle,
+  IconScissors,
   IconTrash,
   IconWaveform
 } from '../ui/icons'
@@ -55,6 +57,7 @@ export function MediaLibraryPanel({
   const assets = useEditorStore((state) => state.session?.document.assets)
   const document = useEditorStore((state) => state.session?.document)
   const run = useEditorStore((state) => state.run)
+  const [shotAsset, setShotAsset] = useState<MediaAsset | null>(null)
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState<FilterKind>('all')
 
@@ -259,6 +262,16 @@ export function MediaLibraryPanel({
               disabled={asset.missing}
             />
 
+            {asset.kind === 'video' && !asset.missing && (
+              <ToolButton
+                label={t.buildCut.fromShots}
+                icon={<IconScissors />}
+                iconOnly
+                className="media-card__shots"
+                onClick={() => setShotAsset(asset)}
+              />
+            )}
+
             <ToolButton
               label={interpolate(t.media.remove, { name: asset.name })}
               icon={<IconTrash />}
@@ -270,6 +283,7 @@ export function MediaLibraryPanel({
           </article>
         ))}
       </div>
+      {shotAsset && <ShotCutDialog asset={shotAsset} onClose={() => setShotAsset(null)} />}
     </div>
   )
 }

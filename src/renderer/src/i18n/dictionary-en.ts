@@ -520,6 +520,23 @@ export const dictionaryEn: Dictionary = {
       'Translating again replaces the whole translation, including segments you edited by hand.',
     segmentCount: '{count} segments'
   },
+  buildCut: {
+    keepSegment: 'Keep segment {index} in the cut',
+    transcriptHint: 'Keeping {kept}/{total} segments. Untick the flubbed lines, then build: the rest is laid end to end in speaking order.',
+    fromTranscript: 'Build cut from kept segments',
+    fromTranscriptLabel: 'Build cut from transcript',
+    replaceWarning: 'The cut REPLACES every clip currently on that lane. Undoable. Continue?',
+    fromShots: 'Build from shots',
+    shotsTitle: 'Build from shots — {name}',
+    detecting: 'Detecting camera shots…',
+    noShots: 'No camera shots found in this media.',
+    shotsHint: 'Click shots in the order you want them on the timeline. Click again to remove. Good for footage without speech.',
+    shotOrder: 'Shot {index}, {seconds}s',
+    maxShotSeconds: 'Max seconds per shot (blank keeps full length)',
+    selectedCount: '{count} shots selected',
+    build: 'Build on timeline',
+    fromShotsLabel: 'Build cut from shots'
+  },
   wordHighlight: {
     section: 'Word highlight',
     mode: 'Highlight',

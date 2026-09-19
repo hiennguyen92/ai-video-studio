@@ -217,9 +217,21 @@
   transition: opacity var(--transition-fast);
 }
 
+/* Dựng theo cảnh: chỉ thẻ video có, nằm dưới nút xoá. */
+.media-card__shots {
+  position: absolute;
+  right: 4px;
+  top: 68px;
+  background: rgba(11, 13, 18, 0.85);
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+}
+
 .media-card:hover .media-card__add,
 .media-card:hover .media-card__remove,
+.media-card:hover .media-card__shots,
 .media-card__add:focus-visible,
-.media-card__remove:focus-visible {
+.media-card__remove:focus-visible,
+.media-card__shots:focus-visible {
   opacity: 1;
 }
