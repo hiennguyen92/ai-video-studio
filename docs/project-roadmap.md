@@ -127,7 +127,8 @@ giao diện chỉ lộ ra khi chuyển tab với dữ liệu thật.
       cách, biến dạng, làm mờ, mặt nạ, tách nền, chỉnh màu), vẽ bằng bộ lọc SVG
       dùng chung cho preview, bản xuất và thẻ minh hoạ; chỉnh ở Inspector; agent
       dùng `add_clip_effect` / `update_clip_effect` / `remove_clip_effect` / `move_clip_effect`
-      **Không có LUT** — bộ lọc CSS không áp được bảng tra ba chiều, làm đúng phải
+      **Chưa nhận file `.cube`** — look màu dựng sẵn thì có (tab Filters, 16 look),
+      nhưng bảng tra ba chiều từ file thì bộ lọc SVG không áp được; làm đúng phải
       đẩy từng khung qua shader, tức thêm một đường vẽ và một cái giá về tốc độ
       render chưa đo.
 - [x] Công cụ agent/MCP theo tên tab mới: `set_clip_filter` (Filters), `set_clip_adjust`
@@ -161,9 +162,25 @@ giao diện chỉ lộ ra khi chuyển tab với dữ liệu thật.
 - [x] Chọn màu chữ và màu viền cho chữ overlay, trên giao diện lẫn qua
       `set_text_color` — trước đó màu chữ chỉ đổi được gián tiếp bằng cách chọn
       nền hộp hoặc khung.
+- [x] Track ảnh riêng, thứ tự lớp theo lane, kéo/đổi cỡ/xoay clip ngay trên khung
+      xem trước, và các chế độ công cụ timeline (trim, ripple trim, slip, rate
+      stretch, blade)
+- [x] Thư viện hiệu ứng âm thanh dựng sẵn, đóng gói theo app — không gọi API, không
+      tốn phí, không phụ thuộc mạng. Thay cho kế hoạch gọi ElevenLabs Sound Effects
+      ban đầu (`plans/260909-1525-elevenlabs-sound-effects/`), bỏ giữa chừng vì một
+      thư viện offline phủ đúng nhu cầu mà không có chi phí nào
+- [x] **Keyframe**: transform clip, thông số effect kiểu số, vị trí/cỡ/góc chữ
+      overlay. Năm kiểu nội suy (đều, giữ nguyên, chậm đầu/cuối/hai đầu), nút kim
+      cương ở panel Thuộc tính, dải chấm kéo được trên timeline, chép/dán cụm
+      keyframe giữa các clip, và công cụ cho agent. Chi tiết quyết định thiết kế:
+      `docs/system-architecture.md` §Keyframe
+- [x] Chép/dán CLIP bằng Cmd+C / Cmd+V, giữ nguyên mọi thuộc tính
+- [x] Nhập file phụ đề `.srt` / `.vtt` có sẵn — trước đó phụ đề chỉ đi ra được
+- [x] Liên kết lại media bị thiếu, và đổi tỉ lệ khung / tốc độ khung sau khi tạo
+      dự án — hai thứ backend đã xong từ lâu mà giao diện không có đường gọi
 - [ ] Đổi mặc định xuất sang Remotion khi các tính năng trên đủ chín — hiện mặc
-      định vẫn là ffmpeg, chỉ tự chuyển sang Remotion khi dự án có chuyển cảnh
-      hoặc chữ overlay
+      định vẫn là ffmpeg, chỉ tự chuyển sang Remotion khi dự án có chuyển cảnh,
+      chữ overlay, effect, chỉnh màu hoặc keyframe
 
 ## Backlog (chưa xếp lịch)
 
@@ -179,6 +196,13 @@ ghi vào backlog rõ ràng."
   chép/dán cụm keyframe giữa các clip
 - Hiệu ứng cần WebGL (ASCII, kính vạn hoa, mắt cá, halftone) và HSL theo dải màu
   — bộ lọc SVG không dựng được
+- Thao tác dựng phim còn thiếu, rà soát ngày 2026-09-19: slider âm lượng track;
+  keyframe âm lượng (kéo theo auto-ducking dốc mượt thay vì bậc thang); nút ripple
+  delete cho người dùng; marker/chapter; khoá clip lẻ; nhóm clip (`linkGroupId` có
+  trường nhưng không có logic đọc); kéo và sửa nhiều clip cùng lúc; sóng âm trên
+  clip video có tiếng; nút cho `build_cut_from_transcript` và `build_cut_from_shots`
+- Xuất: thêm định dạng ngoài MP4/H.264, chọn chất lượng, preset nền tảng, xuất
+  riêng đoạn đang chọn, hàng đợi nhiều bản
 - Bám đối tượng và tự cắt khung theo chủ thể
 - Đa camera
 - Đóng gói bản cài cho **Windows và Linux** — cấu hình có sẵn nhưng chưa chạy thử

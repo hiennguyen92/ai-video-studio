@@ -108,6 +108,18 @@ Phím tắt **không** kích hoạt khi con trỏ đang ở trong ô nhập li�
   kéo/xoá/đổi kiểu nội suy bằng dải chấm dưới clip, hoặc bằng câu lệnh cho agent. Năm kiểu nội
   suy: đều, giữ nguyên, chậm đầu, chậm cuối, chậm hai đầu. Keyframe đi theo clip khi cắt mép,
   tách đôi, đổi tốc độ, nhân bản — và **đi tới file xuất**, đã soi bằng pixel
+- **Phiên âm**: whisper.cpp chạy local, có timestamp từng từ, trình soạn transcript nhấn để tua
+- **Dịch**: giữ liên kết theo segment, sửa từng đoạn, có glossary, qua máy chủ LLM kiểu OpenAI
+- **Phụ đề**: tạo từ transcript hoặc bản dịch, song ngữ, preset kiểu chữ, **nhập file `.srt`/`.vtt`
+  có sẵn**, nung vào video và xuất SRT riêng
+- **Lồng tiếng theo bản dịch**: đo thời lượng thật, phát hiện tràn giờ, ba lối thoát, không cắt lời
+- **AI Chat và MCP**: agent đọc dự án và sửa qua cùng tập lệnh với giao diện; agent ngoài (Claude
+  Code) nối vào qua máy chủ MCP trên loopback
+- **Auto-ducking**: hạ nhạc nền ở đoạn có lời nói
+- **Keyframe**: transform clip, thông số effect kiểu số, vị trí/cỡ/góc chữ overlay; năm kiểu nội
+  suy; chép/dán cụm keyframe giữa các clip
+- **Chép/dán clip** bằng Cmd+C / Cmd+V, giữ nguyên mọi thuộc tính
+- **Liên kết lại media bị thiếu**, và đổi tỉ lệ khung / tốc độ khung sau khi đã tạo dự án
 - **Hoàn tác/làm lại**: dựa trên patch, một nhóm lệnh chỉ tạo một bước hoàn tác
 - **Xuất**: MP4 (H.264 + AAC), chọn độ phân giải và fps, tăng tốc phần cứng khi máy hỗ trợ,
   tiến trình thật từ ffmpeg, huỷ giữa chừng, nung phụ đề, xuất SRT riêng
@@ -125,15 +137,13 @@ Phím tắt **không** kích hoạt khi con trỏ đang ở trong ô nhập li�
 
 ### Chưa triển khai
 
-Các tab này **có mặt trong giao diện và nói rõ là chưa có** — không tab nào giả vờ hoạt động:
+Không tab nào trong giao diện là khung rỗng. Những thứ dưới đây chưa có, và lý do thì cụ thể:
 
-- Phiên âm (Mốc 3)
-- Dịch và lồng tiếng theo bản dịch (Mốc 3)
-- Phụ đề: mô hình dữ liệu, ghi ASS/SRT và nung vào video **đã xong và đã kiểm thử**, nhưng
-  **chưa có giao diện tạo/sửa phụ đề** (Mốc 3)
-- AI Chat (Mốc 4)
-- Auto-ducking (Mốc 4)
-- Tạo nhạc bằng mô tả — chưa có nhà cung cấp nào có API công khai ổn định
+- **Phân biệt người nói** — whisper.cpp không làm được; chờ provider có diarization thật
+- **Nhận file LUT `.cube`** — bộ lọc SVG không áp được bảng tra ba chiều, làm đúng phải đẩy
+  từng khung qua shader. Look màu dựng sẵn thì đã có (tab Filters, 16 look)
+- **Effect cần WebGL**: ASCII, kính vạn hoa, mắt cá, halftone, HSL theo dải màu
+- **Bám đối tượng, đa camera, sinh video bằng AI** — xem backlog trong `docs/project-roadmap.md`
 
 ### Đã kiểm chứng bằng API thật (ElevenLabs)
 
@@ -173,10 +183,22 @@ Vì vậy siêu dữ liệu model giờ **đọc từ `/v1/models`**, không vi�
   model đa ngôn ngữ vẫn đọc được ngôn ngữ khác — giao diện nói rõ điều này.
 - Tham số `speed` của ElevenLabs **không được đưa ra giao diện** vì khoảng giá trị hợp lệ chưa xác
   minh được. Việc co giãn thời lượng cho lồng tiếng sẽ dùng `atempo` của ffmpeg, không phụ thuộc provider.
+- **Thiếu vài thao tác dựng phim thông dụng**, đã rà soát và ghi lại để khỏi tìm lại: không có
+  slider âm lượng cho TRACK (mô hình và bản xuất đã áp, chỉ thiếu ô chỉnh); không có keyframe âm
+  lượng, nên auto-ducking phải cắt nhạc thành mảnh và mức nhảy bậc thang; ripple delete chỉ agent
+  gọi được, giao diện chưa có nút; không có marker/chapter, không khoá được clip lẻ, không nhóm
+  clip; chọn nhiều clip thì kéo và panel thuộc tính vẫn chỉ ăn clip đầu tiên; sóng âm không hiện
+  trên clip video có tiếng.
+- **Dựng cut theo lời nói và theo cú máy chỉ agent gọi được** (`build_cut_from_transcript`,
+  `build_cut_from_shots`) — giao diện chưa có nút, dù phần dò cú máy đã chạy thật.
+- **Xuất chỉ MP4/H.264, chất lượng cố định**, không preset, không xuất riêng đoạn đang chọn,
+  không hàng đợi nhiều bản.
 - **Chỉ kiểm thử trên macOS Apple Silicon.** Windows/Linux chưa chạy thử lần nào.
-- **Chưa đóng gói cài đặt.** `electron-builder` đã có cấu hình nhưng chưa dựng bản cài.
-  Bản ffmpeg đi kèm hiện tại được build với `--enable-nonfree`, **không phát hành lại được** —
-  trước khi phát hành phải thay bằng bản build hợp lệ về giấy phép.
+- **Bản cài macOS dựng được, nhưng chưa phát hành được.** `npm run build:mac` cho ra `.dmg`
+  chạy thật trên máy đã dựng nó. Hai thứ chặn việc đưa cho người khác: bản chưa **công chứng**
+  (`notarize: false`, cần Developer ID) nên Gatekeeper sẽ chặn ở máy khác; và bản ffmpeg đi
+  kèm được build với `--enable-nonfree`, **không phát hành lại được** — phải thay bằng bản
+  build hợp lệ về giấy phép trước đã. Windows/Linux có cấu hình nhưng chưa dựng thử lần nào.
 - **Dự án có keyframe bắt buộc xuất bằng Remotion**, và hộp thoại Xuất tự khoá lựa chọn đó.
   Filter graph ffmpeg đọc transform dạng hằng số nên nó sẽ cho ra file đứng hình mà không báo
   gì. Remotion chậm hơn đáng kể — đó là cái giá của việc không rơi mất chuyển động.
