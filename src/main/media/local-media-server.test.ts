@@ -18,6 +18,9 @@ import {
  *   - **Range request**: thiếu thì thẻ video phải tải trọn file mới phát, tua đứng hình.
  *   - **Không tra đường dẫn từ URL**: chỉ phục vụ asset đã đăng ký, nếu không thì
  *     một cổng loopback vừa mở ra là đọc được cả ổ đĩa.
+ *   - **Header CORS**: thiếu thì canvas của lớp chuyển cảnh WebGL bị coi là
+ *     "nhiễm" và không lên texture được — bản xem trước vẫn chạy, chỉ bản xuất
+ *     lặng lẽ mất hiệu ứng.
  */
 
 let workDir: string
@@ -124,5 +127,25 @@ describe('vòng đời', () => {
     // Khởi động lại để các nhóm test khác (nếu chạy sau) vẫn dùng được.
     await startLocalMediaServer()
     registerMediaFiles([{ id: 'asset_1', path: filePath }])
+  })
+})
+
+describe('header CORS', () => {
+  it('cho phép đọc chéo nguồn, và lộ ra các header của Range', () => {
+    // Trang dựng hình và server này nằm ở hai CỔNG khác nhau, tức hai nguồn khác
+    // nhau. Không có dòng này thì `texImage2D` ném lỗi bảo mật.
+    const url = localMediaUrl('asset_1')
+    expect(url).toBeTruthy()
+    return fetch(url as string).then(async (response) => {
+      expect(response.headers.get('access-control-allow-origin')).toBe('*')
+      expect(response.headers.get('access-control-expose-headers')).toContain('Content-Range')
+      await response.arrayBuffer()
+    })
+  })
+
+  it('trả lời preflight mà không cần token', async () => {
+    const response = await fetch(`${mediaServerOrigin()}/media/asset_1`, { method: 'OPTIONS' })
+    expect(response.status).toBe(204)
+    expect(response.headers.get('access-control-allow-origin')).toBe('*')
   })
 })

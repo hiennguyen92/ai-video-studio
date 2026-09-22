@@ -56,6 +56,15 @@
   line-height: 1.5;
 }
 
+/*
+  Lời báo khi chuyển cảnh bị kẹp ngắn lại hay không chạy được.
+  Màu cảnh báo chứ không phải màu chú thích: đây là chuyện người dùng PHẢI biết —
+  tên chuyển cảnh vẫn hiện ngay phía trên, mà video ra thì không có hiệu ứng ấy.
+*/
+.inspector__hint--warn {
+  color: var(--warning);
+}
+
 /* Hàng có ô nhập nhiều dòng: nhãn nằm TRÊN, ô chiếm trọn bề ngang.
    `.field-row` là lưới hai cột 96px + 1fr, nên phải đổi lưới chứ không đổi
    `flex-direction` — đặt thuộc tính của flexbox lên một lưới thì không có gì

@@ -47,16 +47,38 @@ export function LibraryCardPreview({
   playing: boolean
 }): JSX.Element {
   const incomingRef = useRef<HTMLSpanElement>(null)
+  const outgoingRef = useRef<HTMLSpanElement>(null)
+  const overlayRef = useRef<HTMLSpanElement>(null)
   const motionRef = useRef<HTMLSpanElement>(null)
 
   useLayoutEffect(() => {
+    const paint = (
+      element: HTMLSpanElement,
+      style: NonNullable<LibraryCardFrame['incoming']>
+    ): void => {
+      element.style.opacity = String(style.opacity)
+      element.style.transform = style.transform ?? ''
+      element.style.clipPath = style.clipPath ?? ''
+      element.style.filter = style.filter ?? ''
+      // Mặt nạ và vệt sáng cũng phải có trên thẻ: thiếu chúng thì thẻ của kiểu
+      // dùng mặt nạ đứng im, và lời hứa "thẻ là thứ sẽ ra video" thành nói suông.
+      element.style.maskImage = style.maskImage ?? ''
+      element.style.webkitMaskImage = style.maskImage ?? ''
+    }
+
     const apply = (frame: LibraryCardFrame): void => {
+      const outgoing = outgoingRef.current
+      if (outgoing && frame.outgoing) paint(outgoing, frame.outgoing)
       const incoming = incomingRef.current
       if (incoming && frame.incoming) {
-        incoming.style.opacity = String(frame.incoming.opacity)
-        incoming.style.transform = frame.incoming.transform ?? ''
-        incoming.style.clipPath = frame.incoming.clipPath ?? ''
-        incoming.style.filter = frame.incoming.filter ?? ''
+        paint(incoming, frame.incoming)
+      }
+      const overlay = overlayRef.current
+      if (overlay && frame.incoming) {
+        overlay.style.background = frame.incoming.overlay ?? ''
+        overlay.style.clipPath = frame.incoming.clipPath ?? ''
+        overlay.style.maskImage = frame.incoming.maskImage ?? ''
+        overlay.style.webkitMaskImage = frame.incoming.maskImage ?? ''
       }
       const scene = motionRef.current
       if (scene && frame.motionTransform !== undefined) {
@@ -94,8 +116,9 @@ export function LibraryCardPreview({
     <span className="library-preview" aria-hidden>
       {item.type === 'transition' ? (
         <>
-          <span className="library-preview__scene library-preview__scene--a" />
+          <span ref={outgoingRef} className="library-preview__scene library-preview__scene--a" />
           <span ref={incomingRef} className="library-preview__scene library-preview__scene--b" />
+          <span ref={overlayRef} className="library-preview__overlay" aria-hidden />
         </>
       ) : (
         <>

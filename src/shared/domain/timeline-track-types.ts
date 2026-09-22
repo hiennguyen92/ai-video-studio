@@ -1,3 +1,4 @@
+import { GL_TRANSITION_KINDS } from './clip-transition-gl'
 import type { ClipColorGrade } from './clip-color-grade'
 import type { ClipEffect } from './clip-effect-types'
 import type { KeyframeTracks } from './keyframe-types'
@@ -62,32 +63,80 @@ export const DEFAULT_CLIP_TRANSFORM: ClipTransform = {
 }
 
 /**
- * Kiểu chuyển cảnh khi một clip xuất hiện.
+ * Kiểu chuyển cảnh ở chỗ nối giữa hai clip.
  *
- * Tất cả đều là hiệu ứng vẽ trên CHÍNH clip đến, phủ dần lên clip đi phía dưới —
- * không có phép trộn hai luồng nào. Nhờ vậy chúng biểu diễn được bằng CSS thuần,
- * chạy y hệt ở preview lẫn lúc xuất, và không làm co thời lượng timeline như
- * toán tử `xfade` của ffmpeg.
+ * Tất cả đều là hiệu ứng vẽ trên CHÍNH từng clip — clip đến phủ dần lên clip đi
+ * phía dưới — không có phép trộn hai luồng nào. Nhờ vậy chúng biểu diễn được bằng
+ * CSS thuần, chạy y hệt ở preview lẫn lúc xuất, và không làm co thời lượng
+ * timeline như toán tử `xfade` của ffmpeg.
+ *
+ * Đổi lại, kiểu CÓ HƯỚNG phải tự đảo chiều khi chạy ở mép ra; xem `edge` trong
+ * `clip-transition-style`.
  */
-export type TransitionKind =
-  | 'fade'
-  | 'slide-left'
-  | 'slide-right'
-  | 'slide-up'
-  | 'slide-down'
-  | 'wipe-left'
-  | 'wipe-right'
-  | 'zoom'
-  /** Lia vụt kèm mờ chuyển động — nhịp nhanh, hợp video ngắn. */
-  | 'whip-left'
-  | 'whip-right'
-  /** Nhoè dần rồi rõ. */
-  | 'blur'
-  /** Nhiễu hình vài khung — dùng dè, một lần trong video là đủ. */
-  | 'glitch'
-  | 'spin'
-  /** Loé trắng rồi tắt. */
-  | 'flash'
+/**
+ * Nhóm nền: dịch chuyển, cắt và bộ lọc đơn giản.
+ *
+ * - `whip-*` lia vụt kèm mờ chuyển động — nhịp nhanh, hợp video ngắn.
+ * - `blur` nhoè dần rồi rõ.
+ * - `glitch` nhiễu hình vài khung — dùng dè, một lần trong video là đủ.
+ * - `flash` loé trắng rồi tắt.
+ */
+export const BASIC_TRANSITION_KINDS = [
+  'fade',
+  'slide-left',
+  'slide-right',
+  'slide-up',
+  'slide-down',
+  'wipe-left',
+  'wipe-right',
+  'zoom',
+  'whip-left',
+  'whip-right',
+  'blur',
+  'glitch',
+  'spin',
+  'flash'
+] as const
+
+/**
+ * Nhóm điện ảnh: mép mềm, easing riêng, vài kiểu KHÔNG đối xứng giữa vào và ra.
+ *
+ * Dịch từ các shader hai luồng sang mô hình một lớp. Kiểu nào cần lấy mẫu lại
+ * texture (cong trang giấy, cháy loang) thì không có ở đây — CSS không làm được.
+ */
+export const CINEMATIC_TRANSITION_KINDS = [
+  'soft-wipe-left',
+  'soft-wipe-right',
+  'circle-open',
+  'line-wipe',
+  'dip-to-black',
+  'impact',
+  'punch-zoom',
+  'rack-focus',
+  'luma-blend',
+  'whip-up',
+  'whip-down'
+] as const
+
+/**
+ * MỘT danh sách duy nhất cho mọi nơi cần biết đủ tên kiểu: kiểm tra lệnh, enum
+ * của công cụ AI, lưới thẻ trong Library. Ba bản sao tay từng lệch nhau khi thêm
+ * kiểu mới, và cái lệch đó chỉ lộ ra lúc người dùng kéo một thẻ mà lệnh từ chối.
+ */
+export const TRANSITION_KINDS = [
+  ...BASIC_TRANSITION_KINDS,
+  ...CINEMATIC_TRANSITION_KINDS,
+  ...GL_TRANSITION_KINDS
+] as const
+
+export type BasicTransitionKind = (typeof BASIC_TRANSITION_KINDS)[number]
+export type CinematicTransitionKind = (typeof CINEMATIC_TRANSITION_KINDS)[number]
+export type TransitionKind = (typeof TRANSITION_KINDS)[number]
+
+/** Tên kiểu lạ (dự án cũ, chuỗi từ nguồn kéo khác) bị từ chối ở đây. */
+export function isTransitionKind(value: unknown): value is TransitionKind {
+  return typeof value === 'string' && (TRANSITION_KINDS as readonly string[]).includes(value)
+}
 
 export interface ClipTransition {
   kind: TransitionKind

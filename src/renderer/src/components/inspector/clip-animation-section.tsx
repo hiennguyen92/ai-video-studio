@@ -1,6 +1,7 @@
 import type { JSX } from 'react'
 import type { EditorCommand } from '../../../../shared/commands/editor-command-types'
 import type { Clip, Track } from '../../../../shared/domain/timeline-track-types'
+import type { FrameRate } from '../../../../shared/domain/time-units'
 import { useT } from '../../i18n/use-translation'
 import { ClipCutTransitionControls } from './clip-cut-transition-controls'
 import { ClipMotionControls } from './clip-motion-controls'
@@ -16,10 +17,12 @@ import { SliderRow } from './inspector-slider-row'
 export function ClipAnimationSection({
   clip,
   track,
+  frameRate,
   run
 }: {
   clip: Clip
   track: Track
+  frameRate: FrameRate
   run(commands: EditorCommand[], label: string): void
 }): JSX.Element {
   const t = useT()
@@ -45,7 +48,9 @@ export function ClipAnimationSection({
         </>
       )}
 
-      {visual && <ClipCutTransitionControls clip={clip} track={track} run={run} />}
+      {visual && (
+        <ClipCutTransitionControls clip={clip} track={track} frameRate={frameRate} run={run} />
+      )}
 
       {visual && (
         <ClipMotionControls

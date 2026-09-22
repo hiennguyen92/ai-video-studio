@@ -4,6 +4,7 @@ import type { MediaAsset } from '../../../../shared/domain/media-asset-types'
 import type { Clip, Track } from '../../../../shared/domain/timeline-track-types'
 import { useT } from '../../i18n/use-translation'
 import { ClipAnimationSection } from './clip-animation-section'
+import type { FrameRate } from '../../../../shared/domain/time-units'
 import { ClipAudioSection } from './clip-audio-section'
 import { ClipBasicSection } from './clip-basic-section'
 import { clipInspectorTabs, type ClipInspectorTab } from './clip-inspector-tab-list'
@@ -30,6 +31,7 @@ export function ClipInspector({
   clip,
   track,
   asset,
+  frameRate,
   tab,
   onTabChange,
   run
@@ -37,6 +39,7 @@ export function ClipInspector({
   clip: Clip
   track: Track
   asset: MediaAsset | undefined
+  frameRate: FrameRate
   tab: ClipInspectorTab
   onTabChange(tab: ClipInspectorTab): void
   run(commands: EditorCommand[], label: string): void
@@ -67,7 +70,9 @@ export function ClipInspector({
           />
         )}
         {active === 'audio' && <ClipAudioSection clip={clip} onUpdate={update} />}
-        {active === 'animation' && <ClipAnimationSection clip={clip} track={track} run={run} />}
+        {active === 'animation' && (
+          <ClipAnimationSection clip={clip} track={track} frameRate={frameRate} run={run} />
+        )}
       </div>
     </div>
   )

@@ -1,7 +1,13 @@
 import type { EditorCommand } from '../commands/editor-command-types'
 import { findClipLook } from './clip-look-catalog'
 import { DEFAULT_MOTION_INTENSITY, type ClipMotionKind } from './clip-motion-types'
-import { type Clip, type TrackKind, type TransitionKind } from './timeline-track-types'
+import {
+  TRANSITION_KINDS,
+  isTransitionKind,
+  type Clip,
+  type TrackKind,
+  type TransitionKind
+} from './timeline-track-types'
 
 /**
  * Danh mục và lệnh của các thẻ trong tab Library.
@@ -31,23 +37,12 @@ export function libraryDragMime(item: LibraryClipItem): string {
 export type LibraryClipItem =
   { type: 'transition'; kind: TransitionKind } | { type: 'motion'; kind: ClipMotionKind }
 
-/** Mọi kiểu chuyển cảnh, đúng thứ tự hiển thị. */
-export const LIBRARY_TRANSITION_KINDS: TransitionKind[] = [
-  'fade',
-  'slide-left',
-  'slide-right',
-  'slide-up',
-  'slide-down',
-  'wipe-left',
-  'wipe-right',
-  'zoom',
-  'whip-left',
-  'whip-right',
-  'blur',
-  'glitch',
-  'spin',
-  'flash'
-]
+/**
+ * Mọi kiểu chuyển cảnh, đúng thứ tự hiển thị: nhóm nền trước, nhóm điện ảnh sau.
+ * Lấy thẳng danh sách gốc, không chép lại — lưới thẻ mà thiếu một kiểu thì kiểu đó
+ * coi như không tồn tại với người dùng, dù lệnh vẫn nhận.
+ */
+export const LIBRARY_TRANSITION_KINDS: readonly TransitionKind[] = TRANSITION_KINDS
 
 /** Mọi kiểu chuyển động chạy suốt clip, đúng thứ tự hiển thị. */
 export const LIBRARY_MOTION_KINDS: ClipMotionKind[] = [
@@ -118,11 +113,8 @@ export function libraryLookCommands(
 export function parseLibraryDragPayload(raw: string): LibraryClipItem | null {
   try {
     const value = JSON.parse(raw) as Partial<LibraryClipItem>
-    if (
-      value.type === 'transition' &&
-      LIBRARY_TRANSITION_KINDS.includes(value.kind as TransitionKind)
-    ) {
-      return { type: 'transition', kind: value.kind as TransitionKind }
+    if (value.type === 'transition' && isTransitionKind(value.kind)) {
+      return { type: 'transition', kind: value.kind }
     }
     if (value.type === 'motion' && LIBRARY_MOTION_KINDS.includes(value.kind as ClipMotionKind)) {
       return { type: 'motion', kind: value.kind as ClipMotionKind }

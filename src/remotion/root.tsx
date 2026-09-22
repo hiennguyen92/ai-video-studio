@@ -21,6 +21,7 @@ const EMPTY_PROPS: ProjectCompositionProps = {
     durationInFrames: 1,
     backgroundColor: '#000000',
     video: [],
+    glTransitions: [],
     audio: [],
     subtitles: [],
     textOverlays: []

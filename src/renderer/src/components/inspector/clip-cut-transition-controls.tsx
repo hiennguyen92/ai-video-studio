@@ -9,6 +9,8 @@ import {
   type CutPoint
 } from '../../../../shared/domain/timeline-cut-transitions'
 import type { Clip, Track } from '../../../../shared/domain/timeline-track-types'
+import { junctionShortfall } from '../../../../shared/domain/cut-transition-fit'
+import { frameRateToNumber, type FrameRate } from '../../../../shared/domain/time-units'
 import { interpolate, useLocale } from '../../i18n/use-translation'
 import { TRANSITION_LABEL_KEYS } from '../library/clip-effect-labels'
 
@@ -23,10 +25,12 @@ import { TRANSITION_LABEL_KEYS } from '../library/clip-effect-labels'
 export function ClipCutTransitionControls({
   clip,
   track,
+  frameRate,
   run
 }: {
   clip: Clip
   track: Track
+  frameRate: FrameRate
   run(commands: EditorCommand[], label: string): void
 }): JSX.Element {
   const { t, locale } = useLocale()
@@ -50,6 +54,17 @@ export function ClipCutTransitionControls({
         const edgeLabel = edge === 'in' ? t.inspector.transitionIn : t.inspector.transitionOut
         const name = point.kind ? t.inspector[TRANSITION_LABEL_KEYS[point.kind]] : ''
         const current = cutTransitionDurationUs(point)
+        // Chuyển cảnh cần phần nguồn nằm TRƯỚC điểm vào của clip sau để lấn lên
+        // clip trước. Clip chưa cắt đầu thì không còn gì để lấn, và chuyển cảnh
+        // ngắn lại hoặc không chạy được. Kẹp im lặng là thứ từng để người dùng
+        // thấy tên chuyển cảnh trong Inspector mà video ra thì không có gì.
+        const fit = junctionShortfall(
+          point.leftClip,
+          point.rightClip,
+          frameRate,
+          track.kind === 'image'
+        )
+        const shortfall = fit.frames < fit.wantedFrames ? fit : null
         // Thời lượng lẻ (dự án cũ, agent đặt 0,7 giây) vẫn phải hiện đúng trong ô chọn.
         const options =
           current && !CUT_TRANSITION_DURATIONS_US.includes(current)
@@ -92,6 +107,16 @@ export function ClipCutTransitionControls({
                 ))}
               </select>
             </div>
+            {shortfall && (
+              <p className="inspector__hint inspector__hint--warn">
+                {interpolate(
+                  shortfall.frames <= 0
+                    ? t.inspector.transitionNoHandle
+                    : t.inspector.transitionClamped,
+                  { seconds: (shortfall.frames / frameRateToNumber(frameRate)).toFixed(2) }
+                )}
+              </p>
+            )}
           </div>
         )
       })}

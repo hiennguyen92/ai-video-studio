@@ -4,7 +4,7 @@ import type { Clip } from '../domain/timeline-track-types'
 import type { MediaAsset } from '../domain/media-asset-types'
 import type { Transcript, Translation } from '../domain/transcript-types'
 import type { SubtitleCue, SubtitleStyle, SubtitleTrack } from '../domain/subtitle-types'
-import type { TransitionKind } from '../domain/timeline-track-types'
+import { isTransitionKind, type TransitionKind } from '../domain/timeline-track-types'
 import type { DubbingSession } from '../domain/transcript-types'
 import {
   TEXT_FRAME_PADDING_SCALE_MAX,
@@ -279,27 +279,12 @@ const setClipTransition = z.object({
   /** Bỏ trống nghĩa là gỡ chuyển cảnh. */
   transition: z
     .object({
-      kind: z.custom<TransitionKind>(
-        (value) =>
-          typeof value === 'string' &&
-          [
-            'fade',
-            'slide-left',
-            'slide-right',
-            'slide-up',
-            'slide-down',
-            'wipe-left',
-            'wipe-right',
-            'zoom',
-            'whip-left',
-            'whip-right',
-            'blur',
-            'glitch',
-            'spin',
-            'flash'
-          ].includes(value),
-        { message: 'kiểu chuyển cảnh không hợp lệ' }
-      ),
+      // Danh sách kiểu lấy thẳng từ `timeline-track-types`. Bản sao chép tay từng
+      // lệch với danh sách thật khi thêm kiểu mới, và cái lệch đó chỉ lộ ra lúc
+      // người dùng kéo một thẻ có thật mà lệnh lại từ chối.
+      kind: z.custom<TransitionKind>(isTransitionKind, {
+        message: 'kiểu chuyển cảnh không hợp lệ'
+      }),
       durationUs: positiveMicros
     })
     .optional()

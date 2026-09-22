@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { MARKER_COLORS } from '../domain/timeline-marker-types'
+import { TRANSITION_KINDS } from '../domain/timeline-track-types'
 import { KEYFRAME_TOOL_PROPERTIES } from './chat-tool-keyframes'
 import { MAX_TEXT_ROTATION_DEG } from '../domain/text-placement'
 import { MAX_TEXT_OUTLINE_WIDTH_PX, SUBTITLE_STYLE_PRESETS } from '../domain/subtitle-types'
@@ -407,23 +408,7 @@ export const chatToolSchemas = {
   set_cut_transition: z.object({
     /** Clip đứng TRƯỚC chỗ nối. Bỏ trống thì lấy clip đang chọn. */
     fromClipId: z.string().min(1).max(120).optional(),
-    kind: z.enum([
-      'none',
-      'fade',
-      'slide-left',
-      'slide-right',
-      'slide-up',
-      'slide-down',
-      'wipe-left',
-      'wipe-right',
-      'zoom',
-      'whip-left',
-      'whip-right',
-      'blur',
-      'glitch',
-      'spin',
-      'flash'
-    ]),
+    kind: z.enum(['none', ...TRANSITION_KINDS]),
     durationSeconds: z.number().min(0.1).max(2).optional()
   }),
 
@@ -752,7 +737,7 @@ export const chatToolDescriptions: Record<ChatToolName, string> = {
   set_canvas:
     'Set the project canvas shape. Use 9:16 for TikTok, Reels and Shorts, 16:9 for YouTube, 1:1 for square. Do this before laying out text, because it changes where text sits in frame.',
   set_cut_transition:
-    'Put a transition on the cut between two clips that sit back to back on the same visual track. fromClipId is the clip BEFORE the cut (defaults to the selected clip); the Cuts list in the project overview shows every cut and the transition on it. The end of that clip plays out and the start of the next clip plays in, with the same kind and duration. durationSeconds is 0.1 to 2 (keeps the current duration when left out, 0.5 for a new one). Use kind "none" to remove it.',
+    'Put a transition on the cut between two clips that sit back to back on the same visual track. fromClipId is the clip BEFORE the cut (defaults to the selected clip); the Cuts list in the project overview shows every cut and the transition on it. The end of that clip plays out and the start of the next clip plays in, with the same kind and duration. durationSeconds is 0.1 to 2 (keeps the current duration when left out, 0.5 for a new one). Use kind "none" to remove it. Beyond the plain ones (fade, slide, wipe, zoom, whip, blur, glitch, spin, flash) there is a cinematic set: soft-wipe-left/right (feathered wipe), circle-open, line-wipe (bright line sweeping across), dip-to-black, impact (shake and punch on the cut), punch-zoom (the outgoing clip winds up then rockets away), rack-focus (defocus and back), luma-blend (glowing dissolve) and whip-up/whip-down. Prefer the cinematic ones for a montage or a music cut, the plain ones for talking heads.',
   set_clip_speed:
     'Change how fast a clip plays. The clip keeps the same stretch of source footage, so speeding it up makes it SHORTER on the timeline and slowing it down makes it longer — a longer clip pushes into whatever sits next to it. Use it to tighten a slow take or to stretch a moment out. Audio pitch shifts in the preview but is corrected in the exported file.',
   set_clip_filter:
@@ -864,8 +849,7 @@ export const chatToolParameterHints: Record<ChatToolName, string> = {
     "{ text: string, startSeconds: number, endSeconds: number, animation?: 'none' | 'fade' | 'pop' | 'slide-up' | 'typewriter', position?: 'bottom' | 'middle' | 'top', fontSizePx?: number, box?: 'none' | 'dark' | 'light', exit?: 'none' | 'fade' | 'shrink' | 'slide-down', glow?: boolean, rotationDeg?: number, frame?: { styleId: string, paletteId?: string, decorId?: string, paddingScaleX?: number, paddingScaleY?: number } | null }",
   remove_text_overlay: '{ overlayId: string }',
   set_canvas: "{ aspect: '16:9' | '9:16' | '1:1', longEdgePx?: number }",
-  set_cut_transition:
-    "{ fromClipId?: string, kind: 'none' | 'fade' | 'slide-left' | 'slide-right' | 'slide-up' | 'slide-down' | 'wipe-left' | 'wipe-right' | 'zoom' | 'whip-left' | 'whip-right' | 'blur' | 'glitch' | 'spin' | 'flash', durationSeconds?: number }",
+  set_cut_transition: `{ fromClipId?: string, kind: ${['none', ...TRANSITION_KINDS].map((kind) => `'${kind}'`).join(' | ')}, durationSeconds?: number }`,
   set_clip_speed: '{ clipId?: string, speed: number }',
   set_clip_filter: '{ clipId?: string, filterId: string, intensity?: number }',
   add_clip_effect:

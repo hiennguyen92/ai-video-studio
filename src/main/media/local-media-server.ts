@@ -90,8 +90,32 @@ function parseRange(
   return { start, end }
 }
 
+/**
+ * Cho phép đọc chéo nguồn.
+ *
+ * Lớp chuyển cảnh WebGL vẽ khung hình của media vào canvas rồi đưa lên texture.
+ * Trang dựng hình và server media này nằm ở hai CỔNG khác nhau, tức hai nguồn khác
+ * nhau, nên nếu không có dòng này thì canvas bị coi là "nhiễm" và `texImage2D`
+ * ném lỗi bảo mật — chuyển cảnh WebGL im lặng lùi về bản CSS ở bản xuất, còn bản
+ * xem trước thì vẫn chạy, đúng kiểu lệch nhau khó tìm nhất.
+ *
+ * Mở cho mọi nguồn là chấp nhận được vì cửa đã khoá bằng chỗ khác: server chỉ nghe
+ * trên loopback, mỗi yêu cầu phải mang token ngẫu nhiên của phiên, và id media
+ * phải có trong sổ đăng ký. Không có token thì mở hay không cũng không đọc được gì.
+ */
+const CORS_HEADERS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Expose-Headers': 'Content-Length, Content-Range, Accept-Ranges'
+}
+
 async function handle(request: IncomingMessage, response: ServerResponse): Promise<void> {
   const url = new URL(request.url ?? '/', 'http://127.0.0.1')
+
+  if (request.method === 'OPTIONS') {
+    response.writeHead(204, { ...CORS_HEADERS, 'Access-Control-Allow-Methods': 'GET, OPTIONS' })
+    response.end()
+    return
+  }
 
   if (url.searchParams.get('token') !== serverToken) {
     response.writeHead(401).end('Unauthorized')
@@ -124,6 +148,7 @@ async function handle(request: IncomingMessage, response: ServerResponse): Promi
 
   if (range) {
     response.writeHead(206, {
+      ...CORS_HEADERS,
       'Content-Type': contentType,
       'Content-Length': range.end - range.start + 1,
       'Content-Range': `bytes ${range.start}-${range.end}/${size}`,
@@ -134,6 +159,7 @@ async function handle(request: IncomingMessage, response: ServerResponse): Promi
   }
 
   response.writeHead(200, {
+    ...CORS_HEADERS,
     'Content-Type': contentType,
     'Content-Length': size,
     // Báo có hỗ trợ Range để trình phát biết là tua được.

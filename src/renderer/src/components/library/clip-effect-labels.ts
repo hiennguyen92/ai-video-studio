@@ -25,7 +25,21 @@ export const TRANSITION_LABEL_KEYS: Record<TransitionKind, InspectorKey> = {
   blur: 'transitionBlur',
   glitch: 'transitionGlitch',
   spin: 'transitionSpin',
-  flash: 'transitionFlash'
+  flash: 'transitionFlash',
+  'soft-wipe-left': 'transitionSoftWipeLeft',
+  'soft-wipe-right': 'transitionSoftWipeRight',
+  'circle-open': 'transitionCircleOpen',
+  'line-wipe': 'transitionLineWipe',
+  'dip-to-black': 'transitionDipToBlack',
+  impact: 'transitionImpact',
+  'punch-zoom': 'transitionPunchZoom',
+  'rack-focus': 'transitionRackFocus',
+  'luma-blend': 'transitionLumaBlend',
+  'whip-up': 'transitionWhipUp',
+  'whip-down': 'transitionWhipDown',
+  'page-curl': 'transitionPageCurl',
+  'organic-dissolve': 'transitionOrganicDissolve',
+  'radial-blur': 'transitionRadialBlur'
 }
 
 export const MOTION_LABEL_KEYS: Record<ClipMotionKind, InspectorKey> = {

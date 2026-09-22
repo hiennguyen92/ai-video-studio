@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest'
 import { applyEditorCommand } from '../commands/editor-command-reducer'
 import { createEmptyProject } from './project-document-factory'
 import type { ProjectDocument } from './project-document-types'
-import { buildRenderPlan, resolveTransitionFrames } from './remotion-render-plan'
+import { buildRenderPlan } from './remotion-render-plan'
+import { ownEnterFrames } from './cut-transition-fit'
 import { DEFAULT_TRANSITION_DURATION_US, type Clip } from './timeline-track-types'
 
 /**
@@ -34,39 +35,39 @@ function clip(overrides: Partial<Clip> = {}): Clip {
   }
 }
 
-describe('resolveTransitionFrames — kẹp giới hạn', () => {
+describe('ownEnterFrames — kẹp giới hạn của RIÊNG một clip', () => {
   it('dùng đủ thời lượng khi clip có đủ phần nguồn phía trước', () => {
     // 0,5 giây ở 30fps = 15 khung; nguồn còn 2 giây phía trước nên thoải mái.
-    expect(resolveTransitionFrames(clip(), FPS)).toBe(15)
+    expect(ownEnterFrames(clip(), FPS, false)).toBe(15)
   })
 
   it('kẹp theo phần nguồn còn lại, không đọc trước đầu file', () => {
     // Chỉ còn 0,2 giây = 6 khung handle.
-    expect(resolveTransitionFrames(clip({ sourceInUs: 200_000 }), FPS)).toBe(6)
+    expect(ownEnterFrames(clip({ sourceInUs: 200_000 }), FPS, false)).toBe(6)
   })
 
   it('không có handle nào thì không có chuyển cảnh', () => {
-    expect(resolveTransitionFrames(clip({ sourceInUs: 0 }), FPS)).toBe(0)
+    expect(ownEnterFrames(clip({ sourceInUs: 0 }), FPS, false)).toBe(0)
   })
 
   it('kẹp theo vị trí trên timeline, không kéo lùi qua mốc 0', () => {
     // Clip bắt đầu ở 0,1 giây = 3 khung, dù nguồn còn thừa handle.
-    expect(resolveTransitionFrames(clip({ startUs: 100_000 }), FPS)).toBe(3)
+    expect(ownEnterFrames(clip({ startUs: 100_000 }), FPS, false)).toBe(3)
   })
 
   it('kẹp theo độ dài chính clip — chuyển cảnh dài hơn clip là vô nghĩa', () => {
-    expect(resolveTransitionFrames(clip({ durationUs: 200_000 }), FPS)).toBe(6)
+    expect(ownEnterFrames(clip({ durationUs: 200_000 }), FPS, false)).toBe(6)
   })
 
   it('tốc độ phát nhanh tiêu thụ nguồn nhanh hơn nên handle ngắn lại', () => {
     // Chạy 2x: 2 giây nguồn chỉ đủ cho 1 giây timeline, nhưng 0,5s vẫn vừa.
-    expect(resolveTransitionFrames(clip({ speed: 2 }), FPS)).toBe(15)
+    expect(ownEnterFrames(clip({ speed: 2 }), FPS, false)).toBe(15)
     // Còn 0,2 giây nguồn ở tốc độ 2x thì chỉ đủ 3 khung.
-    expect(resolveTransitionFrames(clip({ sourceInUs: 200_000, speed: 2 }), FPS)).toBe(3)
+    expect(ownEnterFrames(clip({ sourceInUs: 200_000, speed: 2 }), FPS, false)).toBe(3)
   })
 
   it('không có chuyển cảnh thì trả về 0', () => {
-    expect(resolveTransitionFrames(clip({ transitionIn: undefined }), FPS)).toBe(0)
+    expect(ownEnterFrames(clip({ transitionIn: undefined }), FPS, false)).toBe(0)
   })
 })
 

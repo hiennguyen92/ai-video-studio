@@ -10,6 +10,7 @@ import {
   type ElectronApplication,
   type Page
 } from '@playwright/test'
+import { LIBRARY_TRANSITION_KINDS } from '../src/shared/domain/library-clip-effects'
 
 /**
  * Tab Library: chuyển cảnh và zoom áp được vào clip bằng HAI cách — bấm thẻ khi
@@ -116,9 +117,12 @@ test('tab Library nằm cạnh Media, với bốn tab con', async () => {
 })
 
 test('mỗi thẻ có hình minh hoạ, và nó chuyển động khi rê chuột', async () => {
+  // Đếm theo danh mục thật, không chép con số: thêm một kiểu chuyển cảnh mà phép
+  // thử báo đỏ vì một con số cứng thì cái đỏ đó chẳng nói lên điều gì.
+  const cardCount = LIBRARY_TRANSITION_KINDS.length
   const cards = studio().locator('.library-card')
-  await expect(cards).toHaveCount(14)
-  await expect(studio().locator('.library-card .library-preview')).toHaveCount(14)
+  await expect(cards).toHaveCount(cardCount)
+  await expect(studio().locator('.library-card .library-preview')).toHaveCount(cardCount)
 
   // Cảnh B của chuyển cảnh: đứng yên thì style không đổi, rê chuột thì đổi theo thời gian.
   const incoming = studio()

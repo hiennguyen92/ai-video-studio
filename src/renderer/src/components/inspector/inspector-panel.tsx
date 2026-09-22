@@ -95,11 +95,12 @@ export function InspectorPanel(): JSX.Element {
           <EmptyState title={t.inspector.noSelection} hint={t.inspector.noSelectionHint} />
         )}
 
-        {activeTab === 'inspector' && !selection.text && found && (
+        {activeTab === 'inspector' && !selection.text && found && document && (
           <ClipInspector
             clip={found.clip}
             track={found.track}
             asset={asset}
+            frameRate={document.settings.frameRate}
             tab={clipTab}
             onTabChange={setClipTab}
             run={run}

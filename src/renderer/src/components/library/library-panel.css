@@ -99,6 +99,16 @@
   will-change: transform, opacity, filter, clip-path;
 }
 
+/*
+  Lớp phủ của chuyển cảnh trên thẻ: vệt sáng ở mép quét. Nằm ĐÈ lên cảnh B và
+  chịu chung mặt nạ với nó, y như lớp phủ trong bản dựng thật.
+*/
+.library-preview__overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
 /* Cảnh A: chiều ấm — mặt trời và đồi xanh, đủ chi tiết để nhìn ra lia và phóng. */
 .library-preview__scene--a {
   background:

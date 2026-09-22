@@ -32,6 +32,14 @@ const PREVIEW_MOTION_INTENSITY = 1
 export interface LibraryCardFrame {
   /** Kiểu của cảnh B (cảnh đang hiện ra đè lên cảnh A). Chỉ có với chuyển cảnh. */
   incoming?: TransitionStyle
+  /**
+   * Kiểu của cảnh A — cảnh ĐANG ĐI.
+   *
+   * Cảnh A đứng yên thì thẻ chỉ kể được nửa câu chuyện, và với mấy kiểu mà phần
+   * hay nằm hẳn ở mép ra — lấy đà rồi phóng, chìm vào đen, lia vụt — thẻ hứa một
+   * đằng, video ra một nẻo.
+   */
+  outgoing?: TransitionStyle
   /** `transform` CSS của cảnh duy nhất. Chỉ có với chuyển động. */
   motionTransform?: string
 }
@@ -41,7 +49,11 @@ export function libraryCardFrameAt(item: LibraryClipItem, elapsedMs: number): Li
     const t = positiveModulo(elapsedMs, TRANSITION_PREVIEW_CYCLE_MS)
     const progress = Math.min(1, Math.max(0, (t - HOLD_BEFORE_MS) / TRANSITION_MS))
     const frame = Math.floor((t / 1000) * PREVIEW_FPS)
-    return { incoming: transitionStyleAt(item.kind, progress, frame) }
+    return {
+      incoming: transitionStyleAt(item.kind, progress, frame, 'in'),
+      // Cảnh đi nhận phần tiến độ còn lại, đúng như hai phía của một chỗ nối thật.
+      outgoing: transitionStyleAt(item.kind, 1 - progress, frame, 'out')
+    }
   }
 
   const durationInFrames = Math.round((MOTION_PREVIEW_CYCLE_MS / 1000) * PREVIEW_FPS)

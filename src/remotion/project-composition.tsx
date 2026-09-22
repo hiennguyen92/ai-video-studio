@@ -35,6 +35,8 @@ import {
   transitionStyleAt,
   type TransitionStyle
 } from '../shared/domain/clip-transition-style'
+import { enterProgressAt, exitProgressAt } from '../shared/domain/clip-transition-progress'
+import { GlTransitionLayer } from './gl/gl-transition-layer'
 import { wrapSubtitleText } from '../shared/domain/subtitle-types'
 import { textOverlayLines } from '../shared/domain/text-overlay-types'
 import { transformValuesAt } from '../shared/domain/keyframe-transform-at'
@@ -115,19 +117,17 @@ function useEnterStyle(transition: RenderPlanVideoClip['transition']): Transitio
   const frame = useCurrentFrame()
   if (!transition) return { opacity: 1 }
   // 0 ở đầu chuyển cảnh, 1 khi đã hiện hẳn.
-  const progress = interpolate(frame, [0, transition.frames], [0, 1], {
-    extrapolateLeft: 'clamp',
-    extrapolateRight: 'clamp'
-  })
-  return transitionStyleAt(transition.kind, progress, frame)
+  const progress = enterProgressAt(frame, transition.frames)
+  return transitionStyleAt(transition.kind, progress, frame, 'in')
 }
 
 /**
  * Kiểu của hiệu ứng RA ở khung hiện tại.
  *
- * Chạy NGƯỢC hiệu ứng vào: tiến độ đi từ 1 về 0 trong mấy khung cuối. Nhờ dùng
- * chung một bảng kiểu nên mười bốn kiểu chuyển cảnh đều có chiều ra, không phải
- * viết lại cái nào.
+ * Tiến độ đi từ 1 về 0 trong mấy khung cuối, và bảng kiểu nhận thêm mép `'out'`.
+ * Nhờ dùng chung một bảng nên mọi kiểu chuyển cảnh đều có chiều ra mà không phải
+ * viết lại cái nào — còn tham số mép là thứ cho clip ĐI biết phải rời sang phía
+ * ngược với phía clip ĐẾN bước vào, thay vì cả hai cùng dồn về một bên.
  */
 function useExitStyle(
   transition: RenderPlanVideoClip['exitTransition'],
@@ -135,13 +135,8 @@ function useExitStyle(
 ): TransitionStyle | null {
   const frame = useCurrentFrame()
   if (!transition || transition.frames <= 0) return null
-  const progress = interpolate(
-    frame,
-    [durationInFrames - transition.frames, durationInFrames - 1],
-    [1, 0],
-    { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
-  )
-  return transitionStyleAt(transition.kind, progress, frame)
+  const progress = exitProgressAt(frame, transition.frames, durationInFrames)
+  return transitionStyleAt(transition.kind, progress, frame, 'out')
 }
 
 function VideoClip({
@@ -200,6 +195,7 @@ function VideoClip({
           url={url}
           frameSize={frameSize}
           opacity={fade * enter.opacity}
+          transition={enter}
         />
       )}
       <AbsoluteFill
@@ -213,6 +209,15 @@ function VideoClip({
           opacity: transform.opacity * fade * enter.opacity,
           clipPath: enter.clipPath,
           filter: enter.filter,
+          // Mặt nạ ghi cả bản có tiền tố: Chromium chỉ nhận `mask-composite`
+          // không tiền tố từ bản 120, mà phiên bản đi kèm Remotion không do mình chọn.
+          maskImage: enter.maskImage,
+          WebkitMaskImage: enter.maskImage,
+          // Không lặp: phần hình tràn ra ngoài hộp sẽ gặp ô mặt nạ kế tiếp.
+          maskRepeat: 'no-repeat',
+          WebkitMaskRepeat: 'no-repeat',
+          maskComposite: enter.maskComposite,
+          WebkitMaskComposite: enter.maskComposite ? 'source-in' : undefined,
           // Dịch chuyển tính theo TỈ LỆ khung hình, không phải pixel: một đơn vị
           // là nửa khung. Dùng thẳng con số làm pixel thì kéo hết thanh trượt chỉ
           // dịch được một pixel, và ô chỉnh coi như không có tác dụng.
@@ -280,6 +285,13 @@ function VideoClip({
         )}
 
         {vignette && <AbsoluteFill style={{ background: vignette, pointerEvents: 'none' }} />}
+
+        {/* Vệt sáng của chuyển cảnh. Nằm TRONG khung bao nên nó cũng bị mặt nạ và
+            phép cắt của chuyển cảnh xén đi — đúng ý: mỗi clip chỉ vẽ nửa vệt của
+            phía mình, hai nửa ghép lại thành một vệt liền qua chỗ nối. */}
+        {enter.overlay && (
+          <AbsoluteFill style={{ background: enter.overlay, pointerEvents: 'none' }} />
+        )}
       </AbsoluteFill>
     </>
   )
@@ -300,12 +312,17 @@ function BackgroundFillLayer({
   clip,
   url,
   frameSize,
-  opacity
+  opacity,
+  transition
 }: {
   clip: RenderPlanVideoClip
   url: string
   frameSize: { width: number; height: number }
   opacity: number
+  /** Phần hình học của chuyển cảnh. Nền mờ là một phần khung hình của clip, nên
+   *  nó phải bị cắt và dời y hệt — không thì với kiểu dùng mặt nạ hay phép cắt,
+   *  cả tấm nền phủ kín khung hiện ngay khung đầu và xoá sạch hiệu ứng. */
+  transition: TransitionStyle
 }): JSX.Element {
   const amount = clip.backgroundFill?.amount ?? 0.5
   const radius = Math.round(frameSize.height * (0.008 + 0.03 * amount))
@@ -317,7 +334,19 @@ function BackgroundFillLayer({
     transform: 'scale(1.08)'
   }
   return (
-    <AbsoluteFill style={{ opacity, overflow: 'hidden' }} data-background-fill={clip.key}>
+    <AbsoluteFill
+      style={{
+        opacity,
+        overflow: 'hidden',
+        clipPath: transition.clipPath,
+        maskImage: transition.maskImage,
+        WebkitMaskImage: transition.maskImage,
+        maskComposite: transition.maskComposite,
+        WebkitMaskComposite: transition.maskComposite ? 'source-in' : undefined,
+        transform: transition.transform
+      }}
+      data-background-fill={clip.key}
+    >
       {clip.media === 'image' ? (
         <Img src={url} style={style} />
       ) : (
@@ -748,6 +777,26 @@ export function ProjectComposition({
         durationInFrames={clip.durationInFrames}
       >
         <VideoClip clip={clip} url={url} frame={{ width: plan.width, height: plan.height }} />
+      </Sequence>
+    )
+  }
+
+  // SAU vòng clip, cùng `layerIndex`: lớp WebGL phải nằm ĐÈ lên hai clip nó trộn.
+  // Hai clip bên dưới vẫn chạy bản lùi CSS, nên WebGL hỏng thì người xem thấy bản
+  // lùi chứ không thấy một chỗ hổng.
+  for (const transition of plan.glTransitions) {
+    push(
+      transition.layerIndex,
+      <Sequence
+        key={`gl-${transition.key}`}
+        from={transition.fromFrame}
+        durationInFrames={transition.durationInFrames}
+      >
+        <GlTransitionLayer
+          transition={transition}
+          mediaUrls={mediaUrls}
+          frameSize={{ width: plan.width, height: plan.height }}
+        />
       </Sequence>
     )
   }

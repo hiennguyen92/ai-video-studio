@@ -39,6 +39,14 @@ describe('minh hoạ thẻ Library', () => {
     }
   })
 
+  it('thẻ nào ở khung nghỉ cũng đang giữa chừng, không thẻ nào trông như đã xong', () => {
+    // Cả lưới đứng ở khung cuối thì hai mươi lăm thẻ giống hệt nhau.
+    for (const kind of LIBRARY_TRANSITION_KINDS) {
+      const resting = libraryCardRestingFrame({ type: 'transition', kind }).incoming
+      expect(resting, kind).not.toEqual({ opacity: 1 })
+    }
+  })
+
   it('chuyển động đổi theo thời gian trong một vòng', () => {
     const zoom = { type: 'motion', kind: 'zoom-in' } as const
     expect(libraryCardFrameAt(zoom, 0).motionTransform).not.toBe(

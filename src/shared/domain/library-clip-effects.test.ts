@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { applyEditorCommand } from '../commands/editor-command-reducer'
 import { createEmptyProject } from './project-document-factory'
-import type { Clip } from './timeline-track-types'
+import { TRANSITION_KINDS, type Clip } from './timeline-track-types'
 import {
   LIBRARY_MOTION_DRAG_MIME,
   LIBRARY_MOTION_KINDS,
@@ -73,7 +73,16 @@ describe('thẻ Library', () => {
       type: 'motion',
       kind: 'shake'
     })
+    expect(parseLibraryDragPayload('{"type":"transition","kind":"soft-wipe-left"}')).toEqual({
+      type: 'transition',
+      kind: 'soft-wipe-left'
+    })
     expect(parseLibraryDragPayload('{"type":"transition","kind":"khong-co"}')).toBeNull()
     expect(parseLibraryDragPayload('không phải json')).toBeNull()
+  })
+
+  it('lưới thẻ liệt kê ĐỦ mọi kiểu chuyển cảnh mà lệnh nhận', () => {
+    // Thiếu một kiểu ở lưới thì kiểu đó coi như không tồn tại với người dùng.
+    expect([...LIBRARY_TRANSITION_KINDS]).toEqual([...TRANSITION_KINDS])
   })
 })

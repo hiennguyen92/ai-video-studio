@@ -413,14 +413,94 @@ thời lượng chuyển cảnh, và điểm vào nguồn lùi tương ứng —
 nguồn nằm trước điểm vào, đúng khái niệm *handle* của các trình dựng phim. Tổng
 thời lượng timeline không đổi, không clip nào bị đẩy đi.
 
-Thời lượng bị **kẹp** theo cái nhỏ nhất trong ba giới hạn: phần nguồn còn phía
-trước, vị trí trên timeline (không lùi qua mốc 0), và độ dài chính clip. Kẹp chứ
-không từ chối — đặt 1 giây trên clip chỉ còn 0,3 giây handle thì nên được 0,3 giây.
-Giao diện **nói ra** khi bị kẹp, nếu không người dùng sẽ thấy hiệu ứng chớp qua mà
-không hiểu vì sao.
+Thời lượng bị **kẹp** theo cái nhỏ nhất trong bốn giới hạn: phần nguồn còn phía
+trước, vị trí trên timeline (không lùi qua mốc 0), độ dài chính clip, và **mép bên
+kia của cùng chỗ nối**. Kẹp chứ không từ chối — đặt 1 giây trên clip chỉ còn 0,3
+giây handle thì nên được 0,3 giây.
+
+Giới hạn thứ tư là thứ dễ quên nhất và trả giá đắt nhất. Mỗi mép tự kẹp lấy phần
+mình thì ở chỗ nối phổ biến nhất — hai clip vừa nhập, đặt liền nhau, `sourceInUs`
+bằng 0 nên clip đến không lấn được khung nào — clip đi vẫn chạy trọn hiệu ứng ra,
+trượt khỏi khung, và giữa hai clip là một mảng **nền trống quá nửa khung hình**.
+`cut-transition-fit.ts` quy hai mép về cùng một con số, lấy cái nhỏ hơn: còn 6 trên
+15 khung thì chạy 6 khung, không còn khung nào thì không chạy gì.
+
+Không chạy được thì Inspector **nói ra** ngay dưới tên chuyển cảnh, bằng màu cảnh
+báo. Kẹp im lặng chính là thứ đã giấu lỗi trên suốt: người dùng kéo thẻ vào, thấy
+"Ra: Gạt mềm sang trái" trong Inspector, và tin rằng nó đang chạy.
 
 Hệ quả: **clip đầu timeline không bao giờ có chuyển cảnh** — không có gì phía trước
 để lấy, và cũng không có gì để phủ lên.
+
+#### Hai nhóm kiểu
+
+`timeline-track-types.ts` giữ MỘT danh sách kiểu duy nhất, chia hai nhóm. Nhóm nền
+(`clip-transition-style.ts`) dịch chuyển và cắt cứng. Nhóm điện ảnh
+(`clip-transition-cinematic.ts`) dùng mặt nạ có mép mềm, lớp phủ phát sáng và
+đường cong tiến độ riêng; nó dịch từ các shader hai luồng của OpenChatCut
+(`external/OpenChatCut/src/gl/shaders/`) sang mô hình một lớp. Kiểu nào cần lấy mẫu
+lại texture — cong trang giấy, cháy loang, nhoè hướng tâm — thì KHÔNG dịch được và
+không có trong danh sách.
+
+Kiểm tra lệnh, enum của công cụ AI và lưới thẻ trong Library đều đọc chung danh
+sách đó. Ba bản chép tay từng lệch nhau khi thêm kiểu, và cái lệch chỉ lộ ra lúc
+người dùng kéo một thẻ có thật mà lệnh lại từ chối.
+
+#### Hiệu ứng ra KHÔNG phải hiệu ứng vào chạy ngược
+
+Mỗi clip nhận thêm `edge`: `'in'` ở đầu clip, `'out'` ở cuối. Kiểu không hướng bỏ
+qua tham số này; kiểu có hướng bắt buộc nhìn vào nó.
+
+Lý do là hình học. Nếu chiều ra chỉ là chiều vào chạy ngược thì với `slide-left`,
+clip đến trượt vào từ mép phải và clip đi cũng trượt ra về mép phải: hai clip chồng
+lên nhau ở nửa phải và **nửa trái lộ nền đen** suốt chuyển cảnh. Đúng ra clip đi
+phải rời sang phía NGƯỢC LẠI. Với mặt nạ cũng vậy: hai phía dùng CÙNG một mốc mép,
+chỉ đổi chỗ phần đặc với phần trong suốt, nên độ mờ của chúng cộng lại đúng 1 ở
+mọi điểm trong dải mép mềm.
+
+Để hai mốc đó khớp nhau tuyệt đối, cả hai phía quy tiến độ về CÙNG một mốc thời
+gian của chuyển cảnh rồi mới bẻ cong bằng easing. Bẻ cong trước rồi mới lật thì với
+easing không đối xứng, hai mép lệch nhau vài phần trăm khung và hở ra một vệt nền.
+
+#### Ba kiểu chạy WebGL, và vì sao chỉ ba
+
+`page-curl`, `organic-dissolve`, `radial-blur` **lấy mẫu lại toạ độ** của cả hai
+luồng hình: bẻ cong mặt giấy, cháy loang theo map nhiễu, lấy mười sáu mẫu dọc một
+tia. CSS chỉ dời, cắt và lọc cả mảng nên chịu thua; hai mươi lăm kiểu còn lại thì
+CSS làm được và làm rẻ hơn hẳn.
+
+Lớp WebGL nằm **ĐÈ** lên hai clip chứ không thay chúng. Hai clip bên dưới vẫn chạy
+bản lùi CSS (`GL_CSS_FALLBACK`), nên máy không có WebGL2, mất context hay shader
+không biên dịch nổi thì người xem thấy bản lùi — và mô hình Sequence sẵn có không
+phải đụng tới.
+
+Lấy pixel: hai thẻ media ẩn của Remotion → `drawImage` vào canvas trung gian →
+`texImage2D`. Dùng thẻ của Remotion vì nó lo phần khó nhất, tua đúng khung nguồn
+và chờ tải. `delayRender` chỉ chặn khi đang XUẤT; bản xem trước không chặn, vì ở đó
+chặn là đứng hình cả trình phát.
+
+**Server media phải gửi header CORS, và thẻ media phải khai `crossOrigin`.** Thiếu
+một trong hai thì canvas trung gian bị coi là "nhiễm" và `texImage2D` ném lỗi bảo
+mật. Đây là kiểu hỏng tệ nhất có thể: bản xem trước chạy đúng, bản xuất lặng lẽ mất
+hiệu ứng. Chỉ trích khung từ file MP4 thật ra xem mới thấy.
+
+Chỗ nối chỉ đi đường WebGL khi CẢ HAI clip còn **trần** — không look, effect, chỉnh
+màu, phép biến đổi hay keyframe. Lớp WebGL đọc pixel thẳng từ file nên không biết
+gì về những thứ dự án vẽ bằng bộ lọc SVG ở tầng DOM; cho một clip đã chỉnh màu đi
+qua là giữa chuyển cảnh màu nhảy về gốc rồi nhảy lại.
+
+#### Giới hạn đã biết: chỗ giao của mờ chồng sụt sáng
+
+Mờ chồng vẽ bằng hai lớp cùng mờ dần, nên ở quãng giữa cả hai đều trong suốt và nền
+project lọt qua — chỗ giao tối đi chừng một phần tư. Cách chữa hiển nhiên là để clip
+ĐI giữ nguyên độ rõ và chỉ cho clip đến che dần.
+
+Cách đó **đã thử và đã bỏ**: nó chỉ đúng khi clip đến phủ kín từng điểm ảnh của clip
+đi. Ảnh và video khác tỉ lệ khung được vẽ theo `objectFit: contain`, nên phần viền
+hai bên không có gì che; clip đi sẽ đứng nguyên đó rồi **tắt phụt** ở cuối chuyển
+cảnh. Đổi một chỗ sụt sáng nhẹ lấy một cú tắt phụt là lỗ. Muốn chữa cho đúng thì
+lớp dựng phải biết clip đến có phủ kín khung hay không — cần kích thước thật của
+media và phép biến đổi của clip, và đó là việc riêng.
 
 ### Đặt ảnh lên timeline
 

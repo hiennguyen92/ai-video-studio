@@ -1,4 +1,6 @@
 import { cueWordStartsUs } from './subtitle-word-timing'
+import { trackTransitionFrames } from './cut-transition-fit'
+import { glTransitionsOfTrack, type RenderPlanGlTransition } from './gl-transition-plan'
 import { resolveClipEffects } from './clip-effect-render'
 import type { ClipEffect } from './clip-effect-types'
 import { findClipLook } from './clip-look-catalog'
@@ -228,49 +230,14 @@ export interface RenderPlan {
   durationInFrames: number
   backgroundColor: string
   video: RenderPlanVideoClip[]
+  /**
+   * Chỗ nối chạy bằng WebGL. Mục RIÊNG chứ không nằm trong clip, vì nó trộn hai
+   * luồng hình nên phải biết cả hai phía cùng lúc.
+   */
+  glTransitions: RenderPlanGlTransition[]
   audio: RenderPlanAudioClip[]
   subtitles: RenderPlanSubtitleCue[]
   textOverlays: RenderPlanTextOverlay[]
-}
-
-/**
- * Số khung mà chuyển cảnh của một clip thật sự dùng được.
- *
- * Chuyển cảnh làm clip đến BẮT ĐẦU SỚM HƠN để phủ lên clip đi, nên nó tiêu thụ
- * phần nguồn nằm trước `sourceInUs`. Ba giới hạn, lấy cái nhỏ nhất:
- *
- *   1. phần nguồn còn phía trước (`sourceInUs`) — không đọc được trước đầu file
- *   2. vị trí trên timeline — không kéo lùi qua mốc 0
- *   3. độ dài của chính clip — chuyển cảnh dài hơn clip thì vô nghĩa
- *
- * Kẹp lại thay vì từ chối: người dùng đặt 1 giây trên một clip chỉ còn 0,3 giây
- * handle thì nên được 0,3 giây, không nên mất trắng hiệu ứng.
- */
-export function resolveTransitionFrames(
-  clip: Clip,
-  fps: FrameRate,
-  /**
-   * Nguồn có vô hạn phần đệm phía trước không.
-   *
-   * Đúng với ẢNH TĨNH: một tấm ảnh không có "phần nguồn trước điểm vào", nó cứ
-   * đứng yên nên lấy bao nhiêu khung phía trước cũng được. Không mở ngoại lệ này
-   * thì mọi chuyển cảnh trên ảnh bị kẹp về 0 và lặng lẽ mất tác dụng.
-   */
-  unlimitedHandle = false
-): number {
-  if (!clip.transitionIn) return 0
-
-  const wanted = frameOfMicros(clip.transitionIn.durationUs, fps)
-  if (wanted <= 0) return 0
-
-  // Nguồn tiêu thụ nhanh hơn khi clip chạy nhanh, nên quy đổi theo tốc độ phát.
-  const handleFrames = unlimitedHandle
-    ? Number.MAX_SAFE_INTEGER
-    : Math.floor(frameOfMicros(clip.sourceInUs, fps) / Math.max(clip.speed, 0.01))
-  const startFrame = frameOfMicros(clip.startUs, fps)
-  const clipFrames = frameOfMicros(clipEndUs(clip), fps) - startFrame
-
-  return Math.max(0, Math.min(wanted, handleFrames, startFrame, clipFrames))
 }
 
 /**
@@ -309,23 +276,12 @@ export function requiresRemotionRenderer(document: ProjectDocument): boolean {
   )
 }
 
-/**
- * Số khung của hiệu ứng RA.
- *
- * Chỉ kẹp theo độ dài clip, không kẹp theo phần nguồn: hiệu ứng ra không kéo clip
- * bắt đầu sớm hơn nên chẳng tiêu thụ nguồn nào cả. Kẹp thêm NỬA clip để hiệu ứng
- * vào và ra không chiếm trọn thời lượng — chiếm trọn thì clip không bao giờ đứng
- * yên ở trạng thái nhìn được.
- */
-function resolveExitTransition(
+/** Hiệu ứng ra của clip, theo số khung đã kẹp chung ở chỗ nối. */
+function exitTransitionOf(
   clip: Clip,
-  fps: FrameRate,
-  durationInFrames: number
+  frames: number
 ): { kind: TransitionKind; frames: number } | undefined {
-  if (!clip.transitionOut) return undefined
-  const wanted = frameOfMicros(clip.transitionOut.durationUs, fps)
-  const frames = Math.min(wanted, Math.floor(durationInFrames / 2))
-  if (frames <= 0) return undefined
+  if (!clip.transitionOut || frames <= 0) return undefined
   return { kind: clip.transitionOut.kind, frames }
 }
 
@@ -382,6 +338,7 @@ export function buildRenderPlan(document: ProjectDocument): RenderPlan {
   const anySolo = document.tracks.some((track) => track.kind === 'audio' && track.solo)
 
   const video: RenderPlanVideoClip[] = []
+  const glTransitions: RenderPlanGlTransition[] = []
   const audio: RenderPlanAudioClip[] = []
   const subtitles: RenderPlanSubtitleCue[] = []
 
@@ -389,6 +346,12 @@ export function buildRenderPlan(document: ProjectDocument): RenderPlan {
     if (track.kind === 'video' || track.kind === 'image') {
       if (track.hidden) return
       const isImageTrack = track.kind === 'image'
+
+      // Số khung của MỌI mép trên track, đã kẹp chung ở từng chỗ nối: hai phía
+      // của một chỗ nối phải dùng cùng một con số, không thì bên trượt đi hết mà
+      // bên kia chưa kịp vào, và giữa hai clip là một mảng nền trống.
+      const transitionFramesOf = trackTransitionFrames(track.clips, fps, isImageTrack)
+      glTransitions.push(...glTransitionsOfTrack(track, transitionFramesOf, fps, layerIndex))
 
       for (const clip of track.clips) {
         if (!clip.assetId) continue
@@ -400,7 +363,7 @@ export function buildRenderPlan(document: ProjectDocument): RenderPlan {
 
         // Chuyển cảnh kéo clip bắt đầu sớm hơn để phủ lên clip phía trước, và
         // lùi điểm vào nguồn tương ứng để nội dung không bị nhảy.
-        const transitionFrames = resolveTransitionFrames(clip, fps, isImageTrack)
+        const transitionFrames = transitionFramesOf.enter.get(clip.id) ?? 0
         const fromFrame = startFrame - transitionFrames
         const durationInFrames = endFrame - fromFrame
 
@@ -422,7 +385,7 @@ export function buildRenderPlan(document: ProjectDocument): RenderPlan {
             transitionFrames > 0 && clip.transitionIn
               ? { kind: clip.transitionIn.kind, frames: transitionFrames }
               : undefined,
-          exitTransition: resolveExitTransition(clip, fps, durationInFrames),
+          exitTransition: exitTransitionOf(clip, transitionFramesOf.exit.get(clip.id) ?? 0),
           playbackRate: clip.speed,
           // Hai số RIÊNG, không nhân sẵn: keyframe chỉ thay phần của clip, mà
           // từ một tích thì không tách lại được nếu không chia — và lane có thể
@@ -593,6 +556,7 @@ export function buildRenderPlan(document: ProjectDocument): RenderPlan {
     durationInFrames: Math.max(1, frameOfMicros(projectDurationUs(document), fps)),
     backgroundColor: document.settings.backgroundColor,
     video,
+    glTransitions,
     audio,
     subtitles,
     textOverlays
