@@ -4,7 +4,7 @@
   "description": "AI Video Studio — trình chỉnh sửa video desktop với timeline nhiều track và bộ công cụ AI (phiên âm, dịch, lồng tiếng, phụ đề).",
   "main": "./out/main/index.js",
   "author": "AI Video Studio",
-  "license": "MIT",
+  "license": "AGPL-3.0-or-later",
   "private": true,
   "type": "module",
   "engines": {

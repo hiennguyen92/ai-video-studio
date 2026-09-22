@@ -12,6 +12,16 @@ timeline** thay vì một video đã đóng băng.
 
 ---
 
+## Giấy phép
+
+AGPL-3.0-or-later (xem `LICENSE`). Dự án dùng lại mã WebGL của
+[OpenChatCut](https://github.com/onlook-dev/OpenChatCut) cho đường chuyển cảnh hai
+luồng, mà OpenChatCut là AGPL — nên dự án này cũng phải là AGPL. Danh sách chính
+xác những phần chép lại nằm ở `NOTICE`.
+
+Nghĩa vụ kèm theo: ai nhận bản phân phối — kể cả khi chỉ truy cập qua mạng — đều
+có quyền đòi mã nguồn tương ứng.
+
 ## Yêu cầu hệ thống
 
 | Thành phần | Phiên bản | Ghi chú |

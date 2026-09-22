@@ -1,0 +1,40 @@
+AI Video Studio
+Copyright (C) 2026 AI Video Studio
+
+Chương trình này là phần mềm tự do: bạn được quyền phân phối lại và/hoặc sửa đổi
+nó theo các điều khoản của GNU Affero General Public License do Free Software
+Foundation công bố, phiên bản 3 hoặc (tuỳ bạn chọn) bất kỳ phiên bản sau nào.
+Toàn văn giấy phép nằm ở file LICENSE.
+
+================================================================================
+Mã của bên thứ ba
+================================================================================
+
+## OpenChatCut
+
+  Nguồn:      https://github.com/onlook-dev/OpenChatCut (bản chép tại external/OpenChatCut)
+  Giấy phép:  AGPL-3.0-or-later
+  Bản quyền:  các tác giả của OpenChatCut
+
+Các phần sau của dự án này được CHÉP hoặc PHÁI SINH từ OpenChatCut:
+
+  - src/remotion/gl/gl-transition-runtime.ts
+      Phái sinh từ `src/gl/runtime.ts`. Giữ lại đường vẽ chuyển cảnh hai texture;
+      bỏ các đường FX nhiều lượt, LUT 3D và lớp phủ độ mờ.
+
+  - src/remotion/gl/gl-transition-shaders.ts
+      Mã GLSL chép từ `src/gl/shaders/page-curl.frag`, `organic-dissolve.frag`
+      và `radial-blur.frag`, kèm các giá trị uniform mặc định trong
+      `src/gl/transitions.ts`.
+
+  - src/remotion/gl/gl-transition-layer.tsx
+      Phái sinh từ `src/gl/GlTransition.tsx`: cách lấy khung hình của hai clip ra
+      texture bên trong Remotion, và cách chặn `delayRender` cho tới khi cả hai
+      nguồn sẵn sàng.
+
+Chính việc dùng lại mã AGPL nói trên là lý do dự án này mang giấy phép
+AGPL-3.0-or-later.
+
+KHÔNG phái sinh từ OpenChatCut: nhóm chuyển cảnh CSS trong
+`src/shared/domain/clip-transition-cinematic.ts`. Nhóm đó viết lại hiệu ứng bằng
+CSS sau khi đọc shader của họ — không chép mã.
