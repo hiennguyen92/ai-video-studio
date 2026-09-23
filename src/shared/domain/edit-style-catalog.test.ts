@@ -160,6 +160,23 @@ describe('biến thể xoay vòng', () => {
 })
 
 describe('giãn kiểu dựng ra timeline thật', () => {
+  it('đổi khung GIỮ nguyên độ phân giải của dự án', () => {
+    // Kiểu dựng nói về HƯỚNG khung, nó không có ý kiến gì về số điểm ảnh. Không
+    // nêu cạnh dài thì công cụ rơi về mặc định 1920, và áp bất kỳ kiểu dựng nào
+    // lên dự án 4K là âm thầm hạ xuống 1080p.
+    const uhd = threeClips()
+    uhd.settings = { ...uhd.settings, aspectRatio: '9:16', width: 2160, height: 3840 }
+    const [canvas] = expandEditStyle(findEditStyle('cinematic')!, uhd)
+    expect(canvas.name).toBe('set_canvas')
+    // 16:9 ở mức 2160p có cạnh dài 3840.
+    expect(canvas.arguments).toMatchObject({ aspect: '16:9', longEdgePx: 3840 })
+  })
+
+  it('dự án 1080 thì vẫn ra 1080, không tự nâng', () => {
+    const [canvas] = expandEditStyle(findEditStyle('cinematic')!, threeClips())
+    expect(canvas.arguments).toMatchObject({ aspect: '16:9', longEdgePx: 1920 })
+  })
+
   it('bước cho cả dự án chỉ gọi một lần, dù có bao nhiêu clip', () => {
     const calls = expandEditStyle(findEditStyle('vertical-short')!, threeClips())
     expect(calls.filter((call) => call.name === 'set_canvas')).toHaveLength(1)
