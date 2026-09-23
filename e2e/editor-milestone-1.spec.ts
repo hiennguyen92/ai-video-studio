@@ -162,7 +162,7 @@ test('thêm clip vào timeline và hiển thị đúng thời lượng', async (
 
   // Filmstrip dựng SAU khi nhập, rồi vá vào asset — nhập xong không có nghĩa là
   // đã có nó. Chờ ở đây để bắt đúng cái vá đó (nếu đứt, clip mãi là khối màu đặc).
-  await expect(clips.first().locator('.timeline-clip__filmstrip')).toBeVisible({
+  await expect(clips.first().locator('.timeline-clip__filmstrip-cell').first()).toBeVisible({
     timeout: 30_000
   })
 

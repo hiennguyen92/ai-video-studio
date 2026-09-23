@@ -372,9 +372,16 @@
 .timeline-clip__filmstrip {
   position: absolute;
   inset: 0;
-  background-repeat: repeat-x;
   opacity: 0.55;
   pointer-events: none;
+}
+
+/* Mỗi ô là một khung hình, cắt bớt trên dưới chứ không kéo méo. */
+.timeline-clip__filmstrip-cell {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background-repeat: no-repeat;
 }
 
 .timeline-clip__waveform {

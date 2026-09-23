@@ -13,10 +13,10 @@ import {
 } from '../../../../shared/domain/timeline-track-types'
 import type { MediaAsset } from '../../../../shared/domain/media-asset-types'
 import { formatClockTime } from '../../../../shared/domain/time-units'
-import { mediaFileUrl } from '../../../../shared/ipc/ipc-contract'
 import { usToPx } from './timeline-geometry'
 import { reducePeaksToColumns, useWaveformPeaks } from '../../hooks/use-waveform-peaks'
 import { useLibraryClipDrop } from '../library/use-library-clip-drop'
+import { TimelineClipFilmstrip } from './timeline-clip-filmstrip'
 import { TimelineClipTags } from './timeline-clip-tags'
 import { useClipTagDescriptions } from './use-clip-tag-descriptions'
 import { IconLink } from '../ui/icons'
@@ -97,17 +97,6 @@ export function TimelineClip({
     [clip, track.locked, onPointerDown]
   )
 
-  // Filmstrip là một ảnh sprite ngang; kéo giãn theo bề rộng clip để khớp thời lượng.
-  const filmstripStyle =
-    asset?.derived.filmstripPath && asset.probe.durationUs > 0
-      ? {
-          backgroundImage: `url(${mediaFileUrl(asset.derived.filmstripPath)})`,
-          // Sprite trải trên toàn bộ asset, nên phần hiện ra phải theo tỉ lệ clip cắt.
-          backgroundSize: `${usToPx(asset.probe.durationUs / clip.speed, pixelsPerSecond)}px 100%`,
-          backgroundPositionX: `${-usToPx(clip.sourceInUs / clip.speed, pixelsPerSecond)}px`
-        }
-      : undefined
-
   const tagLines = useClipTagDescriptions(clip)
     .map((item) => `\n${item.full}`)
     .join('')
@@ -137,7 +126,15 @@ export function TimelineClip({
       aria-label={`${asset?.name ?? clip.label ?? 'clip'} · ${formatClockTime(clip.durationUs, false)}${grouped ? ` · ${t.timeline.groupedClip}` : ''}`}
       title={`${asset?.name ?? clip.label ?? ''}\n${formatClockTime(clip.startUs)} → ${formatClockTime(clip.startUs + clip.durationUs)}${grouped ? `\n${t.timeline.groupedClip}` : ''}${tagLines}`}
     >
-      {filmstripStyle && <div className="timeline-clip__filmstrip" style={filmstripStyle} />}
+      {asset && asset.derived.filmstripPath && asset.probe.durationUs > 0 && (
+        <TimelineClipFilmstrip
+          asset={asset}
+          clip={clip}
+          widthPx={width}
+          pixelsPerSecond={pixelsPerSecond}
+          trackHeightPx={track.height}
+        />
+      )}
 
       {asset?.derived.waveformPath && track.kind === 'audio' && (
         <WaveformStrip asset={asset} clip={clip} pixelsPerSecond={pixelsPerSecond} color={color} />
