@@ -140,6 +140,24 @@ function createMainWindow(): BrowserWindow {
   const detachJobEvents = attachJobEventBridge(window.webContents)
   window.on('closed', detachJobEvents)
 
+  // Cửa sổ này KHÔNG bao giờ điều hướng đi đâu.
+  //
+  // Mặc định của Chromium khi thả file vào trang là mở chính file đó, tức thay
+  // luôn trang đang chạy bằng `file://…`: người dùng mất sạch phiên dựng đang mở
+  // mà không có lời nào. Renderer cũng chặn ở tầng của nó, nhưng chốt thật phải
+  // nằm ở đây — một vùng quên gọi `preventDefault` là đủ mất việc.
+  //
+  // So theo giao thức thì KHÔNG dùng được: bản đã đóng gói tự nó chạy trên
+  // `file://`, nên luật ấy sẽ chặn nhầm cả chính nó.
+  window.webContents.on('will-navigate', (event, url) => {
+    // Tải lại chính trang đang chạy thì cho qua — HMR lúc phát triển đi đường này.
+    if (url === window.webContents.getURL()) return
+    event.preventDefault()
+    // Link ra ngoài vẫn mở được, chỉ là mở bằng trình duyệt hệ thống, giống hệt
+    // cách xử lý `window.open` ngay bên dưới.
+    if (url.startsWith('http://') || url.startsWith('https://')) void shell.openExternal(url)
+  })
+
   window.webContents.setWindowOpenHandler(({ url }) => {
     // Link ngoài mở bằng trình duyệt hệ thống, không mở cửa sổ Electron mới.
     void shell.openExternal(url)
