@@ -1,6 +1,8 @@
 import type { EditorCommand } from '../commands/editor-command-types'
 import { applyEditorCommand } from '../commands/editor-command-reducer'
 import { canvasSizeForLongEdge, longEdgeForShortEdge, shortEdgeOf } from '../domain/canvas-size'
+import { findEditStyle } from '../domain/edit-style-catalog'
+import { editStyleAspectMismatch, expandEditStyle } from '../domain/edit-style-expand'
 import type { MediaAsset } from '../domain/media-asset-types'
 import type { ProjectDocument } from '../domain/project-document-types'
 import { findSoundEffect } from '../domain/sound-effect-catalog'
@@ -923,6 +925,33 @@ function planOne(context: ChatEditContext, tool: ChatToolName, args: unknown): P
         description: `Xoá Text "${overlay.text.slice(0, 30)}"`,
         commands: [{ type: 'text/remove', overlayId: input.overlayId }]
       }
+    }
+
+    case 'apply_edit_style': {
+      const input = chatToolSchemas.apply_edit_style.parse(args)
+      const style = findEditStyle(input.styleId)
+      if (!style) throw new Error(`Không có kiểu dựng "${input.styleId}"`)
+
+      // Gọi lại chính bộ lập kế hoạch cho các bước bên trong. Đệ quy có đáy: kiểu
+      // dựng chỉ chứa công cụ lẻ, không kiểu nào chứa `apply_edit_style`.
+      //
+      // Đi qua đường này chứ không tự lặp, vì nó đã lo phần khó: mỗi bước lập
+      // trên kết quả của bước trước, và bước nào không áp được thì bị bỏ HẲN
+      // thay vì để các bước sau dựng trên một trạng thái không bao giờ có thật.
+      const inner = planChatToolCalls(context, expandEditStyle(style, document))
+      const commands = inner.steps.flatMap((step) => step.commands)
+      if (commands.length === 0) {
+        throw new Error(inner.failures[0]?.reason ?? 'Timeline chưa có gì để áp kiểu dựng lên')
+      }
+
+      const mismatch = editStyleAspectMismatch(style, document)
+      const warning = mismatch
+        ? ` — LƯU Ý: khung đổi từ ${mismatch.from} sang ${mismatch.to}, clip đang có sẽ nằm trong hai dải đen`
+        : ''
+      // Kể ra từng việc: agent đọc lại để biết kiểu dựng vừa làm gì, y như phần
+      // xem trước mà người dùng đọc trước khi bấm Áp.
+      const did = inner.steps.map((step) => step.description).join('; ')
+      return { tool, description: `Áp kiểu dựng ${style.id}: ${did}${warning}`, commands }
     }
 
     case 'set_canvas': {

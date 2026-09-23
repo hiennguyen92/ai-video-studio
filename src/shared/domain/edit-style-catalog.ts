@@ -310,6 +310,17 @@ export const EDIT_STYLES: EditStyle[] = [
   }
 ]
 
+/**
+ * Id của mọi kiểu dựng, cho `z.enum` của công cụ AI.
+ *
+ * Suy ra từ chính danh mục chứ không chép tay: thêm một kiểu mà quên khai vào
+ * công cụ thì agent gọi tên đó sẽ bị từ chối, dù thẻ trong app vẫn bấm được.
+ */
+export const EDIT_STYLE_IDS = EDIT_STYLES.map((style) => style.id) as [
+  EditStyle['id'],
+  ...EditStyle['id'][]
+]
+
 export function findEditStyle(id: string): EditStyle | undefined {
   return EDIT_STYLES.find((style) => style.id === id)
 }

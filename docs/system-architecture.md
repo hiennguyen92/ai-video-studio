@@ -479,6 +479,12 @@ Hai ràng buộc không được phá:
 - **Một kiểu dựng = MỘT bước hoàn tác.** Gộp mọi lệnh rồi `run` một lần. Bắn mấy
   chục lệnh thành mấy chục mục lịch sử là phá sạch lịch sử của người dùng.
 
+Agent gọi được kiểu dựng qua `apply_edit_style`, và nó đi đúng đường của thẻ bấm:
+giãn ra thành lời gọi công cụ lẻ rồi gọi lại chính bộ lập kế hoạch. Đệ quy có đáy
+vì không kiểu dựng nào chứa `apply_edit_style`. Agent vốn gọi được từng công cụ lẻ
+để làm y hệt — cái nó không có là bộ giá trị đã chọn sẵn, nên được bảo "làm video
+ngắn dọc" thì nó tự bịa ra một cách dựng khác với cái thẻ trong app.
+
 Kiểu dựng đổi khung sang hướng KHÁC hướng dự án thì phần xem trước nói ra: mọi
 clip đang có sẽ nằm trong hai dải đen. Không cảnh báo khi timeline còn trống, và
 không cảnh báo khi chính kiểu đó đã lấp hai dải bằng nền mờ — cảnh báo sai thì lần

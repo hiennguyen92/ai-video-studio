@@ -269,6 +269,57 @@ test('agent DỰNG được bản cut từ transcript, và nó hiện lên timel
   await client.close()
 })
 
+test('agent áp được kiểu dựng, đúng thẻ mà người dùng bấm trong Library', async () => {
+  // Agent vốn gọi được từng công cụ lẻ để làm y hệt. Cái nó không có là bộ giá
+  // trị đã chọn sẵn — không có công cụ này thì được bảo "làm video ngắn dọc" nó
+  // sẽ tự bịa một cách dựng khác với cái thẻ trong app.
+  const client = await connect()
+
+  const applied = textOf(
+    await client.callTool({
+      name: 'apply_edit_style',
+      arguments: { styleId: 'vertical-short' }
+    })
+  )
+  expect(applied).toContain('Đã áp dụng')
+  expect(applied).toContain('vertical-short')
+
+  // Bằng chứng: dự án của app đổi thật, không chỉ là chữ trả về.
+  const projectsRoot = join(userDataDir, 'projects')
+  const [projectId] = await readdir(projectsRoot)
+  await expect(page.locator('.top-bar__status')).toHaveText('Đã lưu', { timeout: 15_000 })
+  const document = JSON.parse(
+    await readFile(join(projectsRoot, projectId, 'project.json'), 'utf8')
+  ) as {
+    settings: { aspectRatio: string }
+    tracks: Array<{ kind: string; clips: Array<{ motion?: { kind: string } }> }>
+  }
+  expect(document.settings.aspectRatio).toBe('9:16')
+  const clips = document.tracks.find((track) => track.kind === 'video')!.clips
+  expect(clips.every((clip) => clip.motion?.kind === 'punch-in')).toBe(true)
+
+  // Cả kiểu dựng gộp thành MỘT bước hoàn tác, y như khi bấm thẻ trong app.
+  const undone = textOf(await client.callTool({ name: 'undo', arguments: {} }))
+  expect(undone).toContain('Đã hoàn tác')
+  await client.close()
+
+  // Chờ có điều kiện: hoàn tác xong thì app mới ghi file, đọc ngay là đọc trúng
+  // bản cũ và phép thử đỏ vì lý do chẳng liên quan gì tới cái đang kiểm.
+  await expect
+    .poll(
+      async () => {
+        const after = JSON.parse(
+          await readFile(join(projectsRoot, projectId, 'project.json'), 'utf8')
+        ) as { tracks: Array<{ kind: string; clips: Array<{ motion?: unknown }> }> }
+        return after.tracks
+          .find((track) => track.kind === 'video')!
+          .clips.some((clip) => clip.motion)
+      },
+      { timeout: 15_000 }
+    )
+    .toBe(false)
+})
+
 test('bản dựng của agent hoàn tác được như mọi thao tác tay', async () => {
   await page.keyboard.press('ControlOrMeta+z')
   await expect(page.locator('.timeline-clip')).toHaveCount(0)

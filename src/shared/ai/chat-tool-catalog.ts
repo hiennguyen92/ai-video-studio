@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { MARKER_COLORS } from '../domain/timeline-marker-types'
 import { TRANSITION_KINDS } from '../domain/timeline-track-types'
+import { EDIT_STYLE_IDS } from '../domain/edit-style-catalog'
 import { KEYFRAME_TOOL_PROPERTIES } from './chat-tool-keyframes'
 import { MAX_TEXT_ROTATION_DEG } from '../domain/text-placement'
 import { MAX_TEXT_OUTLINE_WIDTH_PX, SUBTITLE_STYLE_PRESETS } from '../domain/subtitle-types'
@@ -390,6 +391,18 @@ export const chatToolSchemas = {
    * này. Nhận TỈ LỆ chứ không nhận hai số pixel — mô hình nhớ sai độ phân giải
    * thường xuyên, còn "9:16" thì không nhầm được.
    */
+  /**
+   * Áp một KIỂU DỰNG — một cách dựng cho cả timeline — đúng bằng thẻ mà người
+   * dùng bấm trong Library.
+   *
+   * Agent vốn gọi được từng công cụ lẻ để làm y hệt. Cái nó không có là bộ giá
+   * trị đã chọn sẵn, nên được bảo "làm video ngắn dọc" thì nó tự bịa ra một cách
+   * dựng khác với cái thẻ trong app. Một danh mục, hai lối vào.
+   */
+  apply_edit_style: z.object({
+    styleId: z.enum(EDIT_STYLE_IDS)
+  }),
+
   set_canvas: z.object({
     aspect: z.enum(['16:9', '9:16', '1:1']),
     /** Cạnh dài tính bằng pixel. Bỏ trống thì 1920 (1080 cho khung vuông). */
@@ -734,6 +747,8 @@ export const chatToolDescriptions: Record<ChatToolName, string> = {
   add_text_overlay:
     'Put text on top of the video for a stretch of time — a hook, a price, a call to action. Use a newline (\\n) in text to break it onto several lines: the text never wraps on its own, so a long line runs off the edge of the frame — break it yourself or lower fontSizePx. Separate from subtitles, which come from speech. Set box to "dark" or "light" when the footage behind the text is bright or busy — an outline alone is not enough to keep it readable. Set exit so the text leaves instead of snapping off, and glow to make it carry over busy footage. For a playful look pass frame with a styleId from the project overview: vector frames also need a paletteId (and take an optional decorId), picture frames take styleId only because their colours are baked into the image. A cute frame replaces the plain box and sets a matching text colour, so do not set both. paddingScaleX/paddingScaleY (0 to 3, default 1) set the space between the text and the frame edge: 0 hugs the text, 2 doubles the space.',
   remove_text_overlay: 'Remove a text overlay.',
+  apply_edit_style:
+    'Apply a whole editing style to the timeline in one go — the same card the user clicks in Library. Each style sets the canvas shape, puts transitions on every cut, and gives every visual clip its motion and grade: vertical-short (whip pans, punch-in, contrasty), cinematic (long dissolves, very slow push, teal-orange), tutorial (short dissolves, deliberately no zoom or grade), repurpose-vertical (vertical frame with a blurred backdrop instead of cropping), travel-vlog (golden light, motion that changes direction each shot), trailer (dip to black alternating with impact cuts), retro-film (warm faded grade, film grain, light leaks) and photo-slideshow (Ken Burns alternating per shot). Resolution is kept, only the shape changes. Prefer this over hand-rolling the same steps: the numbers in each style are chosen to go together. The reply lists exactly what it did, and warns when the style flips the canvas to a different orientation than the clips already on the timeline.',
   set_canvas:
     'Set the project canvas shape. Use 9:16 for TikTok, Reels and Shorts, 16:9 for YouTube, 1:1 for square. Do this before laying out text, because it changes where text sits in frame. Resolution is KEPT when you leave longEdgePx out, so switching a 4K project between shapes stays 4K — pass longEdgePx only when the resolution itself should change (3840 for 4K, 1920 for 1080p; it is the LONG edge, so 9:16 at 3840 means 2160x3840). The canvas already matches the first clip you put on the timeline, and the project overview prints its current size.',
   set_cut_transition:
@@ -848,6 +863,7 @@ export const chatToolParameterHints: Record<ChatToolName, string> = {
   add_text_overlay:
     "{ text: string, startSeconds: number, endSeconds: number, animation?: 'none' | 'fade' | 'pop' | 'slide-up' | 'typewriter', position?: 'bottom' | 'middle' | 'top', fontSizePx?: number, box?: 'none' | 'dark' | 'light', exit?: 'none' | 'fade' | 'shrink' | 'slide-down', glow?: boolean, rotationDeg?: number, frame?: { styleId: string, paletteId?: string, decorId?: string, paddingScaleX?: number, paddingScaleY?: number } | null }",
   remove_text_overlay: '{ overlayId: string }',
+  apply_edit_style: `{ styleId: ${EDIT_STYLE_IDS.map((id) => `'${id}'`).join(' | ')} }`,
   set_canvas: "{ aspect: '16:9' | '9:16' | '1:1', longEdgePx?: number }",
   set_cut_transition: `{ fromClipId?: string, kind: ${['none', ...TRANSITION_KINDS].map((kind) => `'${kind}'`).join(' | ')}, durationSeconds?: number }`,
   set_clip_speed: '{ clipId?: string, speed: number }',
