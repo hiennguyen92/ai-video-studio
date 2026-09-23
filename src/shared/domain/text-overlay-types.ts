@@ -1,5 +1,11 @@
 import type { Micros } from './time-units'
-import { DEFAULT_SUBTITLE_STYLE, wrapSubtitleText, type SubtitleStyle } from './subtitle-types'
+import {
+  DEFAULT_SUBTITLE_STYLE,
+  STYLE_REFERENCE_SHORT_EDGE_PX,
+  scaleSubtitleStylePx,
+  wrapSubtitleText,
+  type SubtitleStyle
+} from './subtitle-types'
 import type { KeyframeTracks } from './keyframe-types'
 
 /**
@@ -127,13 +133,11 @@ export const DEFAULT_TEXT_ANIMATION_DURATION_US = 350_000
  * Khác mặc định của phụ đề ở hai chỗ có chủ ý: chữ TO hơn hẳn và nằm GIỮA khung
  * hình — hook và CTA phải đập vào mắt, còn phụ đề thì nằm dưới để không che hình.
  */
-export function createDefaultTextOverlayStyle(): SubtitleStyle {
-  return {
-    ...DEFAULT_SUBTITLE_STYLE,
-    fontSizePx: 84,
-    alignment: 5,
-    marginVerticalPx: 0
-  }
+export function createDefaultTextOverlayStyle(shortEdgePx: number): SubtitleStyle {
+  return scaleSubtitleStylePx(
+    { ...DEFAULT_SUBTITLE_STYLE, fontSizePx: 84, alignment: 5, marginVerticalPx: 0 },
+    shortEdgePx / STYLE_REFERENCE_SHORT_EDGE_PX
+  )
 }
 
 /**

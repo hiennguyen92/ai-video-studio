@@ -1,9 +1,10 @@
+import { shortEdgeOf } from '../../../../shared/domain/canvas-size'
 import { useMemo, useState, type JSX } from 'react'
 import { createId } from '../../../../shared/domain/project-document-factory'
 import type { ProjectDocument } from '../../../../shared/domain/project-document-types'
 import { buildSubtitleCues } from '../../../../shared/domain/subtitle-cue-builder'
 import {
-  DEFAULT_SUBTITLE_STYLE,
+  createDefaultSubtitleStyle,
   type SubtitleTrack
 } from '../../../../shared/domain/subtitle-types'
 import { useT } from '../../i18n/use-translation'
@@ -57,7 +58,7 @@ export function SubtitleCreateForm({
       source: translation
         ? { kind: 'translation', refId: translation.id }
         : { kind: 'transcript', refId: transcript.id },
-      style: { ...DEFAULT_SUBTITLE_STYLE },
+      style: createDefaultSubtitleStyle(shortEdgeOf(document.settings)),
       cues: buildSubtitleCues({
         transcript,
         translation,

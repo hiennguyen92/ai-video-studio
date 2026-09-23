@@ -1,6 +1,6 @@
 import type { EditorCommand } from '../commands/editor-command-types'
 import { applyEditorCommand } from '../commands/editor-command-reducer'
-import { canvasSizeForLongEdge } from '../domain/canvas-size'
+import { canvasSizeForLongEdge, shortEdgeOf } from '../domain/canvas-size'
 import type { MediaAsset } from '../domain/media-asset-types'
 import type { ProjectDocument } from '../domain/project-document-types'
 import { findSoundEffect } from '../domain/sound-effect-catalog'
@@ -14,7 +14,7 @@ import {
 } from '../domain/timeline-track-types'
 import { buildSubtitleCues } from '../domain/subtitle-cue-builder'
 import {
-  DEFAULT_SUBTITLE_STYLE,
+  createDefaultSubtitleStyle,
   type SubtitleCue,
   type SubtitleStyle,
   type SubtitleTrack
@@ -671,7 +671,7 @@ function planOne(context: ChatEditContext, tool: ChatToolName, args: unknown): P
         source: translation
           ? { kind: 'translation', refId: translation.id }
           : { kind: 'transcript', refId: transcript.id },
-        style: { ...DEFAULT_SUBTITLE_STYLE },
+        style: createDefaultSubtitleStyle(shortEdgeOf(context.document.settings)),
         cues
       }
 
@@ -872,7 +872,7 @@ function planOne(context: ChatEditContext, tool: ChatToolName, args: unknown): P
       const endUs = secondsToMicros(input.endSeconds)
       if (endUs <= startUs) throw new Error('Thời điểm kết thúc phải sau thời điểm bắt đầu')
 
-      let style = createDefaultTextOverlayStyle()
+      let style = createDefaultTextOverlayStyle(shortEdgeOf(context.document.settings))
       if (input.box) style = applyTextOverlayBox(style, input.box)
       // Vị trí nhận bằng chữ chứ không phải số 1–9 kiểu ASS: mô hình đoán số bàn
       // phím rất hay sai, còn "top/middle/bottom" thì không nhầm được.

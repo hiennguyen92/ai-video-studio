@@ -1,3 +1,5 @@
+import { shortEdgeOf } from '../domain/canvas-size'
+import { scaleSubtitleStylePx } from '../domain/subtitle-types'
 import { NEUTRAL_COLOR_GRADE, clampColorGrade } from '../domain/clip-color-grade'
 import {
   insertIntoSubtitleCues,
@@ -158,7 +160,29 @@ export function applyEditorCommand(doc: ProjectDocument, command: EditorCommand)
     }
 
     case 'project/set-settings': {
+      // Đổi ĐỘ PHÂN GIẢI thì kéo theo mọi cỡ chữ đang có.
+      //
+      // Cỡ chữ tính bằng pixel của khung, nên nâng khung 1080 lên 4K mà không
+      // nhân lên là mọi dòng chữ và mọi phụ đề tự dưng nhỏ đi một nửa. Đổi độ
+      // phân giải phải là đổi CHẤT LƯỢNG, không phải đổi bố cục.
+      //
+      // Nằm trong reducer chứ không nằm ở nơi gọi: có bốn đường đổi khung (ô tỉ
+      // lệ, ô độ phân giải, công cụ của agent, bước khớp khung theo clip đầu
+      // tiên), và một đường quên nhân là dự án đó lệch mãi. Cũng nhờ vậy cả việc
+      // đổi khung gói trong MỘT bước hoàn tác.
+      const before = shortEdgeOf(doc.settings)
       Object.assign(doc.settings, command.settings)
+      const factor = shortEdgeOf(doc.settings) / Math.max(1, before)
+      // Đổi tỉ lệ ở cùng một mức độ phân giải KHÔNG đụng tới chữ: cạnh ngắn không
+      // đổi thì hệ số bằng 1.
+      if (factor !== 1) {
+        for (const overlay of doc.textOverlays) {
+          overlay.style = scaleSubtitleStylePx(overlay.style, factor)
+        }
+        for (const track of doc.subtitleTracks) {
+          track.style = scaleSubtitleStylePx(track.style, factor)
+        }
+      }
       return OK
     }
 

@@ -397,6 +397,29 @@ Quy đổi micro giây → khung hình nằm gọn trong `buildRenderPlan`, khô
 component. Lệch một khung ở đó thì hình và tiếng lệch cả bản dựng mà không có lỗi
 nào báo ra.
 
+### Cỡ chữ và độ phân giải khung
+
+Mọi con số pixel trong `SubtitleStyle` — cỡ chữ, viền, bóng, lề, giãn dòng — chỉ
+có nghĩa khi biết khung lớn bao nhiêu. 84px trên khung 1080 chiếm 7,8% cạnh ngắn;
+cũng 84px đó trên khung 4K chỉ còn 3,9%, nhỏ bằng một nửa.
+
+Nên hai việc phải làm, và thiếu một trong hai là hỏng:
+
+- **Chữ MỚI quy theo khung đang dùng**: `createDefaultSubtitleStyle(shortEdgePx)`
+  và `createDefaultTextOverlayStyle(shortEdgePx)`. Mốc là cạnh ngắn 1080
+  (`STYLE_REFERENCE_SHORT_EDGE_PX`).
+- **Chữ ĐANG CÓ nhân theo khi đổi độ phân giải**, làm trong reducer ở
+  `project/set-settings`. Đổi 1080 lên 4K phải là đổi CHẤT LƯỢNG, không phải đổi
+  bố cục — không nhân thì mọi dòng chữ tự dưng nhỏ đi một nửa.
+
+Đặt trong reducer chứ không ở nơi gọi vì có BỐN đường đổi khung: ô tỉ lệ, ô độ
+phân giải, công cụ của agent, và bước khớp khung theo clip đầu tiên. Một đường
+quên nhân là dự án đó lệch mãi. Cũng nhờ vậy cả việc đổi khung gói trong một bước
+hoàn tác.
+
+Lấy **cạnh ngắn** làm mốc chứ không lấy chiều cao: đổi khung ngang sang khung dọc
+ở cùng mức 1080p không phải là đổi độ phân giải, nên chữ không được to lên.
+
 ### Khung dự án
 
 Kích thước khung quyết định độ phân giải bản xuất — **không phải nguồn**. Đây là

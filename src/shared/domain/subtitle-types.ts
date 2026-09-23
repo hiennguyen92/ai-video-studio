@@ -187,6 +187,51 @@ export const SUBTITLE_STYLE_PRESETS: SubtitleStylePreset[] = [
  */
 export const MAX_TEXT_OUTLINE_WIDTH_PX = 20
 
+/**
+ * Cỡ khung mà mọi con số pixel trong `SubtitleStyle` được chọn theo.
+ *
+ * Cỡ chữ tính bằng PIXEL chỉ có nghĩa khi biết khung cao bao nhiêu: 84px trên
+ * khung 1080 chiếm 7,8% chiều cao, cũng 84px đó trên khung 4K chỉ còn 3,9% — nhỏ
+ * bằng một nửa. Mọi chỗ sinh ra kiểu chữ mặc định phải quy đổi theo khung đang
+ * dùng, lấy con số ở đây làm mốc.
+ *
+ * Lấy CẠNH NGẮN làm mốc chứ không lấy chiều cao: đổi khung ngang sang khung dọc
+ * ở cùng mức 1080p không phải là đổi độ phân giải, nên chữ không được to lên.
+ */
+export const STYLE_REFERENCE_SHORT_EDGE_PX = 1080
+
+/** Mọi trường tính bằng pixel của `SubtitleStyle`. */
+const PIXEL_FIELDS = [
+  'fontSizePx',
+  'outlineWidthPx',
+  'shadowPx',
+  'marginLeftPx',
+  'marginRightPx',
+  'marginVerticalPx',
+  'lineSpacingPx'
+] as const
+
+/**
+ * Nhân mọi con số pixel của một kiểu chữ lên theo hệ số.
+ *
+ * Dùng khi đổi độ phân giải khung: đổi 1080 lên 4K phải là đổi CHẤT LƯỢNG, không
+ * phải đổi bố cục. Không nhân thì mọi dòng chữ đang có tự dưng nhỏ đi một nửa.
+ */
+export function scaleSubtitleStylePx(style: SubtitleStyle, factor: number): SubtitleStyle {
+  if (factor === 1) return style
+  const scaled = { ...style }
+  for (const field of PIXEL_FIELDS) {
+    // Không kẹp về 0: viền dày 1px ở khung 1080 vẫn phải còn thấy được ở khung nhỏ hơn.
+    if (scaled[field] > 0) scaled[field] = Math.max(1, Math.round(scaled[field] * factor))
+  }
+  return scaled
+}
+
+/** Kiểu phụ đề mặc định, quy theo cạnh ngắn của khung đang dùng. */
+export function createDefaultSubtitleStyle(shortEdgePx: number): SubtitleStyle {
+  return scaleSubtitleStylePx(DEFAULT_SUBTITLE_STYLE, shortEdgePx / STYLE_REFERENCE_SHORT_EDGE_PX)
+}
+
 export function subtitleCueDurationUs(cue: SubtitleCue): Micros {
   return cue.endUs - cue.startUs
 }

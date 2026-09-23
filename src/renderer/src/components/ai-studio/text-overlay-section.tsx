@@ -1,3 +1,5 @@
+import { shortEdgeOf } from '../../../../shared/domain/canvas-size'
+import { STYLE_REFERENCE_SHORT_EDGE_PX } from '../../../../shared/domain/subtitle-types'
 import { useCallback, useState, type JSX } from 'react'
 import { previewSeekUs } from '../../../../shared/domain/preview-seek'
 import { createId } from '../../../../shared/domain/project-document-factory'
@@ -59,7 +61,10 @@ export function TextOverlaySection(): JSX.Element {
       // Bắt đầu ở đầu phát: người dùng thường tua tới chỗ cần chữ rồi mới thêm.
       startUs: playheadUs,
       endUs: playheadUs + 3_000_000,
-      style: createDefaultTextOverlayStyle(),
+      // Chưa mở dự án thì rơi về mốc 1080; lúc đó cũng chưa thêm chữ được.
+      style: createDefaultTextOverlayStyle(
+        document ? shortEdgeOf(document.settings) : STYLE_REFERENCE_SHORT_EDGE_PX
+      ),
       animation: 'pop',
       animationDurationUs: DEFAULT_TEXT_ANIMATION_DURATION_US
     }

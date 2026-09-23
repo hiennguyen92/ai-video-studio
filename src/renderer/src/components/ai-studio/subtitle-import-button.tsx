@@ -1,7 +1,8 @@
+import { shortEdgeOf } from '../../../../shared/domain/canvas-size'
 import { useState, type JSX } from 'react'
 import { parseSubtitleFile } from '../../../../shared/domain/subtitle-file-parser'
 import {
-  DEFAULT_SUBTITLE_STYLE,
+  createDefaultSubtitleStyle,
   type SubtitleTrack
 } from '../../../../shared/domain/subtitle-types'
 import { createId } from '../../../../shared/domain/project-document-factory'
@@ -56,7 +57,7 @@ export function SubtitleImportButton({
         name: picked.data.name.replace(/\.(srt|vtt)$/i, ''),
         language: '',
         source: { kind: 'imported' },
-        style: { ...DEFAULT_SUBTITLE_STYLE },
+        style: createDefaultSubtitleStyle(shortEdgeOf(document.settings)),
         cues: cues.map((cue) => ({
           id: createId('cue'),
           startUs: cue.startUs,
