@@ -1,6 +1,6 @@
 import type { EditorCommand } from '../commands/editor-command-types'
 import { applyEditorCommand } from '../commands/editor-command-reducer'
-import { canvasSizeForLongEdge, shortEdgeOf } from '../domain/canvas-size'
+import { canvasSizeForLongEdge, longEdgeForShortEdge, shortEdgeOf } from '../domain/canvas-size'
 import type { MediaAsset } from '../domain/media-asset-types'
 import type { ProjectDocument } from '../domain/project-document-types'
 import { findSoundEffect } from '../domain/sound-effect-catalog'
@@ -927,7 +927,15 @@ function planOne(context: ChatEditContext, tool: ChatToolName, args: unknown): P
 
     case 'set_canvas': {
       const input = chatToolSchemas.set_canvas.parse(args)
-      const longEdge = input.longEdgePx ?? (input.aspect === '1:1' ? 1080 : 1920)
+      // Bỏ trống thì GIỮ độ phân giải dự án đang dùng, không rơi về 1080.
+      //
+      // Đổi tỉ lệ là đổi HƯỚNG khung; ai không nói gì về số điểm ảnh thì không có
+      // ý định đổi nó. Mặc định cứng 1920 biến mỗi lần đổi hướng trên dự án 4K
+      // thành một cú hạ xuống 1080p mà không ai được hỏi — và đây là đường mà cả
+      // agent lẫn MCP đi.
+      const longEdge =
+        input.longEdgePx ??
+        longEdgeForShortEdge(input.aspect, shortEdgeOf(context.document.settings))
       // Phép tính dùng CHUNG với ô chọn trên thanh preview: hai đường tự tính lấy
       // sẽ cho ra hai bộ số khác nhau cho cùng một tỉ lệ.
       const size = canvasSizeForLongEdge(input.aspect, longEdge)

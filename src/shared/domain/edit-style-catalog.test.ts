@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { applyEditorCommand } from '../commands/editor-command-reducer'
+import { planChatToolCalls } from '../ai/chat-tool-planner'
 import { chatToolSchemas, isChatToolName } from '../ai/chat-tool-catalog'
 import { createEmptyProject, createId } from './project-document-factory'
 import { findClipLook } from './clip-look-catalog'
@@ -161,20 +162,19 @@ describe('biến thể xoay vòng', () => {
 
 describe('giãn kiểu dựng ra timeline thật', () => {
   it('đổi khung GIỮ nguyên độ phân giải của dự án', () => {
-    // Kiểu dựng nói về HƯỚNG khung, nó không có ý kiến gì về số điểm ảnh. Không
-    // nêu cạnh dài thì công cụ rơi về mặc định 1920, và áp bất kỳ kiểu dựng nào
-    // lên dự án 4K là âm thầm hạ xuống 1080p.
+    // Kiểm qua ĐÚNG bộ lập kế hoạch chứ không kiểm tham số gửi đi: kiểu dựng chỉ
+    // nói hướng, còn giữ độ phân giải là luật của chính công cụ `set_canvas`.
+    // Kiểm tham số thì mai kia luật đổi chỗ mà phép thử vẫn xanh.
     const uhd = threeClips()
     uhd.settings = { ...uhd.settings, aspectRatio: '9:16', width: 2160, height: 3840 }
-    const [canvas] = expandEditStyle(findEditStyle('cinematic')!, uhd)
-    expect(canvas.name).toBe('set_canvas')
-    // 16:9 ở mức 2160p có cạnh dài 3840.
-    expect(canvas.arguments).toMatchObject({ aspect: '16:9', longEdgePx: 3840 })
+    expect(canvasAfter(findEditStyle('cinematic')!, uhd)).toEqual({ width: 3840, height: 2160 })
   })
 
   it('dự án 1080 thì vẫn ra 1080, không tự nâng', () => {
-    const [canvas] = expandEditStyle(findEditStyle('cinematic')!, threeClips())
-    expect(canvas.arguments).toMatchObject({ aspect: '16:9', longEdgePx: 1920 })
+    expect(canvasAfter(findEditStyle('cinematic')!, threeClips())).toEqual({
+      width: 1920,
+      height: 1080
+    })
   })
 
   it('bước cho cả dự án chỉ gọi một lần, dù có bao nhiêu clip', () => {
@@ -240,6 +240,22 @@ describe('danh mục', () => {
     expect(findEditStyle('khong-co')).toBeUndefined()
   })
 })
+
+/** Khung dự án SAU khi áp kiểu dựng, tính qua đúng bộ lập kế hoạch. */
+function canvasAfter(
+  style: Parameters<typeof expandEditStyle>[0],
+  document: ProjectDocument
+): { width: number; height: number } {
+  const plan = planChatToolCalls(
+    { document, selectedClipIds: [], playheadUs: 0, makeId: () => createId('clip') },
+    expandEditStyle(style, document)
+  )
+  const next = structuredClone(document)
+  for (const step of plan.steps) {
+    for (const command of step.commands) applyEditorCommand(next, command)
+  }
+  return { width: next.settings.width, height: next.settings.height }
+}
 
 describe('cảnh báo đổi hướng khung', () => {
   /** Dự án khung DỌC, có sẵn clip hình. */

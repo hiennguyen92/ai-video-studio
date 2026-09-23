@@ -277,6 +277,35 @@ describe('công cụ đổi khung hình', () => {
     expect(document.settings.aspectRatio).toBe('9:16')
   })
 
+  it('bỏ trống độ phân giải thì GIỮ của dự án, không tụt về 1080', () => {
+    // Đây là đường mà cả agent lẫn MCP đi. Mặc định cứng 1920 biến mỗi lần đổi
+    // hướng khung trên dự án 4K thành một cú hạ xuống 1080p mà không ai được hỏi.
+    const document = project()
+    document.settings = { ...document.settings, aspectRatio: '9:16', width: 2160, height: 3840 }
+    const plan = planChatToolCalls(context(document), [
+      { name: 'set_canvas', arguments: { aspect: '16:9' } }
+    ])
+    for (const command of plan.steps.flatMap((step) => step.commands)) {
+      expect(applyEditorCommand(document, command).ok).toBe(true)
+    }
+
+    expect(document.settings.width).toBe(3840)
+    expect(document.settings.height).toBe(2160)
+  })
+
+  it('nêu độ phân giải thì nghe theo, kể cả khi nhỏ hơn dự án', () => {
+    const document = project()
+    document.settings = { ...document.settings, width: 3840, height: 2160 }
+    const plan = planChatToolCalls(context(document), [
+      { name: 'set_canvas', arguments: { aspect: '16:9', longEdgePx: 1920 } }
+    ])
+    for (const command of plan.steps.flatMap((step) => step.commands)) {
+      expect(applyEditorCommand(document, command).ok).toBe(true)
+    }
+
+    expect(document.settings.width).toBe(1920)
+  })
+
   it('luôn ra cạnh chẵn — cạnh lẻ thì h264 không mã hoá được', () => {
     const document = project()
     const plan = planChatToolCalls(context(document), [

@@ -1,4 +1,3 @@
-import { longEdgeForShortEdge, shortEdgeOf } from './canvas-size'
 import type { EditStyle } from './edit-style-catalog'
 import type { AspectRatio, ProjectDocument } from './project-document-types'
 import { findCutPoints, isJunction } from './timeline-cut-transitions'
@@ -24,7 +23,7 @@ export function expandEditStyle(
   const calls: Array<{ name: string; arguments: Record<string, unknown> }> = []
   for (const step of style.steps) {
     if (step.target === 'project') {
-      calls.push({ name: step.tool, arguments: projectArgs(style, step, document) })
+      calls.push({ name: step.tool, arguments: { ...step.args } })
       continue
     }
 
@@ -56,26 +55,6 @@ export function expandEditStyle(
   }
 
   return calls
-}
-
-/**
- * Tham số cho bước áp lên cả dự án.
- *
- * Bước đổi khung phải GIỮ độ phân giải đang có: kiểu dựng nói về HƯỚNG khung, nó
- * không có ý kiến gì về số điểm ảnh. Không nêu cạnh dài thì công cụ rơi về mặc
- * định 1920, và áp bất kỳ kiểu dựng nào lên dự án 4K là âm thầm hạ xuống 1080p —
- * đúng cái bẫy mà ô chọn tỉ lệ trên thanh preview đã phải tránh.
- */
-function projectArgs(
-  style: EditStyle,
-  step: EditStyle['steps'][number],
-  document: ProjectDocument
-): Record<string, unknown> {
-  if (step.tool !== 'set_canvas') return { ...step.args }
-  return {
-    ...step.args,
-    longEdgePx: longEdgeForShortEdge(style.aspect, shortEdgeOf(document.settings))
-  }
 }
 
 /**
