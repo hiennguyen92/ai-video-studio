@@ -1,4 +1,4 @@
-import { applyPatches, enablePatches, produceWithPatches, type Patch } from 'immer'
+import { applyPatches, enablePatches, produce, produceWithPatches, type Patch } from 'immer'
 import type { ProjectDocument } from '../domain/project-document-types'
 import { applyEditorCommand } from './editor-command-reducer'
 import type { EditorCommand } from './editor-command-types'
@@ -95,6 +95,45 @@ export function runCommands(
     changed: true,
     state: { document: nextDocument, past, future: [] }
   }
+}
+
+/**
+ * Áp lệnh mà KHÔNG ghi vào lịch sử hoàn tác.
+ *
+ * Dành cho dữ liệu phái sinh tới muộn — filmstrip và waveform dựng ở nền sau khi
+ * nhập media xong. Nếu đi đường thường thì hai chuyện hỏng cùng lúc: người dùng
+ * bấm hoàn tác một lần và mất cái filmstrip thay vì hoàn tác thao tác của mình,
+ * và `runCommands` XOÁ SẠCH `future` nên stack làm-lại của họ biến mất chỉ vì
+ * một tiến trình nền vừa chạy xong.
+ *
+ * Giữ nguyên `past` và `future`. Patch của các mục lịch sử cũ vẫn dùng được, vì
+ * lệnh này chỉ SỬA trường phái sinh của một asset có sẵn — không thêm bớt phần
+ * tử nào nên không có chỉ số mảng nào xê dịch.
+ */
+export function runCommandsSilently(
+  state: ProjectSessionState,
+  commands: EditorCommand[]
+): RunCommandsOutcome {
+  if (commands.length === 0) return { ok: true, state, changed: false }
+
+  const failures: Array<{ error: string; index: number }> = []
+  const nextDocument = produce(state.document, (draft) => {
+    for (let index = 0; index < commands.length; index += 1) {
+      const result = applyEditorCommand(draft, commands[index])
+      if (!result.ok) {
+        failures.push({ error: result.error, index })
+        return
+      }
+    }
+    draft.revision += 1
+    draft.updatedAt = new Date().toISOString()
+  })
+
+  const failure = failures[0]
+  if (failure) return { ok: false, error: failure.error, failedIndex: failure.index }
+  if (nextDocument === state.document) return { ok: true, state, changed: false }
+
+  return { ok: true, changed: true, state: { ...state, document: nextDocument } }
 }
 
 export function canUndo(state: ProjectSessionState): boolean {

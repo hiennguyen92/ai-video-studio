@@ -160,6 +160,12 @@ test('thêm clip vào timeline và hiển thị đúng thời lượng', async (
   const clips = page.locator('.timeline-clip')
   await expect(clips).toHaveCount(1)
 
+  // Filmstrip dựng SAU khi nhập, rồi vá vào asset — nhập xong không có nghĩa là
+  // đã có nó. Chờ ở đây để bắt đúng cái vá đó (nếu đứt, clip mãi là khối màu đặc).
+  await expect(clips.first().locator('.timeline-clip__filmstrip')).toBeVisible({
+    timeout: 30_000
+  })
+
   // 8 giây ở mức zoom mặc định 60 px/giây => khoảng 480px.
   const width = await clips.first().evaluate((element) => element.getBoundingClientRect().width)
   expect(width).toBeGreaterThan(430)

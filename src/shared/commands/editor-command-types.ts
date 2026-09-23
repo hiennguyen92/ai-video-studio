@@ -456,6 +456,25 @@ const updateAssetTags = z.object({
   tags: z.array(z.string().max(60)).max(30)
 })
 
+/**
+ * Điền dữ liệu phái sinh của media sau khi nhập: filmstrip, waveform.
+ *
+ * Hai thứ đó chỉ để HIỂN THỊ timeline — không bản xuất nào phụ thuộc chúng — nên
+ * chúng được dựng ở nền sau khi việc nhập đã xong. Lệnh này là chỗ chúng quay về
+ * document, và nó luôn đi qua đường ghi LẶNG (xem `runCommandsSilently`): người
+ * dùng bấm hoàn tác mà mất cái filmstrip thì vô lý, mà tệ hơn là nó chen vào giữa
+ * lịch sử thao tác thật của họ.
+ */
+const setAssetDerived = z.object({
+  type: z.literal('asset/set-derived'),
+  assetId: z.string(),
+  derived: z.object({
+    filmstripPath: z.string().optional(),
+    filmstripFrameCount: z.number().int().positive().optional(),
+    waveformPath: z.string().optional()
+  })
+})
+
 /* ── Lệnh transcript ───────────────────────────────────────────── */
 
 /**
@@ -921,7 +940,8 @@ export const editorCommandSchema = z.discriminatedUnion('type', [
   addAsset,
   relinkAsset,
   removeAsset,
-  updateAssetTags
+  updateAssetTags,
+  setAssetDerived
 ])
 
 export type EditorCommand = z.infer<typeof editorCommandSchema>

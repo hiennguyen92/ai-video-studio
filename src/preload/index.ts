@@ -48,6 +48,7 @@ const api: RendererApi = {
     // Không đi qua IPC: `webUtils` chạy ngay trong preload và trả về đồng bộ.
     pathForFile: (file) => webUtils.getPathForFile(file),
     import: (request) => ipcRenderer.invoke(IPC.mediaImport, request),
+    buildPreviews: (request) => ipcRenderer.invoke(IPC.mediaBuildPreviews, request),
     relink: (asset, newPath) => ipcRenderer.invoke(IPC.mediaRelink, asset, newPath),
     registerLocal: (entries) => ipcRenderer.invoke(IPC.mediaRegisterLocal, entries),
     detectShots: (request) => ipcRenderer.invoke(IPC.mediaDetectShots, request),

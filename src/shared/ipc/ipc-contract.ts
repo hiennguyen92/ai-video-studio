@@ -43,6 +43,7 @@ export const IPC = {
 
   mediaPickFiles: 'media:pick-files',
   mediaImport: 'media:import',
+  mediaBuildPreviews: 'media:build-previews',
   mediaRelink: 'media:relink',
   mediaReadWaveform: 'media:read-waveform',
   subtitlePickFile: 'subtitle:pick-file',
@@ -124,6 +125,15 @@ export interface ProjectSummary {
 export interface CreateProjectRequest {
   name: string
   aspectRatio?: '16:9' | '9:16' | '1:1'
+}
+
+export interface BuildPreviewsRequest {
+  projectId: string
+  assetId: string
+  filePath: string
+  kind: MediaAsset['kind']
+  durationUs: number
+  hasAudio: boolean
 }
 
 export interface ImportMediaRequest {
@@ -496,6 +506,13 @@ export interface RendererApi {
   }
   media: {
     pickFiles(): Promise<IpcResult<string[]>>
+    /**
+     * Dựng filmstrip và waveform cho một asset đã nhập.
+     *
+     * Tách khỏi `import` vì đây là phần NẶNG và không ai phải chờ nó: hai thứ này
+     * chỉ để hiển thị timeline, thiếu thì timeline lùi về khối màu đặc.
+     */
+    buildPreviews(request: BuildPreviewsRequest): Promise<IpcResult<MediaAsset['derived']>>
     /**
      * Đường dẫn thật của một file người dùng KÉO THẢ vào cửa sổ.
      *

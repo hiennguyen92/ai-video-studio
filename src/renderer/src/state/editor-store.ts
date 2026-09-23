@@ -16,6 +16,7 @@ import {
   createSessionState,
   redo,
   runCommands,
+  runCommandsSilently,
   undo,
   undoLabel,
   redoLabel,
@@ -108,6 +109,11 @@ export interface EditorState {
   /** Chép clip đang chọn vào bảng tạm. Trả `false` khi không có clip nào đang chọn. */
   copyClip(): boolean
   /** Dán clip đã chép vào track đang chọn, tại đầu phát. Trả `false` khi không dán được. */
+  /**
+   * Áp lệnh mà KHÔNG ghi vào lịch sử hoàn tác — dành cho dữ liệu phái sinh tới
+   * muộn, như filmstrip dựng xong sau khi nhập media.
+   */
+  applySilently(commands: EditorCommand[]): boolean
   pasteClip(label: string): boolean
   /** Chép cụm keyframe của thứ đang chọn vào bảng tạm. Trả `false` khi không có gì để chép. */
   copyKeyframes(): boolean
@@ -173,6 +179,15 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
     if (!outcome.changed) return true
 
     set({ session: outcome.state, saveState: 'dirty', lastError: null })
+    return true
+  },
+
+  applySilently: (commands) => {
+    const { session } = get()
+    if (!session) return false
+    const outcome = runCommandsSilently(session, commands)
+    if (!outcome.ok || !outcome.changed) return outcome.ok
+    set({ session: outcome.state, saveState: 'dirty' })
     return true
   },
 

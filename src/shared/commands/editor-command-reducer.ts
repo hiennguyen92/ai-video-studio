@@ -1043,6 +1043,16 @@ export function applyEditorCommand(doc: ProjectDocument, command: EditorCommand)
       return OK
     }
 
+    case 'asset/set-derived': {
+      const asset = doc.assets.find((item) => item.id === command.assetId)
+      // Media đã bị xoá trong lúc dựng nền — người dùng hoàn tác cú nhập, hoặc xoá
+      // tay. Bỏ qua chứ không báo lỗi: đây là dữ liệu phái sinh tới muộn, không
+      // phải một thao tác hỏng.
+      if (!asset) return OK
+      Object.assign(asset.derived, command.derived)
+      return OK
+    }
+
     case 'keyframe/set': {
       const located = locateKeyframeSubject(doc, command.target, command.path)
       if (!located.ok) return fail(located.error)

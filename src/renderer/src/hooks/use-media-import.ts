@@ -3,6 +3,7 @@ import type { EditorCommand } from '../../../shared/commands/editor-command-type
 import type { MediaAsset } from '../../../shared/domain/media-asset-types'
 import type { ImportMediaResponse } from '../../../shared/ipc/ipc-contract'
 import { useEditorStore } from '../state/editor-store'
+import { backfillMediaPreviews } from '../state/media-preview-backfill'
 
 /**
  * Nhập media vào project.
@@ -64,7 +65,12 @@ export async function importMediaPaths(filePaths: string[]): Promise<ImportOutco
   }))
   // Nhập nhiều file gộp thành MỘT bước undo: người dùng nghĩ về nó như một hành
   // động duy nhất.
-  if (commands.length > 0) useEditorStore.getState().run(commands, 'Nhập media')
+  if (commands.length > 0) {
+    useEditorStore.getState().run(commands, 'Nhập media')
+    // Không chờ: filmstrip/waveform tới sau, asset đã dùng được ngay.
+    const projectId = useEditorStore.getState().session?.document.id
+    if (projectId) void backfillMediaPreviews(projectId, data.assets)
+  }
 
   return {
     importedCount: data.assets.length,

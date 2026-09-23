@@ -2,7 +2,15 @@ import { describe, expect, it } from 'vitest'
 import { createEmptyProject } from '../domain/project-document-factory'
 import type { MediaAsset } from '../domain/media-asset-types'
 import type { ProjectDocument } from '../domain/project-document-types'
-import { canRedo, canUndo, createSessionState, redo, runCommands, undo } from './command-history'
+import {
+  canRedo,
+  canUndo,
+  createSessionState,
+  redo,
+  runCommands,
+  runCommandsSilently,
+  undo
+} from './command-history'
 import { parseEditorCommand } from './editor-command-types'
 
 function projectWithAsset(): ProjectDocument {
@@ -207,5 +215,79 @@ describe('kiểm tra payload lệnh', () => {
 
   it('từ chối loại lệnh không tồn tại', () => {
     expect(parseEditorCommand({ type: 'project/delete-everything' }).ok).toBe(false)
+  })
+})
+
+describe('ghi lặng lẽ (dữ liệu phái sinh tới sau)', () => {
+  /** Nhập xong → filmstrip dựng xong vài giây sau; cái vá đó không được đụng lịch sử. */
+  it('không thêm bước hoàn tác và KHÔNG xoá nhánh redo đang có', () => {
+    const doc = projectWithAsset()
+    let state = createSessionState(doc)
+
+    const inserted = runCommands(
+      state,
+      [
+        {
+          type: 'clip/insert',
+          trackId: videoTrackId(doc),
+          assetId: 'asset_1',
+          startUs: 0,
+          durationUs: 2_000_000,
+          sourceInUs: 0
+        }
+      ],
+      'Chèn clip'
+    )
+    expect(inserted.ok).toBe(true)
+    if (!inserted.ok) return
+    state = undo(inserted.state)
+    expect(canRedo(state)).toBe(true)
+
+    const pastBefore = state.past
+    const futureBefore = state.future
+
+    const outcome = runCommandsSilently(state, [
+      {
+        type: 'asset/set-derived',
+        assetId: 'asset_1',
+        derived: { filmstripPath: '/cache/asset_1-strip.jpg', filmstripFrameCount: 40 }
+      }
+    ])
+
+    expect(outcome.ok).toBe(true)
+    if (!outcome.ok) return
+    expect(outcome.state.past).toBe(pastBefore)
+    // Nhánh redo còn nguyên: người dùng vừa Ctrl+Z, Ctrl+Shift+Z vẫn phải làm lại được.
+    expect(outcome.state.future).toBe(futureBefore)
+    expect(canRedo(outcome.state)).toBe(true)
+    expect(outcome.state.document.assets[0].derived.filmstripPath).toBe('/cache/asset_1-strip.jpg')
+    expect(outcome.state.document.revision).toBe(state.document.revision + 1)
+  })
+
+  it('bỏ qua asset đã bị xoá trong lúc ffmpeg chạy, không báo lỗi', () => {
+    const state = createSessionState(projectWithAsset())
+
+    const outcome = runCommandsSilently(state, [
+      { type: 'asset/set-derived', assetId: 'asset_khong_ton_tai', derived: { waveformPath: '/x' } }
+    ])
+
+    expect(outcome.ok).toBe(true)
+  })
+
+  it('giữ nguyên dữ liệu phái sinh cũ khi chỉ vá một trường', () => {
+    const doc = projectWithAsset()
+    doc.assets[0].derived.thumbnailPath = '/cache/asset_1.jpg'
+    const state = createSessionState(doc)
+
+    const outcome = runCommandsSilently(state, [
+      { type: 'asset/set-derived', assetId: 'asset_1', derived: { waveformPath: '/cache/p.bin' } }
+    ])
+
+    expect(outcome.ok).toBe(true)
+    if (!outcome.ok) return
+    expect(outcome.state.document.assets[0].derived).toEqual({
+      thumbnailPath: '/cache/asset_1.jpg',
+      waveformPath: '/cache/p.bin'
+    })
   })
 })

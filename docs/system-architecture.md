@@ -640,6 +640,35 @@ Nhánh chung vẫn giữ ngoại lệ cho ảnh dù `insert_clip` đã chặn �
 vì đó là luật của **domain**, không phải luật của một công cụ. Đổi công cụ không
 được làm luật đó biến mất, và có kiểm thử canh đúng điều này.
 
+### Nhập media: cái gì phải chờ, cái gì tới sau
+
+Nhập một file gồm bốn việc: băm nội dung, probe, thumbnail, rồi filmstrip +
+waveform. Với file 4K 1,4 GB, ba việc đầu cộng lại chưa tới một giây; riêng
+filmstrip mất khoảng 7 giây. Nhưng filmstrip và waveform **chỉ để vẽ timeline** —
+không bản xuất nào đụng tới, thiếu chúng thì clip lùi về khối màu đặc. Bắt người
+dùng đứng nhìn thanh chờ vì chúng là sai.
+
+Nên `importMediaFile` nhận cờ `deferPreviews`: bật thì nó dừng sau thumbnail và
+trả asset ra ngay. Renderer nhận asset, ghi `asset/add`, rồi gọi
+`media:build-previews` cho từng asset và vá kết quả vào sau. Đo trên máy thật:
+nhập xong **0,4 giây**, filmstrip hiện lên ở giây thứ 7.
+
+Hai ràng buộc khiến chỗ này không tầm thường:
+
+- **Cái vá KHÔNG được thành một bước hoàn tác.** Bảy giây sau khi nhập, người
+  dùng đã làm việc khác; Ctrl+Z lúc đó phải gỡ thao tác của họ, không phải gỡ một
+  đường dẫn ảnh. Nó cũng không được xoá nhánh redo đang có — mà `runCommands` thì
+  luôn xoá. Vì thế có `runCommandsSilently`: vẫn đi qua reducer và vẫn tăng
+  `revision`, nhưng không đụng `past`/`future`.
+- **Asset có thể biến mất giữa chừng** (người dùng hoàn tác lần nhập, hoặc đóng
+  dự án). Reducer của `asset/set-derived` bỏ qua asset không còn, và nơi gọi kiểm
+  tra id dự án trước khi vá — vá nhầm tài liệu khác là nhét đường dẫn cache của
+  dự án cũ vào dự án mới.
+
+Chỉ đường nhập của người dùng bật cờ này. Media do AI tạo (giọng đọc, dọn tiếng,
+freeze-frame) đi thẳng vào timeline ngay khi hàm trả về, không có giao diện nào
+chờ để vá sau, nên vẫn dựng tại chỗ.
+
 ### Nhập media qua MCP
 
 `import_media` là công cụ ghi **bình thường**, nằm trong `chatToolSchemas` như 37

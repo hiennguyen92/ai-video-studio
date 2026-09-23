@@ -17,6 +17,7 @@ import { createEmptyProject } from '../../shared/domain/project-document-factory
 import {
   IPC,
   type CreateProjectRequest,
+  type BuildPreviewsRequest,
   type ImportMediaRequest,
   type ExportRequest,
   type ExportStillRequest,
@@ -31,7 +32,11 @@ import {
   loadProjectDocument,
   saveProjectDocument
 } from '../storage/project-storage'
-import { importMediaFile, relinkMediaAsset } from '../media/media-import-service'
+import {
+  buildMediaPreviews,
+  importMediaFile,
+  relinkMediaAsset
+} from '../media/media-import-service'
 import {
   buildSoundEffectAsset,
   repairBuiltinAssetPaths,
@@ -194,7 +199,12 @@ export function registerIpcHandlers(): void {
 
       for (const filePath of request.filePaths) {
         try {
-          const result = await importMediaFile({ projectId: request.projectId, filePath }, known)
+          const result = await importMediaFile(
+            // Filmstrip/waveform dựng sau qua `mediaBuildPreviews`: chúng chỉ để vẽ
+            // timeline, mà với file 4K chúng chiếm gần hết thời gian chờ nhập.
+            { projectId: request.projectId, filePath, deferPreviews: true },
+            known
+          )
           if (result.duplicateOfAssetId) {
             response.duplicates.push({ path: filePath, existingAssetId: result.duplicateOfAssetId })
           } else {
@@ -207,6 +217,10 @@ export function registerIpcHandlers(): void {
       }
       return response
     })
+  )
+
+  ipcMain.handle(IPC.mediaBuildPreviews, (_event, request: BuildPreviewsRequest) =>
+    guard(() => buildMediaPreviews(request))
   )
 
   ipcMain.handle(IPC.mediaRelink, (_event, asset: MediaAsset, newPath: string) =>
