@@ -90,7 +90,7 @@ interface SavedClip {
 }
 
 interface SavedDocument {
-  settings: { aspectRatio: string }
+  settings: { aspectRatio: string; width: number; height: number }
   tracks: Array<{ kind: string; clips: SavedClip[] }>
 }
 
@@ -114,6 +114,19 @@ async function savedClip(): Promise<SavedClip> {
   ) as { tracks: Array<{ kind: string; clips: SavedClip[] }> }
   return document.tracks.find((track) => track.kind === 'video')!.clips[0]
 }
+
+test('khung dự án khớp clip hình ĐẦU TIÊN, và chỉ đi lên chứ không đi xuống', async () => {
+  // Nguồn 640×360 là khung ngang dưới 1080, nên khung giữ nguyên 1920×1080: hạ
+  // khung xuống theo nguồn sẽ làm chữ mặc định 84px tràn khung.
+  //
+  // Phần khớp thật sự được kiểm ở `canvas-size.test.ts` với nguồn 4K dọc: ở đó
+  // khung phải thành 2160×3840, nếu không thì nguồn 4K vào vẫn ra file 1080p mà
+  // ô "Độ phân giải 100%" lúc xuất lại báo như không mất gì.
+  const document = await savedDocument()
+  expect(document.settings.width).toBe(1920)
+  expect(document.settings.height).toBe(1080)
+  expect(document.settings.aspectRatio).toBe('16:9')
+})
 
 test('tab Library nằm cạnh Media, với bốn tab con', async () => {
   const tabs = studio().getByRole('tab')

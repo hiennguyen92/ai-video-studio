@@ -84,6 +84,7 @@ export const dictionaryVi = {
     generatedBadge: 'AI'
   },
   preview: {
+    resolution: 'Độ phân giải khung',
     frameRate: 'Tốc độ khung hình',
     title: 'Xem trước',
     empty: 'Timeline đang trống.',

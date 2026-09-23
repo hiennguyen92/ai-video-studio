@@ -397,6 +397,41 @@ Quy đổi micro giây → khung hình nằm gọn trong `buildRenderPlan`, khô
 component. Lệch một khung ở đó thì hình và tiếng lệch cả bản dựng mà không có lỗi
 nào báo ra.
 
+### Khung dự án
+
+Kích thước khung quyết định độ phân giải bản xuất — **không phải nguồn**. Đây là
+bộ dựng DOM: Remotion vẽ composition ở đúng cỡ khung, media fit vào bằng
+`objectFit: contain`. Nguồn 720p trong khung 4K chỉ là phóng to.
+
+Hệ quả: nếu khung bị đóng cứng ở 1080 thì nguồn 4K vào vẫn ra 1080p, mà ô
+"Độ phân giải **100%**" lúc xuất lại nói như không mất gì — 100% đó là của KHUNG,
+không phải của nguồn. Với nguồn dọc còn tệ gấp đôi: vừa thu nhỏ, vừa hai dải đen.
+
+Nên khung dự án làm hai việc:
+
+- **Clip hình ĐẦU TIÊN đặt khung theo chính nó** (`matchCanvasToSourceCommands`).
+  Chỉ khi timeline còn trống hẳn — clip thứ hai mà vẫn đổi khung là dời chỗ mọi
+  chữ và mọi clip đã dựng.
+
+  Khung chỉ đi **LÊN**: chặn trên ở 4K (mỗi tab dựng ngốn bộ nhớ theo số điểm ảnh),
+  chặn dưới ở 1080. Chặn dưới không phải vì số điểm ảnh mà vì **cỡ CHỮ**: chữ
+  overlay mặc định 84px và phụ đề 48px đều tính bằng pixel của khung và được chọn
+  cho khung cao 1080. Hạ khung xuống 360 thì 84px thành 23% chiều cao khung thay
+  vì 7,8% — chữ tràn khung và khung nền bị bóp méo. HƯỚNG khung thì luôn sửa cho
+  khớp nguồn, kể cả khi độ phân giải giữ nguyên.
+- **Người dùng đổi được độ phân giải** ở thanh preview, đặt tên theo CẠNH NGẮN
+  (720p/1080p/1440p/2160p). Cạnh ngắn mới là con số người ta quen gọi: "1080p"
+  đúng cho cả 1920×1080 lẫn 1080×1920. Đổi tỉ lệ thì GIỮ độ phân giải — đang dựng
+  4K mà đổi sang khung dọc rồi tụt về 1080 là mất ba phần tư số điểm ảnh, không
+  hỏi một câu nào.
+
+Phép tính nằm ở `canvas-size.ts`, một chỗ duy nhất cho cả ba nơi cần nó: ô chọn
+trên thanh preview, công cụ `set_canvas` của agent, và bước khớp khung theo clip
+đầu tiên. Ba đường tự tính lấy sẽ cho ba bộ số khác nhau cho cùng một khung.
+
+**Ô "Độ phân giải" lúc xuất chỉ THU NHỎ** (100/50/25% của khung). Thêm mức phóng
+to vào đó là hai cách nói cùng một điều; muốn to hơn thì nâng khung dự án.
+
 ### Kiểu dựng
 
 Một kiểu dựng là một cách dựng CẢ timeline, đóng gói thành thẻ bấm được trong

@@ -1,5 +1,6 @@
 import type { EditorCommand } from '../commands/editor-command-types'
 import { applyEditorCommand } from '../commands/editor-command-reducer'
+import { canvasSizeForLongEdge } from '../domain/canvas-size'
 import type { MediaAsset } from '../domain/media-asset-types'
 import type { ProjectDocument } from '../domain/project-document-types'
 import { findSoundEffect } from '../domain/sound-effect-catalog'
@@ -926,16 +927,10 @@ function planOne(context: ChatEditContext, tool: ChatToolName, args: unknown): P
 
     case 'set_canvas': {
       const input = chatToolSchemas.set_canvas.parse(args)
-      // Cạnh phải CHẴN: h264 với yuv420p không mã hoá được cạnh lẻ, và lỗi đó chỉ
-      // lộ ra lúc xuất, khi người dùng đã dựng xong cả video.
-      const even = (value: number): number => Math.round(value / 2) * 2
       const longEdge = input.longEdgePx ?? (input.aspect === '1:1' ? 1080 : 1920)
-      const size =
-        input.aspect === '9:16'
-          ? { width: even((longEdge * 9) / 16), height: even(longEdge) }
-          : input.aspect === '16:9'
-            ? { width: even(longEdge), height: even((longEdge * 9) / 16) }
-            : { width: even(longEdge), height: even(longEdge) }
+      // Phép tính dùng CHUNG với ô chọn trên thanh preview: hai đường tự tính lấy
+      // sẽ cho ra hai bộ số khác nhau cho cùng một tỉ lệ.
+      const size = canvasSizeForLongEdge(input.aspect, longEdge)
 
       return {
         tool,

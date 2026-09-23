@@ -80,6 +80,7 @@ export const dictionaryEn: Dictionary = {
     generatedBadge: 'AI'
   },
   preview: {
+    resolution: 'Canvas resolution',
     frameRate: 'Frame rate',
     title: 'Preview',
     empty: 'The timeline is empty.',

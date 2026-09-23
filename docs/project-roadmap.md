@@ -135,6 +135,9 @@ giao diện chỉ lộ ra khi chuyển tab với dữ liệu thật.
 - [x] Chuyển cảnh ở chỗ nối kẹp chung cho cả hai mép, và Inspector nói ra khi
       không chạy được: trước đây hai clip vừa nhập đặt liền nhau thì clip đi trượt
       khỏi khung còn clip đến chưa kịp vào, để lộ nền trống quá nửa khung hình
+- [x] Khung dự án đi theo clip hình đầu tiên và chọn được độ phân giải tới 4K:
+      trước đó nguồn 4K vào vẫn ra file 1080p, mà ô "Độ phân giải 100%" lúc xuất
+      lại báo như không mất gì
 - [x] Ba chuyển cảnh chạy WebGL hai texture (lật trang giấy, cháy loang, nhoè
       hướng tâm) — thứ CSS không làm nổi vì phải lấy mẫu lại toạ độ; có bản lùi CSS
       khi WebGL không dùng được, và đã kiểm bằng cách trích khung từ file MP4 xuất

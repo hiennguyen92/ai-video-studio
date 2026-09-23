@@ -1,5 +1,12 @@
 import type { JSX } from 'react'
 import {
+  CANVAS_SHORT_EDGES,
+  canvasSizeForLongEdge,
+  longEdgeForShortEdge,
+  shortEdgeOf,
+  type CanvasShortEdge
+} from '../../../../shared/domain/canvas-size'
+import {
   ASPECT_RATIO_DIMENSIONS,
   type AspectRatio,
   type ProjectSettings
@@ -23,15 +30,19 @@ export function PreviewCanvasSettings({ settings }: { settings: ProjectSettings 
   const t = useT()
   const run = useEditorStore((state) => state.run)
 
-  const setAspectRatio = (aspectRatio: AspectRatio): void => {
-    // Kích thước đi theo tỉ lệ, lấy từ cùng bảng mà lúc tạo dự án dùng: để hai
-    // đường không cho ra hai bộ số khác nhau cho cùng một tỉ lệ.
-    const { width, height } = ASPECT_RATIO_DIMENSIONS[aspectRatio]
-    run(
-      [{ type: 'project/set-settings', settings: { aspectRatio, width, height } }],
-      t.preview.aspectRatio
-    )
+  const shortEdge = shortEdgeOf(settings)
+
+  const resize = (aspectRatio: AspectRatio, shortEdgePx: number, label: string): void => {
+    // Một phép tính duy nhất cho cả ô tỉ lệ, ô độ phân giải và công cụ `set_canvas`
+    // của agent: ba đường tự tính lấy sẽ cho ba bộ số khác nhau cho cùng một khung.
+    const size = canvasSizeForLongEdge(aspectRatio, longEdgeForShortEdge(aspectRatio, shortEdgePx))
+    run([{ type: 'project/set-settings', settings: { aspectRatio, ...size } }], label)
   }
+
+  // Đổi tỉ lệ GIỮ nguyên độ phân giải: đang dựng 4K mà đổi khung sang dọc rồi tụt
+  // về 1080 là mất ba phần tư số điểm ảnh, không hỏi một câu nào.
+  const setAspectRatio = (aspectRatio: AspectRatio): void =>
+    resize(aspectRatio, shortEdge, t.preview.aspectRatio)
 
   const setFrameRate = (key: string): void => {
     const frameRate = FRAME_RATE_PRESETS[key]
@@ -59,6 +70,28 @@ export function PreviewCanvasSettings({ settings }: { settings: ProjectSettings 
         {(Object.keys(ASPECT_RATIO_DIMENSIONS) as AspectRatio[]).map((ratio) => (
           <option key={ratio} value={ratio}>
             {ratio}
+          </option>
+        ))}
+      </select>
+      <select
+        className="preview__canvas-select"
+        aria-label={t.preview.resolution}
+        title={t.preview.resolution}
+        value={CANVAS_SHORT_EDGES.includes(shortEdge as CanvasShortEdge) ? shortEdge : 'custom'}
+        onChange={(event) =>
+          resize(settings.aspectRatio, Number(event.target.value), t.preview.resolution)
+        }
+      >
+        {/* Độ phân giải lẻ (dự án cũ, hay nguồn cỡ lạ) vẫn phải hiện đúng trong ô,
+            không thì ô nói một đằng còn khung dựng một nẻo. */}
+        {!CANVAS_SHORT_EDGES.includes(shortEdge as CanvasShortEdge) && (
+          <option value="custom" disabled>
+            {shortEdge}p
+          </option>
+        )}
+        {CANVAS_SHORT_EDGES.map((edge) => (
+          <option key={edge} value={edge}>
+            {edge}p{edge === 2160 ? ' · 4K' : ''}
           </option>
         ))}
       </select>

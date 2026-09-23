@@ -1,3 +1,4 @@
+import { matchCanvasToSourceCommands } from '../../../../shared/domain/canvas-size'
 import { useCallback, useEffect, useState, type JSX } from 'react'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import type { MediaAsset } from '../../../../shared/domain/media-asset-types'
@@ -120,7 +121,10 @@ export function EditorWorkspace({
         durationUs,
         sourceInUs: 0
       }
-      run([command], t.media.addToTimeline)
+      // Clip hình ĐẦU TIÊN đặt khung dự án theo chính nó. Không làm thế thì nguồn
+      // 4K dọc rơi vào khung 1080 ngang mặc định: vừa thu nhỏ, vừa hai dải đen,
+      // và ô "Độ phân giải 100%" lúc xuất vẫn báo như không mất gì.
+      run([...matchCanvasToSourceCommands(document, asset), command], t.media.addToTimeline)
     },
     [document, run, setError, t.media.addToTimeline, t.timeline.addVideoTrack]
   )

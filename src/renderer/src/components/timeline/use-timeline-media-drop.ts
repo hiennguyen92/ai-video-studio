@@ -1,3 +1,4 @@
+import { matchCanvasToSourceCommands } from '../../../../shared/domain/canvas-size'
 import { useCallback, useState, type DragEvent } from 'react'
 import type { EditorCommand } from '../../../../shared/commands/editor-command-types'
 import type { ProjectDocument } from '../../../../shared/domain/project-document-types'
@@ -84,7 +85,9 @@ export function useTimelineMediaDrop(options: {
         durationUs: durationUsForAsset,
         sourceInUs: 0
       }
-      run([command], t.media.addToTimeline)
+      // Kéo thả cũng là một đường đặt clip đầu tiên, nên nó phải khớp khung y như
+      // đường bấm đúp ở thư viện media.
+      run([...matchCanvasToSourceCommands(document, asset), command], t.media.addToTimeline)
     },
     [document, pixelsPerSecond, snapEnabled, clientXToUs, run, t.media.addToTimeline]
   )
