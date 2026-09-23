@@ -479,6 +479,11 @@ Hai ràng buộc không được phá:
 - **Một kiểu dựng = MỘT bước hoàn tác.** Gộp mọi lệnh rồi `run` một lần. Bắn mấy
   chục lệnh thành mấy chục mục lịch sử là phá sạch lịch sử của người dùng.
 
+Kiểu dựng đổi khung sang hướng KHÁC hướng dự án thì phần xem trước nói ra: mọi
+clip đang có sẽ nằm trong hai dải đen. Không cảnh báo khi timeline còn trống, và
+không cảnh báo khi chính kiểu đó đã lấp hai dải bằng nền mờ — cảnh báo sai thì lần
+sau không ai đọc nữa.
+
 Một phép thử duyệt mọi bước của mọi kiểu dựng qua `chatToolSchemas`. Kiểu dựng là
 dữ liệu nên TypeScript chỉ canh được tên công cụ, không canh được tham số — catalog
 siết một ràng buộc mà kiểu dựng không đổi theo thì thẻ vẫn bấm được, chỉ là bước

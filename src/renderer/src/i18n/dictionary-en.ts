@@ -227,6 +227,8 @@ export const dictionaryEn: Dictionary = {
     editStyleHint:
       'An edit style applies one way of cutting to the WHOLE timeline. Click to preview exactly what it will do, then apply. Applying is a single undo step.',
     editStyleNoProject: 'Open a project before applying an edit style.',
+    editStyleAspectWarning:
+      'This style switches the canvas to {to} while the project is {from} — existing clips will sit inside black bars. Consider a style with the same orientation, or "Reframe to vertical" to fill the gaps with a blurred backdrop.',
     editStyleApply: 'Apply edit style',
     editStyleApplied: 'Applied. Ctrl+Z to undo.',
     editStyleNothingToDo: 'Nothing on the timeline yet. Add clips to a visual track first.',

@@ -1,6 +1,7 @@
 import { planChatToolCalls } from '../../../shared/ai/chat-tool-planner'
 import { findEditStyle } from '../../../shared/domain/edit-style-catalog'
-import { expandEditStyle } from '../../../shared/domain/edit-style-expand'
+import { editStyleAspectMismatch, expandEditStyle } from '../../../shared/domain/edit-style-expand'
+import type { AspectRatio } from '../../../shared/domain/project-document-types'
 import { createId } from '../../../shared/domain/project-document-factory'
 import { useEditorStore } from './editor-store'
 
@@ -19,6 +20,13 @@ export interface EditStylePlan {
   failures: Array<{ tool: string; reason: string }>
   /** Số lệnh sẽ áp. 0 nghĩa là bấm cũng không có gì đổi. */
   commandCount: number
+  /**
+   * Kiểu dựng sắp đổi khung sang hướng khác với hướng dự án đang dùng.
+   *
+   * Nói ra TRƯỚC khi áp, vì hậu quả — mọi clip bị đóng hộp trong hai dải đen —
+   * chỉ lộ rõ khi đã xuất video.
+   */
+  aspectWarning?: { from: AspectRatio; to: AspectRatio }
 }
 
 function planFor(styleId: string): EditStylePlan | { error: string } {
@@ -40,7 +48,8 @@ function planFor(styleId: string): EditStylePlan | { error: string } {
   return {
     steps: groupRepeats(plan.steps.map((step) => step.description)),
     failures: plan.failures,
-    commandCount: plan.steps.reduce((total, step) => total + step.commands.length, 0)
+    commandCount: plan.steps.reduce((total, step) => total + step.commands.length, 0),
+    aspectWarning: editStyleAspectMismatch(style, document) ?? undefined
   }
 }
 

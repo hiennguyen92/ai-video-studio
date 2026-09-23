@@ -333,6 +333,12 @@ test('kiểu dựng: xem trước rồi áp, và MỘT lần hoàn tác là về
 
   // Xem trước phải nói ra việc sẽ làm, trước khi có gì bị đổi.
   await expect(studio().locator('.edit-style__steps li').first()).toContainText('9:16')
+
+  // Dự án đang 16:9 mà kiểu này đổi sang 9:16, nên phải cảnh báo chuyện clip bị
+  // đóng hộp — hậu quả đó chỉ lộ rõ khi đã xuất xong video.
+  await expect(studio().locator('.edit-style__plan .inspector__hint--warn')).toContainText(
+    'đóng hộp'
+  )
   const before = await savedDocument()
   const clipBefore = before.tracks.find((track) => track.kind === 'video')!.clips[0]
   expect(before.settings.aspectRatio).toBe('16:9')

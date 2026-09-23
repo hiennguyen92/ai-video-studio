@@ -6,7 +6,7 @@ import {
   previewEditStyle,
   type EditStylePlan
 } from '../../state/edit-style-actions'
-import { useLocale } from '../../i18n/use-translation'
+import { interpolate, useLocale } from '../../i18n/use-translation'
 import { EDIT_STYLE_LABEL_KEYS } from './edit-style-labels'
 
 /**
@@ -81,6 +81,11 @@ export function LibraryEditStyleGrid(): JSX.Element {
                       {plan.steps.length === 0 && (
                         <p className="inspector__hint inspector__hint--warn">
                           {t.library.editStyleNothingToDo}
+                        </p>
+                      )}
+                      {plan.aspectWarning && (
+                        <p className="inspector__hint inspector__hint--warn">
+                          {interpolate(t.library.editStyleAspectWarning, plan.aspectWarning)}
                         </p>
                       )}
                       {plan.failures.map((failure, index) => (

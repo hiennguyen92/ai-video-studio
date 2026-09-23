@@ -6,7 +6,7 @@ import { findClipLook } from './clip-look-catalog'
 import { findClipEffect } from './clip-effect-catalog'
 import type { ProjectDocument } from './project-document-types'
 import { EDIT_STYLES, findEditStyle } from './edit-style-catalog'
-import { expandEditStyle } from './edit-style-expand'
+import { editStyleAspectMismatch, expandEditStyle } from './edit-style-expand'
 
 /**
  * Kiểu dựng.
@@ -221,5 +221,40 @@ describe('danh mục', () => {
 
   it('id lạ thì không trả về gì', () => {
     expect(findEditStyle('khong-co')).toBeUndefined()
+  })
+})
+
+describe('cảnh báo đổi hướng khung', () => {
+  /** Dự án khung DỌC, có sẵn clip hình. */
+  function portrait(): ProjectDocument {
+    const document = threeClips()
+    document.settings = { ...document.settings, aspectRatio: '9:16', width: 1080, height: 1920 }
+    return document
+  }
+
+  it('kiểu 16:9 áp lên dự án dọc thì cảnh báo', () => {
+    // Khung dự án đã khớp hướng footage từ lúc nhập, nên đổi hướng ở đây nghĩa là
+    // mọi clip đang có sẽ nằm trong hai dải đen.
+    expect(editStyleAspectMismatch(findEditStyle('cinematic')!, portrait())).toEqual({
+      from: '9:16',
+      to: '16:9'
+    })
+  })
+
+  it('kiểu cùng hướng thì im lặng', () => {
+    expect(editStyleAspectMismatch(findEditStyle('vertical-short')!, portrait())).toBeNull()
+  })
+
+  it('kiểu tự lấp hai dải bằng nền mờ thì KHÔNG cảnh báo', () => {
+    // "Ngang sang dọc" đổi hướng là việc của nó, và nó đã lấp sẵn bằng nền mờ.
+    // Cảnh báo nó là báo nhầm đúng thứ sinh ra để chữa.
+    const landscape = threeClips()
+    expect(editStyleAspectMismatch(findEditStyle('repurpose-vertical')!, landscape)).toBeNull()
+  })
+
+  it('timeline còn trống thì không có gì để đóng hộp', () => {
+    const empty = project()
+    empty.settings = { ...empty.settings, aspectRatio: '9:16', width: 1080, height: 1920 }
+    expect(editStyleAspectMismatch(findEditStyle('cinematic')!, empty)).toBeNull()
   })
 })

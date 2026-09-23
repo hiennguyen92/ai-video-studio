@@ -230,6 +230,8 @@ export const dictionaryVi = {
     editStyleHint:
       'Mỗi kiểu dựng áp một cách dựng cho CẢ timeline. Bấm để xem trước những việc nó sẽ làm, rồi mới áp. Áp xong gộp thành một bước hoàn tác.',
     editStyleNoProject: 'Mở một dự án rồi mới áp được kiểu dựng.',
+    editStyleAspectWarning:
+      'Kiểu này đổi khung sang {to}, mà dự án đang là {from} — clip đang có sẽ bị đóng hộp trong hai dải đen. Cân nhắc kiểu cùng hướng, hoặc "Ngang sang dọc" nếu muốn lấp bằng nền mờ.',
     editStyleApply: 'Áp kiểu dựng',
     editStyleApplied: 'Đã áp. Ctrl+Z để hoàn tác.',
     editStyleNothingToDo: 'Timeline chưa có gì để áp. Thêm clip vào track hình trước.',

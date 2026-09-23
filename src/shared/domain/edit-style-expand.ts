@@ -1,5 +1,5 @@
 import type { EditStyle } from './edit-style-catalog'
-import type { ProjectDocument } from './project-document-types'
+import type { AspectRatio, ProjectDocument } from './project-document-types'
 import { findCutPoints, isJunction } from './timeline-cut-transitions'
 
 /**
@@ -55,4 +55,38 @@ export function expandEditStyle(
   }
 
   return calls
+}
+
+/**
+ * Kiểu dựng sắp đổi khung sang hướng KHÁC với hướng dự án đang dùng.
+ *
+ * Khung dự án đã khớp hướng footage từ lúc nhập clip đầu tiên, nên đổi hướng ở
+ * đây nghĩa là mọi clip đang có sẽ bị đóng hộp: clip dọc trong khung ngang thì hai
+ * dải đen hai bên, và ngược lại. Kiểu dựng đổi khung mà không nói gì thì người
+ * dùng chỉ phát hiện khi đã xuất xong video.
+ *
+ * Trả `null` khi không có gì để cảnh báo, trong đó có hai trường hợp KHÔNG phải
+ * lỗi: timeline còn trống (chưa có gì để đóng hộp), và kiểu dựng tự lấp hai dải
+ * trống bằng nền mờ — đó chính là việc mà "Ngang sang dọc" sinh ra để làm, cảnh
+ * báo nó là báo nhầm.
+ */
+export function editStyleAspectMismatch(
+  style: EditStyle,
+  document: ProjectDocument
+): { from: AspectRatio; to: AspectRatio } | null {
+  const from = document.settings.aspectRatio
+  if (style.aspect === from) return null
+  if (fillsTheGaps(style)) return null
+
+  const hasVisualClip = document.tracks.some(
+    (track) => (track.kind === 'video' || track.kind === 'image') && track.clips.length > 0
+  )
+  return hasVisualClip ? { from, to: style.aspect } : null
+}
+
+/** Kiểu dựng có tự lấp hai dải trống bằng nền mờ không. */
+function fillsTheGaps(style: EditStyle): boolean {
+  return style.steps.some(
+    (step) => step.tool === 'set_background_fill' && step.args.kind === 'blur'
+  )
 }
