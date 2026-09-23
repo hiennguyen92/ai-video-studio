@@ -1,4 +1,4 @@
-import { mkdtemp, rm, stat } from 'node:fs/promises'
+import { mkdtemp, readFile, rm, stat } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { execFile } from 'node:child_process'
@@ -162,5 +162,34 @@ describe('sinh ảnh xem trước', () => {
     expect(result.frameCount).toBe(12)
     const stats = await stat(outputPath)
     expect(stats.size).toBeGreaterThan(1000)
+  }, 60_000)
+
+  it('filmstrip TRẢI theo cả clip, ô đầu khác ô cuối', async () => {
+    // Đường nhanh chỉ giải mã keyframe, mà clip thử dài 6 giây chỉ có ĐÚNG MỘT
+    // keyframe: không đủ frame để xếp kín ô, ffmpeg không ghi ra file nào mà vẫn
+    // thoát với mã 0. Không lùi về giải mã đầy đủ thì hoặc mất hẳn filmstrip,
+    // hoặc được một dải mười hai ô giống hệt nhau — nhìn thì vẫn ra "có ảnh".
+    const outputPath = join(workDir, 'strip-trai.jpg')
+    const { frameCount } = await generateFilmstrip(videoPath, outputPath, 6_000_000, 12)
+
+    const tile = async (index: number): Promise<Buffer> => {
+      const path = join(workDir, `tile-${index}.png`)
+      const { ffmpegPath } = resolveFfmpegBinaries()
+      await promisify(execFile)(ffmpegPath, [
+        '-v',
+        'error',
+        '-y',
+        '-i',
+        outputPath,
+        '-vf',
+        `crop=iw/${frameCount}:ih:${index}*iw/${frameCount}:0`,
+        '-frames:v',
+        '1',
+        path
+      ])
+      return readFile(path)
+    }
+
+    expect((await tile(0)).equals(await tile(frameCount - 1))).toBe(false)
   }, 60_000)
 })

@@ -1,4 +1,5 @@
 import { execFile } from 'node:child_process'
+import { stat } from 'node:fs/promises'
 import { promisify } from 'node:util'
 import { microsToSeconds } from '../../shared/domain/time-units'
 import { resolveFfmpegBinaries } from './ffmpeg-binaries'
@@ -62,20 +63,48 @@ export async function generateFilmstrip(
   // Lấy mẫu đều: fps = số frame mong muốn / tổng số giây.
   const sampleFps = durationSeconds > 0 ? safeFrameCount / durationSeconds : 1
 
-  await execFileAsync(ffmpegPath, [
-    '-v',
-    'error',
-    '-y',
-    '-i',
-    inputPath,
-    '-vf',
-    `fps=${sampleFps.toFixed(6)},scale=${FILMSTRIP_TILE_WIDTH}:-2:flags=bilinear,tile=${safeFrameCount}x1`,
-    '-frames:v',
-    '1',
-    '-q:v',
-    '5',
-    outputPath
-  ])
+  const run = async (keyframesOnly: boolean): Promise<void> => {
+    await execFileAsync(ffmpegPath, [
+      '-v',
+      'error',
+      '-y',
+      // Chỉ giải mã keyframe. Video 4K dài 155 giây đo được 27,4 giây khi giải mã
+      // hết, còn 6,3 giây khi chỉ lấy keyframe — nhanh hơn 4,3 lần, và filmstrip
+      // chính xác tới keyframe là quá đủ cho việc rê chuột xem đoạn nào có gì.
+      ...(keyframesOnly ? ['-skip_frame', 'nokey'] : []),
+      '-i',
+      inputPath,
+      '-vf',
+      `fps=${sampleFps.toFixed(6)},scale=${FILMSTRIP_TILE_WIDTH}:-2:flags=bilinear,tile=${safeFrameCount}x1`,
+      '-frames:v',
+      '1',
+      '-q:v',
+      '5',
+      outputPath
+    ])
+  }
+
+  // Thử đường nhanh trước rồi LÙI, thay vì đoán trước bằng một ngưỡng thời lượng.
+  //
+  // Clip ít keyframe không đủ frame để xếp kín ô: đo trên một clip 6 giây chỉ có
+  // ĐÚNG MỘT keyframe, `tile` không ghép nổi và ffmpeg không ghi ra file nào —
+  // mà vẫn thoát với mã 0. Nên phải kiểm bằng sự tồn tại của file, không kiểm
+  // bằng mã thoát.
+  //
+  // Lùi về giải mã đầy đủ không đắt ở đúng những file phải lùi: ít keyframe gần
+  // như luôn đi cùng clip ngắn, mà clip ngắn thì giải mã hết cũng chỉ vài phần
+  // trăm giây.
+  await run(true)
+  if (!(await hasContent(outputPath))) await run(false)
 
   return { frameCount: safeFrameCount, tileWidth: FILMSTRIP_TILE_WIDTH, tileHeight: 0 }
+}
+
+/** File có tồn tại và có nội dung không. */
+async function hasContent(path: string): Promise<boolean> {
+  try {
+    return (await stat(path)).size > 0
+  } catch {
+    return false
+  }
 }
