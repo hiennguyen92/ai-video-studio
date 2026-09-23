@@ -1414,8 +1414,13 @@ test('góc khung không méo khi chữ dài ra', async () => {
   // Góc vẽ đúng bằng bề dày viền nên KHÔNG được co giãn theo chữ. Ô góc trên-trái
   // phải giống hệt nhau; khác đi nghĩa là hình bị kéo méo — đúng thứ mà cách vẽ
   // chín ô sinh ra để tránh.
+  //
+  // Ngưỡng 60 là con số ĐO ĐƯỢC chứ không phải đoán. Góc bị kéo méo thật cho ra
+  // 224 điểm; góc vẽ đúng vẫn lệch 31 điểm vì khử răng cưa khác nhau giữa hai ảnh
+  // chụp. Ngưỡng 30 cũ nằm LỌT trong dải nhiễu đó nên phép thử đỏ lúc được lúc
+  // không mà chẳng có gì hỏng — đo lại ở ba mốc commit khác nhau đều ra 31.
   const lech = await cornerShapeDiff(await cropTopLeft(ngan), await cropTopLeft(dai))
-  expect(lech, `góc lệch ${lech} điểm`).toBeLessThan(30)
+  expect(lech, `góc lệch ${lech} điểm`).toBeLessThan(60)
 
   await page.getByLabel('Nội dung 1').fill('Chốt đơn ngay')
   await overlayTab('Style')
