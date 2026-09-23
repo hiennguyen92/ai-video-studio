@@ -50,6 +50,7 @@ export const dictionaryEn: Dictionary = {
   },
   media: {
     title: 'Media',
+    dropHere: 'Drop files here to import',
     importButton: 'Import media',
     empty: 'No media yet.',
     emptyHint: 'Click "Import media", or drop video, audio and image files here.',

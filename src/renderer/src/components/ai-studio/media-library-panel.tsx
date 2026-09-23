@@ -1,3 +1,4 @@
+import { useFileDrop } from '../../hooks/use-file-drop'
 import { ShotCutDialog } from './shot-cut-dialog'
 import { useCallback, useMemo, useState, type DragEvent, type JSX } from 'react'
 import type { MediaAsset } from '../../../../shared/domain/media-asset-types'
@@ -47,10 +48,13 @@ function assetIcon(asset: MediaAsset): JSX.Element {
 export function MediaLibraryPanel({
   importing,
   onImportClick,
+  onImportPaths,
   onAddToTimeline
 }: {
   importing: boolean
   onImportClick(): void
+  /** Nhập file kéo thả từ hệ điều hành vào khu Media. */
+  onImportPaths(paths: string[]): void
   onAddToTimeline(asset: MediaAsset): void
 }): JSX.Element {
   const t = useT()
@@ -146,9 +150,18 @@ export function MediaLibraryPanel({
   ]
 
   const hasAssets = (assets?.length ?? 0) > 0
+  const { active: dropping, dropProps } = useFileDrop(onImportPaths)
 
   return (
-    <div className="media-library">
+    <div
+      className={`media-library ${dropping ? 'media-library--dropping' : ''}`}
+      {...dropProps}
+      aria-busy={importing}
+    >
+      {/* Lớp báo "thả vào đây" chỉ hiện khi đang rê file lên vùng này. Đặt
+          `pointer-events: none` ở CSS: một lớp phủ ăn được chuột sẽ nuốt luôn sự
+          kiện `drop` mà nó vừa mời gọi. */}
+      {dropping && <div className="media-library__dropzone">{t.media.dropHere}</div>}
       <div className="media-library__toolbar">
         <ToolButton
           label={t.media.importButton}

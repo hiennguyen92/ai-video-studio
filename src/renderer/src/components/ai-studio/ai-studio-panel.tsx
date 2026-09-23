@@ -25,10 +25,12 @@ export type StudioTabKey =
 export function AiStudioPanel({
   importing,
   onImportClick,
+  onImportPaths,
   onAddToTimeline
 }: {
   importing: boolean
   onImportClick(): void
+  onImportPaths(paths: string[]): void
   onAddToTimeline(asset: MediaAsset): void
 }): JSX.Element {
   const t = useT()
@@ -110,6 +112,7 @@ export function AiStudioPanel({
             <MediaLibraryPanel
               importing={importing}
               onImportClick={onImportClick}
+              onImportPaths={onImportPaths}
               onAddToTimeline={onAddToTimeline}
             />
           </div>

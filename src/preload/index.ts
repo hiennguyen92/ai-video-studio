@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer } from 'electron'
+import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import {
   IPC,
   IPC_EVENT,
@@ -45,6 +45,8 @@ const api: RendererApi = {
   },
   media: {
     pickFiles: () => ipcRenderer.invoke(IPC.mediaPickFiles),
+    // Không đi qua IPC: `webUtils` chạy ngay trong preload và trả về đồng bộ.
+    pathForFile: (file) => webUtils.getPathForFile(file),
     import: (request) => ipcRenderer.invoke(IPC.mediaImport, request),
     relink: (asset, newPath) => ipcRenderer.invoke(IPC.mediaRelink, asset, newPath),
     registerLocal: (entries) => ipcRenderer.invoke(IPC.mediaRegisterLocal, entries),

@@ -53,7 +53,7 @@ export function EditorWorkspace({
   const [exportOpen, setExportOpen] = useState(false)
   const [versionsOpen, setVersionsOpen] = useState(false)
 
-  const { importing, pickAndImport } = useMediaImport()
+  const { importing, pickAndImport, importPaths } = useMediaImport()
   const { relinking, relink } = useMediaRelink()
   useProjectAutosave()
   // Cho agent bên ngoài (Claude Code) đọc và sửa dự án đang mở qua MCP.
@@ -187,6 +187,7 @@ export function EditorWorkspace({
               <AiStudioPanel
                 importing={importing}
                 onImportClick={() => void pickAndImport()}
+                onImportPaths={(paths) => void importPaths(paths)}
                 onAddToTimeline={handleAddToTimeline}
               />
             </Panel>

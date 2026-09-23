@@ -496,6 +496,15 @@ export interface RendererApi {
   }
   media: {
     pickFiles(): Promise<IpcResult<string[]>>
+    /**
+     * Đường dẫn thật của một file người dùng KÉO THẢ vào cửa sổ.
+     *
+     * Từ Electron 32, `File.path` đã bị gỡ, nên renderer không còn tự đọc được
+     * đường dẫn của file thả vào — phải hỏi qua preload. Đồng bộ chứ không
+     * Promise: nó chỉ tra trong bảng của Electron, và lúc xử lý sự kiện `drop`
+     * thì `dataTransfer` chỉ sống trong đúng nhịp đó.
+     */
+    pathForFile(file: File): string
     import(request: ImportMediaRequest): Promise<IpcResult<ImportMediaResponse>>
     relink(asset: MediaAsset, newPath: string): Promise<IpcResult<MediaAsset>>
     /**

@@ -54,6 +54,7 @@ export const dictionaryVi = {
   },
   media: {
     title: 'Media',
+    dropHere: 'Thả file vào đây để nhập',
     importButton: 'Nhập media',
     empty: 'Chưa có media nào.',
     emptyHint: 'Nhấn "Nhập media" hoặc kéo file video, âm thanh, hình ảnh vào đây.',

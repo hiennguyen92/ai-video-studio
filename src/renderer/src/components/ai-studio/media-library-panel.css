@@ -3,6 +3,9 @@
   flex-direction: column;
   height: 100%;
   min-height: 0;
+  /* Gốc bám cho lớp báo "thả vào đây"; thiếu nó thì lớp phủ đi tìm tổ tiên khác
+     và trải ra ngoài khu Media. */
+  position: relative;
 }
 
 .media-library__toolbar {
@@ -234,4 +237,32 @@
 .media-card__remove:focus-visible,
 .media-card__shots:focus-visible {
   opacity: 1;
+}
+
+/*
+  Kéo file từ hệ điều hành thả vào khu Media.
+
+  Viền nét đứt vẽ bằng `outline` chứ không bằng `border`: border chiếm chỗ thật
+  nên cả lưới thẻ nhích một nhịp ngay khi con trỏ vừa rê tới — nhìn như giao diện
+  bị giật.
+*/
+.media-library--dropping {
+  outline: 2px dashed var(--accent);
+  outline-offset: -6px;
+  background: var(--accent-muted);
+}
+
+.media-library__dropzone {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--text-primary);
+  /* Lớp phủ này KHÔNG được ăn chuột: nuốt mất sự kiện `drop` mà chính nó mời gọi
+     thì người dùng thả vào và không có gì xảy ra. */
+  pointer-events: none;
 }

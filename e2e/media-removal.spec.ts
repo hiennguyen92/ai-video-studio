@@ -204,3 +204,48 @@ test('file gốc trên đĩa vẫn còn nguyên', async () => {
   await expect(access(firstMedia)).resolves.toBeUndefined()
   await expect(access(secondMedia)).resolves.toBeUndefined()
 })
+
+test('khu Media nhận file kéo thả, và thả lạc chỗ không làm mất phiên dựng', async () => {
+  // Mặc định của Chromium khi thả file vào trang là MỞ chính file đó, tức thay
+  // luôn trang đang chạy: người dùng mất sạch phiên dựng mà không có lời nào.
+  const urlTruoc = page.url()
+  const panel = page.locator('.media-library')
+
+  const drag = async (event: string, types: string[]): Promise<void> => {
+    await page.evaluate(
+      ({ event, types }) => {
+        const data = new DataTransfer()
+        for (const type of types) {
+          if (type === 'Files') data.items.add(new File(['x'], 'keo.mp4', { type: 'video/mp4' }))
+          else data.setData(type, '{}')
+        }
+        document
+          .querySelector('.media-library')
+          ?.dispatchEvent(new DragEvent(event, { dataTransfer: data, bubbles: true }))
+      },
+      { event, types }
+    )
+  }
+
+  await drag('dragenter', ['Files'])
+  await expect(panel).toHaveClass(/media-library--dropping/)
+  await expect(page.locator('.media-library__dropzone')).toBeVisible()
+
+  await drag('dragleave', ['Files'])
+  await expect(panel).not.toHaveClass(/media-library--dropping/)
+
+  // Kéo thẻ trong chính ứng dụng không phải là nhập media; sáng lên là mời người
+  // dùng thả một thứ khu này không nhập được.
+  await drag('dragenter', ['application/x-ai-video-studio-transition'])
+  await expect(panel).not.toHaveClass(/media-library--dropping/)
+
+  // Thả ra ngoài vùng nhận: không điều hướng, không mất gì.
+  await page.evaluate(() => {
+    const data = new DataTransfer()
+    data.items.add(new File(['x'], 'lac.mp4', { type: 'video/mp4' }))
+    document.body.dispatchEvent(new DragEvent('drop', { dataTransfer: data, bubbles: true }))
+  })
+  await page.waitForTimeout(800)
+  expect(page.url()).toBe(urlTruoc)
+  await expect(page.getByRole('region', { name: 'Timeline' })).toBeVisible()
+})
