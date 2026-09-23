@@ -9,9 +9,10 @@ import { MOTION_LABEL_KEYS, TRANSITION_LABEL_KEYS } from './clip-effect-labels'
 import { LibraryClipItemGrid } from './library-clip-item-grid'
 import { LibraryEffectGrid } from './library-effect-grid'
 import { LibraryLookGrid } from './library-look-grid'
+import { LibraryEditStyleGrid } from './library-edit-style-grid'
 import './library-panel.css'
 
-type LibrarySubTab = 'transitions' | 'effects' | 'lut' | 'zoom' | 'sound-effects'
+type LibrarySubTab = 'transitions' | 'effects' | 'lut' | 'zoom' | 'sound-effects' | 'edit-styles'
 
 /**
  * Tab Library: những thứ dựng sẵn đem áp vào dự án — chuyển cảnh, hiệu ứng, zoom,
@@ -35,7 +36,8 @@ export function LibraryPanel(): JSX.Element {
     { key: 'effects', label: t.library.tabs.effects },
     { key: 'lut', label: t.library.tabs.lut },
     { key: 'zoom', label: t.library.tabs.zoom },
-    { key: 'sound-effects', label: t.library.tabs.soundEffects }
+    { key: 'sound-effects', label: t.library.tabs.soundEffects },
+    { key: 'edit-styles', label: t.library.editStyles }
   ]
 
   const section = (key: LibrarySubTab, content: JSX.Element): JSX.Element | null =>
@@ -94,6 +96,8 @@ export function LibraryPanel(): JSX.Element {
       )}
 
       {section('sound-effects', <SoundEffectSection />)}
+
+      {section('edit-styles', <LibraryEditStyleGrid />)}
     </div>
   )
 }

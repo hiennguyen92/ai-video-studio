@@ -477,6 +477,10 @@ input[type='range'] {
 /* Thanh tab con dạng nút gạt — khác hẳn thanh tab chính để không nhầm hai tầng. */
 .subtab-bar {
   display: flex;
+  /* Xuống dòng khi hết chỗ, y như hàng tab cha. Ép một hàng thì từ tab thứ sáu
+     trở đi mọi nhãn bị cắt cụt — "Transiti…", "Kiểu d…" — và thanh tab chỉ còn
+     dùng được nếu người dùng đã thuộc lòng thứ tự. */
+  flex-wrap: wrap;
   gap: 2px;
   padding: 2px;
   border-radius: var(--radius-md);

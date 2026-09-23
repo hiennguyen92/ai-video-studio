@@ -222,6 +222,31 @@ export const dictionaryEn: Dictionary = {
     },
     transitionsHint:
       'Drag a card onto the cut between two adjacent clips on the timeline: the end of the first clip plays out, the start of the next plays in. Hover the icon at the cut to see or remove it.',
+    editStyles: 'Edit styles',
+    editStyleHint:
+      'An edit style applies one way of cutting to the WHOLE timeline. Click to preview exactly what it will do, then apply. Applying is a single undo step.',
+    editStyleNoProject: 'Open a project before applying an edit style.',
+    editStyleApply: 'Apply edit style',
+    editStyleApplied: 'Applied. Ctrl+Z to undo.',
+    editStyleNothingToDo: 'Nothing on the timeline yet. Add clips to a visual track first.',
+    editStyleVerticalShort: 'Vertical short',
+    editStyleVerticalShortNote: 'Whip pan on every cut, punch-in on every clip, contrasty look',
+    editStyleCinematic: 'Cinematic',
+    editStyleCinematicNote: 'Long dissolves, very slow push in, teal-orange grade, vignette',
+    editStyleTutorial: 'Screen tutorial',
+    editStyleTutorialNote: 'Short dissolves, gentle contrast lift — deliberately no zoom, no grade',
+    editStyleRepurposeVertical: 'Reframe to vertical',
+    editStyleRepurposeVerticalNote:
+      'Switch to a vertical frame without cropping — the gaps fill with the same shot, blurred and darkened',
+    editStyleTravelVlog: 'Travel vlog',
+    editStyleTravelVlogNote:
+      'Golden light, motion that changes direction each shot, feathered wipes',
+    editStyleTrailer: 'Trailer',
+    editStyleTrailerNote: 'Dip to black alternating with impact cuts, bleached high-contrast grade',
+    editStyleRetroFilm: 'Retro film',
+    editStyleRetroFilmNote: 'Warm faded grade, film grain, a light leak on some shots',
+    editStylePhotoSlideshow: 'Photo slideshow',
+    editStylePhotoSlideshowNote: 'Ken Burns alternating per photo, circle wipe, blurred backdrop',
     hintSelected:
       'Click a card to apply it to the selected clip, or drag it onto a clip on the timeline.',
     hintNoClip:

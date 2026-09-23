@@ -397,6 +397,38 @@ Quy đổi micro giây → khung hình nằm gọn trong `buildRenderPlan`, khô
 component. Lệch một khung ở đó thì hình và tiếng lệch cả bản dựng mà không có lỗi
 nào báo ra.
 
+### Kiểu dựng
+
+Một kiểu dựng là một cách dựng CẢ timeline, đóng gói thành thẻ bấm được trong
+Library: "Video ngắn dọc", "Phong cách điện ảnh", "Hướng dẫn màn hình".
+
+**Nó là dữ liệu thuần, không phải mã chạy được.** Mỗi bước trỏ tới một công cụ đã
+có trong `chat-tool-catalog`, kèm phạm vi (`cả dự án` / `từng clip hình` /
+`từng chỗ nối`). `expandEditStyle` giãn ra thành lời gọi cụ thể trên tài liệu
+thật, rồi `planChatToolCalls` — ĐÚNG bộ lập kế hoạch mà agent dùng — biến chúng
+thành lệnh.
+
+**Không có động cơ thực thi thứ hai.** Thẻ bấm và agent cho ra cùng một kết quả,
+và mọi luật đã có ở bộ lập kế hoạch (từ chối lane khoá, kẹp thời lượng chuyển
+cảnh, lập bước sau trên kết quả bước trước) tự áp cho cả hai. Toàn bộ phần "chạy"
+của kiểu dựng gói trong `edit-style-actions.ts`, cùng khuôn với `build-cut-actions.ts`.
+
+Hai ràng buộc không được phá:
+
+- **Xem trước rồi mới áp.** Bộ lập kế hoạch đã sinh sẵn mô tả tiếng Việt cho từng
+  bước; giao diện hiện đúng những dòng đó. Một cú bấm viết lại cả timeline mà
+  không báo trước là thứ đáng sợ, kể cả khi hoàn tác được.
+- **Một kiểu dựng = MỘT bước hoàn tác.** Gộp mọi lệnh rồi `run` một lần. Bắn mấy
+  chục lệnh thành mấy chục mục lịch sử là phá sạch lịch sử của người dùng.
+
+Một phép thử duyệt mọi bước của mọi kiểu dựng qua `chatToolSchemas`. Kiểu dựng là
+dữ liệu nên TypeScript chỉ canh được tên công cụ, không canh được tham số — catalog
+siết một ràng buộc mà kiểu dựng không đổi theo thì thẻ vẫn bấm được, chỉ là bước
+đó lặng lẽ rơi.
+
+Giai đoạn hiện tại **chưa** cho người dùng tự tạo kiểu dựng: mở CRUD là kéo theo
+schemaVersion, migrate, nhập/xuất, và một kiểu dựng trỏ tới công cụ đã bị xoá.
+
 ### Chuyển cảnh
 
 Chuyển cảnh là **hiệu ứng vẽ trên chính clip đến**, phủ dần lên clip đi phía dưới:

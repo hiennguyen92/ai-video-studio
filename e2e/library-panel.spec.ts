@@ -89,6 +89,21 @@ interface SavedClip {
   look?: { id: string; intensity: number }
 }
 
+interface SavedDocument {
+  settings: { aspectRatio: string }
+  tracks: Array<{ kind: string; clips: SavedClip[] }>
+}
+
+/** Cả tài liệu dự án, đọc từ file đã lưu. */
+async function savedDocument(): Promise<SavedDocument> {
+  await expect(page.locator('.top-bar__status')).toHaveText('Đã lưu', { timeout: 15_000 })
+  const projectsRoot = join(userDataDir, 'projects')
+  const [projectId] = await readdir(projectsRoot)
+  return JSON.parse(
+    await readFile(join(projectsRoot, projectId, 'project.json'), 'utf8')
+  ) as SavedDocument
+}
+
 /** Clip hình đầu tiên, đọc từ chính file dự án đã lưu. */
 async function savedClip(): Promise<SavedClip> {
   await expect(page.locator('.top-bar__status')).toHaveText('Đã lưu', { timeout: 15_000 })
@@ -291,4 +306,38 @@ test('Effects có lưới thẻ, Filters nằm ngay sau nó, Sound Effects có �
 
   await studio().getByRole('tab', { name: 'Sound Effects' }).click()
   await expect(page.locator('.sound-effect-item').first()).toBeVisible()
+})
+
+test('kiểu dựng: xem trước rồi áp, và MỘT lần hoàn tác là về như cũ', async () => {
+  // Lời hứa của tab này nằm ở hai chỗ: người dùng thấy trước những việc sẽ làm,
+  // và cả kiểu dựng gộp thành MỘT bước hoàn tác. Bắn mấy chục lệnh thành mấy chục
+  // mục lịch sử là phá sạch lịch sử của họ.
+  await studio().getByRole('tab', { name: 'Library' }).click()
+  await studio().getByRole('tab', { name: 'Kiểu dựng' }).click()
+  await studio()
+    .getByRole('button', { name: /Video ngắn dọc/ })
+    .click()
+
+  // Xem trước phải nói ra việc sẽ làm, trước khi có gì bị đổi.
+  await expect(studio().locator('.edit-style__steps li').first()).toContainText('9:16')
+  const before = await savedDocument()
+  const clipBefore = before.tracks.find((track) => track.kind === 'video')!.clips[0]
+  expect(before.settings.aspectRatio).toBe('16:9')
+
+  await studio().getByRole('button', { name: 'Áp kiểu dựng' }).click()
+
+  const after = await savedDocument()
+  expect(after.settings.aspectRatio).toBe('9:16')
+  const clipAfter = after.tracks.find((track) => track.kind === 'video')!.clips[0]
+  expect(clipAfter.motion?.kind).toBe('punch-in')
+  expect(clipAfter.look?.id).toBe('street-contrast')
+
+  // MỘT lần hoàn tác, và mọi thứ về đúng trạng thái trước khi áp — kể cả những
+  // thứ các phép thử trước đã đặt lên clip này.
+  await page.keyboard.press('Control+z')
+  const undone = await savedDocument()
+  expect(undone.settings.aspectRatio).toBe(before.settings.aspectRatio)
+  const clipUndone = undone.tracks.find((track) => track.kind === 'video')!.clips[0]
+  expect(clipUndone.motion).toEqual(clipBefore.motion)
+  expect(clipUndone.look).toEqual(clipBefore.look)
 })
