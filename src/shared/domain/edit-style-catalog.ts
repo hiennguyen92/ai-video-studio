@@ -102,9 +102,19 @@ export const EDIT_STYLES: EditStyle[] = [
       },
       {
         // Đẩy vào RẤT chậm: cú đẩy thấy được là thành quảng cáo, không còn là phim.
+        //
+        // Xoay vòng đẩy-vào / kéo-ra / ĐỨNG YÊN. Nhịp thứ ba mới là nhịp làm nên
+        // chất phim: không phải cảnh nào cũng động, và một cảnh đứng hẳn giữa hai
+        // cảnh có chuyển động thì cả ba cùng được lợi.
+        //
+        // Dùng `kind: 'none'` chứ KHÔNG dùng `null`: `null` là bỏ qua, nên clip
+        // giữ nguyên chuyển động của kiểu dựng áp trước đó, và kết quả hoá ra phụ
+        // thuộc lịch sử. `'none'` gỡ hẳn, nên áp kiểu này lên bất cứ trạng thái nào
+        // cũng ra cùng một kết quả.
         tool: 'set_clip_zoom',
         target: 'each-visual-clip',
-        args: { kind: 'zoom-in', intensity: 0.25 }
+        args: { intensity: 0.25 },
+        cycle: [{ kind: 'zoom-in' }, { kind: 'zoom-out' }, { kind: 'none' }]
       },
       {
         tool: 'set_clip_filter',

@@ -143,6 +143,15 @@ describe('biến thể xoay vòng', () => {
     expect(leaks.every((call) => (call.arguments.intensity as number) > 0)).toBe(true)
   })
 
+  it('cảnh đứng yên trong vòng xoay GỠ chuyển động, không phải bỏ qua', () => {
+    // Bỏ qua thì clip giữ nguyên chuyển động của kiểu dựng áp trước đó, và kết
+    // quả hoá ra phụ thuộc lịch sử: áp Vlog rồi áp Điện ảnh sẽ còn sót cú lia.
+    const kinds = expandEditStyle(findEditStyle('cinematic')!, threeClips())
+      .filter((call) => call.name === 'set_clip_zoom')
+      .map((call) => call.arguments.kind)
+    expect(kinds).toEqual(['zoom-in', 'zoom-out', 'none'])
+  })
+
   it('biến thể đắp LÊN tham số chung, không xoá nó', () => {
     const calls = expandEditStyle(findEditStyle('travel-vlog')!, threeClips())
     const zoom = calls.find((call) => call.name === 'set_clip_zoom')!
