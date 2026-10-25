@@ -174,7 +174,7 @@ function createMainWindow(): BrowserWindow {
 }
 
 void app.whenReady().then(async () => {
-  electronApp.setAppUserModelId('com.aivideostudio.app')
+  electronApp.setAppUserModelId('com.hiennv.aivideostudio')
 
   // Chỉ mở đúng hai quyền: ĐỌC DANH SÁCH FONT và GHI clipboard; từ chối mọi quyền
   // còn lại.

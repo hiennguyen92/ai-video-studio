@@ -1,4 +1,4 @@
-appId: com.electron.app
+appId: com.hiennv.aivideostudio
 productName: AI Video Studio
 directories:
   buildResources: build
@@ -9,6 +9,16 @@ files:
   - '!{.eslintcache,eslint.config.mjs,.prettierignore,.prettierrc.yaml,dev-app-update.yml,CHANGELOG.md,README.md}'
   - '!{.env,.env.*,.npmrc,pnpm-lock.yaml}'
   - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}'
+  # Thư mục chỉ phục vụ việc phát triển. electron-builder KHÔNG đọc .gitignore,
+  # nên không chặn ở đây là chúng chui thẳng vào gói cài: đo lúc thêm dòng này,
+  # example-video 1,5 GB, .claude 383 MB, external 149 MB, plans 12 MB — gần 2 GB
+  # rác trong một bản dựng mà không thứ nào trong đó chạy lúc dùng app.
+  - '!example-video'
+  - '!external'
+  - '!plans'
+  - '!.claude'
+  - '!e2e'
+  - '!docs'
 # Không đóng gói vào asar.
 #
 # Remotion tự `chmod` file nhị phân dựng hình của nó theo đường dẫn nó tự phân
@@ -41,6 +51,17 @@ nsis:
   uninstallDisplayName: ${productName}
   createDesktopShortcut: always
 mac:
+  # Ghim chứng chỉ ký thay vì để electron-builder tự chọn.
+  #
+  # Không khai báo thì nó lấy chứng chỉ hợp lệ ĐẦU TIÊN trong Keychain — máy này
+  # có sáu cái, nên bản dựng ký bằng cái nào là chuyện của thứ tự Keychain chứ
+  # không phải của ai quyết định.
+  #
+  # Đây là chứng chỉ Apple Development, KHÔNG phải Developer ID Application:
+  # gói ký bằng nó chạy trên máy đã đăng ký, nhưng Gatekeeper trên máy lạ sẽ
+  # chặn và Apple từ chối notarize. Muốn phát hành ra ngoài thì phải đổi sang
+  # Developer ID Application.
+  identity: 'Apple Development: Hien Nguyen (66XRNPJYM6)'
   entitlementsInherit: build/entitlements.mac.plist
   extendInfo:
     - NSCameraUsageDescription: Application requests access to the device's camera.
