@@ -32,7 +32,7 @@ The sample footage in these screenshots is synthetic, generated with ffmpeg.
 ## License
 
 AGPL-3.0-or-later (see `LICENSE`). This project reuses WebGL code from
-[OpenChatCut](https://github.com/onlook-dev/OpenChatCut) for the two-stream transition path, and
+[OpenChatCut](https://github.com/0xsline/OpenChatCut) for the two-stream transition path, and
 OpenChatCut is AGPL — so this project must be AGPL too. The exact list of copied parts is in `NOTICE`.
 
 The obligation that comes with it: anyone who receives a distribution — even if only through network
@@ -387,7 +387,9 @@ your server.
 
 ## License and attribution
 
-This project was written from scratch. `DESCRIPTION.md` references
-[OpenChatCut](https://github.com/0xsline/OpenChatCut) (AGPL-3.0-or-later); that repo was only **read
-as an architecture reference**, **no line of code was copied**, so this project is not a derivative
-work of it.
+Most of this project was written from scratch. The exception is the WebGL two-stream transition path
+in `src/remotion/gl/`: those three files are copied or derived from
+[OpenChatCut](https://github.com/0xsline/OpenChatCut) (AGPL-3.0-or-later), which makes this project a
+derivative work and is why it is licensed under AGPL-3.0-or-later. `NOTICE` lists what was taken from
+each file. The CSS transition group in `src/shared/domain/clip-transition-cinematic.ts` was rewritten
+after reading OpenChatCut's shaders and contains no copied code.

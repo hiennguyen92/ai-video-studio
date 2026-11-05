@@ -32,7 +32,7 @@ Hình ảnh mẫu trong các ảnh này là video tổng hợp, dựng bằng ff
 ## Giấy phép
 
 AGPL-3.0-or-later (xem `LICENSE`). Dự án dùng lại mã WebGL của
-[OpenChatCut](https://github.com/onlook-dev/OpenChatCut) cho đường chuyển cảnh hai
+[OpenChatCut](https://github.com/0xsline/OpenChatCut) cho đường chuyển cảnh hai
 luồng, mà OpenChatCut là AGPL — nên dự án này cũng phải là AGPL. Danh sách chính
 xác những phần chép lại nằm ở `NOTICE`.
 
@@ -378,7 +378,9 @@ của bạn.
 
 ## Giấy phép và ghi nhận
 
-Dự án này được viết mới. `DESCRIPTION.md` có tham chiếu tới
-[OpenChatCut](https://github.com/0xsline/OpenChatCut) (AGPL-3.0-or-later); repo đó chỉ được **đọc để
-tham khảo kiến trúc**, **không có dòng mã nào được sao chép**, nên dự án này không phải là tác phẩm
-phái sinh của nó.
+Phần lớn dự án này được viết mới. Ngoại lệ là đường chuyển cảnh WebGL hai luồng trong
+`src/remotion/gl/`: ba file ở đó được chép hoặc phái sinh từ
+[OpenChatCut](https://github.com/0xsline/OpenChatCut) (AGPL-3.0-or-later), nên dự án này là tác phẩm
+phái sinh và vì thế mang giấy phép AGPL-3.0-or-later. `NOTICE` liệt kê phần lấy về cho từng file. Nhóm
+chuyển cảnh CSS trong `src/shared/domain/clip-transition-cinematic.ts` được viết lại sau khi đọc shader
+của OpenChatCut, không chép mã.
