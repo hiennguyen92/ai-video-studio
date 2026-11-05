@@ -1,367 +1,393 @@
 # AI Video Studio
 
-Trình chỉnh sửa video desktop chạy local, timeline nhiều track, giao diện tiếng Việt (có tiếng Anh),
-được thiết kế để các công cụ AI — phiên âm, dịch, lồng tiếng, phụ đề — sinh ra **dữ liệu thật trên
-timeline** thay vì một video đã đóng băng.
+**English** | [Tiếng Việt](README_VI.md)
 
-> **Trạng thái: Mốc 1 và Mốc 2 đã hoàn tất.**
-> Nhập media, dựng timeline, xem trước, lưu/mở lại và xuất MP4 đều chạy thật.
-> Giọng đọc đã **chạy trọn luồng với ElevenLabs thật**: nhập khoá vào Keychain, lấy model và giọng
-> từ tài khoản, sinh audio tiếng Việt, đo thời lượng bằng ffprobe, thành clip cắt/hoàn tác được trên
-> timeline. Xem [Phạm vi hiện tại](#phạm-vi-hiện-tại).
+A local desktop video editor with a multi-track timeline and a Vietnamese interface (English also
+available), designed so that AI tools — transcription, translation, dubbing, subtitles — produce
+**real data on the timeline** instead of a frozen video.
+
+> **Status: Milestones 1 and 2 are complete.**
+> Importing media, building a timeline, previewing, saving/reopening and exporting MP4 all work for real.
+> Voice-over **runs end to end against the real ElevenLabs API**: enter a key into the Keychain, fetch
+> models and voices from the account, generate Vietnamese audio, measure its duration with ffprobe,
+> and get a clip on the timeline that can be cut and undone. See [Current scope](#current-scope).
 
 ---
 
-## Giấy phép
+## Screenshots
 
-AGPL-3.0-or-later (xem `LICENSE`). Dự án dùng lại mã WebGL của
-[OpenChatCut](https://github.com/onlook-dev/OpenChatCut) cho đường chuyển cảnh hai
-luồng, mà OpenChatCut là AGPL — nên dự án này cũng phải là AGPL. Danh sách chính
-xác những phần chép lại nằm ở `NOTICE`.
+![Editor workspace: media library, preview and a multi-track timeline with video, voice-over, music and subtitle tracks](docs/images/en/editor-overview.png)
 
-Nghĩa vụ kèm theo: ai nhận bản phân phối — kể cả khi chỉ truy cập qua mạng — đều
-có quyền đòi mã nguồn tương ứng.
+| | |
+|---|---|
+| ![Inspector with keyframe diamonds, keyframe dots on the selected clip](docs/images/en/clip-properties-keyframes.png) | ![Subtitles tab with imported cues, also shown as blocks on the timeline](docs/images/en/subtitles-panel.png) |
+| **Inspector and keyframes** — set keyframes with the diamond buttons; they appear as dots on the clip | **Subtitles** — cues are editable in the panel and live as blocks on the timeline |
+| ![Voice tab with provider, model, language and voice selection](docs/images/en/voice-generation-panel.png) | ![AI settings tab with API keys stored in the macOS Keychain](docs/images/en/ai-settings-panel.png) |
+| **Voice-over** — pick a provider, model and voice, with parameters that follow the model | **AI settings** — keys go to the OS secret store; a missing key disables only what depends on it |
+| ![Export dialog with presets, quality, range, loudness normalization and renderer](docs/images/en/export-dialog.png) | |
+| **Export** — presets, quality, range, loudness normalization, subtitle burn-in | |
 
-## Yêu cầu hệ thống
+The sample footage in these screenshots is synthetic, generated with ffmpeg.
 
-| Thành phần | Phiên bản | Ghi chú |
+## License
+
+AGPL-3.0-or-later (see `LICENSE`). This project reuses WebGL code from
+[OpenChatCut](https://github.com/onlook-dev/OpenChatCut) for the two-stream transition path, and
+OpenChatCut is AGPL — so this project must be AGPL too. The exact list of copied parts is in `NOTICE`.
+
+The obligation that comes with it: anyone who receives a distribution — even if only through network
+access — has the right to request the corresponding source code.
+
+## System requirements
+
+| Component | Version | Notes |
 |---|---|---|
-| Node.js | ≥ 22 (đã kiểm thử trên 24.20) | `nvm use` sẽ đọc `.nvmrc` |
-| npm | ≥ 10 | npm 11 chặn install script theo mặc định, xem bên dưới |
-| Hệ điều hành | macOS (đã kiểm thử trên Apple Silicon) | Windows/Linux chưa được kiểm chứng |
+| Node.js | ≥ 22 (tested on 24.20) | `nvm use` reads `.nvmrc` |
+| npm | ≥ 10 | npm 11 blocks install scripts by default, see below |
+| Operating system | macOS (tested on Apple Silicon) | Windows/Linux not verified |
 
-**Không cần cài ffmpeg.** Ứng dụng dùng bản ffmpeg/ffprobe đi kèm qua npm. Đây là lựa chọn có chủ đích:
-bản ffmpeg cài bằng Homebrew trên macOS thường được build **thiếu libass**, tức là không có filter
-`subtitles`, và việc nung phụ đề sẽ hỏng một cách âm thầm.
+**You do not need to install ffmpeg.** The app uses the ffmpeg/ffprobe builds bundled through npm.
+This is deliberate: Homebrew's ffmpeg on macOS is often built **without libass**, which means no
+`subtitles` filter, and subtitle burn-in would fail silently.
 
-## Cài đặt và chạy
+## Install and run
 
 ```bash
 nvm use                 # Node 22+
 npm install
-npm run dev             # mở ứng dụng ở chế độ phát triển
+npm run dev             # open the app in development mode
 ```
 
-Nếu npm báo `packages have install scripts not yet covered by allowScripts`, chạy lệnh sau rồi cài lại —
-Electron và ffmpeg cần install script để tải file nhị phân:
+If npm reports `packages have install scripts not yet covered by allowScripts`, run the following and
+install again — Electron and ffmpeg need install scripts to download their binaries:
 
 ```bash
 npm install-scripts approve electron ffmpeg-static @ffprobe-installer/darwin-arm64 esbuild
 npm install
 ```
 
-### Các lệnh khác
+### Other commands
 
 ```bash
-npm run build        # kiểm tra kiểu + đóng gói vào out/
-npm start            # chạy bản đã build
-npm test             # unit + integration (chạy ffmpeg thật)
-npm run test:e2e     # build rồi chạy kiểm thử đầu-cuối trên Electron thật
+npm run build        # type-check + bundle into out/
+npm start            # run the built app
+npm test             # unit + integration (runs real ffmpeg)
+npm run test:e2e     # build, then run end-to-end tests on real Electron
 npm run typecheck
 npm run lint
 ```
 
-## Dữ liệu được lưu ở đâu
+## Where data is stored
 
 ```
 <userData>/projects/<project-id>/
-├── project.json     tài liệu project (có schemaVersion để migrate)
-├── media/           media do ứng dụng quản lý
-├── cache/           thumbnail, filmstrip, waveform — xoá được, sẽ tạo lại
-└── versions/        bản chụp autosave
+├── project.json     project document (has a schemaVersion for migrations)
+├── media/           app-managed media
+├── cache/           thumbnails, filmstrips, waveforms — safe to delete, regenerated on demand
+└── versions/        autosave snapshots
 ```
 
-`<userData>` trên macOS là `~/Library/Application Support/ai-video-studio`.
+On macOS, `<userData>` is `~/Library/Application Support/ai-video-studio`.
 
-Tên thư mục này **cố ý khác** tên hiển thị của app ("AI Video Studio"). Mặc định
-Electron lấy thư mục dữ liệu theo tên app, nên đổi tên hiển thị sẽ kéo thư mục
-sang chỗ mới và mọi dự án đã lưu biến mất khỏi app — chúng vẫn nằm trên đĩa, chỉ
-là app không nhìn vào đó nữa. Tên thư mục là chuyện của dữ liệu, tên hiển thị là
-chuyện của giao diện; hai thứ đó được tách hẳn ra.
-Đặt biến `AVS_USER_DATA_DIR` để dùng thư mục khác (kiểm thử đầu-cuối dùng cơ chế này để chạy trên hồ sơ trống).
+This folder name is **deliberately different** from the app's display name ("AI Video Studio"). By
+default Electron derives the data folder from the app name, so changing the display name would move
+the folder and every saved project would vanish from the app — they would still be on disk, the app
+just would not look there anymore. The folder name is a data concern and the display name is a UI
+concern; the two are kept fully separate.
+Set `AVS_USER_DATA_DIR` to use another folder (the end-to-end tests use this to run on an empty profile).
 
-**File nguồn không bao giờ bị sao chép hay sửa đổi.** Project chỉ giữ tham chiếu tới đường dẫn gốc,
-nên mọi thao tác chỉnh sửa đều không phá huỷ dữ liệu gốc.
+**Source files are never copied or modified.** A project only keeps references to the original paths,
+so no editing operation is destructive to the originals.
 
-## Phím tắt
+## Keyboard shortcuts
 
-| Phím | Tác dụng |
+| Key | Action |
 |---|---|
-| `Space` | Phát / tạm dừng |
-| `←` `→` | Lùi/tiến một frame (giữ `Shift` để nhảy 10 frame) |
-| `S` | Cắt clip đang chọn tại playhead |
-| `Delete` | Xoá clip đang chọn |
-| `Shift+Delete` | Ripple delete: xoá clip và dồn clip sau trên cùng track lên |
-| `M` | Đặt marker tại đầu phát |
-| `?` | Mở bảng phím tắt (cũng có nút "Phím tắt" trên thanh trên cùng) |
-| `Shift+M` / `Cmd+Shift+M` | Tới marker kế / về marker trước |
-| `Cmd/Ctrl+Z` | Hoàn tác (thêm `Shift` để làm lại) |
-| `Cmd/Ctrl+D` | Nhân bản clip |
-| `Cmd/Ctrl+G` | Gộp các clip đang chọn thành nhóm (thêm `Shift` để rã nhóm) |
-| `Shift`+bấm | Chọn thêm clip — kéo một clip là dời cả loạt đang chọn |
-| `+` `-` | Phóng to / thu nhỏ timeline |
-| `Home` | Về đầu timeline |
-| `Esc` | Bỏ chọn |
+| `Space` | Play / pause |
+| `←` `→` | Step back/forward one frame (hold `Shift` to jump 10 frames) |
+| `S` | Split the selected clip at the playhead |
+| `Delete` | Delete the selected clip |
+| `Shift+Delete` | Ripple delete: remove the clip and pull later clips on the same track forward |
+| `M` | Add a marker at the playhead |
+| `?` | Open the shortcuts list (there is also a "Shortcuts" button in the top bar) |
+| `Shift+M` / `Cmd+Shift+M` | Next marker / previous marker |
+| `Cmd/Ctrl+Z` | Undo (add `Shift` to redo) |
+| `Cmd/Ctrl+D` | Duplicate clip |
+| `Cmd/Ctrl+G` | Group the selected clips (add `Shift` to ungroup) |
+| `Shift`+click | Add a clip to the selection — dragging one clip moves the whole selection |
+| `+` `-` | Zoom the timeline in / out |
+| `Home` | Go to the start of the timeline |
+| `Esc` | Clear selection |
 
-Phím tắt **không** kích hoạt khi con trỏ đang ở trong ô nhập liệu.
+Shortcuts do **not** fire while the cursor is in an input field.
 
 ---
 
-## Phạm vi hiện tại
+## Current scope
 
-### Đã chạy và đã kiểm chứng
+### Working and verified
 
-- **Dự án**: tạo, mở, xoá, autosave, mở lại đúng trạng thái, bản chụp phiên bản, schema có version
-- **Media**: nhập video/âm thanh/hình ảnh, đọc metadata bằng ffprobe, sinh thumbnail + filmstrip +
-  waveform thật, chống nhập trùng bằng hash nội dung, phát hiện media bị thiếu
-- **Timeline**: nhiều track video/âm thanh, kéo thả từ thư viện, di chuyển, cắt mép, tách, nhân bản,
-  xoá, bắt dính (mép clip + playhead + lưới frame), zoom, ẩn/tắt tiếng/solo/khoá track
-- **Xem trước**: phát, tạm dừng, tua, đi từng frame, xếp lớp nhiều clip, trộn tiếng nhiều track,
-  timecode, đồng bộ bằng một đồng hồ chủ duy nhất
-- **Keyframe**: cho một thuộc tính đổi giá trị theo thời gian thay vì một giá trị cho cả clip.
-  Phủ transform clip (x, y, phóng, xoay, độ mờ), cường độ + thông số **kiểu số** của effect, và
-  vị trí / cỡ chữ / góc xoay của chữ overlay. Đặt bằng nút kim cương trong panel Thuộc tính,
-  kéo/xoá/đổi kiểu nội suy bằng dải chấm dưới clip, hoặc bằng câu lệnh cho agent. Năm kiểu nội
-  suy: đều, giữ nguyên, chậm đầu, chậm cuối, chậm hai đầu. Keyframe đi theo clip khi cắt mép,
-  tách đôi, đổi tốc độ, nhân bản — và **đi tới file xuất**, đã soi bằng pixel
-- **Phiên âm**: whisper.cpp chạy local, có timestamp từng từ, trình soạn transcript nhấn để tua
-- **Dịch**: giữ liên kết theo segment, sửa từng đoạn, có glossary, qua máy chủ LLM kiểu OpenAI
-- **Phụ đề**: tạo từ transcript hoặc bản dịch, song ngữ, preset kiểu chữ, **nhập file `.srt`/`.vtt`
-  có sẵn**, nung vào video và xuất SRT riêng
-- **Lồng tiếng theo bản dịch**: đo thời lượng thật, phát hiện tràn giờ, ba lối thoát, không cắt lời
-- **AI Chat và MCP**: agent đọc dự án và sửa qua cùng tập lệnh với giao diện; agent ngoài (Claude
-  Code) nối vào qua máy chủ MCP trên loopback
-- **Auto-ducking**: hạ nhạc nền ở đoạn có lời nói bằng keyframe âm lượng — dốc mượt, không cắt clip
-- **Keyframe**: transform clip, âm lượng clip, thông số effect kiểu số, vị trí/cỡ/góc chữ
-  overlay; năm kiểu nội suy; chép/dán cụm keyframe giữa các clip
-- **Chép/dán clip** bằng Cmd+C / Cmd+V, giữ nguyên mọi thuộc tính
-- **Đứng hình**: đóng băng khung tại đầu phát 2 giây (kéo mép để dài tới 10 giây), phần sau
-  trên lane của clip và nhóm dời theo; khung dựng đúng từng khung hình của nguồn
-- **Nhân bản dự án** từ danh sách dự án — chép cả media do app sinh, bản sao đứng được một mình
-- **Ngưỡng im tự đo** khi cắt khoảng lặng: đo nền nhiễu của chính clip thay cho -35 dB cố định
-- **Xuất video ngắn**: nền mờ phía sau clip (cảnh ngang trong khung 9:16 không còn dải đen,
-  áp cho một clip hoặc mọi clip); mẫu xuất TikTok·Reels·Shorts / YouTube / Instagram vuông;
-  ba mức chất lượng; xuất một đoạn (giữa hai marker hoặc tự chọn giây); lưu khung PNG tại
-  đầu phát làm ảnh bìa — dựng bằng cùng composition nên khớp từng điểm ảnh với video. Agent
-  dùng `set_background_fill`, `export_frame` và `start_export` với đoạn/chất lượng
-- **Làm sạch giọng nói** (tab Audio): lọc ù dưới 80 Hz và giảm nhiễu nền (`afftdn`, tự theo dõi
-  nền nhiễu), ba mức. Ra file FLAC mới — file gốc không bị sửa, không lệch khẩu hình. Clip hình
-  mang tiếng thì tiếng sạch được thêm ở lane lời thoại, gộp nhóm, tiếng gốc bị tắt
-- **Chuẩn hoá âm lượng khi xuất**: `loudnorm` hai lượt về -14 LUFS (YouTube, TikTok, Instagram)
-  theo mặc định, hoặc -16 / -23 / tắt; chép nguyên luồng hình, chạy cho cả hai bộ dựng
-- **Cắt khoảng lặng**: dò chỗ im trong tiếng của clip đang chọn bằng ffmpeg `silencedetect`
-  (không cần phiên âm), báo trước sẽ cắt bao nhiêu giây, chừa lại hơi cạnh lời nói; chọn chỉ co
-  track của clip (nhạc nền đứng yên) hoặc cả video (phụ đề, chữ, marker trôi theo)
-- **Khôi phục phiên bản**: nút Phiên bản trên thanh trên cùng liệt kê bản chụp tự động (mỗi 5 phút)
-  và bản lưu tay; khôi phục luôn chụp lại bản hiện tại trước nên khôi phục nhầm vẫn quay lại được
-- **Ripple delete** clip (nút + `Shift+Delete`): xoá rồi dồn clip sau **trên cùng track** lên —
-  track khác đứng yên, cùng luật với ripple trim
-- **Marker**: đặt bằng `M`, kéo để dời, nháy đúp để đặt tên/màu/xoá, nhảy qua lại bằng
-  `Shift+M`; **chép danh sách chương** dạng YouTube vào clipboard. Agent dùng `add_marker` /
+- **Projects**: create, open, delete, autosave, reopen in the exact state, version snapshots, versioned schema
+- **Media**: import video/audio/images, read metadata with ffprobe, generate real thumbnails +
+  filmstrips + waveforms, prevent duplicate imports by content hash, detect missing media
+- **Timeline**: multiple video/audio tracks, drag and drop from the library, move, trim, split,
+  duplicate, delete, snapping (clip edges + playhead + frame grid), zoom, hide/mute/solo/lock tracks
+- **Preview**: play, pause, seek, frame stepping, layering multiple clips, mixing audio from multiple
+  tracks, timecode, synchronized by a single master clock
+- **Keyframes**: let a property change over time instead of holding one value for the whole clip.
+  Covers clip transform (x, y, scale, rotation, opacity), effect intensity + **numeric** effect
+  parameters, and the position / font size / rotation of text overlays. Set them with the diamond
+  button in the Inspector panel, drag/delete/change interpolation on the dot strip under the clip,
+  or by instructing the agent. Five interpolation types: linear, hold, ease in, ease out, ease in-out.
+  Keyframes follow the clip through trims, splits, speed changes and duplication — and **reach the
+  exported file**, verified at pixel level
+- **Transcription**: local whisper.cpp with word-level timestamps, transcript editor with click-to-seek
+- **Translation**: keeps per-segment links, per-segment editing, glossary, via an OpenAI-style LLM server
+- **Subtitles**: create from a transcript or translation, bilingual, text style presets, **import
+  existing `.srt`/`.vtt` files**, burn into the video and export a separate SRT
+- **Dubbing from a translation**: measures real durations, detects overruns, offers three ways out,
+  never cuts speech
+- **AI Chat and MCP**: the agent reads the project and edits through the same command set as the
+  UI; external agents (Claude Code) connect through an MCP server on loopback
+- **Auto-ducking**: lowers background music during speech using volume keyframes — smooth ramps, no clip cuts
+- **Keyframes**: clip transform, clip volume, numeric effect parameters, text overlay
+  position/size/rotation; five interpolation types; copy/paste keyframe sets between clips
+- **Copy/paste clips** with Cmd+C / Cmd+V, keeping every property
+- **Freeze frame**: freezes the frame at the playhead for 2 seconds (drag the edge to extend up to
+  10 seconds); what follows on the clip's lane and group shifts along; the frame is built exactly
+  from the source frame
+- **Duplicate project** from the project list — also copies app-generated media, so the copy stands on its own
+- **Auto-measured silence threshold** when cutting silences: measures the clip's own noise floor
+  instead of a fixed -35 dB
+- **Short-form export**: blurred background behind the clip (a landscape shot in a 9:16 frame no longer
+  gets black bars; applies to one clip or all clips); export presets for TikTok·Reels·Shorts /
+  YouTube / Instagram square; three quality levels; export a range (between two markers or chosen
+  seconds); save a PNG frame at the playhead as a cover image — rendered with the same composition,
+  so it matches the video pixel for pixel. The agent uses `set_background_fill`, `export_frame` and
+  `start_export` with range/quality
+- **Voice cleanup** (Audio tab): removes hum below 80 Hz and reduces background noise (`afftdn`,
+  which tracks the noise floor by itself), three levels. Outputs a new FLAC file — the original is
+  untouched and lip sync does not drift. For a video clip with sound, the clean audio is added on the
+  dialogue lane, grouped with the clip, and the original audio is muted
+- **Loudness normalization on export**: two-pass `loudnorm` to -14 LUFS (YouTube, TikTok, Instagram)
+  by default, or -16 / -23 / off; copies the video stream as is, works with both renderers
+- **Silence cutting**: finds silent spots in the selected clip's audio with ffmpeg `silencedetect`
+  (no transcription needed), reports up front how many seconds will be cut, leaves breathing room
+  around speech; choose to shrink only the clip's track (background music stays put) or the whole
+  video (subtitles, text and markers move along)
+- **Version restore**: the Versions button in the top bar lists automatic snapshots (every 5 minutes)
+  and manual saves; restoring always snapshots the current state first, so a wrong restore can be reverted
+- **Ripple delete** for clips (button + `Shift+Delete`): deletes and pulls later clips **on the same
+  track** forward — other tracks stay put, same rule as ripple trim
+- **Markers**: add with `M`, drag to move, double-click to name/color/delete, jump between them with
+  `Shift+M`; **copy a YouTube-style chapter list** to the clipboard. The agent uses `add_marker` /
   `update_marker` / `remove_marker` / `ripple_delete_clip`
-- **Kéo nhiều clip cùng lúc** (kể cả trên nhiều track, giữ nguyên khoảng cách) và **nhóm clip**:
-  bấm một clip là chọn cả nhóm, dời một clip là dời cả nhóm; cắt mép/tốc độ/effect vẫn tác động
-  riêng từng clip. Agent dùng được qua `group_clips` / `ungroup_clips` / `move_clip`
-- **Liên kết lại media bị thiếu**, và đổi tỉ lệ khung / tốc độ khung sau khi đã tạo dự án
-- **Hoàn tác/làm lại**: dựa trên patch, một nhóm lệnh chỉ tạo một bước hoàn tác
-- **Xuất**: MP4 (H.264 + AAC), chọn độ phân giải và fps, tăng tốc phần cứng khi máy hỗ trợ,
-  tiến trình thật từ ffmpeg, huỷ giữa chừng, nung phụ đề, xuất SRT riêng
-- **Ngôn ngữ**: tiếng Việt mặc định, chuyển sang tiếng Anh ngay lập tức
-- **Cấu hình AI**: khoá API lưu bằng `safeStorage` (macOS Keychain), kiểm tra kết nối,
-  xoá khoá; thiếu khoá chỉ vô hiệu hoá đúng tính năng phụ thuộc
-- **Máy chủ TTS tự host**: chạy được với mọi máy chủ có `POST /v1/audio/speech` —
-  omnivoice-server (bọc OmniVoice), Piper, Coqui XTTS, openedai-speech, Kokoro… Không cần khoá,
-  không tốn phí gọi API, dữ liệu không rời máy
-- **Giọng đọc**: chọn provider/model/giọng, danh sách giọng và model lấy **trực tiếp từ tài khoản**,
-  chia kịch bản thành đoạn tạo lại được riêng, chèn tại playhead / track mới / thay clip đang chọn.
-  Audio AI tạo ra là asset thật: có waveform, thời lượng đo bằng ffprobe, cắt và hoàn tác được
-- **Nhạc nền**: tải nhạc, chèn vào track nhạc, chỉnh âm lượng và fade — **không cần khoá AI nào**
-- **Tác vụ nền**: hàng đợi có trạng thái đầy đủ, huỷ thật, tái dùng kết quả cũ khi thử lại
+- **Drag multiple clips at once** (even across tracks, keeping their spacing) and **clip groups**:
+  clicking a clip selects its whole group, moving one clip moves the group; trim/speed/effects still
+  apply per clip. The agent can use `group_clips` / `ungroup_clips` / `move_clip`
+- **Relink missing media**, and change the aspect ratio / frame rate after a project is created
+- **Undo/redo**: patch-based, a group of commands makes a single undo step
+- **Export**: MP4 (H.264 + AAC), choice of resolution and fps, hardware acceleration where
+  available, real progress from ffmpeg, cancel midway, subtitle burn-in, separate SRT export
+- **Language**: Vietnamese by default, switches to English instantly
+- **AI settings**: API keys stored with `safeStorage` (macOS Keychain), connection test, key
+  removal; a missing key disables only the features that depend on it
+- **Self-hosted TTS servers**: works with any server offering `POST /v1/audio/speech` —
+  omnivoice-server (wrapping OmniVoice), Piper, Coqui XTTS, openedai-speech, Kokoro… No key needed,
+  no API fees, data never leaves the machine
+- **Voice-over**: choose provider/model/voice, voice and model lists come **straight from the
+  account**, split a script into segments that can be regenerated individually, insert at the playhead /
+  on a new track / replacing the selected clip. AI-generated audio is a real asset: it has a waveform,
+  a duration measured by ffprobe, and can be cut and undone
+- **Background music**: load music, insert it on a music track, adjust volume and fades — **no AI key required**
+- **Background jobs**: queue with full status, real cancellation, reuse of previous results on retry
 
-### Chưa triển khai
+### Not implemented
 
-Không tab nào trong giao diện là khung rỗng. Những thứ dưới đây chưa có, và lý do thì cụ thể:
+No tab in the interface is an empty shell. The following do not exist yet, for specific reasons:
 
-- **Phân biệt người nói** — whisper.cpp không làm được; chờ provider có diarization thật
-- **Nhận file LUT `.cube`** — bộ lọc SVG không áp được bảng tra ba chiều, làm đúng phải đẩy
-  từng khung qua shader. Look màu dựng sẵn thì đã có (tab Filters, 16 look)
-- **Effect cần WebGL**: ASCII, kính vạn hoa, mắt cá, halftone, HSL theo dải màu
-- **Bám đối tượng, đa camera, sinh video bằng AI** — xem backlog trong `docs/project-roadmap.md`
+- **Speaker diarization** — whisper.cpp cannot do it; waiting for a provider with real diarization
+- **Importing `.cube` LUT files** — SVG filters cannot apply a 3D lookup table; doing it properly
+  means pushing each frame through a shader. Built-in color looks do exist (Filters tab, 16 looks)
+- **WebGL-dependent effects**: ASCII, kaleidoscope, fisheye, halftone, per-color-range HSL
+- **Object tracking, multi-camera, AI video generation** — see the backlog in `docs/project-roadmap.md`
 
-### Đã kiểm chứng bằng API thật (ElevenLabs)
+### Verified against the real API (ElevenLabs)
 
-Trọn luồng chạy qua giao diện thật, có 7 phép thử đầu-cuối gọi API thật: nhập khoá vào Keychain →
-kiểm tra kết nối → lấy model và giọng từ tài khoản → **sinh audio tiếng Việt** → asset vào thư viện
-với thời lượng đo bằng ffprobe → chèn thành clip → cắt → hoàn tác → tạo lại thì dùng lại kết quả cũ
-mà không sinh asset trùng.
+The whole flow runs through the real UI, with 7 end-to-end tests calling the real API: enter the key
+into the Keychain → test the connection → fetch models and voices from the account → **generate
+Vietnamese audio** → asset lands in the library with a duration measured by ffprobe → insert as a
+clip → cut → undo → regenerating reuses the previous result without creating a duplicate asset.
 
-Việc chạy thật sửa **bảy** chỗ sai mà kiểm thử bằng fixture không thể phát hiện — vì fixture chỉ
-khẳng định lại đúng những giả định đã sai từ đầu:
+Running it for real fixed **seven** mistakes that fixture-based tests could not catch — because
+fixtures only re-assert the same assumptions that were wrong in the first place:
 
-| Sai ở đâu | Bảng viết tay theo tài liệu | Sự thật từ API |
+| What was wrong | Hand-written table from the docs | What the API actually says |
 |---|---|---|
-| Model cho tiếng Việt | `eleven_multilingual_v2` | Model đó **không** có `vi`; phải dùng `flash_v2_5`, `turbo_v2_5` hoặc `v3` |
-| Giới hạn `eleven_v3` | 3.000 ký tự | 5.000 |
-| `style` / `speaker_boost` | bật cho mọi model | có cờ `can_use_style` / `can_use_speaker_boost` **theo từng model** |
-| Mã ngôn ngữ của giọng | dùng nguyên | **trùng lặp** (một giọng có `en` chín lần) — phải khử trùng |
-| Thiếu quyền khoá | gộp vào "khoá sai" | 401 kèm `missing_permissions` là ca **khác hẳn**: khoá đúng, chỉ thiếu quyền |
-| Lọc giọng theo ngôn ngữ | lọc cứng | 23 giọng chỉ 2 giọng xác thực tiếng Việt, và cả hai gói miễn phí **không dùng được** — lọc cứng giấu mất 21 giọng vẫn đọc tiếng Việt tốt. Giờ chỉ **đánh dấu + xếp trước** |
-| Gói tài khoản | không xét | Giọng "thư viện" bị **HTTP 402** trên gói miễn phí; giao diện cảnh báo trước |
+| Model for Vietnamese | `eleven_multilingual_v2` | That model does **not** have `vi`; use `flash_v2_5`, `turbo_v2_5` or `v3` |
+| `eleven_v3` limit | 3,000 characters | 5,000 |
+| `style` / `speaker_boost` | on for every model | `can_use_style` / `can_use_speaker_boost` flags **per model** |
+| Voice language codes | used as is | **duplicated** (one voice has `en` nine times) — must be deduplicated |
+| Missing key permissions | lumped into "wrong key" | 401 with `missing_permissions` is a **completely different** case: the key is valid, it just lacks permissions |
+| Filtering voices by language | hard filter | Of 23 voices only 2 are verified for Vietnamese, and neither is **usable** on the free plan — a hard filter hid 21 voices that still read Vietnamese well. Now they are only **flagged + sorted first** |
+| Account plan | ignored | "Library" voices get **HTTP 402** on the free plan; the UI warns up front |
 
-Vì vậy siêu dữ liệu model giờ **đọc từ `/v1/models`**, không viết cứng trong mã.
+That is why model metadata is now **read from `/v1/models`** rather than hard-coded.
 
-### Giới hạn đã biết
+### Known limitations
 
-- **OpenAI TTS chưa gọi thật lần nào.** Adapter viết theo tài liệu và kiểm thử bằng fixture; chưa
-  có khoá OpenAI để xác nhận.
-- **omnivoice-server thật chưa chạy thử.** Chạy nó cần PyTorch và tải model hàng GB. Adapter được
-  kiểm thử bằng máy chủ HTTP thật dựng trong test, nói đúng giao thức theo tài liệu của dự án đó —
-  nhưng chưa xác nhận omnivoice-server hành xử đúng như tài liệu.
-- **Nhân bản giọng chưa hỗ trợ.** Các máy chủ tự host dùng tên trường khác nhau (`ref_audio`,
-  `speaker_id`, đường dẫn file) và chưa có chuẩn chung; adapter chỉ cam kết phần lõi mọi máy chủ
-  đều có.
-- **Giọng "thư viện" cần gói trả phí.** Tài khoản gói miễn phí bị từ chối bằng HTTP 402 khi dùng
-  giọng `professional`. Giao diện đánh dấu phân loại giọng và cảnh báo trước.
-- **Lọc giọng theo ngôn ngữ chỉ là gợi ý.** Nó lọc theo "ngôn ngữ đã xác thực" của giọng, nhưng
-  model đa ngôn ngữ vẫn đọc được ngôn ngữ khác — giao diện nói rõ điều này.
-- Tham số `speed` của ElevenLabs **không được đưa ra giao diện** vì khoảng giá trị hợp lệ chưa xác
-  minh được. Việc co giãn thời lượng cho lồng tiếng sẽ dùng `atempo` của ffmpeg, không phụ thuộc provider.
-- **Thiếu vài thao tác dựng phim thông dụng**, đã rà soát và ghi lại để khỏi tìm lại: ripple
-  delete chỉ agent gọi được, giao diện chưa có nút; không có marker/chapter, không khoá được clip
-  lẻ, không nhóm clip; chọn nhiều clip thì kéo và panel thuộc tính vẫn chỉ ăn clip đầu tiên; sóng
-  âm không hiện trên clip video có tiếng.
-- **Dựng cut theo lời nói và theo cú máy chỉ agent gọi được** (`build_cut_from_transcript`,
-  `build_cut_from_shots`) — giao diện chưa có nút, dù phần dò cú máy đã chạy thật.
-- **Xuất chỉ MP4/H.264, chất lượng cố định**, không preset, không xuất riêng đoạn đang chọn,
-  không hàng đợi nhiều bản.
-- **Chỉ kiểm thử trên macOS Apple Silicon.** Windows/Linux chưa chạy thử lần nào.
-- **Bản cài macOS dựng được, nhưng chưa phát hành được.** `npm run build:mac` cho ra `.dmg`
-  chạy thật trên máy đã dựng nó. Hai thứ chặn việc đưa cho người khác: bản chưa **công chứng**
-  (`notarize: false`, cần Developer ID) nên Gatekeeper sẽ chặn ở máy khác; và bản ffmpeg đi
-  kèm được build với `--enable-nonfree`, **không phát hành lại được** — phải thay bằng bản
-  build hợp lệ về giấy phép trước đã. Windows/Linux có cấu hình nhưng chưa dựng thử lần nào.
-- **Dự án có keyframe bắt buộc xuất bằng Remotion**, và hộp thoại Xuất tự khoá lựa chọn đó.
-  Filter graph ffmpeg đọc transform dạng hằng số nên nó sẽ cho ra file đứng hình mà không báo
-  gì. Remotion chậm hơn đáng kể — đó là cái giá của việc không rơi mất chuyển động.
-- **Keyframe chưa phủ**: chỉnh màu, đệm khung chữ, cường độ filter (LUT). Thông
-  số effect **kiểu màu và kiểu lựa chọn** cũng không animate được — "màu ở giữa hai màu" và
-  "lựa chọn ở giữa hai lựa chọn" là hai bài toán khác hẳn, không phải quên.
-- **Chưa có đường cong bezier tuỳ biến** cho keyframe (năm kiểu nội suy dựng sẵn thì có).
-- **Tốc độ clip** lưu được và export xử lý đúng, nhưng bản xem trước chưa co giãn cao độ âm thanh.
-- **Âm lượng trên 100% chỉ nghe được ở file xuất ra.** Thẻ media của trình duyệt chỉ nhận
-  khoảng 0..1, nên bản xem trước không to hơn 100% được; giao diện nói rõ điều này ngay dưới
-  thanh trượt. Muốn preview to hơn thì phải dựng đồ thị WebAudio cho lớp phát.
-- Clip audio hiện chèn vào track âm thanh trống đầu tiên khi nhấn đúp; kéo thả cho phép chọn track chính xác.
+- **OpenAI TTS has never been called for real.** The adapter was written from the docs and tested
+  with fixtures; there has been no OpenAI key to confirm it.
+- **The real omnivoice-server has not been tried.** Running it needs PyTorch and a multi-GB model
+  download. The adapter is tested against a real HTTP server set up in the tests, speaking the
+  protocol as that project documents it — but it is unconfirmed that omnivoice-server behaves as documented.
+- **Voice cloning is not supported.** Self-hosted servers use different field names (`ref_audio`,
+  `speaker_id`, file paths) and there is no common standard yet; the adapter only commits to the core
+  that every server has.
+- **"Library" voices need a paid plan.** Free accounts are rejected with HTTP 402 when using
+  `professional` voices. The UI marks voice categories and warns up front.
+- **Filtering voices by language is only a hint.** It filters on a voice's "verified languages", but
+  multilingual models can still read other languages — the UI says so explicitly.
+- ElevenLabs' `speed` parameter is **not exposed in the UI** because its valid range could not be
+  verified. Duration stretching for dubbing will use ffmpeg's `atempo`, independent of the provider.
+- **A few common editing operations are missing**, reviewed and written down so nobody has to look
+  for them again: ripple delete is agent-only, with no UI button yet; no markers/chapters, individual
+  clips cannot be locked, clips cannot be grouped; with multiple clips selected, dragging and the
+  Inspector panel still act on the first clip only; waveforms do not show on video clips with audio.
+- **Building cuts from speech and from shots is agent-only** (`build_cut_from_transcript`,
+  `build_cut_from_shots`) — there is no UI button yet, even though shot detection already works for real.
+- **Export is MP4/H.264 only with fixed quality**: no presets, no export of just the selected range,
+  no queue for multiple renders.
+- **Tested on macOS Apple Silicon only.** Windows/Linux have never been run.
+- **The macOS installer builds, but cannot be released yet.** `npm run build:mac` produces a `.dmg`
+  that runs on the machine that built it. Two things block handing it to others: the build is not
+  **notarized** (`notarize: false`, needs a Developer ID), so Gatekeeper blocks it on other machines;
+  and the bundled ffmpeg is built with `--enable-nonfree`, so it **cannot be redistributed** — it must
+  be replaced with a license-compliant build first. Windows/Linux have configs but have never been built.
+- **Projects with keyframes must export through Remotion**, and the Export dialog locks that choice.
+  The ffmpeg filter graph reads transforms as constants, so it would produce a static file without
+  saying anything. Remotion is considerably slower — that is the price of not losing the motion.
+- **Keyframes do not yet cover**: color grading, text box padding, filter (LUT) intensity. **Color and
+  choice** effect parameters cannot be animated either — "a color between two colors" and "a choice
+  between two choices" are entirely different problems, not an oversight.
+- **No custom bezier curves** for keyframes (the five built-in interpolation types do exist).
+- **Clip speed** is saved and exported correctly, but the preview does not pitch-stretch audio yet.
+- **Volume above 100% is only audible in the exported file.** The browser's media elements accept
+  only 0..1, so the preview cannot go louder than 100%; the UI says so right below the slider. A louder
+  preview would need a WebAudio graph for the playback layer.
+- Double-clicking an audio clip currently inserts it on the first empty audio track; drag and drop
+  lets you choose the exact track.
 
 ---
 
-## Kiến trúc
+## Architecture
 
 ```
 src/
-├── shared/        dùng chung cho cả hai tiến trình — không phụ thuộc Electron
-│   ├── domain/    schema project, quy ước thời gian, bộ giải composition
-│   ├── commands/  tập lệnh chỉnh sửa, reducer thuần, lịch sử undo theo patch
-│   ├── ai/        khai báo năng lực provider, interface theo nhóm tác vụ
-│   ├── jobs/      vòng đời tác vụ nền
-│   └── ipc/       hợp đồng giữa renderer và main
-├── main/          tiến trình Node: đĩa, tiến trình con, ffmpeg, khoá API
-│   ├── media/     probe, hash, waveform, thumbnail, scheme media
-│   ├── storage/   ghi project nguyên tử, bố cục thư mục
-│   ├── export/    dựng filter graph, chạy job, ghi ASS/SRT
-│   ├── ai/        adapter provider, lớp HTTP phân loại lỗi, sổ đăng ký
-│   ├── jobs/      hàng đợi, cache kết quả theo vân tay yêu cầu
-│   ├── secrets/   lưu khoá bằng safeStorage
-│   └── ipc/       các handler
-├── preload/       cầu nối contextBridge (CommonJS, chạy trong sandbox)
-└── renderer/      giao diện React
+├── shared/        shared by both processes — no Electron dependency
+│   ├── domain/    project schema, time conventions, composition resolver
+│   ├── commands/  editing command set, pure reducer, patch-based undo history
+│   ├── ai/        provider capability declarations, per-task-group interfaces
+│   ├── jobs/      background job lifecycle
+│   └── ipc/       contract between renderer and main
+├── main/          Node process: disk, child processes, ffmpeg, API keys
+│   ├── media/     probe, hash, waveform, thumbnail, media scheme
+│   ├── storage/   atomic project writes, folder layout
+│   ├── export/    builds the filter graph, runs jobs, writes ASS/SRT
+│   ├── ai/        provider adapters, error-classifying HTTP layer, registry
+│   ├── jobs/      queue, result cache keyed by request fingerprint
+│   ├── secrets/   key storage via safeStorage
+│   └── ipc/       handlers
+├── preload/       contextBridge bridge (CommonJS, runs in the sandbox)
+└── renderer/      React UI
 ```
 
-Bốn quyết định định hình phần còn lại:
+Five decisions shape the rest:
 
-1. **Thời gian là số nguyên microgiây, vị trí luôn tuyệt đối.** Không cộng dồn nên sai số làm tròn
-   không bao giờ tích luỹ. Quy đổi sang frame chỉ xảy ra ở hai chỗ: lúc bắt dính và lúc export.
+1. **Time is integer microseconds and positions are always absolute.** Nothing accumulates, so
+   rounding error can never build up. Conversion to frames happens in only two places: when snapping
+   and when exporting.
 
-2. **Mọi thay đổi đi qua một tập lệnh có kiểm tra dữ liệu.** Thao tác tay và thao tác AI dùng chung
-   đúng một đường ghi. AI sẽ không được phép ghi JSON thẳng vào project — nó chỉ phát ra command,
-   và command phải qua schema. Cơ chế giao dịch gộp một nhóm thay đổi thành một bước hoàn tác.
+2. **Every change goes through one validated command set.** Manual edits and AI edits share exactly
+   one write path. AI is not allowed to write JSON straight into a project — it only emits commands,
+   and commands must pass the schema. A transaction mechanism folds a group of changes into one undo step.
 
-3. **Xem trước và xuất đọc CÙNG một bộ giải composition** (`shared/domain/composition-resolver.ts`).
-   Không có hai nguồn sự thật về timeline, nên bản xem trước không thể lệch khỏi bản xuất ra.
+3. **Preview and export read the SAME composition resolver** (`shared/domain/composition-resolver.ts`).
+   There are no two sources of truth about the timeline, so the preview cannot drift from the export.
 
-4. **Renderer không chạm vào đĩa hay tiến trình con.** Nó chạy trong sandbox và chỉ nói chuyện qua
-   preload. Khoá API nằm hoàn toàn phía main: renderer chỉ hỏi được "provider này đã có khoá chưa",
-   không có đường nào lấy lại giá trị khoá.
+4. **The renderer never touches the disk or child processes.** It runs in a sandbox and only talks
+   through preload. API keys live entirely on the main side: the renderer can only ask "does this
+   provider have a key yet", and there is no path to read a key's value back.
 
-5. **Giao diện tham số AI được dựng từ khai báo năng lực của provider**, không viết cứng. Model nào
-   không nhận một tham số thì ô đó KHÔNG tồn tại, chứ không phải bị làm mờ.
+5. **The AI parameter UI is built from each provider's capability declarations**, not hard-coded. If
+   a model does not accept a parameter, that field does NOT exist, rather than being grayed out.
 
-Xem [`docs/system-architecture.md`](docs/system-architecture.md) để biết chi tiết.
+See [`docs/system-architecture.md`](docs/system-architecture.md) for details.
 
-## Kiểm thử
+## Testing
 
-| Loại | Số lượng | Nội dung |
+| Type | Count | Content |
 |---|---|---|
-| Unit | 46 | Quy đổi thời gian, biến đổi timeline, giao dịch lệnh, kiểm tra payload, vòng đời job, chia đoạn kịch bản |
-| Integration | 24 | **Chạy ffmpeg thật**: probe, waveform, thumbnail, dựng lệnh xuất, render MP4, nung phụ đề, huỷ job |
-| Adapter (fixture) | 18 | Máy chủ giả trả phản hồi đúng hình dạng thật: dựng đúng đường dẫn/header/body, đọc phân trang, tham số theo model, phân loại lỗi |
-| Provider thật | 7 | **Gọi ElevenLabs thật** ở tầng adapter. Chỉ chạy khi có `ELEVENLABS_API_KEY` |
-| Đầu-cuối provider thật | 7 | **Trọn luồng qua giao diện với API thật**: khoá → giọng → sinh audio → clip → cắt → hoàn tác |
-| Máy chủ tự host | 21 | 16 unit + 5 đầu-cuối chạy trên **máy chủ HTTP thật** dựng trong test, trả audio WAV thật |
-| Keyframe | 96 + 15 | 96 unit cho nội suy, biến đổi khi cắt/tách, đường vẽ, công cụ agent; 15 đầu-cuối cho nút kim cương và dải chấm trên timeline |
-| Đầu-cuối | 28 spec | **Chạy Electron thật đã build**: nhập media, dựng timeline, cắt, hoàn tác, đổi ngôn ngữ, lưu/mở lại, xuất MP4 rồi soi bằng ffprobe, lưu khoá qua keychain thật, tham số đổi theo model, nhạc nền chạy khi không có khoá |
+| Unit | 46 | Time conversion, timeline transforms, command transactions, payload validation, job lifecycle, script segmentation |
+| Integration | 24 | **Runs real ffmpeg**: probe, waveform, thumbnail, export command building, MP4 rendering, subtitle burn-in, job cancellation |
+| Adapter (fixture) | 18 | Fake server returning responses of the real shape: correct path/header/body building, pagination, per-model parameters, error classification |
+| Real provider | 7 | **Calls real ElevenLabs** at the adapter layer. Runs only when `ELEVENLABS_API_KEY` is set |
+| Real provider end-to-end | 7 | **Whole flow through the UI with the real API**: key → voice → generate audio → clip → cut → undo |
+| Self-hosted server | 21 | 16 unit + 5 end-to-end running against a **real HTTP server** set up in the tests, returning real WAV audio |
+| Keyframes | 96 + 15 | 96 unit for interpolation, transforms on trim/split, drawing paths, agent tools; 15 end-to-end for the diamond button and the timeline dot strip |
+| End-to-end | 28 specs | **Runs the real built Electron app**: import media, build a timeline, cut, undo, switch language, save/reopen, export MP4 and inspect it with ffprobe, store keys through the real keychain, parameters changing per model, background music working with no key |
 
 ```bash
-npm test          # 960 đạt + 21 bỏ qua (nhóm gọi API thật)
-npm run test:e2e  # 228 đạt + 12 bỏ qua (nhóm gọi API thật)
+npm test          # 960 passed + 21 skipped (real API group)
+npm run test:e2e  # 228 passed + 12 skipped (real API group)
 
-# Chạy đầy đủ kể cả phần gọi provider thật — khoá KHÔNG bao giờ ghi vào repo:
+# Full run including the real provider calls — keys are NEVER written to the repo:
 ELEVENLABS_API_KEY=... npx vitest run
 ELEVENLABS_API_KEY=... npx playwright test
 ```
 
-Kiểm thử cố tình **không giả lập ffmpeg**: giá trị nằm ở chỗ tham số dòng lệnh có đúng không, mà đó
-lại chính là phần một bản giả lập sẽ che mất.
+The tests deliberately **do not mock ffmpeg**: the value lies in whether the command-line arguments
+are correct, and that is exactly the part a mock would hide.
 
-## Dùng TTS tự host (OmniVoice và các máy chủ khác)
+## Using self-hosted TTS (OmniVoice and other servers)
 
-Ứng dụng nói giao thức `POST /v1/audio/speech` kiểu OpenAI — chuẩn de-facto của hệ sinh thái TTS tự
-host. Vì vậy **một provider dùng chung cho tất cả**, không phải mỗi dự án một adapter.
+The app speaks the OpenAI-style `POST /v1/audio/speech` protocol — the de facto standard of the
+self-hosted TTS ecosystem. So **one provider serves them all**, rather than one adapter per project.
 
 ### OmniVoice
 
-[k2-fsa/OmniVoice](https://github.com/k2-fsa/OmniVoice) hỗ trợ 646 ngôn ngữ, trong đó **tiếng Việt có
-8.481 giờ dữ liệu huấn luyện**. Repo chính thức không kèm máy chủ HTTP (chỉ có Gradio demo và SDK
-Python), nên cần một lớp bọc:
+[k2-fsa/OmniVoice](https://github.com/k2-fsa/OmniVoice) supports 646 languages, including **8,481
+hours of Vietnamese training data**. The official repo ships no HTTP server (only a Gradio demo and a
+Python SDK), so a wrapper is needed:
 
 ```bash
-pip install torch            # bản CPU hoặc CUDA tuỳ máy
+pip install torch            # CPU or CUDA build depending on your machine
 pip install omnivoice-server
-omnivoice-server             # lắng nghe ở http://localhost:8880
+omnivoice-server             # listens on http://localhost:8880
 ```
 
-Rồi trong ứng dụng: **Cấu hình AI → Máy chủ tự host** → điền `http://localhost:8880/v1` → Lưu cấu
-hình → Kiểm tra kết nối.
+Then in the app: **AI settings → Máy chủ tự host (OpenAI-compatible)** (this provider's name is not
+translated yet) → enter `http://localhost:8880/v1` → Save settings → Test connection.
 
-> ⚠️ **Giấy phép:** mã nguồn OmniVoice là Apache-2.0 nhưng **trọng số model là CC-BY-NC** — không
-> dùng cho mục đích thương mại. Cân nhắc điều này trước khi đưa vào quy trình sản xuất.
+> ⚠️ **License:** OmniVoice's source code is Apache-2.0 but the **model weights are CC-BY-NC** — not
+> for commercial use. Take this into account before adding it to a production workflow.
 
-### Máy chủ khác
+### Other servers
 
-Cùng một provider, chỉ đổi địa chỉ: [openedai-speech](https://github.com/matatonic/openedai-speech),
+Same provider, just change the address: [openedai-speech](https://github.com/matatonic/openedai-speech),
 [Piper HTTP](https://github.com/Kamil-Krawiec/piper-tts-http-server),
 [Coqui XTTS](https://github.com/teddybear082/WingmanAI-Coqui-TTS-Openai-Server), Kokoro FastAPI.
 
-### Chọn giọng
+### Choosing a voice
 
-Phần lớn máy chủ tự host **không có endpoint liệt kê giọng**. Ứng dụng thử dò `/v1/audio/voices`
-trước; không có thì cho bạn **gõ thẳng tên giọng**, hoặc điền sẵn danh sách trong ô "Danh sách giọng"
-ở Cấu hình AI. Ứng dụng cố tình không bịa ra một danh sách giọng có thể không tồn tại trên máy chủ
-của bạn.
+Most self-hosted servers have **no endpoint for listing voices**. The app tries `/v1/audio/voices`
+first; if that is missing, you can **type the voice name directly**, or preset the list in the "Voice
+list" field in AI settings. The app deliberately does not invent a voice list that may not exist on
+your server.
 
-## Giấy phép và ghi nhận
+## License and attribution
 
-Dự án này được viết mới. `DESCRIPTION.md` có tham chiếu tới
-[OpenChatCut](https://github.com/0xsline/OpenChatCut) (AGPL-3.0-or-later); repo đó chỉ được **đọc để
-tham khảo kiến trúc**, **không có dòng mã nào được sao chép**, nên dự án này không phải là tác phẩm
-phái sinh của nó.
+This project was written from scratch. `DESCRIPTION.md` references
+[OpenChatCut](https://github.com/0xsline/OpenChatCut) (AGPL-3.0-or-later); that repo was only **read
+as an architecture reference**, **no line of code was copied**, so this project is not a derivative
+work of it.

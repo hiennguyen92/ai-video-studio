@@ -38,7 +38,7 @@ Mốc được chia theo `DESCRIPTION.md` §9. Mỗi mốc phải **chạy đư�
 | Ước lượng độ dài đọc trước khi sinh, cảnh báo câu quá dài | ✅ | 12 unit + 7 e2e |
 
 **Đã trả xong nợ Mốc 2.** Trọn luồng chạy thật qua giao diện với khoá ElevenLabs, sửa bảy chỗ sai mà
-fixture không phát hiện được (xem README, mục "Đã kiểm chứng bằng API thật"), trong đó có hai lỗi
+fixture không phát hiện được (xem `README_VI.md`, mục "Đã kiểm chứng bằng API thật"), trong đó có hai lỗi
 giao diện chỉ lộ ra khi chuyển tab với dữ liệu thật.
 
 **Còn lại của Mốc 2:**
