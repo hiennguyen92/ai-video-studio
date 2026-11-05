@@ -135,12 +135,12 @@ Shortcuts do **not** fire while the cursor is in an input field.
 - **Preview**: play, pause, seek, frame stepping, layering multiple clips, mixing audio from multiple
   tracks, timecode, synchronized by a single master clock
 - **Keyframes**: let a property change over time instead of holding one value for the whole clip.
-  Covers clip transform (x, y, scale, rotation, opacity), effect intensity + **numeric** effect
+  Covers clip transform (x, y, scale, rotation, opacity), clip volume, effect intensity + **numeric** effect
   parameters, and the position / font size / rotation of text overlays. Set them with the diamond
   button in the Inspector panel, drag/delete/change interpolation on the dot strip under the clip,
   or by instructing the agent. Five interpolation types: linear, hold, ease in, ease out, ease in-out.
   Keyframes follow the clip through trims, splits, speed changes and duplication — and **reach the
-  exported file**, verified at pixel level
+  exported file**, verified at pixel level. Keyframe sets can be copied and pasted between clips
 - **Transcription**: local whisper.cpp with word-level timestamps, transcript editor with click-to-seek
 - **Translation**: keeps per-segment links, per-segment editing, glossary, via an OpenAI-style LLM server
 - **Subtitles**: create from a transcript or translation, bilingual, text style presets, **import
@@ -150,8 +150,6 @@ Shortcuts do **not** fire while the cursor is in an input field.
 - **AI Chat and MCP**: the agent reads the project and edits through the same command set as the
   UI; external agents (Claude Code) connect through an MCP server on loopback
 - **Auto-ducking**: lowers background music during speech using volume keyframes — smooth ramps, no clip cuts
-- **Keyframes**: clip transform, clip volume, numeric effect parameters, text overlay
-  position/size/rotation; five interpolation types; copy/paste keyframe sets between clips
 - **Copy/paste clips** with Cmd+C / Cmd+V, keeping every property
 - **Freeze frame**: freezes the frame at the playhead for 2 seconds (drag the edge to extend up to
   10 seconds); what follows on the clip's lane and group shifts along; the frame is built exactly
@@ -250,14 +248,9 @@ That is why model metadata is now **read from `/v1/models`** rather than hard-co
   multilingual models can still read other languages — the UI says so explicitly.
 - ElevenLabs' `speed` parameter is **not exposed in the UI** because its valid range could not be
   verified. Duration stretching for dubbing will use ffmpeg's `atempo`, independent of the provider.
-- **A few common editing operations are missing**, reviewed and written down so nobody has to look
-  for them again: ripple delete is agent-only, with no UI button yet; no markers/chapters, individual
-  clips cannot be locked, clips cannot be grouped; with multiple clips selected, dragging and the
-  Inspector panel still act on the first clip only; waveforms do not show on video clips with audio.
-- **Building cuts from speech and from shots is agent-only** (`build_cut_from_transcript`,
-  `build_cut_from_shots`) — there is no UI button yet, even though shot detection already works for real.
-- **Export is MP4/H.264 only with fixed quality**: no presets, no export of just the selected range,
-  no queue for multiple renders.
+- **Two common editing operations are still missing**: individual clips cannot be locked (only whole
+  tracks can), and with multiple clips selected the Inspector panel acts on the first clip only.
+- **Export is MP4/H.264 only**, with no queue for multiple renders.
 - **Tested on macOS Apple Silicon only.** Windows/Linux have never been run.
 - **The macOS installer builds, but cannot be released yet.** `npm run build:mac` produces a `.dmg`
   that runs on the machine that built it. Two things block handing it to others: the build is not

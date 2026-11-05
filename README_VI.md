@@ -136,11 +136,11 @@ Phím tắt **không** kích hoạt khi con trỏ đang ở trong ô nhập li�
 - **Xem trước**: phát, tạm dừng, tua, đi từng frame, xếp lớp nhiều clip, trộn tiếng nhiều track,
   timecode, đồng bộ bằng một đồng hồ chủ duy nhất
 - **Keyframe**: cho một thuộc tính đổi giá trị theo thời gian thay vì một giá trị cho cả clip.
-  Phủ transform clip (x, y, phóng, xoay, độ mờ), cường độ + thông số **kiểu số** của effect, và
+  Phủ transform clip (x, y, phóng, xoay, độ mờ), âm lượng clip, cường độ + thông số **kiểu số** của effect, và
   vị trí / cỡ chữ / góc xoay của chữ overlay. Đặt bằng nút kim cương trong panel Thuộc tính,
   kéo/xoá/đổi kiểu nội suy bằng dải chấm dưới clip, hoặc bằng câu lệnh cho agent. Năm kiểu nội
   suy: đều, giữ nguyên, chậm đầu, chậm cuối, chậm hai đầu. Keyframe đi theo clip khi cắt mép,
-  tách đôi, đổi tốc độ, nhân bản — và **đi tới file xuất**, đã soi bằng pixel
+  tách đôi, đổi tốc độ, nhân bản — và **đi tới file xuất**, đã soi bằng pixel. Cụm keyframe chép/dán được giữa các clip
 - **Phiên âm**: whisper.cpp chạy local, có timestamp từng từ, trình soạn transcript nhấn để tua
 - **Dịch**: giữ liên kết theo segment, sửa từng đoạn, có glossary, qua máy chủ LLM kiểu OpenAI
 - **Phụ đề**: tạo từ transcript hoặc bản dịch, song ngữ, preset kiểu chữ, **nhập file `.srt`/`.vtt`
@@ -149,8 +149,6 @@ Phím tắt **không** kích hoạt khi con trỏ đang ở trong ô nhập li�
 - **AI Chat và MCP**: agent đọc dự án và sửa qua cùng tập lệnh với giao diện; agent ngoài (Claude
   Code) nối vào qua máy chủ MCP trên loopback
 - **Auto-ducking**: hạ nhạc nền ở đoạn có lời nói bằng keyframe âm lượng — dốc mượt, không cắt clip
-- **Keyframe**: transform clip, âm lượng clip, thông số effect kiểu số, vị trí/cỡ/góc chữ
-  overlay; năm kiểu nội suy; chép/dán cụm keyframe giữa các clip
 - **Chép/dán clip** bằng Cmd+C / Cmd+V, giữ nguyên mọi thuộc tính
 - **Đứng hình**: đóng băng khung tại đầu phát 2 giây (kéo mép để dài tới 10 giây), phần sau
   trên lane của clip và nhóm dời theo; khung dựng đúng từng khung hình của nguồn
@@ -243,14 +241,9 @@ Vì vậy siêu dữ liệu model giờ **đọc từ `/v1/models`**, không vi�
   model đa ngôn ngữ vẫn đọc được ngôn ngữ khác — giao diện nói rõ điều này.
 - Tham số `speed` của ElevenLabs **không được đưa ra giao diện** vì khoảng giá trị hợp lệ chưa xác
   minh được. Việc co giãn thời lượng cho lồng tiếng sẽ dùng `atempo` của ffmpeg, không phụ thuộc provider.
-- **Thiếu vài thao tác dựng phim thông dụng**, đã rà soát và ghi lại để khỏi tìm lại: ripple
-  delete chỉ agent gọi được, giao diện chưa có nút; không có marker/chapter, không khoá được clip
-  lẻ, không nhóm clip; chọn nhiều clip thì kéo và panel thuộc tính vẫn chỉ ăn clip đầu tiên; sóng
-  âm không hiện trên clip video có tiếng.
-- **Dựng cut theo lời nói và theo cú máy chỉ agent gọi được** (`build_cut_from_transcript`,
-  `build_cut_from_shots`) — giao diện chưa có nút, dù phần dò cú máy đã chạy thật.
-- **Xuất chỉ MP4/H.264, chất lượng cố định**, không preset, không xuất riêng đoạn đang chọn,
-  không hàng đợi nhiều bản.
+- **Còn thiếu hai thao tác dựng phim thông dụng**: không khoá được clip lẻ (chỉ khoá cả track), và
+  chọn nhiều clip thì panel Thuộc tính vẫn chỉ ăn clip đầu tiên.
+- **Xuất chỉ MP4/H.264**, không có hàng đợi nhiều bản.
 - **Chỉ kiểm thử trên macOS Apple Silicon.** Windows/Linux chưa chạy thử lần nào.
 - **Bản cài macOS dựng được, nhưng chưa phát hành được.** `npm run build:mac` cho ra `.dmg`
   chạy thật trên máy đã dựng nó. Hai thứ chặn việc đưa cho người khác: bản chưa **công chứng**
